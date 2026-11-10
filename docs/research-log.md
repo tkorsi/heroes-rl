@@ -3534,3 +3534,82 @@ protected inputs unchanged. Analyze the new game's causal sequence and compare
 it with the journal's 1,758 findings using the same metrics. A single diagnostic
 can show behavior, not establish a strength improvement; no additional paired
 evaluation campaign is authorized here. Preserve the new run until analysis.
+
+## 2026-11-10 — 100 games from 1,758 captured; PPO stopped at user request
+
+The planned November 9 attempt actually ran via
+`./run-100-games.command --run`, with source pinned to clean commit
+`3c859137dfc1ccee7496a3871e139ca61373da1f`. Private evidence is under
+`/Users/orsi/Projects/Heroes-artifacts/selfplay-ten-then-check/run-20261109T141819Z-14d160b4`:
+`launch.json`, `batch-train-000/plan.json`, `report.json`, `shutdown.json`,
+`coordinator-deadline.jsonl`, `progress/ppo-batch-train-000.json`,
+`power-sleep-evidence.log` and `post-stop-preflight.log`. The existing reusable
+launcher needed no source/configuration change. The checkout stayed unchanged
+until the supervisor and its owned processes had exited.
+
+Runtime remained `local-v8-taverns-static-neutrals-v1`; the v3 map SHA-256 is
+`2ddd04177e17f588922cc7733ec4fa049be10bb0f020f7387fd7285ea1604056`.
+Both starting Taverns, disabled calendar neutral spawning, artifact/army rules,
+hero-relative controls and cooldowns remained unchanged. Collection used ten
+rolling actors, 365 days, 158,720 ordinary plus 5,120 reserved choices per
+player, the same PPO/Adam/native configuration, 30 GiB disk reserve, 48 GiB
+memory headroom and the shared 36,000-second wall deadline.
+
+The actual reservation was offset 440, width/count 101: training engine seeds
+1,980,000,440–1,980,000,539, diagnostic engine seed 1,980,000,540, and policy
+seeds 1,982,000,880–1,982,001,081. All remain consumed, including the unstarted
+diagnostic. The launcher preserved and exactly restored the complete 1,758
+pair before deleting the preceding reviewed run's raw artifacts. Parent policy
+SHA-256 is `38933a5073f44a562aecacd339db8b1dc24108c4e89517e3efc1b01cc67cbe4c`,
+resume SHA-256 is `ea0ed7551b06f54bf090f1670d38f8fabd18829fde173803d49875ffbfbbea37`,
+and weights SHA-256 is `475ba121c6da24c055c756e1b26c460c3ed5ccca264e48b434e7586417a70d08`.
+
+Launch was November 9 at 16:18:19 Kyiv (14:18:19 UTC). All 100 attempts reached
+`captured` after approximately 35 minutes: 66 engine-reported Blue wins,
+16 Red wins and 18 day-limit cutoffs, with zero capture failures/interrupted
+games. As configured, these training outcomes have no independent native
+replay or policy reconstruction. Both seats used the frozen parent 1,758;
+the outcomes are not games played by a newly updated model.
+
+PPO began after collection, but macOS power logs show closed-lid sleep starting
+at 19:53 Kyiv, brief maintenance wakes and a full lid/HID wake at 23:14.
+The existing `caffeinate -i` asserted prevention of idle sleep, not prevention
+of closed-lid sleep. The wall deadline continued advancing while the monotonic
+progress timer excluded sleep. The final launcher display read 06:37:47,
+whereas launch-to-shutdown wall time was 09:53:32. Sleep accounts for a material
+part of that difference; it does not establish the cause of every later change
+in optimizer throughput. Power was subsequently connected, and the user
+confirmed the lid was open. No deadline, system power setting, PPO setting or
+source binding was changed to bypass the run's limits.
+
+Before the 02:18:19 deadline, the user explicitly requested stopping for the
+night and trying again later. SIGINT was sent only to the identity-checked
+current supervisor; its owned cleanup completed at 02:11:51 Kyiv on November
+10. The supervisor exited 1, recording `KeyboardInterrupt`; the coordinator
+return code is -9 after owned shutdown. All four previously identified
+supervisor/coordinator/guard/caffeinate PIDs were gone, and shutdown evidence
+reports `owned_cleanup_verified=true` and `protected_inputs_unchanged=true`.
+This was a user-requested interruption, not an observed deadline timeout.
+
+The last disposable PPO snapshot was 6,826/9,073 minibatches (75.23%), with
+phase still `updating`; it is stale after process termination and is not a
+checkpoint. The finalized campaign report is `stopped`, its training phase is
+`failed`, admitted games/samples and completed optimizer updates are all zero,
+and latest checkpoint remains 1,758. No 1,759 publication or diagnostic exists.
+The complete durable state therefore remains 57,659 optimizer steps, 7,222
+rollouts and 1,771,426 decisions. The partial in-memory update cannot be
+continued through the current fresh-capture contract.
+
+Post-stop `./run-100-games.command --check` passed without gameplay, seed
+allocation or optimization, including exact model/Adam/RNG/progress/sampler/
+opponent-pool restoration. The next fresh offset is 541 (engine base
+1,980,000,541; policy base 1,982,001,082), not a replay of this reservation.
+The observed cohort and interruption are now analyzed; there is no post-update
+behavioral result or evidence of learning to compare with the 1,758 diagnostic.
+The earlier completion criteria were not met. A future launch starts a fresh
+100-game cycle from 1,758 with the same restrictions; it is deferred at the
+user's request, and no restart or automation was scheduled.
+
+Retention-reviewed run: `run-20261109T141819Z-14d160b4`.
+Keep this run's private artifacts until the next authorized launch/cleanup;
+the complete 1,758 pair and consumed seed ledger remain protected.

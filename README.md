@@ -89,8 +89,21 @@ Red's empty town after Red lost both heroes attacking Blue; neither side built
 or recruited town troops. The preceding 100 games already used 1,757 weights
 on v3 and had 83 engine-reported natural terminals, so the decisive diagnostic
 does not establish improvement from the update. Findings are in the research
-journal and this run is now retention-reviewed; raw artifacts remain until the
-next manual launch or explicit cleanup.
+journal. Its reviewed raw artifacts were retired at the next launch after the
+full 1,758 checkpoint pair was copied and restored in retained storage.
+
+The authorized November 9 run `run-20261109T141819Z-14d160b4` captured all 100
+games from 1,758: 66 engine-reported Blue wins, 16 Red wins and 18 day cutoffs,
+with no capture failures. The user stopped it on November 10 at 02:11 Kyiv,
+before the shared deadline. PPO had reached 6,826/9,073 minibatches but had not
+published a checkpoint: zero games/samples were committed to training, 1,758
+remains the latest complete state, and no diagnostic ran. Closed-lid sleep
+consumed over three hours of the wall-clock budget; the existing `caffeinate -i`
+does not prevent that sleep. Post-stop full-state restoration and owned process
+cleanup passed. The attempt is journaled and retention-reviewed; its raw data
+remain until the next launch. The next launch uses fresh seeds from offset 541
+and starts from 1,758, rather than resuming the incomplete PPO update. It is
+deferred at the user's request; no automatic restart is scheduled.
 
 Use `./continue-selfplay.sh --cycle --check --cycles 1 --hours 10` for the
 read-only preflight, or use `./run-100-games.command --check`. The prepared
