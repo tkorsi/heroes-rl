@@ -3979,3 +3979,28 @@ missing the starting-equipment dependency; reproduced the same failure against
 the pre-task evaluator. A direct identity check passed exact source comparison
 and then correctly stopped at the dirty-checkout gate before this pin commit.
 Live read-only preflight and tamper rejection are the remaining checks.
+
+Final validation at source `e6309f7` passed live read-only preflight and exact
+1,760 model/Adam/RNG/progress/sampler/opponent-pool restoration for 10, 101,
+500 and 1,000 requested games. Previews reported [10], [51,50], five hundreds
+and ten hundreds, respectively, with exactly one final diagnostic. Default
+500 allows 50 hours and previews a 501-slot reservation from offset 743; 10
+allows one hour, 101 allows 10.1, and the 1,000 preview accepted `--hours 80`.
+No live reservation was made. Hashes of the live latest pointer, seed ledger,
+lineage and retained state were unchanged across all previews.
+
+Actual policy save/load and the unmocked bound-plan validator also passed for
+51-game and 50-game plans plus a one-game diagnostic, in a temporary private
+namespace under Heroes-artifacts. Initial temporary paths were correctly
+rejected by the no-symlink/private-root gates; the fixture was moved into the
+allowed private root rather than relaxing those gates. Its directory was
+removed afterward; no capture or PPO kernel ran and the live namespace hashes
+remained unchanged. Exact source acceptance passed, while mutations of all four
+reviewed source hashes and an engine hash were rejected. Logs:
+`/tmp/heroes-configurable-preflight-*.log`,
+`/tmp/heroes-configurable-real-plan-check.log`,
+`/tmp/heroes-configurable-coordinator-isolated.log`,
+`/tmp/heroes-configurable-focused-tests.log` and synthetic `/tmp/heroes-ui-*.txt`.
+The three historical mock failures are documented above; no tests/fixtures or
+validation tooling were published. The new 500/1,000-game campaign itself has
+not been launched. The user retains launch control.
