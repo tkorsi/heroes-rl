@@ -4025,3 +4025,7 @@ showed both PreventUserIdleSystemSleep and PreventSystemSleep on AC power,
 with no PreventUserIdleDisplaySleep assertion from that process. Both sleep
 assertions disappeared when the harmless command exited. AC was connected at
 100%. This verifies assertion lifetime, not an overnight physical sleep trial.
+
+At clean source `19f2904`, `./run-100-games.command --check` passed exact full
+checkpoint 1,760 restoration and the default 500-game preview without gameplay,
+PPO, cleanup or seed allocation. Output: `/tmp/heroes-awake-preflight.log`.
