@@ -3795,3 +3795,117 @@ restoration/publication of 1,760, one fresh diagnostic with both policy
 reconstructions and native replay, and verified cleanup/protected inputs.
 Record actual launch identity, timings and results after execution. A single
 diagnostic supports behavioral inspection rather than a strength claim.
+
+## 2026-11-11 — User-launched 100-game cycle and checkpoint 1,760 analysis
+
+Question: did the prepared cycle complete, and how does the fresh diagnostic
+compare with 1,759? Acceptance is the preceding plan's 100 admitted captures,
+one exact-restored update and independently verified diagnostic. Actual run:
+`/Users/orsi/Projects/Heroes-artifacts/selfplay-ten-then-check/run-20261111T115614Z-5c919e30`,
+source `d6127c277f1e7d710223ad5586a1475d9f2d651b`. The user launched the existing
+script. v3 map/runtime, starting Taverns, disabled calendar neutral spawning,
+artifact/army rules, horizons, PPO/Adam, ten rolling actors and resource/deadline
+limits remained unchanged. The launcher retired the reviewed 1,759 raw run
+after preserving its complete continuation state.
+
+Actual reservation offset 642, width/count 101: training engine seeds
+1,980,000,642–1,980,000,741; diagnostic 1,980,000,742; policy seeds
+1,982,001,284–1,982,001,485. Diagnostic pair: 1,982,001,484/1,982,001,485.
+Next fresh offset 743. Launch was November 11 at 13:56:14 Kyiv, publication
+18:13:56, shutdown 18:24:38. Coordinator elapsed 16,098.96 seconds (04:28:18).
+
+All 100 training games were captured: engine-reported Blue 65 wins, Red 16,
+19 day cutoffs, zero capture failures/interrupted games. These unverified
+training outcomes used frozen 1,759 weights, not the resulting 1,760.
+100 games / 253,760 samples entered one completed PPO update of 7,956 optimizer
+steps. Total optimizer steps became 76,312, rollouts 7,422, decisions 2,366,755.
+Policy SHA-256 `d1ef96bf3fbe150810a1f8c34fc82065b336373cf731717507812f5e8423007e`;
+resume SHA-256 `ec7646cd28e5f75b3a3d1b44589dc91d524e364ba5089cc3275fd1baa8d97b9f`;
+weights SHA-256 `6147646c783e945cf07331632a76ffb751b91b24dc66726b2d6dceac78cbb215`.
+Publication exact-state restoration passed. Campaign status is `completed`;
+shutdown return code 0, errors empty, owned cleanup verified and protected
+inputs unchanged. Read-only `./run-100-games.command --check` restored 1,760
+including model/Adam/RNG/progress/sampler/opponent pool and allocated no seeds.
+
+The diagnostic passed native replay and exact reconstruction of both policies
+(maximum absolute difference 0), but was truncated at `game_day_limit`, with
+no winner or terminal rewards. There were 365 action days; the final public
+boundary refresh is labelled day 366, not an extra played day. Red made 5,664
+choices, Blue 5,227. The receipt and every bound evidence file were rechecked
+by streaming size/SHA-256 before offline analysis. Private outputs:
+`analysis-1760/summary.json`, `{red,blue}-metrics.json`, `critical-events.json`
+and `development.json`. Raw evidence is in
+`evaluation-000/execution/episode-000001`; campaign/publication/shutdown files
+bind the training outcome and saved state. No new gameplay or update ran
+during analysis. The retired 1,759 game is compared through its journal record.
+
+Observed sequence and reasons for the cutoff:
+
+- Both original heroes started with 25 pikemen. Blue lost its original hero
+  on day 7; Red lost its original on day 15. Both later hired replacements
+  (seven Red hires, nineteen Blue hires); roster removals total eight Red
+  heroes and eighteen Blue heroes. These are losses, not necessarily distinct
+  hero identities because dismissed/lost heroes can reappear in offers.
+- Red built twice (days 14 and 323; Castle special3 and marketplace), Blue
+  twice (days 183 and 188; Castle special3 and upgraded level-one dwelling).
+  Construction results are `built`; recruit results are successful 10/10 Red
+  and 6/6 Blue. No explicit stack-upgrade action occurred.
+- On day 104 Red's `swap_garrison` decision 9167 moved its visiting hero into
+  the garrison and added all 162 town pikemen to the hero's 40 troglodytes and
+  four harpies. The town army became empty. The day-110 swap released that
+  hero to the field. It retained a substantial pikeman stack for much of the
+  game but was eventually lost on day 357.
+- Blue's day-326 swap (decision 46958) changed its hero's 17 pikemen into
+  333 pikemen plus 91 halberdiers, taking 316 pikemen and 91 halberdiers from
+  the town. A day-336 swap released it. This hero won the late battles on days
+  348, 349 and 357, removing Red's last three heroes. At the cutoff Blue had
+  this hero with 326 pikemen / 65 halberdiers and another with 14 pikemen /
+  five archers. Red still owned its town, with 445 garrison pikemen and
+  174,484 gold; Blue had 92,426 gold and its original town.
+- No town ownership changed. Red selected the enemy town only four times
+  among 1,040 movement choices (days 57, 142, 204, 344); three stopped at the
+  movement limit and one ended `hero_unavailable`. Blue selected the enemy
+  town once among 910 moves, on day 93, and lost that hero. After acquiring
+  its large day-326 army, Blue never selected the opposing town as a movement
+  target. Both eventually knew all 400 tiles, so lack of map exploration does
+  not explain the continued absence of captures. This does not prove a
+  particular attack would have won against the remaining garrison.
+
+Metric limitation: generic `army_operations.across_armies` is zero because
+`swap_garrison` does not use source/destination transfer arguments. That zero
+must not be reported as no army transfer. Before/after own-army rows prove
+the two substantial merges above. Six successful swaps are not six proven
+nonzero troop transfers; some just change the hero's garrison/visiting status.
+BattleAI still controls combat; late battle wins do not prove learned tactics.
+
+| Metric | 1,759 diagnostic | 1,760 diagnostic |
+| --- | ---: | ---: |
+| Outcome / action days | Blue win / 19 | No winner / 365-day cutoff |
+| Town captures | 1 | 0 |
+| Choices | 486 | 10,891 |
+| Four window-action kinds | 327/486 (67.28%) | 7,638/10,891 (70.13%) |
+| No known route / movement choices | 5/101 (4.95%) | 88/1,950 (4.51%) |
+| Successful construction actions | 0 | 4 |
+| Successful recruitment actions | 1 | 16 |
+| Hero hires | 1 | 26 |
+| Observed substantial town-army merges into heroes | 0 | At least 2 |
+
+Both seats retained repeated window loops: 503 Red and 440 Blue overlapping
+open-capability/close-capability/open-capability/close-capability sequences.
+Window actions are not all intrinsically useless, but repetition and the lack
+of follow-through on town attacks persist. The strongest positive observations
+are actual construction, recruitment and mobilization of accumulated town
+troops. The weakest behavior is converting those forces and full map knowledge
+into a sustained town-capture objective. Defense and field battles can continue
+without satisfying the victory condition when both players retain a town.
+
+This game demonstrates a broader observed action repertoire, not statistically
+established learning or regression. A 365-day game offers far more chances for
+rare actions than a 19-day game; seeds and both policies also differ. Shorter
+training runtime reflects fewer samples/steps and does not establish smarter
+play. No fixed-opponent paired-seed evaluation was run. The execution acceptance
+criteria passed; stronger strategic play remains unproven.
+
+Retention-reviewed run: `run-20261111T115614Z-5c919e30`.
+Keep raw evidence until the next authorized launch/cleanup, preserving the full
+1,760 state and seed ledger first. No further cycle was launched.

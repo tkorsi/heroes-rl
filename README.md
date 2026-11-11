@@ -65,7 +65,8 @@ neutrals and their growth remain native. These are temporary restrictions to be
 removed gradually. Native controls, a short frozen-1,757 prefix and the
 read-only continuation preflight passed. The first complete 100-game cycle on
 this variant advanced checkpoint 1,757 to 1,758; the November 10 retry advanced
-it to 1,759. The next continuation restores 1,759 with these rules.
+it to 1,759. The November 11 user-launched cycle advanced it to 1,760;
+the next continuation restores 1,760 with these rules.
 
 The November 7 continuation completed all fifty games, one PPO update and its
 fully validated diagnostic, advancing checkpoint 1,756 to 1,757 in 01:23:14.
@@ -114,8 +115,20 @@ diagnostic on day 19: it captured Red's town on day 12 after defeating its
 14-pikeman garrison; Red's surviving 25-pikeman hero did not recover a town
 within seven days. The earlier capture and a modest reduction in window-action
 share are descriptive observations, not proof of stronger play. Analysis is in
-the journal; this run remains available until the next authorized launch. The
-next fresh reservation starts at offset 642.
+the journal. Its reviewed raw artifacts were retired at the November 11 launch
+after preserving the checkpoint; that reservation started at offset 642.
+
+The user-launched `run-20261111T115614Z-5c919e30` completed on November 11
+in 04:28:18 coordinator time: 100 captures, 253,760 admitted samples, 7,956
+optimizer steps and checkpoint 1,760. Training engine outcomes were Blue 65,
+Red 16 and 19 day cutoffs, without capture failures. The fully verified
+diagnostic reached the 365-day limit without a winner or town capture. Both
+sides built and recruited; garrison swaps visibly added 162 pikemen to Red's
+hero and 316 pikemen plus 91 halberdiers to Blue's hero. These forces did not
+produce a town capture. Final Red had no heroes and 445 garrison pikemen;
+Blue retained two heroes. Full restore/preflight and owned cleanup passed.
+Analysis is in the journal and this run is retention-reviewed. Keep its raw
+artifacts until the next authorized launch; the next fresh seed offset is 743.
 
 Use `./continue-selfplay.sh --cycle --check --cycles 1 --hours 10` for the
 read-only preflight, or use `./run-100-games.command --check`. The prepared
