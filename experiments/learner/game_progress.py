@@ -379,6 +379,52 @@ def batch_terminal_lines(slots, *, width=80, color=False, compact=False, dense=F
             for start in range(0, len(cards), 5) for row in range(len(cards[0]))]
 
 
+def grouped_terminal_lines(slots, *, width=79, color=False, dense=False):
+    """Keep the old half-card width; five ordered games per cell above 100."""
+    per_cell = 5 if len(slots) > 100 else 1
+    groups = [slots[i:i + per_cell] for i in range(0, len(slots), per_cell)]
+    cell_width = ((width - 4) // 5 + 1) // 2
+    inner = cell_width - 2
+    cards = []
+    for group in groups:
+        markers = []
+        for slot in group:
+            a, v = slot['attempt'], slot['value']
+            state = a.get('status', 'not_started')
+            outcomes = a.get('outcomes', {})
+            if state in ('failed', 'interrupted') or v.get('phase') == 'failed':
+                mark, tint = 'E', '1;31'
+            elif outcomes.get('blue') == 'win':
+                mark, tint = 'B', '1;94'
+            elif outcomes.get('red') == 'win':
+                mark, tint = 'R', '1;91'
+            elif a.get('episode_status') == 'truncated':
+                mark, tint = 'C', '1;33'
+            elif state in ('preparing', 'captured', 'passed'):
+                mark, tint = '~' if state == 'preparing' else '+', '33'
+            elif state == 'running':
+                days = [x for x in v.get('days', ()) if x is not None]
+                day = max(days) if days else 1
+                mark = str(min(9, 10 * max(0, day - 1) // max(1, v.get('max_days') or 365)))
+                tint = '1;36'
+            else:
+                mark, tint = '.', '2'
+            markers.append(color_text(mark, tint, color))
+        # Five markers always fit at 80 columns; the heading identifies the first game.
+        title = str(group[0]['episode']).zfill(4) + ('+' if per_cell > 1 else '')
+        title = title[:inner].ljust(inner)
+        marks = ''.join(markers) + ' ' * max(0, inner - len(markers))
+        cards.append(['|' + marks + '|'] if dense else ['|' + title + '|', '|' + marks + '|'])
+    blank = [' ' * cell_width] * (1 if dense else 2)
+    cards.extend([blank] * ((-len(cards)) % 10))
+    rows = []
+    for start in range(0, len(cards), 10):
+        for line in range(1 if dense else 2):
+            rows.append(' '.join(cards[i][line] + cards[i + 1][line][1:]
+                                 for i in range(start, start + 10, 2)))
+    return rows
+
+
 class BatchProgressDisplay(ProgressDisplay):
     """A stationary batch view of existing disposable progress and reports."""
 
@@ -386,8 +432,10 @@ class BatchProgressDisplay(ProgressDisplay):
         super().__init__(directory, stream=stream, clock=clock)
         self.launch, self.report = launch, {}
         self.batch_games = launch.get("configuration", {}).get("training_games", 10)
+        self.grouped = "requested_games" in launch
         self.overview = self.batch_games == 10 and launch.get("batches", 1) == 4
-        self.slot_count = self.batch_games if self.batch_games in (40, 50, 100) else 40 if self.overview else 10
+        self.overview = self.overview or self.grouped
+        self.slot_count = launch["requested_games"] if self.grouped else self.batch_games if self.batch_games in (40, 50, 100) else 40 if self.overview else 10
         self.started, self.opened = self.clock(), False
         self.saved, self.phase_name, self.phase_start = {}, None, 0
         self.dashboard = self.terminal and os.environ.get("TERM", "").lower() != "dumb"
@@ -438,7 +486,7 @@ class BatchProgressDisplay(ProgressDisplay):
             for index, shown in enumerate(shown_batches):
                 for attempt in shown.get('attempts', []):
                     local = attempt['episode']
-                    number = index * self.batch_games + local if self.overview else local
+                    number = sum(self.launch['batch_sizes'][:index]) + local if self.grouped else index * self.batch_games + local if self.overview else local
                     attempts[number] = attempt
                     values[number] = self.saved.get((shown.get('name'), local), {})
             cfg = self.launch.get('configuration', {})
@@ -451,19 +499,24 @@ class BatchProgressDisplay(ProgressDisplay):
             completed = sum(a.get('status') in ('captured', 'passed') for a in attempts.values())
             rows = [color_text(f'HEROES  /  {self.slot_count}-GAME TRAINING'[:width], '1', self.color),
                     f"Batch {len(self.report.get('batches', [])) or 1}/{self.launch.get('batches', 1)} | Ready {completed}/{self.slot_count} | Checkpoint {checkpoint} | {format_duration(elapsed)}"]
-            grid_rows = self.slot_count // (10 if self.slot_count == 100 else 5)
-            compact = height < grid_rows * 7 + 6
-            dense = compact and height < grid_rows * 2 + 6
+            grid_rows = ((self.slot_count + 4) // 5 + 9) // 10 if self.grouped and self.slot_count > 100 else (self.slot_count + 9) // 10 if self.grouped else self.slot_count // (10 if self.slot_count == 100 else 5)
+            compact = self.grouped or height < grid_rows * 7 + 6
+            dense = compact and height < grid_rows * 2 + 7
             card_height = (1 if dense else 2) if compact else 7
-            if width >= (79 if self.slot_count == 100 else 74) and height >= grid_rows * card_height + 6:
+            if self.grouped and width >= 79 and height >= grid_rows * card_height + 7:
+                rows += grouped_terminal_lines(slots, width=width, color=self.color, dense=dense)
+            elif width >= (79 if self.slot_count == 100 else 74) and not self.grouped and height >= grid_rows * card_height + 6:
                 rows += batch_terminal_lines(slots, width=width, color=self.color, compact=compact, dense=dense)
             else:
                 rows += [f'Enlarge to 80 columns and {grid_rows + 7} rows for all {self.slot_count} games.']
-                for slot in slots:
+                for slot in (slots if not self.grouped else []):
                     a, v = slot['attempt'], slot['value']
                     days = [d for d in v.get('days', ()) if d is not None]
                     rows.append(f"Game {slot['episode']:02d} | {a.get('status', 'waiting')} | Day {max(days) if days else '?'} | R/B "
                                 + '/'.join(str(n) for n in v.get('choices', a.get('sampled_by_player', [0, 0]))))
+            if self.grouped:
+                per_cell = 5 if self.slot_count > 100 else 1
+                rows.append(f'{per_cell} games/cell, left to right; header = first game; Ready = PPO prepared')
             counts = {key: sum(b.get('counts', {}).get(key, 0) for b in shown_batches)
                       for key in ('engine_red_wins', 'engine_blue_wins', 'red_wins', 'blue_wins', 'game_cutoffs', 'failures')}
             red = counts.get('engine_red_wins', counts.get('red_wins', 0))
@@ -477,7 +530,7 @@ class BatchProgressDisplay(ProgressDisplay):
             else:
                 progress = read_ppo_progress(ppo_progress_path(self.directory.parent, batch.get('name', 'pending')))
                 status = ('UPDATING' if batch.get('status') == 'updating' else 'SAVED'
-                          if batch.get('status') == 'checkpoint_verified' else f'waiting for {self.batch_games} ready games')
+                          if batch.get('status') == 'checkpoint_verified' else f"waiting for {batch.get('planned_games', self.batch_games)} ready games")
                 rows.append(format_ppo_progress(progress) if progress is not None else
                             f"PPO: {status} | Updates {self.report.get('optimizer_updates', 0)} | Validation: after saved update")
             if compact:
@@ -488,16 +541,18 @@ class BatchProgressDisplay(ProgressDisplay):
                     rows.append(f"Active {active[0]['episode']:02d}: Red {exact[0]:,} | Blue {exact[1]:,} | Prep {waiting}")
                 else:
                     rows.append(f"Playing {len(active)}/{cfg.get('collection_workers', 1)} | Queued/preparing PPO {waiting}")
-                if dense:
+                if dense or self.grouped:
                     def detail(slot):
                         value = slot['value']
                         days = [d for d in value.get('days', ()) if d is not None]
                         counts = value.get('choices', [0, 0])
                         return f"#{slot['episode']:02d} Day {max(days) if days else '?'} R {counts[0]:,} B {counts[1]:,}"
                     half = max(1, (width - 3) // 2)
-                    for start in range(0, len(active), 2):
+                    detail_budget = max(0, height - len(rows) - 1) if self.grouped else len(active)
+                    for start in range(0, min(len(active), 2 * detail_budget), 2):
                         rows.append(' | '.join(detail(slot)[:half].ljust(half) for slot in active[start:start + 2]))
-            rows.append('> play  ~ prep  . wait  R/B win  D day limit  C cutoff  OK ready  ! error' if self.slot_count == 100 else
+            rows.append('B Blue / R Red / C cutoff / E error | . wait  0-9 day progress  ~ prep' if self.grouped else
+                        '> play  ~ prep  . wait  R/B win  D day limit  C cutoff  OK ready  ! error' if self.slot_count == 100 else
                         '> playing | ~ prep | ! error | Enlarge for per-game days/counts' if dense else
                         '> active | ~ prep | ! error | Cards: day Red/Blue choices; k rounded down' if compact else
                         '> active | ~ prep | R/B = choices used | Bars = action budget, not time')

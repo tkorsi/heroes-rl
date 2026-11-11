@@ -1,11 +1,25 @@
 #!/bin/sh
-# One manual 100-game continuation from the latest retained checkpoint.
+# Manual configurable continuation; retain the filename for existing shortcuts.
 set -eu
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-case "${1:---run}" in
-    --check)
-        exec "$SCRIPT_DIR/continue-selfplay.sh" --cycle --check --cycles 1 --hours 10 ;;
-    --run)
-        exec "$SCRIPT_DIR/continue-selfplay.sh" --cycle --run --cycles 1 --hours 10 ;;
-    *) echo "Usage: $0 [--run | --check]" >&2; exit 2 ;;
-esac
+MODE=--run
+GAMES=500
+HOURS=
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --check|--run) MODE=$1; shift ;;
+        --games|--hours)
+            [ "$#" -ge 2 ] || { echo "Missing value for $1" >&2; exit 2; }
+            if [ "$1" = --games ]; then GAMES=$2; else HOURS=$2; fi
+            shift 2 ;;
+        --help|-h)
+            echo "Usage: $0 [10..1000 | --games N] [--check | --run] [--hours H]"
+            echo "Default: 500 games, PPO batches up to 100, one final diagnostic."
+            exit 0 ;;
+        *[!0-9]*|'') echo "Unknown argument: $1" >&2; exit 2 ;;
+        *) GAMES=$1; shift ;;
+    esac
+done
+set -- --cycle "$MODE" --games "$GAMES"
+if [ -n "$HOURS" ]; then set -- "$@" --hours "$HOURS"; fi
+exec "$SCRIPT_DIR/continue-selfplay.sh" "$@"

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""A separate, explicitly invoked 100-game self-play experiment from update 1728.
+"""Manual self-play continuation with bounded PPO batches and verified diagnostics.
 
 The original Nullkiller campaign is read-only. Diagnostics, consumed seeds and
 failed batches cannot become training inputs. Manual continuations use new run
@@ -69,6 +69,14 @@ def select_cycle_mode():
 def cycle_games():
     from experiments.learner import selfplay_training as training
     return training.CYCLE_GAMEPLAY["training_games"] if CYCLE_MODE else 10
+
+
+def cycle_batch_sizes(games):
+    """Balance complete PPO batches while bounding capture memory."""
+    require(type(games) is int and 10 <= games <= 1000, "Use --games between 10 and 1000")
+    count = (games + 99) // 100
+    size, extra = divmod(games, count)
+    return [size + (index < extra) for index in range(count)]
 
 
 def cycle_width():
@@ -1542,7 +1550,7 @@ def finalize_stopped_run(output, launch):
         no_unpublished_experience_admitted=True), new=True)
 
 
-def ten_configuration(checked, seconds):
+def ten_configuration(checked, seconds, *, games=None):
     from experiments.learner import selfplay_training as training
     from experiments.learner.ppo import PPOConfig
     inherited = validate_configuration(checked['inherited_configuration'] if 'inherited_configuration' in checked
@@ -1551,7 +1559,10 @@ def ten_configuration(checked, seconds):
            ('interface', 'adam', 'ppo', 'torch_threads', 'allow_verified_training_prefix')}
     cfg.update(schema='heroes-selfplay-batch-ten-config-v1', maximum_seconds=seconds)
     cfg.update(training.CYCLE_GAMEPLAY if CYCLE_MODE else training.TEN_GAMEPLAY)
-    cfg.update(max_optimizer_steps=training.optimizer_step_cap(PPOConfig(**PPO), cycle_games(), cfg['max_total_choices']),
+    if games is not None:
+        require(CYCLE_MODE and type(games) is int and 10 <= games <= 100, 'Invalid PPO batch size')
+        cfg['training_games'] = games
+    cfg.update(max_optimizer_steps=training.optimizer_step_cap(PPOConfig(**PPO), cfg['training_games'], cfg['max_total_choices']),
                attempt_wall_seconds=seconds, cleanup_reserve_seconds=30,
                disk_reserve_gib=TEN_DISK_RESERVE_GIB,
                phase_deadlines_seconds={'training': seconds, 'update': seconds})
@@ -1565,7 +1576,7 @@ def ten_configuration(checked, seconds):
     return cfg
 
 
-def ten_reservations(requests=None):
+def ten_reservations(requests=None, *, width=None):
     """Use separate durable namespaces; every reserved attempt stays consumed."""
     path = TEN_BASE / 'seed-reservations.json'
     require(path.exists() or not TEN_BASE.exists()
@@ -1577,10 +1588,10 @@ def ten_reservations(requests=None):
     offsets, outputs = dict.fromkeys(TEN_NAMESPACES, 0), set()
     for row in value['reservations']:
         mode = row['mode']
-        width = row.get('cycle_width', 11 if CYCLE_MODE else 10)
-        require(type(width) is int and width in ((11, 41, 51, 101) if CYCLE_MODE else (10,))
+        row_width = row.get('cycle_width', 11 if CYCLE_MODE else 10)
+        require(type(row_width) is int and (11 <= row_width <= 1001 if CYCLE_MODE else row_width == 10)
                 and mode in offsets and type(row['count']) is int and row['count'] > 0
-                and row['count'] % width == 0 and row['offset'] == offsets[mode]
+                and row['count'] % row_width == 0 and row['offset'] == offsets[mode]
                 and row['consumed_including_unstarted'] is True
                 and (row['output'], mode) not in outputs, 'Invalid ten-game seed reservation')
         engine, policy = TEN_NAMESPACES[mode]
@@ -1589,9 +1600,11 @@ def ten_reservations(requests=None):
         offsets[mode] += row['count']; outputs.add((row['output'], mode))
     if requests is None:
         return value, offsets
+    width = cycle_width() if width is None else width
+    require(type(width) is int and (11 <= width <= 1001 if CYCLE_MODE else width == 10), "Invalid reservation width")
     added = {}
     for mode, count, output in requests:
-        require(mode in offsets and type(count) is int and count > 0 and count % cycle_width() == 0
+        require(mode in offsets and type(count) is int and count > 0 and count % width == 0
                 and offsets[mode] + count < 1_000_000 and (str(output), mode) not in outputs,
                 'Invalid or reused ten-game seed request')
         engine, policy = TEN_NAMESPACES[mode]
@@ -1599,18 +1612,19 @@ def ten_reservations(requests=None):
                    engine_base=engine + offsets[mode], policy_base=policy + 2 * offsets[mode],
                    consumed_including_unstarted=True)
         if CYCLE_MODE:
-            row['cycle_width'] = cycle_width()
+            row['cycle_width'] = width
         value['reservations'].append(row); offsets[mode] += count
         outputs.add((str(output), mode)); added[mode] = row
     write(path, value)
     return added
 
 
-def ten_seed_preview(count):
+def ten_seed_preview(count, *, width=None):
     """Describe the next fresh reservation without allocating seeds or files."""
     _, offsets = ten_reservations()
+    width = cycle_width() if width is None else width
     offset = offsets['training']
-    require(type(count) is int and count > 0 and count % cycle_width() == 0 and offset + count < 1_000_000,
+    require(type(count) is int and count > 0 and count % width == 0 and offset + count < 1_000_000,
             'Invalid or exhausted ten-game seed preview')
     engine, policy = TEN_NAMESPACES['training']
     return dict(count=count, consumed_before=offset, engine_base=engine + offset,
@@ -1794,7 +1808,7 @@ def ten_inspect():
                     'Duplicate or foreign ten-game launch')
             outputs.add(str(output))
             require(all(row in seed_ledger['reservations'] for row in launch['reservations'].values())
-                    and launch['reservations']['training']['count'] == launch.get('reserved_cycles', launch['batches']) * (launch['configuration']['training_games'] + int(CYCLE_MODE)),
+                    and launch['reservations']['training']['count'] == launch.get('reserved_cycles', launch['batches']) * (launch.get('requested_games', launch['configuration']['training_games']) + int(CYCLE_MODE)),
                     'Registered ten-game launch has lost its consumed reservation')
             shutdown = read(output / 'shutdown.json')
             require(shutdown.get('owned_cleanup_verified') is True
@@ -1853,7 +1867,7 @@ def ten_inspect():
                         and row['checkpoint']['metadata']['training_contract'] == (training.CYCLE_SCHEMA if CYCLE_MODE else training.TEN_SCHEMA),
                         'Ten-game checkpoint ancestry changed')
                 count = plan['configuration']['training_games']
-                require(type(count) is int and count in ((10, 40, 50, 100) if CYCLE_MODE else (10,))
+                require(type(count) is int and (10 <= count <= 100 if CYCLE_MODE else count == 10)
                         and len(plan['schedule']) == count
                         and row['checkpoint']['metadata'].get('training_games') == count
                         and len(row['receipts']) == count and len({item['path'] for item in row['receipts']}) == count,
@@ -1913,20 +1927,24 @@ def prepare_ten(args, inspected):
     require(type(args.batches) is int and 1 <= args.batches <= 100,
             'Use between one and 100 complete batches')
     seconds = args.hours * 3600
-    require(math.isfinite(seconds) and 120 <= seconds <= 36000, 'Use a finite budget up to ten hours')
+    maximum = 36000 * ((getattr(args, 'games', None) or 100) / 100) if CYCLE_MODE else 36000
+    require(math.isfinite(seconds) and 120 <= seconds <= maximum, 'Time budget exceeds the requested game allowance')
     checked, lineage = inspected['checked'], inspected['lineage']
     require((lineage is None) == (args.command == 'batch10-run'),
             'Use batch10-run for a new lineage, or batch10-continue for its latest complete checkpoint')
     if args.command == 'batch10-continue':
         require(lineage['runs'] and Path(read(bound(lineage['runs'][-1]))['output']).resolve()
                 == args.run_dir.resolve(), 'Continue only from the latest registered ten-game run')
-    reserved_cycles = args.batches + int(inspected.get('pending_evaluation', False))
+    requested = getattr(args, 'games', None) if CYCLE_MODE else None
+    sizes = cycle_batch_sizes(requested) if requested is not None else None
+    reserved_cycles = (1 if sizes else args.batches) + int(inspected.get('pending_evaluation', False))
+    width = requested + 1 if sizes else cycle_width()
     output = private_output(args.output or TEN_BASE / ('run-' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
                                                     + '-' + secrets.token_hex(4)))
     TEN_BASE.mkdir(parents=True, exist_ok=True)
     with (TEN_BASE / 'namespace.lock').open('a+b') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        reservations = ten_reservations([('training', reserved_cycles * cycle_width(), output)])
+        reservations = ten_reservations([('training', reserved_cycles * width, output)], width=width)
     output.mkdir(parents=True, mode=0o700)
     now, wall = time.monotonic(), time.time()
     launch = dict(schema=TEN_LAUNCH, campaign_id=output.name, mode='training', output=str(output),
@@ -1936,11 +1954,13 @@ def prepare_ten(args, inspected):
         parent_policy_sha256=inspected['parent']['policy']['sha256'], protected=inspected['protected'],
         reservations=reservations, batches=args.batches, reserved_cycles=reserved_cycles,
         pending_evaluation=inspected.get('pending_evaluation', False),
-        configuration=ten_configuration(checked, seconds), execution=checked['execution'],
+        configuration=ten_configuration(checked, seconds, games=sizes[0] if sizes else None), execution=checked['execution'],
         policy_support=checked['experiment']['policy_support'], equipment_policy=checked['equipment_policy'],
         army_information=checked['army_information'], maximum_seconds=seconds,
         hard_deadline_monotonic=now + seconds, hard_deadline_unix=wall + seconds,
         **{key: checked[key] for key in ('binary', 'data', 'game_map', 'replay_binary', 'native', 'runtime', 'native_manifest')})
+    if sizes:
+        launch.update(requested_games=requested, batch_sizes=sizes)
     write(output / 'launch.json', launch, new=True)
     if lineage is None:
         lineage = dict(schema=TEN_LAUNCH, initial_checkpoint=inspected['initial'],
@@ -1955,6 +1975,9 @@ def load_ten_launch(path, sha):
     launch = read(path)
     require(launch.get('schema') == TEN_LAUNCH and launch['source'] == source_identity(),
             'Ten-game launch source changed')
+    if 'requested_games' in launch:
+        require(launch.get('batch_sizes') == cycle_batch_sizes(launch['requested_games'])
+                and launch['batches'] == len(launch['batch_sizes']), 'Requested batch partition changed')
     require(launch['configuration'].get('disk_reserve_gib') == TEN_DISK_RESERVE_GIB,
             'Ten-game disk reserve changed')
     require(launch['native_manifest'] == binding(NATIVE), 'Native learner changed')
@@ -1969,13 +1992,20 @@ def load_ten_launch(path, sha):
     return launch
 
 
-def ten_batch_plan(launch, state, *, name, mode, start, opponent_model, opponent_policy):
+def ten_batch_plan(launch, state, *, name, mode, start, opponent_model, opponent_policy, count=None):
     from experiments.learner import checkpoints as cp, selfplay_training as training
     folder = Path(launch['output']) / name
     folder.mkdir(); inputs = folder / 'input'; inputs.mkdir()
+    count = cycle_games() if count is None else count
+    configuration = dict(launch['configuration'])
+    if CYCLE_MODE:
+        from experiments.learner.ppo import PPOConfig
+        configuration.update(training_games=count, max_optimizer_steps=training.optimizer_step_cap(
+            PPOConfig(**PPO), count, configuration['max_total_choices']))
     metadata = training.metadata(binding(Path(launch['output']) / 'launch.json')['sha256'],
         launch['original_parent']['policy'], opponent_policy, campaign_id=launch['campaign_id'],
-        purpose=mode, training_contract=training.CYCLE_SCHEMA if CYCLE_MODE else training.TEN_SCHEMA)
+        purpose=mode, training_contract=training.CYCLE_SCHEMA if CYCLE_MODE else training.TEN_SCHEMA,
+        training_games=count)
     opponent = deepcopy(opponent_model).eval().requires_grad_(False)
     opponent_id = f"{launch['campaign_id']}-{name}-frozen"
     for filename, model, checkpoint in (('learner.pt', state.model, state.checkpoint),
@@ -1986,12 +2016,12 @@ def ten_batch_plan(launch, state, *, name, mode, start, opponent_model, opponent
     plan = dict(schema=training.CYCLE_SCHEMA if CYCLE_MODE else training.TEN_SCHEMA, campaign_id=launch['campaign_id'], mode=mode,
         output=str(folder), execution_output=str(folder / 'execution'), launch=binding(Path(launch['output']) / 'launch.json'),
         source=launch['source']['source'], implementation=launch['source']['implementation'],
-        configuration=launch['configuration'], checkpoint=binding(inputs / 'learner.pt'),
+        configuration=configuration, checkpoint=binding(inputs / 'learner.pt'),
         opponent_checkpoint=binding(inputs / 'opponent.pt'), checkpoint_source=metadata, opponent_checkpoint_source=metadata,
         learner_checkpoint=state.checkpoint, opponent_checkpoint_id=opponent_id,
         learner_weights_sha256=cp.model_weight_digest(state.model), opponent_weights_sha256=cp.model_weight_digest(opponent),
         opponent_pool=POOL, schedule=schedule(launch['reservations']['training' if CYCLE_MODE else mode], start,
-            1 if CYCLE_MODE and mode == 'diagnostic' else cycle_games()),
+            1 if CYCLE_MODE and mode == 'diagnostic' else count),
         **{key: launch[key] for key in ('native', 'runtime', 'binary', 'data', 'game_map', 'replay_binary',
                                       'policy_support', 'execution', 'army_information', 'equipment_policy')})
     if CYCLE_MODE:
@@ -2123,10 +2153,10 @@ def ten_coordinator(args):
     previous_pair, publication = launch['parent_pair'], launch['parent_publication']
     update_progress = None
 
-    def collect_phase(name, mode, start, opponent_model, opponent_policy):
+    def collect_phase(name, mode, start, opponent_model, opponent_policy, count=None):
         load_ten_launch(args.plan, args.sha256)
         path, plan, opponent = ten_batch_plan(launch, state, name=name, mode=mode, start=start,
-                                             opponent_model=opponent_model, opponent_policy=opponent_policy)
+                                             opponent_model=opponent_model, opponent_policy=opponent_policy, count=count)
         phase = dict(name=name, mode=mode, plan=binding(path), status='collecting',
                      comparison_checkpoint='batch_start',
                      checkpoint_before=state.progress.updates, weights_before=state.weights_sha256,
@@ -2157,11 +2187,12 @@ def ten_coordinator(args):
             training.release_receipts(recovery_receipts)
             del recovery_receipts
             write(output / 'report.json', report)
-            seed_offset = cycle_width()
+            seed_offset = launch.get('requested_games', cycle_games()) + 1
+        batch_sizes = launch.get('batch_sizes', [cycle_games()] * launch['batches'])
         for index in range(launch['batches']):
             remaining(launch, 60)
-            path, plan, phase, receipts, deadlines = collect_phase(f'batch-train-{index:03d}', 'training', seed_offset + index * cycle_width(),
-                state.model, previous_pair['policy'])
+            path, plan, phase, receipts, deadlines = collect_phase(f'batch-train-{index:03d}', 'training', seed_offset + (sum(batch_sizes[:index]) if 'batch_sizes' in launch else index * cycle_width()),
+                state.model, previous_pair['policy'], count=batch_sizes[index])
             phase['status'] = 'updating'; write(output / 'report.json', report)
             update_progress = PPOProgress(ppo_progress_path(output, phase['name'])) if CYCLE_MODE else None
             state.model.train().requires_grad_(True)
@@ -2169,10 +2200,10 @@ def ten_coordinator(args):
                 result, rollouts = (training.live_native_update if CYCLE_MODE else training.native_update)(state.model, state.optimizer, receipts,
                     plan_sha256=binding(path)['sha256'], config=PPOConfig(**PPO), generator=state.generator,
                     remaining=lambda: phase_remaining(deadlines['update']),
-                    max_optimizer_steps=launch['configuration']['max_optimizer_steps'],
+                    max_optimizer_steps=plan['configuration']['max_optimizer_steps'],
                     **({'progress': update_progress} if CYCLE_MODE else {}))
             state.model.eval()
-            next_progress = TrainingProgress(state.progress.updates + 1, state.progress.rollouts + cycle_games(),
+            next_progress = TrainingProgress(state.progress.updates + 1, state.progress.rollouts + batch_sizes[index],
                                              state.progress.decisions + result.samples)
             steps = state.optimizer_steps + result.optimizer_steps
             sampler = dict(next_batch_index=next_progress.updates - 1753,
@@ -2182,7 +2213,8 @@ def ten_coordinator(args):
                     if state.metadata.get('training_contract') in (training.TEN_SCHEMA, training.CYCLE_SCHEMA) else state.sampler_state))
             metadata = training.metadata(binding(path)['sha256'], launch['original_parent']['policy'],
                 plan['opponent_checkpoint'], campaign_id=launch['campaign_id'], purpose='training',
-                training_contract=training.CYCLE_SCHEMA if CYCLE_MODE else training.TEN_SCHEMA)
+                training_contract=training.CYCLE_SCHEMA if CYCLE_MODE else training.TEN_SCHEMA,
+                training_games=batch_sizes[index])
             if update_progress is not None:
                 update_progress.phase('saving')
             with wall_limit(phase_remaining(deadlines['update'], 0)):
@@ -2207,8 +2239,8 @@ def ten_coordinator(args):
             previous_pair = pair
             phase.update(status='checkpoint_verified', ppo=asdict(result), after_checkpoint=pair,
                 checkpoint_after=next_progress.updates, weights_after=pair['weights_sha256'],
-                weights_changed=phase['weights_before'] != pair['weights_sha256'], admitted_games=cycle_games())
-            report['optimizer_updates'] += 1; report['admitted_games'] += cycle_games()
+                weights_changed=phase['weights_before'] != pair['weights_sha256'], admitted_games=batch_sizes[index])
+            report['optimizer_updates'] += 1; report['admitted_games'] += batch_sizes[index]
             report['training_samples_admitted'] += result.samples
             report['latest_checkpoint'] = next_progress.updates
             write(output / 'report.json', report)
@@ -2218,9 +2250,10 @@ def ten_coordinator(args):
             if CYCLE_MODE:
                 import gc
                 gc.collect()
+            if CYCLE_MODE and ('batch_sizes' not in launch or index == len(batch_sizes) - 1):
                 path, evaluation_plan, evaluation_phase, evaluation_receipts, _ = collect_phase(
-                    f'evaluation-{index:03d}', 'diagnostic', seed_offset + index * cycle_width() + cycle_games(),
-                    state.model, previous_pair['policy'])
+                    f'evaluation-{index:03d}', 'diagnostic', seed_offset + (sum(batch_sizes) if 'batch_sizes' in launch else index * cycle_width() + cycle_games()),
+                    state.model, previous_pair['policy'], count=batch_sizes[index])
                 evaluation_phase['status'] = 'evaluation_verified'
                 training.release_receipts(evaluation_receipts)
                 del evaluation_receipts
@@ -2270,10 +2303,12 @@ def main(argv=None):
             continuation.add_argument('--hours', type=float, required=True)
     for name in ('batch10-check', 'batch10-run', 'batch10-continue',
                  'cycle-check', 'cycle-run', 'cycle-continue', 'cycle-cleanup'):
-        ten = sub.add_parser(name, help=('One hundred training games, ten rolling actors, one PPO update and one validated self-play game'
+        ten = sub.add_parser(name, help=('Configurable training games, bounded PPO batches and one final validated game'
             if name.startswith('cycle-') else 'Ten-game learning batches from verified1753; no extra evaluation games'))
         ten.add_argument('--batches', '--cycles', dest='batches', type=int, default=1)
-        ten.add_argument('--hours', type=float, default=10)
+        ten.add_argument('--hours', type=float, default=None)
+        if name.startswith('cycle-'):
+            ten.add_argument('--games', type=int, help='10–1000 training games; PPO batches up to 100, one final diagnostic')
         ten.add_argument('--output', type=Path)
         ten.add_argument('--run-dir', type=Path, required=name in ('batch10-continue', 'cycle-continue'))
     for name in ('_coordinator', '_capture', '_report'):
@@ -2284,6 +2319,14 @@ def main(argv=None):
             worker.add_argument('--deadline', type=float, required=True); worker.add_argument('--wall-deadline', type=float, required=True)
     args = parser.parse_args(argv)
     if args.command.startswith('cycle-'):
+        if args.games is not None:
+            try:
+                sizes = cycle_batch_sizes(args.games)
+            except ValueError as error:
+                parser.error(str(error))
+            if args.batches != 1:
+                parser.error('--games cannot be combined with multiple --cycles')
+            args.batches = len(sizes)
         select_cycle_mode()
         args.command = args.command.replace('cycle-', 'batch10-', 1)
     elif args.command in ('_capture', '_coordinator'):
@@ -2300,10 +2343,14 @@ def main(argv=None):
     try:
         if args.command.startswith('batch10-'):
             with (nullcontext() if args.command == 'batch10-check' else activity_lease()):
+                requested = getattr(args, 'games', None) if CYCLE_MODE else None
+                if args.hours is None:
+                    args.hours = (requested or 100) / 10
+                max_hours = (requested or 100) / 10
                 inspected = ten_inspect()
                 require(type(args.batches) is int and 1 <= args.batches <= 100
-                        and math.isfinite(args.hours) and 120 <= args.hours * 3600 <= 36000,
-                        'Use 1–100 complete batches and a finite time budget up to ten hours')
+                        and math.isfinite(args.hours) and 120 <= args.hours * 3600 <= max_hours * 3600,
+                        f'Use 1–100 batches and a finite budget up to {max_hours:g} hours')
                 if args.run_dir is not None:
                     require(inspected['lineage'] is not None and inspected['lineage']['runs']
                         and Path(read(bound(inspected['lineage']['runs'][-1]))['output']).resolve() == args.run_dir.resolve(),
@@ -2319,15 +2366,21 @@ def main(argv=None):
                     result = dict(status='passed', gameplay_performed=False, optimizer_updates=0,
                         checkpoint=inspected['state'].progress.updates,
                         exact_model_adam_rng_progress_sampler_pool=True,
-                        configuration=ten_configuration(inspected['checked'], args.hours * 3600),
+                        configuration=ten_configuration(inspected['checked'], args.hours * 3600,
+                            games=cycle_batch_sizes(requested)[0] if requested is not None else None),
                         training_games=args.batches * cycle_games(), held_out_games=(args.batches + int(inspected.get('pending_evaluation', False))) if CYCLE_MODE else 0,
                         total_physical_games=args.batches * cycle_width() + int(inspected.get('pending_evaluation', False)),
                         expected_optimizer_updates=args.batches,
-                        next_fresh_seeds=ten_seed_preview((args.batches + int(inspected.get('pending_evaluation', False))) * cycle_width()),
+                        next_fresh_seeds=(ten_seed_preview((1 + int(inspected.get('pending_evaluation', False))) * (requested + 1), width=requested + 1)
+                            if requested is not None else ten_seed_preview((args.batches + int(inspected.get('pending_evaluation', False))) * cycle_width())),
                         artifact_retention='analyze, then delete before next launch' if CYCLE_MODE else 'unchanged',
                         disk_reserve_available=shutil.disk_usage(ARTIFACTS).free >= TEN_DISK_RESERVE_GIB * 1024**3,
                         next_command='cycle-run' if CYCLE_MODE else
                             ('batch10-run' if inspected['lineage'] is None else 'batch10-continue'))
+                    if requested is not None:
+                        held_out = 1 + int(inspected.get('pending_evaluation', False))
+                        result.update(training_games=requested, held_out_games=held_out,
+                            batch_sizes=cycle_batch_sizes(requested), total_physical_games=requested + held_out)
                 else:
                     if CYCLE_MODE:
                         inspected = cycle_retire(inspected)

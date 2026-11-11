@@ -78,7 +78,7 @@ def time_left(remaining):
 
 
 def metadata(plan_sha256, initial_checkpoint, opponent_checkpoint, *, campaign_id, opponent_pool=POOL,
-             purpose="training", training_contract=SCHEMA):
+             purpose="training", training_contract=SCHEMA, training_games=None):
     require(training_contract in (SCHEMA, TEN_SCHEMA, CYCLE_SCHEMA), "Unknown self-play training contract")
     value = dict(plan_sha256=plan_sha256, initial_checkpoint=dict(initial_checkpoint),
                  opponent_checkpoint=dict(opponent_checkpoint), campaign_id=campaign_id,
@@ -88,6 +88,7 @@ def metadata(plan_sha256, initial_checkpoint, opponent_checkpoint, *, campaign_i
         value.update(training_contract=training_contract, policy_support=interaction_guard.HERO_RELATIVE_VERSION,
                      **(CYCLE_GAMEPLAY if training_contract == CYCLE_SCHEMA else TEN_GAMEPLAY))
     if training_contract == CYCLE_SCHEMA:
+        value["training_games"] = CYCLE_GAMEPLAY["training_games"] if training_games is None else training_games
         value.update(training_verification="not_performed", evaluation_games_per_cycle=1,
                      collection_workers=10, collection_scheduling="rolling-v1")
     cp._check_selfplay_gameplay_metadata(value, c.EXPANDED_ENVIRONMENT)
@@ -124,7 +125,9 @@ def _plan(path, digest):
     value = read(path)
     ten_game = value.get("schema") in (TEN_SCHEMA, CYCLE_SCHEMA)
     evaluation = value.get("schema") == CYCLE_SCHEMA and value.get("mode") == "diagnostic"
-    batch_count = CYCLE_GAMEPLAY["training_games"] if value.get("schema") == CYCLE_SCHEMA else TEN_GAMEPLAY["training_games"]
+    batch_count = value["configuration"]["training_games"] if value.get("schema") == CYCLE_SCHEMA else TEN_GAMEPLAY["training_games"]
+    if value.get("schema") == CYCLE_SCHEMA:
+        require(type(batch_count) is int and 10 <= batch_count <= 100, "Cycle batch requires 10–100 games")
     game_count = 1 if evaluation else batch_count if ten_game else 4
     guard = interaction_guard.HERO_RELATIVE_VERSION if ten_game else interaction_guard.REVEALED_VERSION
     require(value.get("schema") in (SCHEMA, TEN_SCHEMA, CYCLE_SCHEMA) and value.get("mode") in ("training", "diagnostic")
@@ -154,7 +157,7 @@ def _plan(path, digest):
             "Self-play needs distinct explicit game and per-player policy seeds")
     if ten_game:
         require(all(cfg.get(key) == expected and type(cfg.get(key)) is type(expected)
-                    for key, expected in (CYCLE_GAMEPLAY if value["schema"] == CYCLE_SCHEMA else TEN_GAMEPLAY).items()),
+                    for key, expected in (dict(CYCLE_GAMEPLAY, training_games=batch_count) if value["schema"] == CYCLE_SCHEMA else TEN_GAMEPLAY).items()),
                 "Ten-game self-play gameplay configuration differs")
         require(value.get("army_information") == TEN_GAMEPLAY["army_information"]
                 and value.get("equipment_policy") == TEN_GAMEPLAY["equipment_policy"],
@@ -166,7 +169,7 @@ def _plan(path, digest):
                     and type(cfg.get("preparation_workers")) is int and cfg["preparation_workers"] == 1
                     and cfg["collection_workers"] + cfg["preparation_workers"]
                         <= value["execution"]["resource_plan"]["budget_cpus"],
-                    "Hundred-game capture requires ten rolling actors")
+                    "Cycle capture requires ten rolling actors")
         config = PPOConfig(**cfg["ppo"])
         require(type(cfg.get("max_optimizer_steps")) is int and cfg["max_optimizer_steps"]
                 == optimizer_step_cap(config, cfg["training_games"], cfg["max_total_choices"]),
@@ -500,10 +503,10 @@ def prepare_live_capture(bound, learner_model, opponent_model, *, remaining):
 def live_native_update(model, optimizer, receipts, *, plan_sha256, config, generator,
                        remaining, max_optimizer_steps, progress=None):
     from .builtin_gameplay import transactional_update
-    require(type(receipts) is tuple and len(receipts) == CYCLE_GAMEPLAY["training_games"]
+    require(type(receipts) is tuple and 10 <= len(receipts) <= 100
             and all(type(r) is CapturedTrainingReceipt and _CAPTURE_RECEIPTS.get(id(r)) is r
-                    for r in receipts), 'Live training requires one hundred fresh capture capabilities')
-    require([r.binding.schedule_index for r in receipts] == list(range(CYCLE_GAMEPLAY['training_games'])), 'Live receipt order changed')
+                    for r in receipts), 'Live training requires a complete fresh capture batch')
+    require([r.binding.schedule_index for r in receipts] == list(range(receipts[0].binding.plan['configuration']['training_games'])), 'Live receipt order changed')
     for receipt in receipts:
         receipt.binding.recheck()
         require(receipt.binding.plan['schema'] == CYCLE_SCHEMA

@@ -3909,3 +3909,61 @@ criteria passed; stronger strategic play remains unproven.
 Retention-reviewed run: `run-20261111T115614Z-5c919e30`.
 Keep raw evidence until the next authorized launch/cleanup, preserving the full
 1,760 state and seed ledger first. No further cycle was launched.
+
+## 2026-11-11 — Configurable 10–1,000-game launcher and grouped dashboard: plan
+
+The user requests a configurable game count (default 500), retaining the current
+cell dimensions with multiple game markers per cell. They explicitly accept
+PPO batches of at most 100 games and one diagnostic after the last update, and
+authorize scaling the overall time allowance at ten hours per 100 games with
+an explicit `--hours` override. Launch remains under user control.
+
+Reuse the current coordinator, checkpoint publication, seed ledger and terminal
+dashboard. Partition a requested total into balanced complete batches of 10–100
+games, preserve checkpoints after each batch, and reserve fresh seeds for every
+game plus the final diagnostic. Preserve historical launch/checkpoint/ledger
+validation and pending-diagnostic recovery. Keep ten actors and memory/disk gates.
+The UI should retain a bounded grid, show per-game outcome letters B/R/C/E and
+calendar progress while playing, with totals and PPO/diagnostic status outside
+the cells. Default 500 should display five games per old half-card.
+
+Acceptance: offline checks for boundary/odd counts, seed offsets, batch progress,
+metadata and terminal dimensions; existing relevant tests; read-only restore
+of checkpoint 1,760 and configuration previews without games, training, seed
+allocation or cleanup. Keep new validation artifacts private and outside Git.
+
+Implementation reuses `run-100-games.command` with positional N or `--games N`
+(default 500), plus `--hours`. Balanced partitions avoid a partial batch below
+ten games (101 becomes 51+50). New launch manifests bind requested total and
+batch sizes; per-batch plans/metadata/PPO caps bind the actual batch size.
+Seed reservations consume N+1 slots, with a separate consumed block if a prior
+diagnostic is outstanding. Historical manifests, metadata and ledger widths
+remain supported. Checkpoint publication is unchanged after each full update;
+only the final update gets the new launch's diagnostic. Capture memory stays
+bounded by one batch and is released between updates.
+
+New dashboard cells retain the half-card width and contain five individual
+markers above 100 games. 500 has 100 cells, 1,000 has 200 and double the rows.
+Full two-line cells fit 80x28 / 80x48 respectively. Compact rows, outcome colors,
+day-progress digits and exact active-game details use the existing disposable
+display channel. No training decisions use UI state.
+
+Offline validation: every integer partition 10–1,000, invalid values, terminal
+geometry/markers and cumulative multi-batch display passed. A simulated
+coordinator covered 10, 101, 500 and 1,000 games, pending-diagnostic recovery,
+seed offsets, final-only diagnostics and an interrupted third update retaining
+the first two publications. These used mocked games/PPO, not native execution.
+The initial coordinator fixture mistakenly wrote the private live latest
+pointer because TEN_BASE was not isolated. Immediately reconstructed it from
+the real, verified 1,760 publication and checked policy/resume hashes. Reran
+with TEN_BASE isolated in temporary storage and verified the real pointer hash
+did not change. Full live restoration remains required after committing source.
+
+The initial 84-test existing suite had two stdin-mock errors in historical
+controller tests; both reproduced against the unchanged pre-task controller.
+No application stdin behavior or tests were altered to mask them. The other
+82 tests and four contextual checkpoint tests passed (86 total in the focused
+run). Contextual test imports required the existing tests directory on sys.path;
+terminal fixtures were corrected to set TERM=xterm. Logs and synthetic previews
+remain in /tmp, outside the published diff. No game, training campaign, seed
+reservation or artifact retirement was authorized or intentionally executed.

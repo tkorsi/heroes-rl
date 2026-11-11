@@ -10,8 +10,9 @@ record previous experiments and their limits.
 
 ## Baseline for new experiments
 
-The current prepared experiment repeats one hundred capture-only training games with ten
-rolling actor processes, then one PPO update and one validated self-play game.
+The current launcher accepts 10–1,000 training games (default 500), with ten
+rolling actors and PPO updates in complete batches of at most 100 games.
+One validated self-play game follows the final saved update.
 The lineage began at checkpoint 1,753; continuation restores its latest complete
 published checkpoint. Launches remain manual by default; on November 7 the user
 authorized the agent to fix worker registration and execute one complete
@@ -57,7 +58,7 @@ frozen setup and continues after verified victories. The dashboard and final
 report show Red and Blue wins, with separate counts for cutoffs, failures and
 interruptions. The time budget can end the run before all attempts settle.
 
-## One hundred training games followed by one validated game
+## Configurable training games followed by one validated game
 
 The current cycle uses both starting taverns already built and
 calendar spawning of new neutral armies disabled (`hero-management-v3`). Initial
@@ -130,53 +131,69 @@ Blue retained two heroes. Full restore/preflight and owned cleanup passed.
 Analysis is in the journal and this run is retention-reviewed. Keep its raw
 artifacts until the next authorized launch; the next fresh seed offset is 743.
 
-Use `./continue-selfplay.sh --cycle --check --cycles 1 --hours 10` for the
-read-only preflight, or use `./run-100-games.command --check`. The prepared
-`./run-100-games.command` starts one manual continuation from the latest complete
-checkpoint. Before launch it retires the previous analyzed run as described below;
-the script remains reusable and does not contain a historical run path.
-One cycle has one hundred training games, one PPO update and one diagnostic game. Both diagnostic seats
-use the newly saved weights. All stages share the ten-hour deadline. Both
-training and diagnostic
-games stop at 365 game days; the existing per-player choice limits remain
-158,720 ordinary plus 5,120 reserved choices.
+Use the existing `run-100-games.command` filename (kept for shortcuts):
 
-In an interactive terminal, each former game card is split into two independent
-games: five groups across and ten rows, showing all 100 numbered slots. Each
-half keeps its own activity and outcome marker. PPO and diagnostic validation
-have separate status lines. The panel uses the alternate screen and restores the
-terminal/cursor on exit. Elapsed time uses `hh:mm:ss`. At 80x24, dense cards show
-all 100 games, with exact days and action counts for the ten active games below.
-At 80x28, two-line cards add each game's day; tall windows show per-game Red/Blue
-counts. Compact result markers are `R`/`B` for wins, `D` for the day limit and `C`
-for other cutoffs; `>` means playing, `~` preparing, `OK` ready and `!` failed.
-Widen smaller terminals to 80 columns for the complete grid.
-Redirected output remains plain text. During PPO the
-panel shows completed/total optimizer minibatches, a progress bar, elapsed time
-and an approximate ETA from the current update. ETA stays unknown until at least
-three minibatches and three seconds have elapsed. Optimizer completion and
-checkpoint saving/restore verification are separate phases. Disposable progress
-snapshots are throttled to once per second apart from phase transitions; their
-failures cannot block or change learning.
+```sh
+./run-100-games.command --check          # Preview default 500; no games or cleanup
+./run-100-games.command                 # Manually launch 500 training games
+./run-100-games.command 1000             # Manually launch 1,000
+./run-100-games.command --games 250      # Any integer from 10 through 1,000
+./run-100-games.command 500 --hours 30   # Override the shared time allowance
+```
+
+Double-clicking starts 500 games. The script restores the latest complete
+checkpoint and retires the preceding reviewed raw run as described below.
+Games are divided into balanced complete batches of 10–100: 500 uses five
+updates of 100; 101 uses updates of 51 and 50. Each batch uses its starting
+policy as the frozen opponent. Every update is saved and restore-tested before
+collecting the next batch. The diagnostic runs only after the final update;
+an outstanding diagnostic from an interrupted prior launch is recovered first.
+An interruption preserves all completed updates, but not an incomplete batch.
+The existing raw `--cycles` interface retains its historical per-cycle diagnostic.
+
+The default overall allowance is proportional: ten hours per 100 games
+(500: 50 hours; 1,000: 100 hours; 10: one hour). `--hours` can shorten that
+allowance. This is a safety deadline, not an estimate of completion time.
+All gameplay still stops at 365 days with 158,720 ordinary plus 5,120 reserved
+choices per player. Ten rolling actors, disk/RAM reserves and PPO/Adam remain.
+
+The dashboard keeps the old half-card width and five paired groups across.
+Above 100 requested games, each cell represents five consecutive games. A cell
+header names its first game; the five symbols below it retain individual results:
+`B` Blue win, `R` Red win, `C` cutoff, `E` error. Waiting is `.`, preparation is
+`~`, and a playing game's `0`–`9` shows calendar progress in tenths of the day
+limit, not a prediction of finishing or winning. Outcome letters can appear
+before preparation finishes; the separate Ready count tracks PPO readiness.
+Colors supplement these symbols. Prior batches remain visible during subsequent
+updates, and the PPO/checkpoint/diagnostic status remains separate from the grid.
+
+500 games use 100 cells / ten grid rows; 1,000 use 200 cells / twenty rows,
+exactly twice the working height. At 80x28 and 80x48 respectively, each cell
+shows its header and five markers. Smaller windows use one-line cells where
+possible or state the minimum required height. Spare rows show exact active-game
+days and Red/Blue choices. The terminal's alternate screen and cursor are
+restored on exit; redirected output remains plain text. PPO has a completed/total
+minibatch counter and an approximate ETA. Display snapshots remain disposable
+and cannot authorize training or checkpoint publication.
 
 Training games have no native replay, policy-probability reconstruction or
 behavior analytics. Their Red/Blue win totals come from engine-reported outcomes
-and are explicitly unverified. All one hundred fresh completed captures must exist
-before one PPO update. Basic source, seed, action, boundary, terminal reward and
+and are explicitly unverified. Every capture in the declared batch must complete
+before its PPO update. Basic source, seed, action, boundary, terminal reward and
 checkpoint integrity checks remain active. Checkpoint metadata explicitly records
 `training_verification=not_performed`. The historical verified mode remains a
 separate contract. Previously published ten-, forty- and fifty-game cycle checkpoints restore with
-their original metadata; new cycles require one hundred games before one update.
+their original metadata; new launches declare each complete batch size explicitly.
 The existing lineage/namespace names are historical. Old eleven-, forty-one- and fifty-one-slot reservations
-remain consumed; new cycles reserve one hundred training seeds plus one diagnostic.
+remain consumed; new launches reserve N training seeds plus one final diagnostic.
 
 Collection runs ten independent actor processes, each with one PyTorch/BLAS
 thread. A rolling dispatcher immediately refills an available slot; it does not
 wait for a whole wave. Main prepares completed games serially while actors keep
 playing. All policy binding/model loading happens before the dispatcher starts;
 preparation stays on main so its signal-based deadline remains active. Completed
-receipts are sorted by schedule index before the unchanged PPO shuffle. A single
-PPO update starts only after all one hundred games and owned-worker cleanup succeed.
+receipts are sorted by schedule index before the unchanged PPO shuffle. Each
+PPO update starts only after its complete batch and owned-worker cleanup succeed.
 The inherited native execution profile continues to govern PPO; capture/preparation
 worker counts are explicitly recorded in the cycle configuration. Each completed
 game is compiled into a native PPO program, then its Python history is released.
@@ -186,14 +203,14 @@ the project's record classes. Training omits duplicate bridge/history JSONL and
 the independent post-game history audit. Native terminal evidence remains active.
 Diagnostic games retain full JSONL, audit and replay. Temporary raw training
 streams are removed after compilation. The update retains
-all one hundred learner trajectories, the existing shuffled PPO windows and the original
+at most one hundred learner trajectories at a time, the existing shuffled PPO windows and the original
 PPO/Adam settings. An owned-process resident-memory guard leaves 48 GiB of the
 Mac's physical RAM as headroom. It stops the attempt safely if the budget is
 exceeded. A system-wide memory-pressure check also stops below 20% free.
 The existing 30 GiB disk reserve applies. Long-game completion
 within these limits still requires observation during the user's manual run.
 
-After the full state is saved and restore-tested, one fresh diagnostic self-play
+After the final batch state is saved and restore-tested, one fresh diagnostic self-play
 game runs with both policies frozen at the new checkpoint. That game retains its
 capture, runs exact two-policy reconstruction and native replay, and never enters
 PPO. A failed diagnostic stops the loop while preserving the saved update.
@@ -202,9 +219,9 @@ One self-play game supports inspection, not a statistical claim of stronger play
 
 A separate lineage and seed namespace keep this experiment distinct from the
 previous failed runs. Subsequent manual launches use
-`./continue-selfplay.sh --cycle --resume --run-dir PRIVATE_RUN_PATH --cycles 1 --hours 10`.
+`./run-100-games.command --games N` (or its read-only `--check` preview).
 All reserved slots remain consumed, including unstarted games. If continuation
-needs an outstanding diagnostic, one additional 101-slot block is reserved
+needs an outstanding diagnostic, one additional block of N+1 slots is reserved
 for it and its unused slots remain consumed. Reports separately record engine
 wins, cutoffs, PPO steps, whether weight bytes changed, the saved checkpoint and
 the diagnostic validation result. No training starts during `--check`.

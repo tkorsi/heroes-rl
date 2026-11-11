@@ -261,11 +261,11 @@ def _check_selfplay_gameplay_metadata(metadata, interface):
         expected = SELFPLAY_TEN_GAMEPLAY
         if metadata.get("training_contract") == SELFPLAY_CYCLE_SCHEMA:
             # Restore historical parents exactly; new plans independently
-            # require one hundred games and ten rolling actors.
-            if type(metadata.get("training_games")) is not int or metadata["training_games"] not in (10, 40, 50, 100):
+            # require complete bounded batches and ten rolling actors.
+            if type(metadata.get("training_games")) is not int or not 10 <= metadata["training_games"] <= 100:
                 raise ValueError("Unknown capture-only checkpoint batch size")
             expected = dict(SELFPLAY_CYCLE_GAMEPLAY, training_games=metadata["training_games"])
-            if metadata["training_games"] in (50, 100) and (
+            if (metadata["training_games"] not in (10, 40) or "collection_workers" in metadata) and (
                     type(metadata.get("collection_workers")) is not int or metadata["collection_workers"] != 10
                     or metadata.get("collection_scheduling") != "rolling-v1"):
                 raise ValueError("Parallel cycle checkpoint must disclose ten rolling actors")

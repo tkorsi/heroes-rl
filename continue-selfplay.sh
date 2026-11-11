@@ -16,7 +16,7 @@ if [ "${1:-}" = "--cycle" ]; then
         --run) MODE=cycle-run; shift ;;
         --cleanup) MODE=cycle-cleanup; shift ;;
         --resume) MODE=cycle-continue; shift ;;
-        *) echo "Usage: $0 --cycle [--check | --run | --cleanup | --resume --run-dir PATH] [--cycles N] [--hours HOURS]" >&2; exit 2 ;;
+        *) echo "Usage: $0 --cycle [--check | --run | --cleanup | --resume --run-dir PATH] [--games 10..1000 | --cycles N] [--hours HOURS]" >&2; exit 2 ;;
     esac
 elif [ "${1:-}" = "--batch-ten" ]; then
     shift
