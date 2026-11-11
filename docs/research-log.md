@@ -3967,3 +3967,15 @@ run). Contextual test imports required the existing tests directory on sys.path;
 terminal fixtures were corrected to set TERM=xterm. Logs and synthetic previews
 remain in /tmp, outside the published diff. No game, training campaign, seed
 reservation or artifact retirement was authorized or intentionally executed.
+
+The first clean-source preflight correctly rejected unregistered Python source
+changes at the existing exact runtime-source gate. Added the four reviewed
+before/after hashes (checkpoint batch metadata, training contract, controller
+and dashboard) to the existing source-transition mechanism in
+`tools/run_selfplay_one_game.py`, including native-validation source agreement.
+Native engine/sampling/PPO kernels are unchanged; no gate was removed. The
+evaluator suite passed 17 tests and exposed one older storage-inventory fixture
+missing the starting-equipment dependency; reproduced the same failure against
+the pre-task evaluator. A direct identity check passed exact source comparison
+and then correctly stopped at the dirty-checkout gate before this pin commit.
+Live read-only preflight and tamper rejection are the remaining checks.

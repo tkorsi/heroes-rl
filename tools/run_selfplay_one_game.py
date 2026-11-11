@@ -271,6 +271,18 @@ RETENTION_SOURCES = {
         'after': '87bf201c89cb40b0bf0ff12e68bf4874da2135e18c80096ed086400473ac8127'},
 }
 
+# Configurable totals, bounded update batches and one final diagnostic.
+CONFIGURABLE_GAME_SOURCES = {
+    'experiments/learner/checkpoints.py': {'before': '1119ad08e21710893b8379b4929a5b6d6cd2954b62e6f0589ff0cf5330134fa8',
+        'after': '58e3519d14cdee7bfc427515af07759103aa913bd128a97c436c0a5d8b91a2e3'},
+    'experiments/learner/game_progress.py': {'before': '85692445434a46440d33416702a8c8c1b2a088cd0259d48206fc677ab230ccc2',
+        'after': '84414353dc1dc215162a7655ac9008c73e182f5248aca7467bffbecc09243c8b'},
+    'experiments/learner/selfplay_training.py': {'before': '685456bca3b92d1bf3a2fb01cae8a19078ba85610008dfda2787390e79da376f',
+        'after': '0a2ce52641a9ed0ce22d7229f0c842f9e526b48c5b3979757a913349a2991547'},
+    'tools/run_selfplay_training.py': {'before': '87bf201c89cb40b0bf0ff12e68bf4874da2135e18c80096ed086400473ac8127',
+        'after': 'bcd2b5740027d36dc4f393cf244fa1160df390fd03a5a98a4a21e027ced7e5d3'},
+}
+
 def verify_runtime_sources(implementation):
     """Bind the base plus exact reviewed storage/UI and support additions."""
     require(STORAGE_PROGRESS_PATHS <= implementation.keys(),
@@ -338,6 +350,9 @@ def verify_runtime_sources(implementation):
     require(all(original.get(name) == pins['before'] for name, pins in RETENTION_SOURCES.items()),
             'Single-run retention differs from its reviewed parent')
     original.update({name: pins['after'] for name, pins in RETENTION_SOURCES.items()})
+    require(all(original.get(name) == pins['before'] for name, pins in CONFIGURABLE_GAME_SOURCES.items()),
+            'Configurable-game source transition differs from its reviewed parent')
+    original.update({name: pins['after'] for name, pins in CONFIGURABLE_GAME_SOURCES.items()})
     require(original == implementation, 'Evaluation changed an existing learner, adapter, engine or replay source')
 
 
@@ -365,7 +380,8 @@ def verify_native_validation_sources(accepted, current):
                    ('reviewed_capture_registration', CAPTURE_REGISTRATION_SOURCES),
                    ('reviewed_exact_recipe_sharing', RECIPE_SHARING_SOURCES),
                    ('reviewed_hundred_game_split_dashboard', HUNDRED_BATCH_SOURCES),
-                   ('reviewed_single_run_retention', RETENTION_SOURCES))
+                   ('reviewed_single_run_retention', RETENTION_SOURCES),
+                   ('reviewed_configurable_games_dashboard', CONFIGURABLE_GAME_SOURCES))
     for kind, transition in transitions:
         if all(expected.get(name) == pins['before'] for name, pins in transition.items()):
             expected.update({name: pins['after'] for name, pins in transition.items()})
