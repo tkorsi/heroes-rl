@@ -38,7 +38,8 @@ fi
 case "$MODE" in
     continue|batch10-run|batch10-continue|cycle-run|cycle-continue)
         if command -v caffeinate >/dev/null 2>&1; then
-            exec caffeinate -i "$TRAINER_PYTHON" "$SCRIPT_DIR/tools/run_selfplay_training.py" "$MODE" "$@"
+            # Keep computation awake; allow the display to follow its idle timer.
+            exec caffeinate -is "$TRAINER_PYTHON" "$SCRIPT_DIR/tools/run_selfplay_training.py" "$MODE" "$@"
         fi ;;
 esac
 exec "$TRAINER_PYTHON" "$SCRIPT_DIR/tools/run_selfplay_training.py" "$MODE" "$@"

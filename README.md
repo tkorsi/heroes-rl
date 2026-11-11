@@ -154,6 +154,13 @@ The existing raw `--cycles` interface retains its historical per-cycle diagnosti
 The default overall allowance is proportional: ten hours per 100 games
 (500: 50 hours; 1,000: 100 hours; 10: one hour). `--hours` can shorten that
 allowance. This is a safety deadline, not an estimate of completion time.
+On macOS the launcher runs training under `caffeinate -is`: idle system sleep
+is blocked, with an additional system-sleep assertion on AC power. Display
+sleep is allowed and follows the existing macOS display timer. Assertions end
+when the training command exits. Keep the lid open, connect AC power, and leave
+the Terminal process running; minimizing it or locking the screen is fine.
+This does not override closed-lid or explicitly requested sleep. No global
+power-management setting is changed.
 All gameplay still stops at 365 days with 158,720 ordinary plus 5,120 reserved
 choices per player. Ten rolling actors, disk/RAM reserves and PPO/Adam remain.
 

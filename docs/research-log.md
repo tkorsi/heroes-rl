@@ -4004,3 +4004,24 @@ reviewed source hashes and an engine hash were rejected. Logs:
 The three historical mock failures are documented above; no tests/fixtures or
 validation tooling were published. The new 500/1,000-game campaign itself has
 not been launched. The user retains launch control.
+
+## 2026-11-11 — Keep training awake while allowing display sleep
+
+The user requests unattended overnight computation with the screen off. No
+training run was active: the latest run was completed with shutdown evidence.
+Reviewed the local caffeinate(8) manual and current pmset settings/assertions.
+The launcher already used `-i` for idle system sleep prevention; add `-s` for
+system sleep prevention on AC power, keeping display-sleep prevention unset.
+Current AC display timer is ten minutes. Do not change global pmset settings,
+force the display off during preparation, launch training or add a daemon.
+Document open lid, AC power and a running Terminal process; minimizing/locking
+the screen is supported, but closed-lid/manual sleep is not overridden.
+Acceptance: shell syntax, a short harmless caffeinate-wrapped command showing
+sleep assertions without a display assertion and releasing them on exit, then
+read-only checkpoint preflight from clean source. No gameplay or PPO required.
+
+Shell syntax passed. A three-second `/bin/sleep` wrapped in `caffeinate -is`
+showed both PreventUserIdleSystemSleep and PreventSystemSleep on AC power,
+with no PreventUserIdleDisplaySleep assertion from that process. Both sleep
+assertions disappeared when the harmless command exited. AC was connected at
+100%. This verifies assertion lifetime, not an overnight physical sleep trial.
