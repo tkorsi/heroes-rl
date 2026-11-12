@@ -4191,3 +4191,21 @@ scenario binding rejection controls and read-only full-state continuation.
 Do not launch training, reserve seeds or retire artifacts during preparation.
 The historical acceptance receipt remains available, but its raw diagnostic
 folder has been retired; distinguish inherited native evidence from fresh tests.
+
+
+Implementation and validation: v4 SHA256
+`a076b4dca6410b5dc16388dc47333b036323a94c8fe412500cd9f31b78bcc833`.
+Only the map, existing scenario selector and documentation changed. No engine,
+policy, PPO, resource limit or default game-count change. Both starting Taverns
+remain. The selector checks the original acceptance and its successful default
+spawn/replay control, binds v4 independently and rejects any other semantic map
+change. The run identity records this derivation and fresh_native_capture=false.
+At clean source f9dba8e, `./run-100-games.command 200 --check` passed complete
+checkpoint 1,763 restoration and two 100-game batches; preview only, 201 fresh
+slots from offset 1446 (engine 1980001446, policy 1982002892), no reservations.
+Default allowance: 20 hours. Evidence: `/tmp/heroes-v4-200-preflight.log`.
+Two existing hero-scenario tests passed. Direct selector validation selected v4
+and passed native launcher preflight; a changed map hash was rejected, and an
+unrelated hero-level-limit change was rejected even with a matching temporary
+hash override. These local controls created no native games or training and
+were not added to the repository. The actual 200-game run remains user-launched.
