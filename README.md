@@ -60,14 +60,20 @@ interruptions. The time budget can end the run before all attempts settle.
 
 ## Configurable training games followed by one validated game
 
-The current cycle uses both starting taverns already built and
-calendar spawning of new neutral armies disabled (`hero-management-v3`). Initial
-neutrals and their growth remain native. These are temporary restrictions to be
-removed gradually. Native controls, a short frozen-1,757 prefix and the
-read-only continuation preflight passed. The first complete 100-game cycle on
-this variant advanced checkpoint 1,757 to 1,758; the November 10 retry advanced
-it to 1,759. The November 11 user-launched cycle advanced it to 1,760;
-the next continuation restores 1,760 with these rules.
+The current cycle uses `hero-management-v4`: both starting taverns remain built,
+and native calendar spawning of new neutral armies is restored. This allows
+spawning when native special-month conditions apply, not every day or every month.
+Initial neutrals, their growth, armies, resources and all other rules are unchanged.
+The latest complete checkpoint is 1,763. The next requested manual run is
+`./run-100-games.command 200`: two updates of 100 and one final diagnostic,
+with a default shared allowance of 20 hours. Training has not been launched.
+
+The earlier v3 variant disabled calendar spawning and was used through 1,763.
+The v4 selector retains its pinned native acceptance, including the successful
+native-default spawning control and replay, and checks that the map changes only
+the spawning override and descriptive text. This reuses historical native evidence;
+it does not claim a newly executed v4 mechanics capture. Historical maps remain.
+Restrictions will continue to be removed one at a time.
 
 The November 7 continuation completed all fifty games, one PPO update and its
 fully validated diagnostic, advancing checkpoint 1,756 to 1,757 in 01:23:14.

@@ -1,5 +1,7 @@
 """Pinned acceptance for the explicitly artifact-free game rules."""
 from pathlib import Path
+import json
+import zipfile
 
 from tools import run_selfplay_training as campaign
 from tools import run_tiny_selfplay_one_game as verified_runtime
@@ -18,6 +20,8 @@ CYCLE_MAP = ROOT / 'experiments/explorer/maps/hero-management-v3.vmap'
 CYCLE_MAP_SHA = '2ddd04177e17f588922cc7733ec4fa049be10bb0f020f7387fd7285ea1604056'
 CYCLE_ACCEPTANCE = RELEASE['directory'] / 'scenario-acceptance.json'
 CYCLE_ACCEPTANCE_SHA = '0c328103d291c3576d9f76e0ae87fdf950f733528bb5ebe082c5fc191ba092b2'
+NATIVE_SPAWN_MAP = ROOT / 'experiments/explorer/maps/hero-management-v4.vmap'
+NATIVE_SPAWN_MAP_SHA = 'a076b4dca6410b5dc16388dc47333b036323a94c8fe412500cd9f31b78bcc833'
 
 
 def inspect_runtime(baseline):
@@ -67,11 +71,37 @@ def inspect_cycle_scenario(checked):
                      'Temporary cycle rules lack complete native acceptance')
     source_validation = evaluation.verify_native_validation_sources(
         accepted.get('source_implementation'), evaluation.source_identity()['implementation'])
-    launcher = VcmiLauncher(Path(checked['binary']), Path(checked['data']), CYCLE_MAP,
+    # Restore the native default already exercised by the pinned calendar control.
+    control = next((case for case in accepted.get('cases', [])
+                    if case.get('case') == 'calendar-default'), {})
+    campaign.require(control.get('probe_status') == 'passed'
+                     and control.get('native_replay_verified') is True
+                     and control.get('new_monsters') and control.get('new_object_packets'),
+                     'Native monthly spawning lacks positive replay-verified evidence')
+    selected_map = campaign.binding(NATIVE_SPAWN_MAP)
+    campaign.require(selected_map['sha256'] == NATIVE_SPAWN_MAP_SHA,
+                     'Native-spawn cycle map changed')
+    with zipfile.ZipFile(CYCLE_MAP) as parent, zipfile.ZipFile(NATIVE_SPAWN_MAP) as selected:
+        campaign.require(parent.namelist() == selected.namelist(), 'Cycle map members changed')
+        for name in parent.namelist():
+            before, after = json.loads(parent.read(name)), json.loads(selected.read(name))
+            if name == 'header.json':
+                campaign.require(before.pop('allowMonthlyMonsters', None) is False
+                                 and 'allowMonthlyMonsters' not in after,
+                                 'Cycle map must restore the native monthly-spawn default')
+                for label in ('name', 'description'):
+                    before.pop(label, None)
+                    after.pop(label, None)
+            campaign.require(before == after, 'Native-spawn cycle changed another map rule')
+    launcher = VcmiLauncher(Path(checked['binary']), Path(checked['data']), NATIVE_SPAWN_MAP,
                             equipment_policy=VERSION)
     launcher.preflight()
-    checked.update(game_map=str(CYCLE_MAP), native=launcher.identity())
+    checked.update(game_map=str(NATIVE_SPAWN_MAP), native=launcher.identity())
     checked['runtime_origin']['scenario_validation'] = receipt
     checked['runtime_origin']['scenario_source_validation'] = source_validation
-    checked['protected'].update({item['path']: item for item in (game_map, receipt)})
+    checked['runtime_origin']['scenario_derivation'] = dict(
+        parent_map=game_map, map=selected_map, monthly_neutral_spawns='native_default',
+        native_evidence='calendar-default control in scenario_validation',
+        semantic_map_comparison=True, fresh_native_capture=False)
+    checked['protected'].update({item['path']: item for item in (game_map, selected_map, receipt)})
     return checked

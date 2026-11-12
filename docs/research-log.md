@@ -4175,3 +4175,19 @@ Combat is built-in BattleAI; these results concern adventure-map decisions.
 No demonstrated playing-strength improvement follows from this pair alone.
 
 Retention-reviewed run: `run-20261112T112858Z-6cd66b99`.
+
+
+## 2026-11-12 — Restore native neutral spawning for a manual 200-game cycle
+
+The user chooses restoring native calendar neutral spawning, retaining starting
+Taverns and all other rules, and explicitly retains control of the launch.
+Prepare 200 training games from checkpoint 1,763, two 100-game PPO updates,
+then one final diagnostic, with the default 20-hour shared allowance.
+Hypothesis: broaden encountered map states without simultaneously changing
+starting economy or action support. Acceptance: v4 differs from v3 only by
+removing allowMonthlyMonsters=false and descriptive text; retain the existing
+runtime's pinned native positive/negative calendar acceptance; verify map and
+scenario binding rejection controls and read-only full-state continuation.
+Do not launch training, reserve seeds or retire artifacts during preparation.
+The historical acceptance receipt remains available, but its raw diagnostic
+folder has been retired; distinguish inherited native evidence from fresh tests.

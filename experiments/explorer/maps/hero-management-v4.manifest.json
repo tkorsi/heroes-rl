@@ -1,0 +1,13 @@
+{
+  "schema": "heroes-temporary-scenario-v1",
+  "scenario_id": "hero-management-v4",
+  "parent_sha256": "2ddd04177e17f588922cc7733ec4fa049be10bb0f020f7387fd7285ea1604056",
+  "map_sha256": "a076b4dca6410b5dc16388dc47333b036323a94c8fe412500cd9f31b78bcc833",
+  "temporary_rules": {
+    "monthly_neutral_spawns": "native_default",
+    "starting_taverns": "both_towns_prebuilt_without_resource_cost"
+  },
+  "note": "Only the disabled calendar-spawn override and descriptive text differ from v3. Existing runtime positive/negative calendar controls are retained; no new native capture is claimed.",
+  "engine_verified": false,
+  "training_performed": false
+}
