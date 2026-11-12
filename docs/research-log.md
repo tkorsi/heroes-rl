@@ -4100,3 +4100,78 @@ Initial read-only preflight refused the uncommitted investigation journal
 retrying, without changing runtime code. macOS currently reports battery power
 at 99%, discharging. Ask the user to connect AC before the launch because the
 previous run failed after low-power sleep. Launch remains pending that condition.
+
+
+## 2026-11-12 — Completed checkpoint 1,763 and paired diagnostic analysis
+
+Question: explain the 1,763 diagnostic Red victory and compare observed behavior
+with the 1,762 recovery diagnostic. Acceptance: bind all four histories to their
+verified receipts, reconstruct battles/town ownership and recruitment from
+before/after observations, separate descriptive changes from learning evidence.
+No additional gameplay or training was launched during this analysis.
+
+Run `run-20261112T112858Z-6cd66b99`, source cc10b53, parent 1,762, unchanged
+hero-management-v3 rules and native runtime, completed in 15,302.615 seconds.
+The user explicitly instructed launch despite the observed 99% battery-power
+state; AC charging was observed in subsequent snapshots. The launch first
+recovered the pending 1,762 diagnostic, then captured/admitted 100 training
+games (engine Blue 79, Red 19, day cutoffs 2, failures 0). PPO admitted 201,094
+samples, performed 6,308 optimizer steps and published exact restore-verified
+checkpoint 1,763. Shutdown return code 0, owned cleanup verified, protected
+inputs unchanged. Diagnostic engine/policy seeds: recovery 1980001244 /
+1982002488,1982002489; final 1980001445 / 1982002890,1982002891. Both diagnostics
+passed native replay and exact two-policy reconstruction (maximum difference 0).
+Private evidence: report.json, shutdown.json, diagnostic training receipts and
+`analysis-1763/{1762,1763}-{red,blue}.json`. All four history SHA256 bindings
+were independently checked while loading the recorded frames.
+
+1,763: Red won on day 34, with 735 Red and 390 Blue choices. Red hired four
+heroes (days 15,16,18,29), recruited once, built nothing; Blue hired twice,
+never recruited or constructed. On day 17 Red's original 25-pikeman hero
+attacked and killed Blue's original 25-pikeman hero, retaining nine. Blue hired
+16 pikemen that day; this hero attacked on day 19 and died. Red hired a
+one-goblin hero on day 18, put it in garrison, recruited 42 pikemen directly
+into that hero's army on day 19, then released it through swap_garrison.
+This is not a transfer of 42 troops from a separate town stack.
+
+On day 32 Red attacked Blue's last hero with 12 pikemen and four archers and
+lost. Blue retained 12 pikemen and four archers after that battle. Another Red
+hero attacked with 42 gnolls, won, and retained 37. Blue now had no heroes.
+On day 34 Red's one-goblin/42-pikeman hero targeted and captured Blue's empty
+last town; no siege battle occurred. The 42 recruited pikemen did not win the
+decisive field battle. Red finished with four heroes, two towns and 6,143 gold;
+Blue with zero heroes/towns and 12,375 gold. Blue never targeted the enemy town.
+Red targeted it on days 22,24,31 (movement limits) and 34 (capture/terminal).
+Earlier approaches did not immediately continue to capture, so do not describe
+this as a proven coherent long-range plan. The final action has no ordinary
+result frame because the natural terminal follows; independent replay passed.
+
+1,762 recovery: 365-day cutoff without town captures, 4,915/9,765 policy
+choices. Red hired 25 heroes and lost 25, recruited nine times, constructed
+once. Blue hired 16, recruited 13 times and constructed four times. Final Red
+had one hero (31 troglodytes, five harpies, three beholders), one empty-garrison
+town and 48,683 gold. Blue had four heroes with 800 total pikemen and 21 archers,
+one empty-garrison town and 70,721 gold. Blue targeted the enemy town six
+times and failed to capture it; Red targeted twice. This prior checkpoint
+already used recruitment and substantial field armies, so those capabilities
+are not new in 1,763.
+
+For a more comparable first-34-day window, 1,762 Red hired two heroes, recruited
+zero times, lost one hero and issued 123 moves; 1,763 Red hired four, recruited
+42 pikemen in one action, lost one hero and issued 170 moves. However 1,762
+Blue recruited three times and constructed once within that window, while
+1,763 Blue did neither. Same checkpoint controls both sides in each diagnostic;
+the seeds differ and these are not head-to-head or matched-seed evaluations.
+
+Four window-action kinds (open_hero/open_capability/close_capability/close)
+account for 67.91% Red /75.52% Blue in 1,762, versus 66.80%/61.28% in 1,763.
+Combined: 72.98% versus 64.00%. This is less window activity but remains large;
+opening panels is not inherently useless. No-route moves: 39/855 Red and 84/1680 Blue
+in 1,762; 1,763 has 6/170 Red and 11/78 Blue. Avoid a general pathfinding-improvement claim.
+Observed positive: earlier Red mobilization and conversion to actual city capture.
+Limitations: losing Blue underused economy, one weak Red attack, much window
+activity, no construction or troop upgrades, stochastic same-policy self-play.
+Combat is built-in BattleAI; these results concern adventure-map decisions.
+No demonstrated playing-strength improvement follows from this pair alone.
+
+Retention-reviewed run: `run-20261112T112858Z-6cd66b99`.
