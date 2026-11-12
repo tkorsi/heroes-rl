@@ -4029,3 +4029,74 @@ assertions disappeared when the harmless command exited. AC was connected at
 At clean source `19f2904`, `./run-100-games.command --check` passed exact full
 checkpoint 1,760 restoration and the default 500-game preview without gameplay,
 PPO, cleanup or seed allocation. Output: `/tmp/heroes-awake-preflight.log`.
+
+
+## 2026-11-12 — Investigate interrupted 500-game run after low-power sleep
+
+Question: identify the first failure, its relationship to host power events,
+and which completed updates remain recoverable. Acceptance: inspect the final
+report, first failed episode and shutdown evidence; correlate native timestamps
+with macOS power logs; run read-only complete-state continuation preflight.
+No new gameplay, PPO, cleanup or seed reservation is authorized by this audit.
+
+The user-launched `run-20261111T173132Z-64575310` used source
+`f30de3307681c6fbe374a3db74d232ec614788ae`, parent checkpoint 1,760,
+the pinned v3 runtime, unchanged rules and five planned 100-game updates.
+It reserved 501 slots at offset 743 (engine base 1980000743, policy base
+1982001486); all reserved slots remain consumed. It began November 11 at
+19:31:32 Kyiv and finished cleanup November 12 at 06:06:48 Kyiv.
+Reported coordinator elapsed time is 37,195.08 seconds; do not equate that
+monotonic duration with wall time across host hibernation.
+
+Batches 000 and 001 each captured/admitted 100 games and published exact
+restore-verified checkpoints 1,761 and 1,762. Engine-only outcomes were
+Blue/Red/cutoff 59/13/28 and 70/21/9. They admitted 332,159 and 210,649
+samples with 10,405 and 6,608 optimizer steps respectively (542,808 total
+samples). These training outcomes were not independently replay-verified
+and do not establish learning improvement.
+
+Batch 002 stopped with 52 captured, one failed, nine interrupted and 38
+unstarted games. None of this partial batch entered PPO. The first failure
+was episode 62 (overall game 262), engine seed 1980001004, policy seeds
+1982002008/1982002009: manifest failure_detail `blue: Policy socket timeout`.
+The native log reports this at 06:04:17.213 Kyiv; the generic coordinator
+message `Self-play capture failed; no retries or partial batch admission`
+is the consequence. No diagnostic game ran. The other 200 planned games
+were not started. Total completed captures: 252/500; admitted: 200/500.
+
+macOS pmset evidence records battery power at 4% at 05:42:52, AC attachment
+at 2% at 05:47:25, then Low Power Sleep at 05:48:17 (3%, AC), lasting 960
+seconds, and Wake from Hibernate at 06:04:17 (4%, AC). The native timeout
+coincides with that wake. This strongly identifies low-power hibernation as
+the trigger; the native socket wait has a bounded timeout and no sleep recovery.
+Both caffeinate sleep assertions remained alive during the incident and were
+released only at coordinator exit, so assertion launch/lifetime did not fail.
+The logs do not establish why external power had been unavailable or whether
+a charger/cable/display was inadequate. This was not the configured 50-hour
+campaign deadline. Do not claim a generic timeout increase fixes low-power sleep.
+
+Shutdown return code 1 records owned cleanup verified, protected inputs
+unchanged and no supervisor errors. Process inspection found no remaining
+training/native workers. `./run-100-games.command --check` exited 0 and
+restored the complete 1,762 continuation state; no campaign was restarted.
+Evidence: final report/shutdown, batch 002 episode-000062 manifest and native
+log; private `analysis-failure/power-events.txt` and `analysis-failure/preflight.log`.
+The existing live-UI reconstruction and its actual-Terminal-access limitation
+remain recorded under this run's `analysis-live-ui/`; that was not a screen
+inspection. No production code or power settings changed in this investigation.
+
+Retention-reviewed run: `run-20261111T173132Z-64575310`.
+
+
+## 2026-11-12 — Prepare authorized 100-game continuation from 1,762
+
+The user explicitly requests launching 100 training games followed by the final
+diagnostic with unchanged rules. Intended acceptance: restore checkpoint 1,762,
+complete one 100-game PPO update and independently validate the final diagnostic;
+recover any pending diagnostic first under the existing continuation contract.
+The default shared allowance is ten hours. No seed reuse is permitted.
+Initial read-only preflight refused the uncommitted investigation journal
+(`Selected checkout must be clean and committed`); commit documentation before
+retrying, without changing runtime code. macOS currently reports battery power
+at 99%, discharging. Ask the user to connect AC before the launch because the
+previous run failed after low-power sleep. Launch remains pending that condition.
