@@ -4292,3 +4292,20 @@ not a fresh physical closed-lid sleep/wake experiment or reboot recovery proof.
 All implementation and runtime acceptance checks are complete; the manual
 launcher preflight is next, after committing its exact runtime pins. No new
 training campaign was launched.
+
+Final manual preflight `./run-100-games.command 200 --check` passed on 0acca57
+in four seconds. It restored checkpoint 1,764's exact model, Adam, RNG, progress,
+sampler and opponent pool; campaign, attempt and phase time allowances are null.
+It previews two batches of 100, the outstanding 1,764 diagnostic and one final
+diagnostic (202 physical games), with no games, optimizer updates, seed
+reservations or artifact retirement. Next unreserved cycle offset is 1,647.
+Evidence: `/tmp/heroes-sleep-200-preflight.log`. Default unlimited phase
+propagation, strict JSON serialization and rejection of mixed absent/present
+deadlines passed local checks. Training remains manual.
+
+Correction to the preceding validation note: the native shutdown-order unittest
+was discovered but skipped by its existing environment guard; it was not an
+executed pass. The reported 112 executed passes comprise 22 deadline, 78
+headless and 12 training tests; controller tests add 35 passes and the two
+previously described fixture errors. Native process cleanup was exercised by
+the actual diagnostic runs and the separate unlimited cancellation control.
