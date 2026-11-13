@@ -305,6 +305,41 @@ SLEEP_RESUME_SOURCES = {
         'after': '46a4973224210b52e255be56b09c95b97ee7569b99f4d8840e3327e4dcdce9df'},
 }
 
+# Exact reviewed transition from the CPU source at 9ca85df to the opt-in Metal
+# candidate at a3a5f89. New files have no parent content; engine rules are unchanged.
+METAL_PPO_SOURCES = {
+    'experiments/learner/builtin_gameplay.py': {'before': '1ca1d7b7340bf61543792994e0d3e692b86c9a3256a849b4469a049ec60a169e',
+        'after': 'c3f02c1e5895d1fdfa56408018a170c635fd11dc7c23b2b4c667646a6667cf17'},
+    'experiments/learner/contextual.py': {'before': 'f4af40ce598dd6d0a35906168b22f62485dd27a20d7cef6270b2b01793552cff',
+        'after': '32a6940a35819c0061372ed99394733c335772bef405e32317b21864baf22511'},
+    'experiments/learner/contextual_model.py': {'before': '389d84b4693df9c18cfa4bdf416f2d9b00c07467a5ed794bbf6022ff13c13681',
+        'after': 'e3afd30e2638e190c518d46b6f5b83f4709c3e998dcab20e8ae4ca6157903fb9'},
+    'experiments/learner/metal_backend.py': {'before': None,
+        'after': '8550ebc2c8438cfeb93a1bd6aac65882dbc2c1fde9437c4c568e279c9ff88700'},
+    'experiments/learner/metal_gru.py': {'before': None,
+        'after': '63e9500ad702d51966124f4cce048a1f28621b7e490ca8806ea0e5982eff1a9f'},
+    'experiments/learner/metal_map_delta.py': {'before': None,
+        'after': '7ac9f7690468cb9b20bf1a57bd42c4398f292cc43c37714afb42fc4e678bfb4a'},
+    'experiments/learner/metal_tree.py': {'before': None,
+        'after': '4121a367b1a0dfe917ef4db77140acd26b790029af9644dcfe01cebf3f9ff3e0'},
+    'experiments/learner/metal_tree_kernels.py': {'before': None,
+        'after': '4b18138424bde22a27a96fdf288a20bd0e97deb4e6e8711bc27c94f2f115d9ea'},
+    'experiments/learner/native_recipes.py': {'before': 'bd62c6c33c7d90480266c5fb07d5cdf979940dbe1a9905c1d0748a0be75feced',
+        'after': 'd84290ec3f42419a0fe205919ffe7acf5b3dcd43511e71b3b1243e702facb1de'},
+    'experiments/learner/ppo.py': {'before': 'd2bc6833098b596d52b26314ef0b2fbc87c827b1c5092d6c304f68552d5a2a8b',
+        'after': 'fd8fb522b7e5717fcf3b8f1e9c58dd56f12b330ab86fd910c1340359f4513e36'},
+    'experiments/learner/selfplay_training.py': {'before': '3ea2dd68eb53c4f8486f59ea28b36e679ecaa77de19655060a69250359787200',
+        'after': 'acfd55b3b7ade3e1857a3581d4ebb505618b63141bbefcf9b745632eb59be906'},
+    'native/learner/metal/gru.metal': {'before': None,
+        'after': '29a2b48cc304b870930f0d7eeaa5a3c087ab25bd98839133cf06f89894a5a3e0'},
+    'native/learner/metal/tree.metal': {'before': None,
+        'after': '8bb7a18d56974c5e91b46b2e5bf0e367f7417eed46051aeb9c6988c952bd4592'},
+    'tools/run_selfplay_training.py': {'before': '46a4973224210b52e255be56b09c95b97ee7569b99f4d8840e3327e4dcdce9df',
+        'after': 'fa6e9cfe96f61820521ebd6e5410736cbb0a44473b56adcc7f7a0ee46b0ffcf5'},
+}
+METAL_PPO_NEW = frozenset(name for name, pins in METAL_PPO_SOURCES.items() if pins['before'] is None)
+
+
 def verify_runtime_sources(implementation):
     """Bind the base plus exact reviewed storage/UI and support additions."""
     require(STORAGE_PROGRESS_PATHS <= implementation.keys(),
@@ -313,6 +348,8 @@ def verify_runtime_sources(implementation):
             'Evaluation source identity omitted a reviewed recruit-only dependency')
     require(STARTING_EQUIPMENT_SOURCES.keys() <= implementation.keys(),
             'Evaluation source identity omitted a reviewed starting-equipment dependency')
+    require(METAL_PPO_SOURCES.keys() <= implementation.keys(),
+            'Evaluation source identity omitted a reviewed Metal PPO dependency')
     def committed(commit, names):
         archive = subprocess.check_output(['git', 'archive', commit, *sorted(names)], cwd=ROOT)
         with tarfile.open(fileobj=io.BytesIO(archive), mode='r:') as source:
@@ -320,7 +357,8 @@ def verify_runtime_sources(implementation):
                      for member in source.getmembers() if member.isfile()}
         require(files.keys() == names, 'Committed evaluation source inventory differs')
         return files
-    original = committed(BASE_COMMIT, implementation.keys() - STORAGE_PROGRESS_NEW - STARTING_EQUIPMENT_NEW - SCENARIO_RULE_SOURCES.keys())
+    original = committed(BASE_COMMIT, implementation.keys() - STORAGE_PROGRESS_NEW - STARTING_EQUIPMENT_NEW
+                         - SCENARIO_RULE_SOURCES.keys() - METAL_PPO_NEW)
     original.update(committed(STORAGE_PROGRESS_COMMIT, STORAGE_PROGRESS_PATHS))
     original.update(RECRUIT_ONLY_SOURCE_SHA256)
     original.update({name: pins['after'] for name, pins in DAY_PROGRESS_SOURCES.items()})
@@ -378,6 +416,9 @@ def verify_runtime_sources(implementation):
     require(all(original.get(name) == pins['before'] for name, pins in SLEEP_RESUME_SOURCES.items()),
             'Sleep-resume source transition differs from its reviewed parent')
     original.update({name: pins['after'] for name, pins in SLEEP_RESUME_SOURCES.items()})
+    require(all(original.get(name) == pins['before'] for name, pins in METAL_PPO_SOURCES.items()),
+            'Metal PPO source transition differs from its reviewed CPU parent')
+    original.update({name: pins['after'] for name, pins in METAL_PPO_SOURCES.items()})
     require(original == implementation, 'Evaluation changed an existing learner, adapter, engine or replay source')
 
 
@@ -407,13 +448,14 @@ def verify_native_validation_sources(accepted, current):
                    ('reviewed_hundred_game_split_dashboard', HUNDRED_BATCH_SOURCES),
                    ('reviewed_single_run_retention', RETENTION_SOURCES),
                    ('reviewed_configurable_games_dashboard', CONFIGURABLE_GAME_SOURCES),
-                   ('reviewed_unlimited_cycle_waits', SLEEP_RESUME_SOURCES))
+                   ('reviewed_unlimited_cycle_waits', SLEEP_RESUME_SOURCES),
+                   ('reviewed_opt_in_metal_ppo', METAL_PPO_SOURCES))
     for kind, transition in transitions:
         if all(expected.get(name) == pins['before'] for name, pins in transition.items()):
             expected.update({name: pins['after'] for name, pins in transition.items()})
         if expected == current:
-            changed = {name: {'before': accepted[name], 'after': digest} for name, digest in current.items()
-                       if accepted[name] != digest}
+            changed = {name: {'before': accepted.get(name), 'after': digest} for name, digest in current.items()
+                       if accepted.get(name) != digest}
             return dict(kind=kind, changed=changed, native_capture_repeated=False)
     require(False, 'Passive-army runtime lacks complete two-seat native validation source agreement')
 
@@ -452,6 +494,7 @@ def source_identity():
         recipe_sharing_sources=RECIPE_SHARING_SOURCES,
         hundred_batch_sources=HUNDRED_BATCH_SOURCES,
         retention_sources=RETENTION_SOURCES,
+        metal_ppo_sources=METAL_PPO_SOURCES,
         driver=binding(__file__), launcher=binding(ROOT / 'play-one-selfplay-2x.sh'))
 
 

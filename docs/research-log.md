@@ -4932,3 +4932,21 @@ actual admission, encoding, native compilation/recipe validation and backend
 selection ran on eight frames; parameter flags and receipt registration/file
 contents were checked. Only capture loading/completion envelope were mocked.
 This is wiring evidence, not a native game or official training receipt.
+
+**Preflight attempt 1 (no launch).** Committed candidate `a3a5f89` ran
+`./run-100-games.command 100 --metal --check` and stopped before reservation or
+retirement: the historical source allowlist attempted to archive the newly
+added Metal files from its old base commit. The complete source gate must be
+extended with an exact reviewed transition for the changed/new numerical and
+integration files, preserving final inventory/hash equality and existing native
+acceptance. This is a missing release registration, not evidence that the
+Metal numerical update failed. Evidence: `campaign-metal-preflight.log`.
+
+The source-registration correction pins exactly 14 implementation paths from
+CPU source `9ca85df` to candidate `a3a5f89`, including seven new Python/Metal
+files. It extends the existing transition tables; final complete inventory/hash
+equality is retained. Reused native and scenario receipts report that native
+capture was not repeated. The actual current source and both accepted receipt
+inventories pass; 84 private mutated/missing-file controls (14 files, two
+mutations, three gates) all reject. The existing native-transition test passes.
+Evidence: `campaign-source-transition-check.log`. No seed was consumed.
