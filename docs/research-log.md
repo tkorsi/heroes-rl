@@ -4246,3 +4246,19 @@ explicit unlimited-wait manifest evidence. Native client/server/ExplorerRL/repla
 rebuilt successfully (179 build steps); all 22 existing process-deadline tests
 passed. The exact reviewed source transition was checked. Full frozen-runtime
 acceptance and suspend/resume controls are still pending at this commit.
+
+The unlimited owned-process control survived SIGSTOP/SIGCONT for 35 seconds,
+then exited normally; explicit cancellation also verified group cleanup. The
+78 existing headless tests and 12 training tests passed. Controller suite:
+35 passed, two known old fixtures still fail because their fake subprocess
+omits the registration stdin pipe. No test or probe changes are published.
+Review also corrected failed-capture evidence cleanup for absent deadlines.
+
+Fresh runtime freeze: `runtime/local-v8-sleep-resume-v1`, built from b893b81,
+exact recipe checked, nine binaries and 592 resources. Private equipment
+acceptance attempt e8beab failed in its restored historical probe's obsolete
+Tavern artifact-count assertion (native excludes book/machine slots). Attempt
+acba6e passed all nine pairs, but its obsolete mutant check expected exit 2/3;
+the native mutant correctly rejected with exit 1 and an init game-state digest
+divergence. Restore the already used v8 hire proof and correct return-code
+expectation; preserve both failed attempts and rerun with fresh reserved seeds.

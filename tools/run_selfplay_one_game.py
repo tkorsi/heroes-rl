@@ -302,7 +302,7 @@ SLEEP_RESUME_SOURCES = {
     'experiments/learner/selfplay_training.py': {'before': '0a2ce52641a9ed0ce22d7229f0c842f9e526b48c5b3979757a913349a2991547',
         'after': '3ea2dd68eb53c4f8486f59ea28b36e679ecaa77de19655060a69250359787200'},
     'tools/run_selfplay_training.py': {'before': 'bcd2b5740027d36dc4f393cf244fa1160df390fd03a5a98a4a21e027ced7e5d3',
-        'after': '7ccbb05884ec3d1bed0f9bedec70c234e3db5f865141631782a88aaec48c673b'},
+        'after': '46a4973224210b52e255be56b09c95b97ee7569b99f4d8840e3327e4dcdce9df'},
 }
 
 def verify_runtime_sources(implementation):

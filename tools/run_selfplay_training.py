@@ -887,7 +887,8 @@ def capture_worker(args):
         from validation.probes.validate_hero_policy import retain_failed_evidence
         failure = dict(status='failed', error=f'{type(error).__name__}: {error}',
                        outcomes={'red': None, 'blue': None}, rewards={'red': None, 'blue': None})
-        seconds = min(args.deadline - time.monotonic(), args.wall_deadline - time.time())
+        seconds = (20 if args.deadline is None else
+                   min(args.deadline - time.monotonic(), args.wall_deadline - time.time()))
         if seconds > 1:
             retain_failed_evidence(env, collector, failure, error, cleanup_seconds=min(20, seconds))
         write(output / f"failure-{row['episode']:06d}.json", failure, new=True)
