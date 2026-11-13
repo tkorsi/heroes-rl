@@ -60,9 +60,14 @@ def inspect_cycle_scenario(checked):
     campaign.require(game_map['sha256'] == CYCLE_MAP_SHA and receipt['sha256'] == CYCLE_ACCEPTANCE_SHA,
                      'Temporary cycle map or its native acceptance changed')
     accepted = campaign.read(campaign.bound(receipt))
+    accepted_map = accepted.get('map', {})
+    # A separate checkout may relocate the exact accepted map bytes.
+    same_map = (set(accepted_map) == {'path', 'sha256', 'bytes'}
+                and Path(accepted_map['path']).name == CYCLE_MAP.name
+                and all(accepted_map[key] == game_map[key] for key in ('sha256', 'bytes')))
     campaign.require(accepted.get('schema') == 'heroes-taverns-static-neutrals-native-v1'
                      and accepted.get('status') == 'passed' and accepted.get('runtime') == checked['runtime']
-                     and accepted.get('map') == game_map and accepted.get('players') == [0, 1]
+                     and same_map and accepted.get('players') == [0, 1]
                      and accepted.get('optimizer_updates') == 0 and accepted.get('training_samples_admitted') == 0
                      and all(accepted.get(key) is True for key in (
                          'initial_state_preserved', 'starting_taverns_and_hiring_both_players',

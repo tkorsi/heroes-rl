@@ -4950,3 +4950,16 @@ capture was not repeated. The actual current source and both accepted receipt
 inventories pass; 84 private mutated/missing-file controls (14 files, two
 mutations, three gates) all reject. The existing native-transition test passes.
 Evidence: `campaign-source-transition-check.log`. No seed was consumed.
+
+**Preflight attempt 2 (no launch).** Candidate `5d6277d` passed the source
+transition but failed the temporary-map acceptance comparison because the
+pinned receipt names the main checkout's map path while this separate worktree
+has identical map bytes at another absolute path. The validator now accepts
+that relocation only with the same exact filename, SHA256 and byte count,
+while retaining receipt SHA, runtime identity, all native controls and semantic
+v3-to-v4 map comparison. No gameplay, retirement or reservation occurred.
+Evidence: `campaign-metal-preflight-2.log`.
+Six private map-relocation controls passed: exact relocated bytes reached the
+following source gate; wrong hash, size, filename, extra or missing binding key
+were rejected. The source gate was a test-only sentinel; production checks stay
+active. Independent review found no actionable issue.
