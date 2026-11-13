@@ -283,6 +283,28 @@ CONFIGURABLE_GAME_SOURCES = {
         'after': 'bcd2b5740027d36dc4f393cf244fa1160df390fd03a5a98a4a21e027ced7e5d3'},
 }
 
+# Unlimited cycle waits; finite historical modes retain their deadlines.
+SLEEP_RESUME_SOURCES = {
+    'engine/ExplorerRL/Contextual.cpp': {'before': '09ddb160a8c70e060f3e2b2093a2879e24aabab078a0b5f4770bbc0ec7a2db63',
+        'after': '45b2567866eb27c1a47aa38e93e337c2462d63b6ad9d9f5fc6deb2bcfe84cacc'},
+    'engine/ExplorerRL/ContextualEvidence.cpp': {'before': '4e31338745b9cfbe867d99949112fb63340a3a389fe82458dff839ac51574154',
+        'after': 'f72f1e15f8b2e1b1f3dfb1d6b5cf2a81f5139c3f640ca624a85ca2e7ffe5cdfd'},
+    'engine/ExplorerRL/ExplorerRL.cpp': {'before': '97ca85b5363236143fa78fe3cce7b734acdff0a2b7fa4aae6b978fcb7c226d94',
+        'after': 'a70fb14a35d9ad2db5afd3dc41d5efba7aa0a0d91d349224e1fe32a64fe244de'},
+    'engine/ExplorerRL/SocketPolicyTransport.cpp': {'before': '80c419ff5ccf0eecf0f08f5beb984d777f2d2b7436863ab0031995e0d89a9d2b',
+        'after': '226d338be94e8ae545657524bd1bf3262d333620845d967ef7dbf630296fd6ae'},
+    'experiments/headless/contextual_replay.py': {'before': '4a5173bd3d87ee1729f763daa067b5a2fad60e2cf319fbde852b3e43378355ab',
+        'after': '2a7ef33aa7243bc1015934089cc4833074fd05cea6e9adc10d50653bebc36374'},
+    'experiments/headless/env.py': {'before': 'e82f91dfea1c01444fc71a6658a510b5e0f3e7f770c32a17f54ac31169cc0786',
+        'after': '250ac53e43c5dfbe0e0df6075310b35ccd60be4ed445e0d0766ed6f6ea33f1bd'},
+    'experiments/headless/process_deadline.py': {'before': '2850922be1d8e6245bf0fa3a2ed4dfda86ae0349e15b374aa8539e186e09365a',
+        'after': '51c57c043dd2edf0f38da1f958e459e6b9704d62d8a6a0914225004135186d99'},
+    'experiments/learner/selfplay_training.py': {'before': '0a2ce52641a9ed0ce22d7229f0c842f9e526b48c5b3979757a913349a2991547',
+        'after': '3ea2dd68eb53c4f8486f59ea28b36e679ecaa77de19655060a69250359787200'},
+    'tools/run_selfplay_training.py': {'before': 'bcd2b5740027d36dc4f393cf244fa1160df390fd03a5a98a4a21e027ced7e5d3',
+        'after': '7ccbb05884ec3d1bed0f9bedec70c234e3db5f865141631782a88aaec48c673b'},
+}
+
 def verify_runtime_sources(implementation):
     """Bind the base plus exact reviewed storage/UI and support additions."""
     require(STORAGE_PROGRESS_PATHS <= implementation.keys(),
@@ -353,6 +375,9 @@ def verify_runtime_sources(implementation):
     require(all(original.get(name) == pins['before'] for name, pins in CONFIGURABLE_GAME_SOURCES.items()),
             'Configurable-game source transition differs from its reviewed parent')
     original.update({name: pins['after'] for name, pins in CONFIGURABLE_GAME_SOURCES.items()})
+    require(all(original.get(name) == pins['before'] for name, pins in SLEEP_RESUME_SOURCES.items()),
+            'Sleep-resume source transition differs from its reviewed parent')
+    original.update({name: pins['after'] for name, pins in SLEEP_RESUME_SOURCES.items()})
     require(original == implementation, 'Evaluation changed an existing learner, adapter, engine or replay source')
 
 
@@ -381,7 +406,8 @@ def verify_native_validation_sources(accepted, current):
                    ('reviewed_exact_recipe_sharing', RECIPE_SHARING_SOURCES),
                    ('reviewed_hundred_game_split_dashboard', HUNDRED_BATCH_SOURCES),
                    ('reviewed_single_run_retention', RETENTION_SOURCES),
-                   ('reviewed_configurable_games_dashboard', CONFIGURABLE_GAME_SOURCES))
+                   ('reviewed_configurable_games_dashboard', CONFIGURABLE_GAME_SOURCES),
+                   ('reviewed_unlimited_cycle_waits', SLEEP_RESUME_SOURCES))
     for kind, transition in transitions:
         if all(expected.get(name) == pins['before'] for name, pins in transition.items()):
             expected.update({name: pins['after'] for name, pins in transition.items()})

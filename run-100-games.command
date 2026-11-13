@@ -14,7 +14,7 @@ while [ "$#" -gt 0 ]; do
             shift 2 ;;
         --help|-h)
             echo "Usage: $0 [10..1000 | --games N] [--check | --run] [--hours H]"
-            echo "Default: 500 games, PPO batches up to 100, one final diagnostic."
+            echo "Default: 500 games, PPO batches up to 100, one final diagnostic, no time limit."
             exit 0 ;;
         *[!0-9]*|'') echo "Unknown argument: $1" >&2; exit 2 ;;
         *) GAMES=$1; shift ;;

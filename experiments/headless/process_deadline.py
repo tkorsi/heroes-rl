@@ -3,7 +3,7 @@
 The wrapper starts a private session, forks its guardian, waits until it is
 armed, then execs the requested program without changing the leader PID. The
 guardian is a child of that program. It kills its own private process group
-when its parent exits, at the earlier absolute clock deadline, or when the
+when its parent exits, at the earlier configured absolute clock deadline, or when the
 launcher's exclusive ownership pipe closes. Processes
 that deliberately leave that group require their own guardian.
 
@@ -27,6 +27,8 @@ POLL_SECONDS = 0.05
 
 
 def _deadline(value, name):
+    if value is None:
+        return None
     if type(value) not in (int, float) or not math.isfinite(value) or value <= 0:
         raise ValueError(name + " must be a finite positive timestamp")
     return float(value)
@@ -35,6 +37,10 @@ def _deadline(value, name):
 def _remaining(monotonic, wall):
     # Some platforms pause the monotonic clock during suspend. Wall time also
     # bounds that interval; neither a backward wall jump nor suspend extends it.
+    if monotonic is None and wall is None:
+        return math.inf
+    if monotonic is None or wall is None:
+        raise ValueError("Both deadlines must be present or both absent")
     return min(monotonic - time.monotonic(), wall - time.time())
 
 
@@ -53,7 +59,8 @@ def _event(path, event, **fields):
 def guarded_popen(command, *, deadline_monotonic, deadline_wall, evidence_path, **kwargs):
     """Start a deadline-supervised command; never restore RNG or launch a shell.
 
-    The earlier same-host monotonic/wall timestamp governs termination: suspend
+    Paired None deadlines disable time-based termination, retaining ownership
+    cleanup. Otherwise the earlier same-host timestamp governs termination: suspend
     cannot extend wall time, and a backward wall-clock adjustment cannot extend
     monotonic time. A forward wall jump can safely stop the process early.
     The returned Popen PID becomes the requested program's PID and private PGID.
@@ -203,8 +210,8 @@ def _guarded_exec(args):
 def _main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--guarded-exec", action="store_true", required=True)
-    parser.add_argument("--deadline-monotonic", type=float, required=True)
-    parser.add_argument("--deadline-wall", type=float, required=True)
+    parser.add_argument("--deadline-monotonic", type=lambda value: None if value == "None" else float(value), required=True)
+    parser.add_argument("--deadline-wall", type=lambda value: None if value == "None" else float(value), required=True)
     parser.add_argument("--evidence", required=True)
     parser.add_argument("--owner-pipe", type=int, required=True)
     parser.add_argument("command", nargs=argparse.REMAINDER)

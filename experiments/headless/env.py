@@ -69,12 +69,14 @@ class Limits:
     startup_seconds: float = 180.0  # launch until both bridges are ready
     shutdown_seconds: float = 30.0  # last terminal until the process exits
     bridge_timeout: int = 60  # EXPLORER_RL_TIMEOUT: engine-side wait for each response
+    unlimited_wait: bool = False  # Owned cycle processes may pause across system sleep.
 
     def __post_init__(self):
         if (type(self.max_days) is not int or type(self.max_actions) is not int or self.max_days < 1
-                or self.max_actions < 1 or not 1 <= self.bridge_timeout <= 300
+                or self.max_actions < 1 or type(self.unlimited_wait) is not bool
+                or not (1 <= self.bridge_timeout <= 300 or (self.unlimited_wait and self.bridge_timeout == 0))
                 or min(self.watchdog_seconds, self.startup_seconds, self.shutdown_seconds) <= 0):
-            raise ValueError("Use positive integer horizons, positive time limits and a 1..300 s bridge timeout")
+            raise ValueError("Use positive integer horizons, positive time limits and a 1..300 s bridge timeout (0 only with unlimited_wait)")
 
 
 @dataclass
@@ -663,7 +665,8 @@ class HeadlessSelfPlayEnv:
                 deadline_kind, timeout = "watchdog", self.limits.watchdog_seconds
             waited = time.monotonic()
             try:
-                kind, player, payload, received = self.events.get(timeout=timeout)
+                kind, player, payload, received = self.events.get(
+                    timeout=None if self.limits.unlimited_wait else timeout)
             except queue.Empty:
                 self._note_problem({"startup": "startup_timeout", "watchdog": "watchdog_timeout",
                                     "shutdown": "shutdown_timeout"}[deadline_kind],
@@ -871,7 +874,8 @@ class HeadlessSelfPlayEnv:
             "outcomes_by_player": outcomes, "rewards_by_player": rewards, "returncode": returncode,
             "natural_terminal_after_horizon": natural_after_horizon,
             "limits": {"max_days": self.limits.max_days, "max_actions_per_player": self.limits.max_actions,
-                       "watchdog_seconds": self.limits.watchdog_seconds, "bridge_timeout": self.limits.bridge_timeout},
+                       "watchdog_seconds": self.limits.watchdog_seconds, "bridge_timeout": self.limits.bridge_timeout,
+                       "unlimited_wait": self.limits.unlimited_wait},
             "env_steps": self.env_step,
             "step_latency_seconds": latency_summary(self.step_latencies),
             "timing": {"wall_seconds": round(finished - self.started, 6),

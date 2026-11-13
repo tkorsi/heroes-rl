@@ -175,6 +175,8 @@ def run_native(binary, environment, log, tape, report, *, cutoff, timeout):
         command.append("--prefix")
     inherited = {key: value for key, value in os.environ.items()
                  if not key.startswith(("EXPLORER_RL_", "VCMI_RECORD_", "VCMI_EXPERIMENT_", "VCMI_USER_DATA_DIR", "XDG_"))}
+    if timeout is None:
+        environment = {**environment, "VCMI_EXPERIMENT_UNLIMITED_WAIT": "1"}
     started = time.monotonic()
     with report.with_suffix(".log").open("xb") as console:
         result = subprocess.run(command, cwd=binary.parent, env={**inherited, **environment},

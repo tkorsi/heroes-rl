@@ -867,7 +867,7 @@ bool ExplorerRL::executeContextualAction(const JsonNode & action, int64_t decisi
 			{
 				const auto start = std::chrono::steady_clock::now();
 				const auto plan = explorer_rl::planRoute(*callback, *hero, destination);
-				if(std::chrono::steady_clock::now() - start > std::chrono::seconds(timeoutSeconds))
+				if(timeoutSeconds > 0 && std::chrono::steady_clock::now() - start > std::chrono::seconds(timeoutSeconds))
 					throw std::runtime_error("Knowledge route planning timed out");
 				steps = plan.steps;
 				if(!plan.known)
@@ -883,7 +883,7 @@ bool ExplorerRL::executeContextualAction(const JsonNode & action, int64_t decisi
 		const auto & step = routeStep.position;
 		if(ended())
 			return true;
-		if(std::chrono::steady_clock::now() - routeStart > std::chrono::seconds(timeoutSeconds))
+		if(timeoutSeconds > 0 && std::chrono::steady_clock::now() - routeStart > std::chrono::seconds(timeoutSeconds))
 			throw std::runtime_error("Contextual route execution timed out");
 		if(step.z != expected.z || std::abs(step.x - expected.x) > 1 || std::abs(step.y - expected.y) > 1 || step == expected)
 			throw std::runtime_error("Knowledge route contains a non-adjacent command");

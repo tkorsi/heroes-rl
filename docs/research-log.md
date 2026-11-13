@@ -4209,3 +4209,40 @@ and passed native launcher preflight; a changed map hash was rejected, and an
 unrelated hero-level-limit change was rejected even with a matching temporary
 hash override. These local controls created no native games or training and
 were not added to the repository. The actual 200-game run remains user-launched.
+
+
+## 2026-11-13 — Remove cycle wall deadlines and support suspend/resume
+
+The user explicitly requests removing time limits and surviving Mac sleep.
+Current v4 200-game run remains pinned to be4e87a with its original 20-hour
+wall deadline; do not change its source or immutable launch records in place.
+Prepare changes in isolated worktree Heroes-sleep-resume. At investigation,
+checkpoint 1,764 was published and the second PPO update was in progress.
+System logs show Clamshell Sleep at 01:12 on battery and full wake at 12:52;
+PPO resumed but the existing absolute deadline still includes the sleep.
+
+Acceptance: default cycles serialize absent campaign/phase/capture deadlines,
+retain guardian parent/owner-pipe cleanup, allow explicit bounded legacy runs,
+and run ordinary/native policy and diagnostic replay waits without wall timers
+in the unlimited mode. A suspended process retains its RAM state; this is not
+recovery after reboot, process death or power loss. Verify cancellation, real
+protocol/engine failures, finite historical deadlines, exact source bindings,
+new frozen runtime and bounded unscored capture/replay controls. Test pauses
+longer than the former 30-second waits without publishing test fixtures/tools.
+No new training campaign is authorized. Existing day/action, RAM/disk and
+checkpoint admission constraints remain. The current in-flight PPO cannot be
+retrofitted through an existing control API; do not promise it is rescued.
+
+The old run `run-20261112T155949Z-e563c702` subsequently stopped at its
+original deadline. The second PPO update reached 7,858/8,637 minibatches and
+rolled back; 1,764 remains complete and 1,765 was not published. Shutdown
+reported owned cleanup verified and protected inputs unchanged. No automatic
+replacement campaign was launched. After shutdown, the isolated implementation
+was copied to the main checkout; no pinned active source was changed.
+
+Implemented paired absent deadlines, retained parent/owner guardian cleanup,
+unlimited native bridge/action/replay waits only for unlimited cycles, and
+explicit unlimited-wait manifest evidence. Native client/server/ExplorerRL/replay
+rebuilt successfully (179 build steps); all 22 existing process-deadline tests
+passed. The exact reviewed source transition was checked. Full frozen-runtime
+acceptance and suspend/resume controls are still pending at this commit.

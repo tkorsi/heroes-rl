@@ -19,7 +19,8 @@ void waitSocket(int fd, short events, native_session::Deadline deadline)
 		pollfd descriptor{fd, events, 0};
 		const int result = ::poll(&descriptor, 1, static_cast<int>(std::min<int64_t>(remaining, 300000)));
 		if(result < 0 && errno == EINTR) continue;
-		if(result <= 0 || !(descriptor.revents & events))
+		if(result == 0) continue;
+		if(result < 0 || !(descriptor.revents & events))
 			throw std::runtime_error(result == 0 ? "Policy socket timeout" : "Policy socket disconnected");
 		return;
 	}
@@ -64,7 +65,8 @@ public:
 		line.erase(std::remove(line.begin(), line.end(), '\r'), line.end());
 		line += '\n';
 		const auto encoded = std::chrono::steady_clock::now();
-		const auto deadline = encoded + std::chrono::seconds(timeoutSeconds);
+		const auto deadline = timeoutSeconds == 0 ? native_session::Deadline::max()
+			: encoded + std::chrono::seconds(timeoutSeconds);
 		size_t offset = 0;
 		while(offset < line.size())
 		{

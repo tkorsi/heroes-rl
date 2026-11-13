@@ -738,6 +738,8 @@ def load_launch(path, sha):
 
 
 def remaining(launch, reserve=0):
+    if launch['hard_deadline_monotonic'] is None and launch['hard_deadline_unix'] is None:
+        return float('inf')
     left = min(launch['hard_deadline_monotonic'] - time.monotonic(), launch['hard_deadline_unix'] - time.time()) - reserve
     if left <= 0:
         raise TimeoutError('Self-play experiment deadline exhausted')
@@ -748,6 +750,10 @@ def batch_phase_deadlines(launch):
     """Preserve the parent's phase offsets separately from each capture timeout."""
     now, wall = time.monotonic(), time.time()
     cfg = launch['configuration']
+    if launch['hard_deadline_monotonic'] is None and launch['hard_deadline_unix'] is None:
+        return {phase: dict(phase=phase, configured_seconds=None, cleanup_reserve_seconds=0,
+                            hard_deadline_monotonic=None, hard_deadline_unix=None)
+                for phase in ('training', 'update')}
     return {phase: dict(phase=phase, configured_seconds=seconds,
                        cleanup_reserve_seconds=cfg['cleanup_reserve_seconds'],
                        hard_deadline_monotonic=min(now + seconds, launch['hard_deadline_monotonic']),
@@ -822,7 +828,12 @@ def capture_worker(args):
     from experiments.headless.process_deadline import DeadlineVcmiLauncher
     require(binding(args.plan)['sha256'] == args.sha256, 'Batch plan hash changed')
     plan = read(args.plan); launch = load_launch(plan['launch']['path'], plan['launch']['sha256'])
-    require(args.deadline <= launch['hard_deadline_monotonic'] and args.wall_deadline <= launch['hard_deadline_unix'],
+    require((args.deadline is None and args.wall_deadline is None
+             and launch['hard_deadline_monotonic'] is None and launch['hard_deadline_unix'] is None)
+            or (args.deadline is not None and args.wall_deadline is not None
+                and launch['hard_deadline_monotonic'] is not None and launch['hard_deadline_unix'] is not None
+                and args.deadline <= launch['hard_deadline_monotonic']
+                and args.wall_deadline <= launch['hard_deadline_unix']),
             'Worker cannot extend the campaign deadline')
     configure_native(plan['execution'])
     row = plan['schedule'][args.index]
@@ -855,7 +866,8 @@ def capture_worker(args):
         guard_version=plan['policy_support'] if ten else GUARD,
         capture_only=capture_only)
     env = HeadlessSelfPlayEnv(launcher, output, Limits(max_days=days, max_actions=hard_choices,
-        watchdog_seconds=30, startup_seconds=30, shutdown_seconds=20, bridge_timeout=30),
+        watchdog_seconds=30, startup_seconds=30, shutdown_seconds=20,
+        bridge_timeout=0 if args.deadline is None else 30, unlimited_wait=args.deadline is None),
         ledger=not capture_only, replay=True, interface=INTERFACE, capture_only=capture_only,
         agents={color: {'checkpoint': checkpoint, 'kind': 'frozen-neural', 'purpose': plan['mode']}
                 for color, checkpoint in zip(('red', 'blue'), checkpoints)},
@@ -1032,8 +1044,10 @@ def collect_batch(plan_path, plan, learner, opponent, launch, save_attempt, *, p
             plan_path, binding(plan_path)['sha256'], index, folder)
         token = secrets.token_hex(32)
         allowance = plan['configuration']['attempt_wall_seconds']
-        deadline = min(time.monotonic() + allowance, phase_deadline['hard_deadline_monotonic'] - 2)
-        wall = min(time.time() + allowance, phase_deadline['hard_deadline_unix'] - 2)
+        deadline = (min(time.monotonic() + allowance, phase_deadline['hard_deadline_monotonic'] - 2)
+                    if allowance is not None else None)
+        wall = (min(time.time() + allowance, phase_deadline['hard_deadline_unix'] - 2)
+                if allowance is not None else None)
         log = (output / f'worker-{index:02d}.log').open('xb')
         command = [sys.executable, str(Path(__file__).resolve()), '_capture', '--plan', str(plan_path),
                    '--sha256', binding(plan_path)['sha256'], '--index', str(index), '--token', token,
@@ -1096,7 +1110,8 @@ def collect_batch(plan_path, plan, learner, opponent, launch, save_attempt, *, p
             wait_seconds = phase_remaining(phase_deadline)
             if plan.get('schema') not in (training.TEN_SCHEMA, training.CYCLE_SCHEMA):
                 wait_seconds = min(605, wait_seconds)
-            stdout = job['stdout'] if live else process.communicate(timeout=wait_seconds)[0]
+            stdout = job['stdout'] if live else process.communicate(
+                timeout=wait_seconds if math.isfinite(wait_seconds) else None)[0]
             require(process.returncode == 0, 'Self-play capture failed; no retries or partial batch admission')
             close_owned_process(process, timeout=min(5, phase_remaining(phase_deadline)))
             cleanup_from_evidence(output / f"native-{plan['schedule'][job['index']]['episode']:06d}-deadline.jsonl",
@@ -1108,7 +1123,7 @@ def collect_batch(plan_path, plan, learner, opponent, launch, save_attempt, *, p
             if live:
                 current_stage = 'preparation'
                 set_phase(progress_path(launch['output'], plan['schedule'][job['index']]['episode']), 'preparing PPO')
-                with wall_limit(verification_remaining()):
+                with (wall_limit(verification_remaining()) if math.isfinite(verification_remaining()) else nullcontext()):
                     receipt = training.prepare_live_capture(job['binding'], learner, opponent,
                                                             remaining=verification_remaining)
                 manifest = read(job['folder'] / 'manifest.json')
@@ -1127,7 +1142,7 @@ def collect_batch(plan_path, plan, learner, opponent, launch, save_attempt, *, p
             else:
                 set_phase(progress_path(launch['output'], plan['schedule'][job['index']]['episode']), 'verifying')
                 current_stage = 'verification'
-                with wall_limit(verification_remaining()):
+                with (wall_limit(verification_remaining()) if math.isfinite(verification_remaining()) else nullcontext()):
                     receipt = training.verify_training_capture(job['binding'], learner, opponent,
                         replay_binary=Path(plan['replay_binary']['path']), data=Path(plan['data']),
                         remaining=verification_remaining)
@@ -1256,7 +1271,8 @@ def coordinator(args):
             if launch['mode'] == 'training':
                 state.model.train().requires_grad_(True)
                 batch['status'] = 'updating'; write(output / 'report.json', report)
-                with wall_limit(phase_remaining(deadlines['update'])):
+                with (wall_limit(phase_remaining(deadlines['update']))
+                  if math.isfinite(phase_remaining(deadlines['update'])) else nullcontext()):
                     result, rollouts = training.native_update(state.model, state.optimizer, receipts,
                         plan_sha256=binding(plan_path)['sha256'], config=PPOConfig(**PPO), generator=state.generator,
                         remaining=lambda: phase_remaining(deadlines['update']), max_optimizer_steps=640)
@@ -1273,7 +1289,8 @@ def coordinator(args):
                 metadata = training.metadata(binding(plan_path)['sha256'], launch['original_parent']['policy'],
                     plan['opponent_checkpoint'], campaign_id=launch['campaign_id'], purpose='training')
                 checkpoint = f"selfplay-{launch['campaign_id']}-update-{progress.updates}"
-                with wall_limit(phase_remaining(deadlines['update'], 0)):
+                with (wall_limit(phase_remaining(deadlines['update'], 0))
+                  if math.isfinite(phase_remaining(deadlines['update'], 0)) else nullcontext()):
                     pair = training.save_checkpoint_pair(plan_path.parent / 'checkpoint', state.model, state.optimizer,
                         checkpoint=checkpoint, ppo_config=PPO, progress=progress, metadata=metadata,
                         opponent_pool=state.pool, sampler_state=sampler, generator=state.generator)
@@ -1926,9 +1943,10 @@ def prepare_ten(args, inspected):
             'Ten-game launch requires the existing 30 GiB disk reserve after artifact retirement')
     require(type(args.batches) is int and 1 <= args.batches <= 100,
             'Use between one and 100 complete batches')
-    seconds = args.hours * 3600
+    seconds = None if CYCLE_MODE and args.hours is None else args.hours * 3600
     maximum = 36000 * ((getattr(args, 'games', None) or 100) / 100) if CYCLE_MODE else 36000
-    require(math.isfinite(seconds) and 120 <= seconds <= maximum, 'Time budget exceeds the requested game allowance')
+    require(seconds is None or (math.isfinite(seconds) and 120 <= seconds <= maximum),
+            'Time budget exceeds the requested game allowance')
     checked, lineage = inspected['checked'], inspected['lineage']
     require((lineage is None) == (args.command == 'batch10-run'),
             'Use batch10-run for a new lineage, or batch10-continue for its latest complete checkpoint')
@@ -1957,7 +1975,8 @@ def prepare_ten(args, inspected):
         configuration=ten_configuration(checked, seconds, games=sizes[0] if sizes else None), execution=checked['execution'],
         policy_support=checked['experiment']['policy_support'], equipment_policy=checked['equipment_policy'],
         army_information=checked['army_information'], maximum_seconds=seconds,
-        hard_deadline_monotonic=now + seconds, hard_deadline_unix=wall + seconds,
+        hard_deadline_monotonic=None if seconds is None else now + seconds,
+        hard_deadline_unix=None if seconds is None else wall + seconds,
         **{key: checked[key] for key in ('binary', 'data', 'game_map', 'replay_binary', 'native', 'runtime', 'native_manifest')})
     if sizes:
         launch.update(requested_games=requested, batch_sizes=sizes)
@@ -2196,7 +2215,8 @@ def ten_coordinator(args):
             phase['status'] = 'updating'; write(output / 'report.json', report)
             update_progress = PPOProgress(ppo_progress_path(output, phase['name'])) if CYCLE_MODE else None
             state.model.train().requires_grad_(True)
-            with wall_limit(phase_remaining(deadlines['update'])):
+            with (wall_limit(phase_remaining(deadlines['update']))
+                  if math.isfinite(phase_remaining(deadlines['update'])) else nullcontext()):
                 result, rollouts = (training.live_native_update if CYCLE_MODE else training.native_update)(state.model, state.optimizer, receipts,
                     plan_sha256=binding(path)['sha256'], config=PPOConfig(**PPO), generator=state.generator,
                     remaining=lambda: phase_remaining(deadlines['update']),
@@ -2217,7 +2237,8 @@ def ten_coordinator(args):
                 training_games=batch_sizes[index])
             if update_progress is not None:
                 update_progress.phase('saving')
-            with wall_limit(phase_remaining(deadlines['update'], 0)):
+            with (wall_limit(phase_remaining(deadlines['update'], 0))
+                  if math.isfinite(phase_remaining(deadlines['update'], 0)) else nullcontext()):
                 pair = training.save_checkpoint_pair(path.parent / 'checkpoint', state.model, state.optimizer,
                     checkpoint=f"selfplay-ten-{launch['campaign_id']}-update-{next_progress.updates}",
                     ppo_config=PPO, progress=next_progress, metadata=metadata, opponent_pool=state.pool,
@@ -2316,7 +2337,7 @@ def main(argv=None):
         worker.add_argument('--plan', type=Path, required=True); worker.add_argument('--sha256', required=True)
         if name == '_capture':
             worker.add_argument('--index', type=int, required=True); worker.add_argument('--token', required=True)
-            worker.add_argument('--deadline', type=float, required=True); worker.add_argument('--wall-deadline', type=float, required=True)
+            worker.add_argument('--deadline', type=lambda value: None if value == 'None' else float(value), required=True); worker.add_argument('--wall-deadline', type=lambda value: None if value == 'None' else float(value), required=True)
     args = parser.parse_args(argv)
     if args.command.startswith('cycle-'):
         if args.games is not None:
@@ -2344,12 +2365,14 @@ def main(argv=None):
         if args.command.startswith('batch10-'):
             with (nullcontext() if args.command == 'batch10-check' else activity_lease()):
                 requested = getattr(args, 'games', None) if CYCLE_MODE else None
-                if args.hours is None:
-                    args.hours = (requested or 100) / 10
+                if args.hours is None and not CYCLE_MODE:
+                    args.hours = 10
                 max_hours = (requested or 100) / 10
                 inspected = ten_inspect()
                 require(type(args.batches) is int and 1 <= args.batches <= 100
-                        and math.isfinite(args.hours) and 120 <= args.hours * 3600 <= max_hours * 3600,
+                        and ((CYCLE_MODE and args.hours is None)
+                             or (args.hours is not None and math.isfinite(args.hours)
+                                 and 120 <= args.hours * 3600 <= max_hours * 3600)),
                         f'Use 1–100 batches and a finite budget up to {max_hours:g} hours')
                 if args.run_dir is not None:
                     require(inspected['lineage'] is not None and inspected['lineage']['runs']
@@ -2366,7 +2389,7 @@ def main(argv=None):
                     result = dict(status='passed', gameplay_performed=False, optimizer_updates=0,
                         checkpoint=inspected['state'].progress.updates,
                         exact_model_adam_rng_progress_sampler_pool=True,
-                        configuration=ten_configuration(inspected['checked'], args.hours * 3600,
+                        configuration=ten_configuration(inspected['checked'], None if args.hours is None else args.hours * 3600,
                             games=cycle_batch_sizes(requested)[0] if requested is not None else None),
                         training_games=args.batches * cycle_games(), held_out_games=(args.batches + int(inspected.get('pending_evaluation', False))) if CYCLE_MODE else 0,
                         total_physical_games=args.batches * cycle_width() + int(inspected.get('pending_evaluation', False)),

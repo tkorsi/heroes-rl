@@ -324,11 +324,15 @@ void ContextualEvidence::beforeEvent(const std::string & actor, const std::strin
 		rejectSealedEvent(actor, operation);
 		return;
 	}
-	const bool ready = changed.wait_for(lock, std::chrono::seconds(30), [&]
+	const auto readyPredicate = [&]
 	{
 		return stopping || (cursor < records.size() && records[cursor]["kind"].String() == "enter"
 			&& records[cursor]["actor"].String() == actor && records[cursor]["operation"].String() == operation);
-	});
+	};
+	const char * unlimited = std::getenv("VCMI_EXPERIMENT_UNLIMITED_WAIT");
+	const bool ready = unlimited && std::string(unlimited) == "1"
+		? (changed.wait(lock, readyPredicate), true)
+		: changed.wait_for(lock, std::chrono::seconds(30), readyPredicate);
 	if(!ready) fail("Contextual transaction scheduler timed out at record " + std::to_string(cursor));
 	if(stopping) throw std::runtime_error(error.empty() ? "Contextual replay prefix finished" : error);
 }
@@ -478,11 +482,15 @@ void ContextualEvidence::waitForProgress()
 {
 	std::unique_lock lock(mutex);
 	const auto previous = cursor;
-	if(!changed.wait_for(lock, std::chrono::seconds(30), [&]
+	const auto readyPredicate = [&]
 	{
 		return cursor != previous || stopping || (cursor < records.size()
 			&& records[cursor]["kind"].String() == "enter" && records[cursor]["actor"].String() == "client");
-	}))
+	};
+	const char * unlimited = std::getenv("VCMI_EXPERIMENT_UNLIMITED_WAIT");
+	if(unlimited && std::string(unlimited) == "1")
+		changed.wait(lock, readyPredicate);
+	else if(!changed.wait_for(lock, std::chrono::seconds(30), readyPredicate))
 		fail("Contextual replay made no progress at record " + std::to_string(cursor));
 }
 

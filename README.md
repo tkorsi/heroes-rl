@@ -64,9 +64,10 @@ The current cycle uses `hero-management-v4`: both starting taverns remain built,
 and native calendar spawning of new neutral armies is restored. This allows
 spawning when native special-month conditions apply, not every day or every month.
 Initial neutrals, their growth, armies, resources and all other rules are unchanged.
-The latest complete checkpoint is 1,763. The next requested manual run is
-`./run-100-games.command 200`: two updates of 100 and one final diagnostic,
-with a default shared allowance of 20 hours. Training has not been launched.
+The latest complete checkpoint is 1,764. The November 12 manual 200-game run
+published its first update, then its original 20-hour deadline interrupted the
+second update after overnight sleep. No 1,765 checkpoint or final diagnostic
+was published. New manual cycles have no default time limit.
 
 The earlier v3 variant disabled calendar spawning and was used through 1,763.
 The v4 selector retains its pinned native acceptance, including the successful
@@ -144,7 +145,7 @@ Use the existing `run-100-games.command` filename (kept for shortcuts):
 ./run-100-games.command                 # Manually launch 500 training games
 ./run-100-games.command 1000             # Manually launch 1,000
 ./run-100-games.command --games 250      # Any integer from 10 through 1,000
-./run-100-games.command 500 --hours 30   # Override the shared time allowance
+./run-100-games.command 500 --hours 30   # Opt into a 30-hour wall deadline
 ```
 
 Double-clicking starts 500 games. The script restores the latest complete
@@ -157,16 +158,21 @@ an outstanding diagnostic from an interrupted prior launch is recovered first.
 An interruption preserves all completed updates, but not an incomplete batch.
 The existing raw `--cycles` interface retains its historical per-cycle diagnostic.
 
-The default overall allowance is proportional: ten hours per 100 games
-(500: 50 hours; 1,000: 100 hours; 10: one hour). `--hours` can shorten that
-allowance. This is a safety deadline, not an estimate of completion time.
+Cycles have no default campaign, capture, policy-response or replay time limit.
+Sleep pauses computation; when macOS wakes, the same processes continue from
+their in-memory state. A genuine stall also waits until manual cancellation;
+process exits, protocol errors and resource limits still fail the run. Optional
+`--hours` explicitly selects the historical bounded mode (up to ten hours per
+100 games), whose wall deadline includes sleep.
 On macOS the launcher runs training under `caffeinate -is`: idle system sleep
 is blocked, with an additional system-sleep assertion on AC power. Display
 sleep is allowed and follows the existing macOS display timer. Assertions end
-when the training command exits. Keep the lid open, connect AC power, and leave
-the Terminal process running; minimizing it or locking the screen is fine.
-This does not override closed-lid or explicitly requested sleep. No global
-power-management setting is changed.
+when the training command exits. Leave Terminal running; minimizing it or
+locking the screen is fine. Closed-lid or explicitly requested sleep can still
+pause training; it does not perform games while asleep. Keep power connected
+to avoid battery exhaustion. Restart, power loss or killing the process loses
+the incomplete batch; the latest published full checkpoint remains recoverable.
+No global power-management setting is changed.
 All gameplay still stops at 365 days with 158,720 ordinary plus 5,120 reserved
 choices per player. Ten rolling actors, disk/RAM reserves and PPO/Adam remain.
 

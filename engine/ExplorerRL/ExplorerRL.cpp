@@ -194,7 +194,7 @@ void ExplorerRL::initGameInterface(std::shared_ptr<Environment> ENV, std::shared
 	if(contextual && contextualEvidenceEnabled())
 		explorer_rl::ContextualEvidence::live(episode, townEconomy, armyTransfer, heroRecruitment, armyManagement, adventureDialogs, expandedInterface, ownArmyInformation);
 	profile = environmentInteger("EXPLORER_RL_PROFILE", 0, 0, 1) == 1;
-	timeoutSeconds = environmentInteger("EXPLORER_RL_TIMEOUT", 30, 1, 300);
+	timeoutSeconds = environmentInteger("EXPLORER_RL_TIMEOUT", 30, 0, 300);
 	snapshotEvery = environmentInteger("EXPLORER_RL_SNAPSHOT_EVERY", 1, 0, 1000000);
 	if(const char * replay = std::getenv("VCMI_EXPERIMENT_REPLAY"); replay && std::string(replay) == "1")
 	{
@@ -301,7 +301,8 @@ JsonNode ExplorerRL::receiveMessage()
 		return explorer_rl::ContextualEvidence::current()->replayResponse(playerID.getNum());
 	const auto endpoint = std::atomic_load(&policyTransport);
 	if(!endpoint) throw std::runtime_error("Policy transport is not connected");
-	auto response = endpoint->receive(std::chrono::steady_clock::now() + std::chrono::seconds(timeoutSeconds));
+	auto response = endpoint->receive(timeoutSeconds == 0 ? native_session::Deadline::max()
+		: std::chrono::steady_clock::now() + std::chrono::seconds(timeoutSeconds));
 	ExperimentEventGuard event(evidenceActor.c_str(), "receive");
 	if(auto * evidence = explorer_rl::ContextualEvidence::current())
 		evidence->response(playerID.getNum(), response);
@@ -802,6 +803,11 @@ bool ExplorerRL::executeRequest(const std::function<void()> & request, bool wait
 			const bool accepted = acknowledged->second;
 			acknowledgements.erase(acknowledged);
 			return accepted;
+		}
+		if(timeoutSeconds == 0)
+		{
+			changed.wait(lock);
+			continue;
 		}
 		if(changed.wait_until(lock, deadline) == std::cv_status::timeout)
 		{

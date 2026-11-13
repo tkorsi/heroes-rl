@@ -72,7 +72,7 @@ def write_new(path, value):
 
 def time_left(remaining):
     value = remaining()
-    if type(value) not in (int, float) or not 0 < value < float("inf"):
+    if type(value) not in (int, float) or not 0 < value <= float("inf"):
         raise TimeoutError("Self-play verification/update deadline exhausted")
     return value
 
@@ -350,8 +350,9 @@ def verify_training_capture(bound, learner_model, opponent_model, *, replay_bina
     final = contextual_replay.bound_evidence(folder, manifest, Path(replay_binary).resolve())
     policies = reconstruct_policies(collected, models, row["policy_seeds"], remaining)
     output = folder / "training-verification"
+    timeout = time_left(remaining)
     replay = contextual_replay.verify_episode(folder, binary=replay_binary, data=data,
-                                             output=output, timeout=time_left(remaining))
+                                             output=output, timeout=None if timeout == float("inf") else timeout)
     require(replay.get("schema") == contextual_replay.REPORT_SCHEMA and replay.get("verified") is True,
             "Exact two-player native replay failed")
     # verify_episode independently reconstructs the transport histories before
