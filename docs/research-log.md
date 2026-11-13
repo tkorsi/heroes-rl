@@ -4504,3 +4504,169 @@ Evidence: private `Heroes-artifacts/run-investigations/2026-11-13-ppo-profile/` 
 - `constants`: `38c9afb57aad285d4dd09690f0203c28ed02cf8c3e1f7853d95b9b007c833ebe`.
 
 At completion the active checkout remained clean at 9ca85df; the original run remained running, first batch admitted 100 games and checkpoint 1765 verified, second batch still updating. No active processes, launch configuration, source, weights or checkpoints were changed. Documentation is synchronized from a separate worktree/branch only.
+
+
+## 2026-11-13 — Isolated FP32 Metal PPO rewrite and bounded acceptance
+
+**Question and preregistered criteria.** The user requested a fivefold complete
+PPO update speedup using the M4 Max GPU, subsequently accepting small FP32
+numerical differences while retaining PPO and checking quality. Hypotheses and
+attempts were recorded before execution in the private investigation journal.
+Batch independent semantic-tree, map and policy-head operations, keep weights,
+gradients and Adam moments on MPS, and fuse recurrent/tree operations in Metal.
+Keep full current-weight prefixes, 16 decisions/window, two windows/minibatch,
+one epoch, losses, clipping, learning rate, sampler order and parent unchanged.
+Require finite outputs/gradients, identical action supports, compatible CPU
+checkpoint state, and report preparation plus synchronized update time. A
+kernel-only speedup does not satisfy the fivefold acceptance criterion.
+
+**Identity and scope.** Isolated worktree `Heroes-metal-ppo`, branch
+`codex/metal-ppo`, based on `08184ad`; CPU source/control `9ca85df`. Hardware:
+M4 Max, 16 CPU cores and 40 GPU cores, 128 GiB; local PyTorch 2.9.1 MPS shader API.
+Private Python runtime: `Heroes-artifacts/python/next-launch-numpy235-v1/venv`.
+Native reference/recipe validator: `remove-telemetry-v1-attempt1/manifest.json`,
+SHA-256 `53970605c4560bbe14b655442df373d3577efef3de0c5f824b95cfa22a74b573`.
+Parent 1764 and immutable copied episode 17 (995 decisions, 10,702 frames) and
+100 (5,975 decisions, 55,784 frames), with original bound RNG/rollout identity
+from the November 13 PPO profile plans. No new seeds, games, training admission
+or official checkpoint publication. Workers ran sequentially at nice 19 with
+owned deadlines and a 25% recommended-MPS-memory cap. The active official CPU
+campaign shares hardware, so timings are observations, not isolated-machine
+performance guarantees.
+
+Private evidence root:
+`Heroes-artifacts/run-investigations/2026-11-13-metal-ppo/`.
+Each named timed attempt has a log, owned-process evidence and, on completion,
+`result.json` plus disposable state. Later attempts also snapshot source hashes;
+production-candidate attempts snapshot all changed numerical source. Commands
+used the private `run.py NAME 16`, adding `--gpu-optimizer` for prototypes,
+`--long --full-long` for the 187-step update, `--steps=N` for explicitly partial
+probes, and `--production` for the real candidate API. These workers, validation
+scripts, captures and weights remain private, outside the published diff.
+
+**Implementation and corrections.** The candidate batches DAG nodes by depth,
+uses CSR pooled-child kernels and a single gradient arena, pads independent
+text/ordered sequences without truncation, and preserves their true endpoints.
+Persistent Metal GRU kernels use FP32 operations; a synchronized eight-kernel
+microcomparison selected the 16-lane reduction for long single-history prefixes
+(13.995 ms per 10,000 transitions versus 56.006 ms for the initial kernel).
+The single-SIMD-group alternative was slower (75.979 ms) and was rejected.
+Cross-window deterministic encodings share work only at current weights.
+Static map tensor recipes are reused exactly, while own-observation semantic
+traversal and recurrent states remain frame-specific. Exact recipe comparison
+passed all 13,679 nodes and 10,702 frames; 4,488 map frames used 2,449 unique
+static-map inputs. Prefix CNN work is sliced to required maps; immutable plans
+are cached, not encoded values or recurrent states across updates.
+
+The first prototype failed before an optimizer step because empty and singleton
+child buckets collided and produced nonfinite pooling. The existing finiteness
+gate caught it. A later first-step gradient discrepancy (relative L2 0.005437)
+localized to embedding padding rows: a local torch 2.9.1 MPS probe accumulated
+row-zero gradients where CPU excluded them. Explicitly excluding that row
+reduced first-step relative gradient error to approximately 5e-6; this is a
+local-version observation, not a claim about every MPS release. The first full
+long GPU attempt hit the 26.88 GiB allocator cap after 175 completed steps.
+A map-dedup variable shadowed the plan-cache key and defeated eviction; this was
+fixed, along with delayed context release. Subsequent full runs completed with
+bounded live tensor allocation (about 150–181 MB in prototype probes). An initial
+prefix-slicing probe took 16.187 s for four steps because attribute offsets were
+constructed quadratically; linear cumulative sums corrected that mistake.
+
+The internal `_update(use_metal=True)` candidate requires checked prepared
+histories and the pinned native validator. It restores parameters, gradients
+and Adam tensors to CPU and restores the previous foreach setting even when
+an update raises. The ordinary CPU default and every training launcher retain
+their previous selection. This branch is not an accepted campaign runtime.
+
+**Attempt ledger.** Times below separate update and setup; partial, profiled and
+cold-cache probes are not full-update speed comparisons. Earlier prototype
+setup omitted the C++ recipe constructor; final candidate setup includes it
+and owned immutable inputs. Failed attempts above have no accepted result.
+
+| Attempt | Steps | Update seconds | Setup seconds |
+| --- | ---: | ---: | ---: |
+| `cpu-diagnose` | 1 | 1.197 | 5.174 |
+| `cpu-first-step` | 1 | 1.165 | 5.217 |
+| `cpu-long-full-a` | 187 | 394.104 | 27.247 |
+| `metal-allgpu-first` | 1 | 1.678 | 4.826 |
+| `metal-allgpu-full-a` | 32 | 10.486 | 4.847 |
+| `metal-batched-full-a` | 32 | 33.845 | 4.935 |
+| `metal-csr-first` | 1 | 0.973 | 4.821 |
+| `metal-csr-full-a` | 32 | 15.022 | 5.193 |
+| `metal-device-fullplan` | 4 | 3.063 | 25.985 |
+| `metal-device-partialplan` | 4 | 2.343 | 25.421 |
+| `metal-diagnose` | 1 | 1.550 | 4.910 |
+| `metal-first-step-b` | 1 | 6.272 | 4.964 |
+| `metal-four-profile` | 4 | 4.836 | 5.039 |
+| `metal-four-steps` | 4 | 6.969 | 5.132 |
+| `metal-fused-first` | 1 | 1.277 | 4.790 |
+| `metal-joint-first` | 1 | 0.909 | 7.687 |
+| `metal-joint-full-a` | 32 | 9.896 | 4.758 |
+| `metal-long-full-b` | 187 | 103.204 | 26.151 |
+| `metal-mapreuse-full-a` | 32 | 8.601 | 4.719 |
+| `metal-padding-fixed` | 1 | 1.374 | 5.055 |
+| `metal-production-failure-cleanup` | 1 | 1.281 | 5.470 |
+| `metal-production-long` | 187 | 88.285 | 26.834 |
+| `metal-production-medium` | 32 | 7.763 | 5.112 |
+| `metal-simd-first` | 1 | 0.940 | 4.740 |
+| `metal-sliced-long` | 187 | 86.654 | 25.953 |
+| `metal-sliced-prefix` | 4 | 16.187 | 26.298 |
+| `metal-static-first` | 1 | 0.730 | 5.063 |
+| `metal-tree-first` | 1 | 1.604 | 4.786 |
+| `metal-tree-full-a` | 32 | 26.405 | 5.109 |
+| `metal-warp-long-a` | 187 | 136.102 | 26.101 |
+| `metal-warp-medium-a` | 32 | 10.005 | 4.908 |
+| `metal-wide-full-a` | 32 | 12.587 | 4.679 |
+
+**Complete candidate results.** The actual candidate API completed all 32 steps
+in 7.763 s plus 5.112 s setup (12.875 s total), versus two CPU controls of
+48.351 s and 47.386 s total: 3.68–3.76x end-to-end, 5.46–5.57x kernel-only.
+The 187-step candidate completed in 88.285 s plus 26.834 s setup (115.119 s),
+versus CPU 394.104 + 27.247 = 421.351 s: 3.66x end-to-end and 4.46x kernel-only.
+The preceding private prefix-sliced implementation measured 112.608 s total
+(3.74x); do not select that lower number as a production guarantee.
+**The requested fivefold complete-update target is not met.** No claim is made
+about an entire 100/200/500-game campaign. Sequential nonlinear recurrence and
+CPU preparation remain limits; changing PPO minibatch size or truncating
+history to increase utilization would change the experiment.
+
+**Numerical and behavioral validation.** Five GRU cases, including a 1,024-step
+sequence, plus same-history/cross-history head/tree/map cases passed: maximum
+output error <=4.77e-7 and relative gradient L2 <=5.27e-7; padding rows stayed
+zero. Full-update CPU/GPU RNG states, Adam step counts and optimizer settings
+matched exactly, and parameters/moments remained finite. Model relative L2
+was 1.65e-5 after 32 steps and 1.63e-4 after 187. Maximum long-update parameter
+difference was 0.01241 in the final coordinate-logit scalar bias (a common logit
+offset); maximum coordinate weight difference was 0.002107. This is not bitwise
+training equality and must not be hidden behind first-step tolerances.
+
+Offline held-out comparison evaluated both resulting policies through the same
+Metal inference implementation, separately from CPU/Metal operator parity.
+After training on episode 17, held-out episode 100 used 128 decisions and 223
+conditionals: argmax 223/223, mean KL 4.38e-14, max KL 4.29e-13, value RMSE
+2.37e-7. After training on episode 100, held-out episode 17 used 128 decisions
+and 227 conditionals: argmax 227/227, mean KL 2.37e-11, max KL 3.47e-10, value
+RMSE 4.30e-6. Both passed preregistered matching-support, >=0.999 argmax,
+mean KL <=1e-6, max KL <=1e-5 and value RMSE <=1e-3 criteria. Evidence:
+`production-numerical-checks.json`, `production-state-comparison.json`,
+`heldout-after-medium.json`, `heldout-after-long.json`. This is bounded offline
+policy agreement, not proof of preserved playing strength over future updates.
+Paired gameplay and campaign-scale memory/performance acceptance remain open.
+
+**Existing checks and failure cleanup.** All 40 existing tests passed in 6.404 s
+(`tests.test_native_learner_kernels`, `tests.test_native_replay_tape`,
+`tests.test_contextual_ppo`), using the explicitly pinned native manifest; no
+new tests were published. `metal-production-failure-cleanup` deliberately raised
+a private stop exception after one completed optimizer step, returned all model
+and Adam tensors to CPU, restored foreach configuration and verified owned
+cleanup (1.281 s update, 5.470 s setup). This
+confirms device/config cleanup, not rollback of an already applied optimizer
+step. Complete medium/long updates made the same CPU restoration assertions.
+
+At 2026-11-13T19:12:18+00:00,
+the protected checkout remained clean at `9ca85df`; the read-only official
+report still showed `running` and latest published checkpoint 1765. No official
+process, checkpoint, capture, runtime selector or launcher was changed by this
+investigation. Candidate code and compact documentation are intended for the
+explicit experimental branch only; promotion, paired gameplay and the fivefold
+end-to-end criterion remain unfulfilled.

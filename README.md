@@ -280,6 +280,24 @@ decisive self-play games alone do not establish stronger play; evaluation agains
 frozen 1,753 is recorded as a future option and is currently disabled. Meaningful
 research steps and corrections belong in [the research journal](docs/research-log.md).
 
+## Experimental Metal PPO backend
+
+The `codex/metal-ppo` branch adds an explicit, offline numerical candidate for
+Apple Silicon, using FP32 MPS tensors and custom Metal GRU/tree kernels. It keeps
+PPO settings, full current-weight recurrent prefixes, native recipe validation,
+and the CPU checkpoint/Adam format. It currently supports feature size 32 and
+hidden size 64 and requires the tested PyTorch 2.9.1 MPS shader API. It is not
+selected by any training launcher; the active CPU campaign remains unchanged.
+
+The internal `_update(..., use_metal=True)` entry point requires an explicit
+native binding and histories prepared through `metal_backend.checked_backend`.
+It restores model and Adam tensors to CPU, including on failure, and restores the
+optimizer's previous `foreach` setting. Its process uses a 25% MPS recommended
+memory limit. Raw captures, weights, benchmark workers and numerical probes stay
+in private storage. The research journal records measurements and acceptance
+limits; kernel-only speedups do not establish the requested fivefold complete
+update speedup or equivalent playing strength.
+
 ## Source layout
 
 | Path | Responsibility |

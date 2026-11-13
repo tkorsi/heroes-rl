@@ -93,7 +93,12 @@ class _RecipeDistribution(ContextualDistribution):
         return selected
 
 
-def _map_recipe(model, observation, arena):
+def _map_recipe(model, observation, arena, cache=None):
+    key = (observation.size, observation.tiles, tuple(hero.position for hero in observation.heroes),
+           tuple(town.position for town in observation.towns),
+           tuple((obj.position, obj.kind, obj.subtype, obj.owner) for obj in observation.objects))
+    if cache is not None and key in cache:
+        return {**cache[key], 'own': arena.add(observation_semantics(observation))}
     width, height, _ = observation.size
     if width > model.config.max_map_side or height > model.config.max_map_side:
         raise ValueError("Map exceeds declared model configuration")
@@ -110,10 +115,12 @@ def _map_recipe(model, observation, arena):
     objects = sorted(observation.objects, key=lambda obj: (obj.position, obj.kind, obj.subtype, obj.owner))
     attributes = [[float(value >> bit & 1) for value in (obj.kind, obj.subtype) for bit in range(32)]
                   + [float(obj.owner == owner) for owner in ("self", "opponent", "neutral")] for obj in objects]
-    return {"width": width, "height": height, "terrain": model._long(terrain), "road": model._long(road),
+    result = {"width": width, "height": height, "terrain": model._long(terrain), "road": model._long(road),
             "flags": model._float(flags), "object_attributes": model._float(attributes).reshape(-1, 67),
             "object_indices": model._long([obj.position[1] * width + obj.position[0] for obj in objects]),
             "own": arena.add(observation_semantics(observation))}
+    if cache is not None: cache[key] = {k: v for k, v in result.items() if k != 'own'}
+    return result
 
 
 def require_native_model(model):
@@ -194,6 +201,7 @@ def compile_history(model, inputs, records, backend):
     if len(by_seq) != len(records):
         raise ValueError("Duplicate native decision recipe")
     nodes, frames, shared = [], [], {}
+    map_cache = {}
     for seq, frame in enumerate(inputs):
         model._check_step(frame, model.initial_state())
         arena = _Arena(nodes, shared)
@@ -203,7 +211,7 @@ def compile_history(model, inputs, records, backend):
             frames.append({"root": -1, "map": None, "conditionals": None})
             continue
         # Preserve the order in which the reference populates its tree cache.
-        map_recipe = None if frame.observation is None else _map_recipe(model, frame.observation, arena)
+        map_recipe = None if frame.observation is None else _map_recipe(model, frame.observation, arena, map_cache)
         root = arena.add(frame.semantics)
         conditionals = None
         if seq in by_seq:

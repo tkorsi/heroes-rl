@@ -283,30 +283,38 @@ def ppo_update(model, optimizer, rollouts, *, config=PPOConfig(), generator):
     return _update(model, optimizer, rollouts, config=config, generator=generator)
 
 
-def _update(model, optimizer, rollouts, **options):
-    pools = []
-    try:
-        return _update_kernel(model, optimizer, rollouts, pools=pools, **options)
-    finally:
+def _update(model, optimizer, rollouts, *, use_metal=False, **options):
+    if type(use_metal) is not bool:
+        raise ValueError("Metal selection must be explicit")
+    device = nullcontext()
+    if use_metal:
+        if NATIVE_EXECUTION is None or options.get('prepared_native_inputs') is None:
+            raise ValueError("Metal update requires an explicit native binding and checked prepared histories")
+        from .metal_backend import training_device
+        device = training_device(model, optimizer)
+    with device:
+        pools = []
         try:
-            # The experiment's shared encodings never outlive their minibatch graph, nor do replayed text
-            # leaves; replay threads stop before the prefix helpers do.
-            model.__dict__.pop("_graph_memo_state", None)
-            deferred = model.__dict__.pop("_text_replay_deferred", None)
-            try:
-                if deferred is not None:
-                    deferred.close()
-            finally:
-                for leaf in model.__dict__.pop("_leaf_replay_state", {}).values():
-                    leaf.release()
+            return _update_kernel(model, optimizer, rollouts, pools=pools, use_metal=use_metal, **options)
         finally:
-            # Prefix helpers end with the update, whatever its outcome.
-            for pool in pools:
-                pool.close()
-
+            try:
+                # The experiment's shared encodings never outlive their minibatch graph, nor do replayed text
+                # leaves; replay threads stop before the prefix helpers do.
+                model.__dict__.pop("_graph_memo_state", None)
+                deferred = model.__dict__.pop("_text_replay_deferred", None)
+                try:
+                    if deferred is not None:
+                        deferred.close()
+                finally:
+                    for leaf in model.__dict__.pop("_leaf_replay_state", {}).values():
+                        leaf.release()
+            finally:
+                # Prefix helpers end with the update, whatever its outcome.
+                for pool in pools:
+                    pool.close()
 
 def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step=None, after_step=None, max_optimizer_steps=None,
-                   pools=None, prepared_native_inputs=None):
+                   pools=None, prepared_native_inputs=None, use_metal=False):
     """Shared numerical kernel; callers must establish admission before entering.
 
     The public default entry point remains synthetic-only. Gameplay callers bind
@@ -336,12 +344,23 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
     if NATIVE_EXECUTION is not None:
         from .native_backend import load_backend
         from .native_recipes import compile_history, require_native_model
-        require_native_model(model)
+        if use_metal:
+            import copy
+            if any(p.device.type != 'mps' or p.dtype != torch.float32 for p in model.parameters()):
+                raise ValueError('Metal update requires uniform MPS FP32 parameters')
+            require_native_model(copy.deepcopy(model).cpu())
+        else:
+            require_native_model(model)
         if (type(NATIVE_EXECUTION) is not dict or set(NATIVE_EXECUTION) != {"manifest", "sha256", "prefix_threads"}
                 or type(NATIVE_EXECUTION["prefix_threads"]) is not int or not 1 <= NATIVE_EXECUTION["prefix_threads"] <= 256
                 or PREFIX_HELPERS or EXPERIMENTS):
             raise ValueError("Invalid or conflicting native learner execution")
         native_backend = load_backend(NATIVE_EXECUTION["manifest"], NATIVE_EXECUTION["sha256"])
+        if use_metal:
+            from .metal_backend import checked_backend, _History
+            if any(type(program) is not _History for program in prepared_native_inputs):
+                raise ValueError('Metal update requires checked Metal history recipes')
+            native_backend = checked_backend(native_backend)
         native_model = native_backend.NativeModel(dict(model.named_parameters()), model.config.feature_size,
                                                  model.config.hidden_size)
         if pools is not None:
@@ -401,7 +420,7 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
             if native_model is not None:
                 native_model.begin_text_replay(max(0, NATIVE_EXECUTION["prefix_threads"] - 1))
             boundaries = {}
-            if model._can_cache_prefix():
+            if native_model is not None or model._can_cache_prefix():
                 for window in selected:
                     boundaries.setdefault(window.rollout_index, []).append(window.start_seq)
             prefixes = {}
