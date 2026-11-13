@@ -4455,3 +4455,52 @@ All eleven private trials completed with owned cleanup; ten were full updates
 and one was partial profiling. Zero official updates, admitted samples or game
 seeds were produced by this study. The active checkout and its settings remain
 unchanged. Only these compact findings are published on the documentation branch.
+
+## 2026-11-13 — Follow-up exact PPO experiments and Metal feasibility
+
+Question and scope: find real backward/history-recomputation speedups without changing the learning result. The user explicitly authorized isolated experiments and prohibited changes to the active run. Before each experiment, hypotheses and acceptance criteria were recorded in the private investigation journal. Acceptance requires exact model, final gradients, Adam state, minibatch generator, Torch/Python RNG and numerical PPO report, plus repeated unprofiled timing comparisons. A one-map timing signal is not sufficient to publish an optimization into the active campaign.
+
+Source/runtime identity: immutable reference source `9ca85df0721c99605a466f23eefe932b196011f4`; copied checkpoint 1764 policy/resume pair, existing `plan.json` and `plan-long.json` bind hashes, PPO settings, seeds/RNG and episode inputs. No new game seeds were allocated. Same episode 17 (995 decisions, 10702 frames, 32 optimizer steps) and episode 100 (5975 decisions, 55784 frames; intentional stop after 16 steps) as the preceding investigation. CPU FP32, ATen intraop 1, native workers 16, nice 19, individual 300-second owned-worker bounds. Private source copies/builds never replaced the production library or acquired campaign locks. Host: Apple M4 Max, 16 CPU cores, 40 GPU cores; PyTorch 2.9.1.
+
+Hypotheses and implementations, all private:
+
+- `slots`: compile reusable storage slots for nonoverlapping backward input-buffer lifetimes. Preserve ATen nodes, hooks, eligibility checks, graph validation, execution schedule and addition order.
+- `chunks`: assign 32 consecutive prefix frames per worker scheduling claim to improve locality and reduce scheduling overhead. Retain current-weight recomputation, per-worker canonical caches, their existing 65536-entry clearing threshold, and chronological recurrent transitions.
+- `constants`: compile immutable byte-index/numeric FP32 input tensors once per history, preserving the original double-to-float conversion. No weight-dependent state is cached across optimizer updates.
+
+Observed unprofiled kernel times (seconds; setup excluded):
+
+| Trial | Kernel | Prefix | Backward |
+| --- | ---: | ---: | ---: |
+| `slots-medium-a` | 41.999 | 6.493 | 28.365 |
+| `follow-control-a` | 43.274 | 7.037 | 28.695 |
+| `chunks-medium-a` | 41.328 | 5.685 | 28.780 |
+| `slots-medium-b` | 41.963 | 6.323 | 28.459 |
+| `follow-control-b` | 42.386 | 6.128 | 29.014 |
+| `chunks-medium-b` | 41.837 | 5.697 | 29.099 |
+| `constants-medium-a` | 42.286 | 6.230 | 28.553 |
+| `follow-long-control-a` | 27.812 | 12.281 | 12.504 |
+| `chunks-long-a` | 26.485 | 10.616 | 12.604 |
+| `constants-long-a` | 28.160 | 12.292 | 12.687 |
+| `chunks-long-b` | 25.326 | 9.936 | 12.375 |
+| `follow-long-control-b` | 28.171 | 12.236 | 13.105 |
+
+All 12 trials completed with owned cleanup. Seven full medium updates matched the reference model, final gradients, Adam, all recorded RNG state and numerical PPO report exactly; five deliberately partial long trials matched the reference state after 16 steps exactly. No checkpoint was admitted or published. All 18 existing replay-tape tests passed for slots; all 16 existing native learner kernel tests passed for chunks. Tests/probes/builds/weights remain private and are not part of the published diff.
+
+The chunk candidate reduced mean full medium update time from 42.830 to 41.583 seconds (2.91% less time; 1.030x speed), and mean partial long update from 27.992 to 25.905 seconds (7.45% less time; 1.081x speed). Prefix time fell 13.55% and 16.17%, respectively. The long comparison included the reverse-order pair: control/chunks, then chunks/control. This is a repeatable small signal on these copied histories, not a measured full 100-game speedup. Only two repeats per condition, concurrent official training, low-priority scheduling and different history sharing in real minibatches limit extrapolation. No substantial backward speedup was established. The slots variant's small overall difference is not attributable robustly to backward; the constants variant did not improve the long case. Keep all candidates isolated; no production source or execution manifest was changed.
+
+Metal feasibility: a separate synthetic FP32 GRUCell probe used the actual model dimensions (input 96, hidden 64), 128 sequential transitions plus backward, seed 43161, identical weights/inputs, one warmup and three timed repeats per device. MPS synchronization bracketed timed GPU work. Median CPU 10.082 ms versus MPS 47.648 ms: this naive small sequential workload was 4.726x slower on GPU. Outputs and gradients were not bit-identical; maximum observed absolute difference 4.768e-7. This does not establish worse learning quality, nor predict a custom fused Metal implementation or whole PPO performance.
+
+A full Metal rewrite has no measured end-to-end speedup yet. The CPU-specific native graph/tape cannot be switched by changing a device string. Batching/fusing independent work, reducing dispatches, retaining device-resident data and preserving required recurrent/gradient ordering need a separate implementation and evaluation. Apple explicitly recommends batching work and reusing buffers; PyTorch does not guarantee CPU/GPU bitwise identity. Under the present strict equality criterion, no Metal speedup can currently be accepted.
+
+Conditional planning arithmetic, not a Metal forecast: the earlier first 100-game batch spent 13750 seconds in PPO and approximately 1760 seconds collecting/preparing. If all PPO became 2x or 5x faster with the other work unchanged, that collection/preparation+update portion would improve 1.80x or 3.44x. The final diagnostic is excluded. These factors do not establish that either PPO acceleration is achievable; the measured naive MPS probe points in the opposite direction.
+
+Primary references: [Apple MPS tuning hints](https://developer.apple.com/documentation/metalperformanceshaders/tuning-hints), [PyTorch numerical accuracy](https://docs.pytorch.org/docs/2.15/notes/numerical_accuracy.html).
+
+Evidence: private `Heroes-artifacts/run-investigations/2026-11-13-ppo-profile/` contains `followup-summary.json`, individual result/state/progress files, source snapshots, patches, build manifests, ownership logs, `slots-tests.log`, `chunks-tests.log`, and `metal-probe.py/json`. Existing plans bind the source parent, exact checkpoint pair, RNG and copied game inputs. Native manifest SHA256 values:
+
+- `slots`: `61931bdbd64045c5eda8984279aec73af8f358f0514d2e09f11d49376b669c99`.
+- `chunks`: `e46ea2b67f72ddb9d2ea15a0f8a7bd4dffc7258a74fcb94b3614816a731acc2f`.
+- `constants`: `38c9afb57aad285d4dd09690f0203c28ed02cf8c3e1f7853d95b9b007c833ebe`.
+
+At completion the active checkout remained clean at 9ca85df; the original run remained running, first batch admitted 100 games and checkpoint 1765 verified, second batch still updating. No active processes, launch configuration, source, weights or checkpoints were changed. Documentation is synchronized from a separate worktree/branch only.
