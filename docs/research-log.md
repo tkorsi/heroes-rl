@@ -4309,3 +4309,47 @@ executed pass. The reported 112 executed passes comprise 22 deadline, 78
 headless and 12 training tests; controller tests add 35 passes and the two
 previously described fixture errors. Native process cleanup was exercised by
 the actual diagnostic runs and the separate unlimited cancellation control.
+
+## 2026-11-13 — Complete the interrupted-run retention review
+
+The user's manual 200-game launch stopped before retirement with the missing
+retention-review marker. The earlier sleep-resume work recorded the interruption
+but omitted this required completion marker. Its `--check` preview did not
+exercise the retirement gate; describing that preview as full launch readiness
+was incomplete. No new training, seed allocation or deletion occurred at this
+failure. Complete the actual review without bypassing the retention guard.
+
+Reviewed `selfplay-ten-then-check/run-20261112T155949Z-e563c702` launch, report,
+shutdown, checkpoint publication and both batches. Source be4e87a; runtime
+`local-v8-taverns-static-neutrals-v1`; v4 map with starting Taverns and restored
+native calendar spawning; parent 1,763. Reservation offset 1,446 consumed 201
+slots (engine base 1,980,001,446; policy base 1,982,002,892), including the unused
+final diagnostic slot. Both batches captured 100/100 games without capture
+failures. First-batch engine outcomes: Blue 61, Red 33, six day cutoffs; second:
+Blue 63, Red 26, eleven day cutoffs. These are unverified training outcomes,
+not replay-verified wins or evidence of learning.
+
+Only the first batch was admitted: 100 games, 248,320 samples, 7,785 optimizer
+steps and fully published checkpoint 1,764. The second update rolled back at
+the old wall deadline after 7,858/8,637 minibatches. No 1,765 or final diagnostic
+exists. Reported coordinator elapsed time is 31,212.76 seconds; the original
+72,000-second wall allowance also included overnight sleep. Shutdown verifies
+owned cleanup and unchanged protected inputs. A fresh manual `200 --check`
+restores the exact complete 1,764 model, Adam, RNG, sampler, progress and pool;
+no seeds are reserved, no files retired, and default time allowances are null.
+
+The important results and failure are now recorded. The previous raw run may
+be retired at the user's next manual launch, only after the existing retirement
+code copies and restore-tests the complete checkpoint pair in retained storage.
+The outstanding 1,764 diagnostic remains pending and uses fresh seeds; the
+interrupted batch is not reused. Next unreserved offset remains 1,647. Evidence:
+`/tmp/heroes-retention-fix-preflight.log` and the private run files above.
+
+Retention-reviewed run: `run-20261112T155949Z-e563c702`.
+
+Validation also invoked the actual `cycle_retire` worker/path/journal guards
+under the activity lease, checked protected inputs, then deliberately stopped
+at the first pre-copy boundary using a private in-process test hook. All these
+gates passed; no checkpoint copies, deletion, seed reservation or training ran.
+Evidence: `/tmp/heroes-retention-gate-check.log`. Only this journal correction
+is published; production guards and private validation tooling are unchanged.
