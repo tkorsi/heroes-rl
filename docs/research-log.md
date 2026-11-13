@@ -4963,3 +4963,34 @@ Six private map-relocation controls passed: exact relocated bytes reached the
 following source gate; wrong hash, size, filename, extra or missing binding key
 were rejected. The source gate was a test-only sentinel; production checks stay
 active. Independent review found no actionable issue.
+
+**Live attempt 1 — dependency identity failure, no training admission.**
+Candidate `ad23fdf` passed the full Metal preflight and was synchronized to
+GitHub. `./run-100-games.command 100 --metal` created
+`run-20261113T211303Z-e1815b91` at 21:13:03 UTC, parent 1,765; reservation offset
+2,049/count 202. Retirement preserved/restored the initial and 1,765 checkpoint
+pairs before deleting the analyzed CPU run. Recovery diagnostic seed
+1,980,002,049 played to day 10 with a raw Blue terminal, but capture finalization
+correctly rejected `missing_source_identity`: this isolated checkout lacked its
+ignored `vcmi/` dependency directory. The client itself returned zero; this is
+a technical capture failure, not a verified win. PPO never ran; zero games or
+samples were admitted; checkpoint 1,765 and its diagnostic obligation remain.
+The coordinator ended at 21:13:11 UTC; owned cleanup and protected-input checks
+passed, supervisor errors empty. All 202 slots stay consumed, including the
+unstarted100; retry must preview offset 2,251 and reserve fresh slots.
+Evidence: the run's report/shutdown/worker-00.log and `campaign-live.log`.
+
+Retention-reviewed run: `run-20261113T211303Z-e1815b91`.
+
+A temporary symlink to the existing dependency was rejected by the existing
+preparation containment guard (`Path escapes its project directory: vcmi`);
+the newly created symlink was removed. The canonical `tools/prepare_vcmi.py`
+workflow is preparing a real ignored dependency checkout at pinned upstream
+`6901839ae9760dfcd1d5ff2c4aa4ef6968fee752`, with the root-owned patches/overlays.
+No engine binary, canonical engine source or main-checkout dependency is changed.
+The preparation/check result is required before another launch.
+The canonical fresh dependency preparation and subsequent explicit
+`python3 tools/prepare_vcmi.py --check` both passed. The ignored candidate
+checkout now has the pinned VCMI revision, initialized upstream submodules and
+exact root patch/overlay agreement. The accepted runtime binaries are reused
+unchanged; no rebuild or new native mechanics claim is made.
