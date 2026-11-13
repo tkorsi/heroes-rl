@@ -28,34 +28,40 @@ class _History:
         wanted = set(decisions)
         jobs = [i for i in range(start, end) if self.frames[i]["root"] >= 0]
         roots = []
-        for i in jobs:
+        for job_index, i in enumerate(jobs):
             f = self.frames[i]
-            roots.append(f["root"])
+            roots.append((f["root"], job_index))
             if f["map"] is not None:
-                roots.append(f["map"]["own"])
+                roots.append((f["map"]["own"], job_index))
             if i in wanted:
                 for c in f["conditionals"]:
                     roots.extend(
-                        c["roots"] if c["kind"] == "categorical" else [c["root"]]
+                        (root, job_index)
+                        for root in (
+                            c["roots"] if c["kind"] == "categorical" else [c["root"]]
+                        )
                     )
         needed = set()
         depth = {}
+        first_use = {}
 
-        def visit(i):
+        def visit(i, job_index):
             if i in needed:
                 return depth[i]
             k, v, ch = self.nodes[i]
             dep = (
                 0
                 if k in ("text", "number")
-                else 1 + max([visit(v)] + [visit(c) for c in ch])
+                else 1 + max([visit(v, job_index)] + [visit(c, job_index) for c in ch])
             )
             needed.add(i)
             depth[i] = dep
+            first_use[i] = job_index
             return dep
 
-        for r in roots:
-            visit(r)
+        # Roots are chronological, so the first visit is the earliest required job.
+        for r, job_index in roots:
+            visit(r, job_index)
         del visit
         ids = sorted(needed)
         local = {r: i for i, r in enumerate(ids)}
@@ -72,7 +78,10 @@ class _History:
                 bucket = 0
             groups[(depth[r], k, bucket)].append(r)
         compiled = []
+        group_first_use = []
         for (_, k, _), rs in sorted(groups.items()):
+            rs.sort(key=lambda r: (first_use[r], r))
+            group_first_use.append([first_use[r] for r in rs])
             idx = tensor([local[r] for r in rs])
             data = {}
             if k == "text":
@@ -176,6 +185,10 @@ class _History:
                 "cpu_reuse": map_reuse,
                 "attribute_ends": attribute_ends,
             }
+        if map_plan is not None and start == 0 and not decisions:
+            from .metal_map_delta import build_plan
+
+            map_plan["delta"] = build_plan(maps, w, h)
         decision_plan = []
         jobindex = {i: j for j, i in enumerate(jobs)}
         mindex = {jobs[j]: map_reuse[i] for i, j in enumerate(map_positions)}
@@ -208,12 +221,13 @@ class _History:
                         )
                     )
                 )
-                head_groups[(c["kind"], (size - 1).bit_length())].append(
-                    (di, j, mi, c, size)
-                )
+                bucket = 0 if c["kind"] == "categorical" else (size - 1).bit_length()
+                head_groups[(c["kind"], bucket)].append((di, j, mi, c, size))
         heads = []
         for (kind, bucket), items in sorted(head_groups.items()):
-            width = 2**bucket
+            width = (
+                max(item[4] for item in items) if kind == "categorical" else 2**bucket
+            )
             d = {
                 "decision": tensor([i[0] for i in items]),
                 "state": tensor([i[1] for i in items]),
@@ -259,6 +273,7 @@ class _History:
         result = {
             "n": len(ids),
             "groups": compiled,
+            "group_first_use": group_first_use,
             "jobs": jobs,
             "roots": tensor([local[self.frames[i]["root"]] for i in jobs]),
             "maps": map_plan,
@@ -362,8 +377,33 @@ class NativeModel:
 
     def encode(self, plan, frame_limit=None):
         from .metal_tree import encode
+        from .metal_tree_kernels import write_rows
 
-        table = encode(plan, self.p)
+        if frame_limit is not None and torch.is_grad_enabled():
+            raise ValueError("Prefix encodings require no-grad evaluation")
+        tree_plan = plan
+        if frame_limit is not None:
+            import bisect
+
+            groups = []
+            for (kind, indices, data, _), first_use in zip(
+                plan["groups"], plan["group_first_use"]
+            ):
+                count = bisect.bisect_left(first_use, frame_limit)
+                if count:
+                    groups.append(
+                        (
+                            kind,
+                            indices[:count],
+                            {
+                                key: value if key == "flat" else value[:count]
+                                for key, value in data.items()
+                            },
+                            count,
+                        )
+                    )
+            tree_plan = {**plan, "groups": groups}
+        table = encode(tree_plan, self.p)
         roots = table[
             plan["roots"] if frame_limit is None else plan["roots"][:frame_limit]
         ]
@@ -387,6 +427,13 @@ class NativeModel:
                 }
             else:
                 m = None
+        if m and frame_limit is not None and m.get("delta") is not None:
+            from .metal_map_delta import encode as encode_map_delta
+
+            g = encode_map_delta(self, m)
+            write_rows(glob, m["positions"], g[m["reuse"]])
+            write_rows(own, m["positions"], table[m["own"]])
+            return torch.cat([roots, glob, own], -1), table, None
         if m:
             size = m["width"] * m["height"]
             objects = roots.new_zeros((m["count"] * size, 16))
@@ -404,11 +451,11 @@ class NativeModel:
                 ],
                 -1,
             )
-            inp = (
-                grid.reshape(m["count"], m["height"], m["width"], 33)
-                .permute(0, 3, 1, 2)
-                .contiguous()
+            inp = grid.reshape(m["count"], m["height"], m["width"], 33).permute(
+                0, 3, 1, 2
             )
+            if frame_limit is None:
+                inp = inp.contiguous()
             a = F.conv2d(
                 inp, self.p["map_cnn.0.weight"], self.p["map_cnn.0.bias"], padding=1
             ).tanh()
@@ -418,8 +465,12 @@ class NativeModel:
             g = self.linear(
                 F.adaptive_avg_pool2d(a, (4, 4)).flatten(1), "map_global.2"
             ).tanh()
-            glob.index_copy_(0, m["positions"], g[m["reuse"]])
-            own.index_copy_(0, m["positions"], table[m["own"]])
+            if frame_limit is not None:
+                write_rows(glob, m["positions"], g[m["reuse"]])
+                write_rows(own, m["positions"], table[m["own"]])
+            else:
+                glob.index_copy_(0, m["positions"], g[m["reuse"]])
+                own.index_copy_(0, m["positions"], table[m["own"]])
             cells = a.permute(0, 2, 3, 1).reshape(m["count"], size, 16)
         return torch.cat([roots, glob, own], -1), table, cells
 
@@ -547,22 +598,28 @@ class NativeModel:
             offset += count
 
     def score(self, plan, states, table, cells):
-        values = self.linear(states[plan["decision_states"]], "value").squeeze(-1)
+        decision_states = states[plan["decision_states"]]
+        values = self.linear(decision_states, "value").squeeze(-1)
+        query = (
+            self.linear(decision_states, "policy_query").tanh()
+            if any(kind == "categorical" for kind, _ in plan["heads"])
+            else None
+        )
         logs = states.new_zeros((len(plan["decisions"]),))
         for kind, d in plan["heads"]:
-            ss = states[d["state"]]
             if kind == "categorical":
-                logits = (
-                    table[d["roots"]]
-                    * self.linear(ss, "policy_query").tanh().unsqueeze(1)
-                ).sum(-1) / math.sqrt(self.f)
+                logits = (table[d["roots"]] * query[d["decision"]].unsqueeze(1)).sum(
+                    -1
+                ) / math.sqrt(self.f)
             elif kind == "quantity":
+                ss = states[d["state"]]
                 inp = torch.cat([ss, table[d["roots"]], d["numeric"]], -1)
                 logits = (
                     self.linear(self.linear(inp, "quantity.0").tanh(), "quantity.2")
                     + d["offsets"]
                 )
             else:
+                ss = states[d["state"]]
                 n = d["positions"].shape[1]
                 inp = torch.cat(
                     [

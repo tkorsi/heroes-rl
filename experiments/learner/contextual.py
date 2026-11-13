@@ -2298,8 +2298,9 @@ class PlayerHistory:
 
     def digest(self):
         digest = hashlib.sha256()
+        tile_cache = {"fragments": {}, "arrays": {}, "names": {}}
         for frame in self._frames:
-            digest.update(canonical_frame(frame).encode())
+            digest.update(_canonical_frame_with_tile_cache(frame, tile_cache).encode())
             digest.update(b"\n")
         return digest.hexdigest()
 
@@ -3296,7 +3297,7 @@ def _field_set(cls):
 _WIRE_LEAVES = frozenset((str, int, bool, float, type(None)))
 
 
-def _wire(value):
+def _wire(value, *, _tile_placeholder=None):
     """Detached canonical JSON, omitting additive fields from their older schema."""
     kind = type(value)
     if kind in _WIRE_LEAVES:
@@ -3317,7 +3318,10 @@ def _wire(value):
         data = {}
         for name in _field_names(kind):
             item = getattr(value, name)
-            data[name] = item if type(item) in _WIRE_LEAVES else _wire(item)
+            if kind is Observation and name == "tiles" and _tile_placeholder is not None:
+                data[name] = _tile_placeholder
+            else:
+                data[name] = item if type(item) in _WIRE_LEAVES else _wire(item)
         if kind is Context and value.panel is None and value.kind not in ("exchange", "dialog"):
             del data["panel"], data["selection"]
         elif kind is Action and value.schema == ACTION_SCHEMA:
@@ -3358,14 +3362,14 @@ def encode_action(action):
     return _wire(action)
 
 
-def encode_observation(observation, *, schema=SCHEMA):
+def encode_observation(observation, *, schema=SCHEMA, _tile_placeholder=None):
     if type(observation) is not Observation:
         raise ValueError("Expected typed contextual observation")
     profile = profile_for(schema)
     if schema != profile.history_schema:
         raise ValueError("Observation encoding requires its enclosing history schema")
     _validate_observation(observation, profile)
-    data = _wire(observation)
+    data = _wire(observation, _tile_placeholder=_tile_placeholder)
     if profile.dialogs and data["window"] is not None:
         data["window"]["dialog_panel"] = _wire(observation.window.dialog_panel)
     if profile.capabilities and data["window"] is not None:
@@ -3404,6 +3408,58 @@ def canonical_frame(frame):
     if text is None:
         text = json.dumps(encode_frame(frame), sort_keys=True, separators=(",", ":"), allow_nan=False)
         object.__setattr__(frame, "_canonical_json", text)
+    return text
+
+
+def _canonical_frame_with_tile_cache(frame, cache):
+    """Exact standard JSON with bounded, digest-local immutable tile fragments."""
+    if type(frame) is not Frame:
+        raise ValueError("Expected typed contextual frame")
+    text = frame.__dict__.get("_canonical_json")
+    if text is not None:
+        return text
+    if frame.observation is None:
+        return canonical_frame(frame)
+    observation = frame.observation
+    # The existing schema validator and all wire omission rules still run.
+    data = encode_observation(observation, schema=frame.schema, _tile_placeholder=[])
+    arrays = cache["arrays"]
+    entry = arrays.get(id(observation.tiles))
+    if entry is not None and entry[0] is observation.tiles:
+        tiles_text = entry[1]
+    else:
+        fragments = cache["fragments"]
+        items = []
+        for tile in observation.tiles:
+            fragment = fragments.get(tile)
+            if fragment is None:
+                fragment = json.dumps(_wire(tile), sort_keys=True, separators=(",", ":"), allow_nan=False)
+                if len(fragments) >= 4096:
+                    fragments.clear()
+                fragments[tile] = fragment
+            items.append(fragment)
+        tiles_text = "[" + ",".join(items) + "]"
+        if len(arrays) >= 64:
+            arrays.clear()
+        # Retain the source tuple so identities cannot be recycled during use.
+        arrays[id(observation.tiles)] = (observation.tiles, tiles_text)
+    names = cache["names"]
+    for name in (*data, *_field_names(Frame)):
+        if name not in names:
+            names[name] = json.dumps(name, separators=(",", ":"), allow_nan=False)
+    pieces = []
+    for name in sorted(data):
+        value = tiles_text if name == "tiles" else json.dumps(
+            data[name], sort_keys=True, separators=(",", ":"), allow_nan=False)
+        pieces.append(names[name] + ":" + value)
+    observation_text = "{" + ",".join(pieces) + "}"
+    pieces = []
+    for name in sorted(_field_names(Frame)):
+        value = observation_text if name == "observation" else json.dumps(
+            _wire(getattr(frame, name)), sort_keys=True, separators=(",", ":"), allow_nan=False)
+        pieces.append(names[name] + ":" + value)
+    text = "{" + ",".join(pieces) + "}"
+    object.__setattr__(frame, "_canonical_json", text)
     return text
 
 

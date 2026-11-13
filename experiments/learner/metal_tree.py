@@ -48,7 +48,8 @@ class Tree(torch.autograd.Function):
                         *[
                             p["text_gru." + n + "_l0"]
                             for n in ["weight_ih", "weight_hh", "bias_ih", "bias_hh"]
-                        ]
+                        ],
+                        lengths=d["lengths"] + 1,
                     )
                     result = seq[d["rows"], d["lengths"]]
                     aux = {"gru": c, "seqshape": seq.shape}
@@ -80,7 +81,8 @@ class Tree(torch.autograd.Function):
                                     "bias_ih",
                                     "bias_hh",
                                 ]
-                            ]
+                            ],
+                            lengths=d["lengths"] + 1,
                         )
                         pooled = seq[d["rows"], d["lengths"]]
                         aux = {"gru": c, "seqshape": seq.shape}
@@ -89,7 +91,9 @@ class Tree(torch.autograd.Function):
                 inp = torch.cat([table[d["tags"]], pooled], -1)
                 result = F.linear(inp, p["tree.0.weight"], p["tree.0.bias"]).tanh()
                 aux["input"] = inp
-            table.index_copy_(0, idx, result)
+            from .metal_tree_kernels import write_rows
+
+            write_rows(table, idx, result)
             saved.append((k, idx, d, aux, result))
         ctx.plan = plan
         ctx.saved = saved
@@ -128,10 +132,9 @@ class Tree(torch.autograd.Function):
                     continue
                 dx = recurrent_back("text_gru", d, aux, g)
                 embedding = p["byte.weight"].new_zeros(p["byte.weight"].shape)
-                embedding.index_add_(
-                    0, d["ids"].reshape(-1), dx.reshape(-1, dx.shape[-1])
-                )
-                embedding[0].zero_()
+                from .metal_tree_kernels import embedding_scatter
+
+                embedding_scatter(embedding, d["ids"], dx)
                 add("byte.weight", embedding)
             elif k == "number":
                 delta = g * (1 - result.square())

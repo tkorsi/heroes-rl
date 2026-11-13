@@ -458,17 +458,24 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
                     logs, vals, _ = native_model.evaluate_window(native_inputs[window.rollout_index], window.start_seq,
                         records[-1].decision_seq, [record.decision_seq for record in records], state.detach(),
                         NATIVE_EXECUTION['prefix_threads'])
-                    evaluated = tuple(EvaluatedDecision(record.decision_seq, logs[i], vals[i])
-                                      for i, record in enumerate(records))
+                    if use_metal:
+                        new_log_probs.append(logs)
+                        new_values.append(vals)
+                        evaluated = records
+                    else:
+                        evaluated = tuple(EvaluatedDecision(record.decision_seq, logs[i], vals[i])
+                                          for i, record in enumerate(records))
                 for index, current, old in zip(window.sample_indices, evaluated, records):
-                    new_log_probs.append(current.log_prob)
-                    new_values.append(current.value)
+                    if not use_metal:
+                        new_log_probs.append(current.log_prob)
+                        new_values.append(current.value)
                     old_log_probs.append(old.log_prob)
                     old_values.append(old.value)
                     batch_advantages.append(advantages[offsets[window.rollout_index] + index])
                     returns.append(targets[window.rollout_index].returns[index])
-            log_probs = torch.stack(new_log_probs)
-            values = torch.stack(new_values)
+            combine = torch.cat if use_metal else torch.stack
+            log_probs = combine(new_log_probs)
+            values = combine(new_values)
             make = log_probs.new_tensor
             if native_backend is None:
                 loss, policy, value, kl, clipped = clipped_losses(log_probs, values, make(old_log_probs), make(old_values),
@@ -497,7 +504,7 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
             optimizer.step()
             if after_step is not None:
                 after_step()
-            count = len(new_log_probs)
+            count = len(old_log_probs)
             for index, metric in enumerate((policy, value, kl, clipped)):
                 totals[index] += metric.detach().item() * count
             weighted_count += count

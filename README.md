@@ -298,6 +298,15 @@ in private storage. The research journal records measurements and acceptance
 limits; kernel-only speedups do not establish the requested fivefold complete
 update speedup or equivalent playing strength.
 
+The November 13 follow-up measured 6.41–6.49x complete-update speedup on the
+long offline history (including preparation and return to CPU), while the short
+history remained below fivefold. The main dispatch fix replaces quadratic-like
+MPS row writes with exact direct Metal writes within manual-autograd/no-grad
+boundaries. Exact canonical JSON reuse reduces preparation without removing
+validation. Numerical and held-out evidence and negative experiments are recorded
+in the research journal. Campaign-scale memory and playing-strength acceptance
+remain separate from these offline measurements.
+
 ## Source layout
 
 | Path | Responsibility |

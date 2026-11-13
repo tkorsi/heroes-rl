@@ -4670,3 +4670,161 @@ process, checkpoint, capture, runtime selector or launcher was changed by this
 investigation. Candidate code and compact documentation are intended for the
 explicit experimental branch only; promotion, paired gameplay and the fivefold
 end-to-end criterion remain unfulfilled.
+
+
+## 2026-11-13 — Follow-up: complete-update fivefold target
+
+The user authorized continued isolated experiments, retaining the active run.
+Baseline is experimental `b9dbcf4`; official checkout remains `9ca85df`.
+Reuse the same parent 1764, episode17/100 copies, PPO configuration, RNG state,
+private runtime and CPU native manifest above; no new seeds or admission.
+Acceptance remains at least fivefold setup-inclusive speed, with output/gradient,
+full-update state and held-out policy checks. The original CPU controls imply
+9.67 s for medium and 84.27 s for long. GPU utilization alone is not acceptance.
+Hypotheses and all attempts were recorded before execution in the private
+`2026-11-13-metal-ppo/research-log.md`; probes and raw evidence remain private.
+
+Synchronized profiles, rather than enqueue-only cProfile times, identified
+prefix encoding and backward as the remaining costs. Source inspection led to
+first-use slicing of semantic DAG rows, length-limited text/ordered GRUs, a fused
+padding-aware byte-gradient scatter, direct window-vector PPO loss assembly,
+and shared categorical projections. These keep full current-weight history and
+PPO minibatch/window/loss settings. The full flags-only delta-CNN attempt still
+had 8,734 bases for 8,740 long-history maps: moving heroes also occur in the
+object list. The next candidate groups exact terrain/road bytes, encodes unique
+object descriptors at current weights, uses signed per-cell multiset changes
+plus all five flag changes, recomputes affected radius-one/radius-two CNN cells,
+and updates pooled features. Loss-window CNN/backward stays on the previous
+contiguous path. Sparse metadata is precomputed with NumPy; 14 CPU cases matched
+the earlier metadata byte-for-byte before the object-delta extension.
+
+Rejected attempts and limits: combined CPU map-component/own-observation caches
+were exact but 19.4% slower in alternating checked-compile trials (2.599 versus
+3.105 s median); they were reverted. Channels-last CNN output parity passed but
+its loss-window gradient check failed at relative L2 0.1624. A medium timing
+had already been dispatched before that redirected failure was inspected; it
+is diagnostic only and rejected. Channels-last remains only in no-grad prefix
+work, with the original contiguous loss path. Nondivisible 6x5 adaptive pooling
+still raises the existing MPS restriction; initial dedicated validation hit
+that boundary, and its corrected expectation records the unchanged limitation.
+
+Object/flag delta checks covered movement, additions/removals, descriptor
+changes, duplicate objects at a cell, edges, empty objects, five flag channels,
+and changed weights: CPU global max error 8.20e-8, ordinary MPS max 5.22e-8,
+recurrent prefix max 1.79e-7. Seven existing numerical probe cases passed after
+combination. Sixty existing tests passed after PPO vector assembly, before the
+subsequent serialization change. None of these local test/probe sources are
+part of the published change.
+
+Exact serialization is another candidate: bounded digest-local immutable tile
+fragments, generated with the same stdlib JSON encoder, preserve schema
+validation and all omission rules. All 10,702 medium frames and 21 v2-v8/Unicode/
+integer-bound cases matched exact canonical bytes and digests. Three alternating
+trials reduced medium digest median from 1.3167 to 0.5320 s. Default public
+canonical-frame encoding remains unchanged; digest caching emits identical bytes.
+
+Intermediate complete results are not final acceptance: object/flag CNN plus
+vector/head/backward changes completed long 187 steps in 72.738 s + 25.976 s
+setup = 98.714 s, approximately 4.27x against the prior CPU control. Medium was
+8.074 + 5.043 = 13.117 s. A contemporaneous previous-Metal control measured
+10.051 + 5.232 s medium versus its earlier 7.763 + 5.112 s, showing meaningful
+runtime variation. A phase-only setup overlapped briefly with a CPU canonical
+byte check; that setup time is not accepted performance evidence. AC power and
+no recorded thermal/performance warning were observed; system settings were not
+changed. Final timing, parity and source identity are recorded below after the
+remaining candidate checks, not inferred from these intermediate measurements.
+
+
+**Dispatch bottleneck and final candidate.** Direct measurement isolated
+`Tensor.index_copy_`, rather than semantic GRU or pooling arithmetic. For a
+100,000x32 tensor and 5,000 unique row writes, local MPS took 28.508 ms versus
+0.0179 ms for a direct Metal write, with identical bytes. A 20,000-row table
+measured 5.481 versus 0.0181 ms. The compiler already guarantees unique row
+indices. The candidate replaces those writes inside the tree's existing manual
+backward boundary and in explicitly no-grad prefix globals/own-feature tables;
+loss-window autograd writes retain the ordinary operation. Empty writes are
+handled without launching a zero-size grid. A prefix encoding with gradients
+enabled is rejected. This is a measured implementation-specific bottleneck,
+not a claim about every MPS operation or version.
+
+Rejected lower-value alternatives remain private: pooled-child parallel R4
+kernels were numerically sound and improved a large raw pooled operation by
+about 0.04 ms; R8/R16 regressed, and none were integrated. Actual semantic GRUs
+were only approximately 0.3-1.8 ms per group, so their further tuning could not
+explain the tree phase. Gradient clipping and Adam were about 0.12 s each per
+16 steps, too small to explain the remaining gap. The private trace/profiling
+workers are diagnostic artifacts, not published dependencies.
+
+The final long candidate completed 187/187 optimizer steps twice:
+44.034 + 21.718 = 65.752 s, and 43.312 + 21.647 = 64.959 s, versus the original
+CPU 421.351 s. These are **6.41x and 6.49x setup-inclusive speedups** for the
+5,975-decision/55,784-frame update. CPU return and optimizer configuration
+restoration assertions passed. The first final medium run measured
+8.440 + 4.236 = 12.676 s, approximately 3.81x: the fivefold threshold is achieved
+on the long full update, not uniformly on both history sizes. These measurements
+are not a claim of fivefold campaign/game throughput, and the CPU control is
+identified above rather than silently relabelled as a contemporaneous rerun.
+
+All follow-up attempt result files are indexed below. Partial profiles, failed
+numerical variants and kernel-only measurements must not be pooled with full
+accepted timing trials. Detailed phase/source hashes are private result records.
+
+| Attempt | Steps | Update s | Setup s |
+| --- | ---: | ---: | ---: |
+| `follow-channels-medium` | 32 | 11.577 | 6.338 |
+| `follow-control-medium` | 32 | 10.051 | 5.232 |
+| `follow-delta-long` | 187 | 75.762 | 26.623 |
+| `follow-delta-medium` | 32 | 10.245 | 5.328 |
+| `follow-final-long-a` | 187 | 44.034 | 21.718 |
+| `follow-final-long-b` | 187 | 43.312 | 21.647 |
+| `follow-final-medium-a` | 32 | 8.440 | 4.236 |
+| `follow-gru-shapes` | 4 | 3.005 | 21.656 |
+| `follow-length-medium` | 32 | 10.259 | 6.393 |
+| `follow-object-long` | 187 | 72.738 | 25.976 |
+| `follow-object-medium` | 32 | 8.074 | 5.043 |
+| `follow-object-phase` | 16 | 9.138 | 26.127 |
+| `follow-object-phase2` | 16 | 8.301 | 26.000 |
+| `follow-phase` | 16 | 10.713 | 48.931 |
+| `follow-tree-long-phase` | 16 | 8.790 | 27.513 |
+| `follow-tree-medium` | 32 | 10.388 | 5.343 |
+| `follow-vector-loss-medium` | 32 | 8.407 | 5.159 |
+
+
+**Final validation and timing boundary.** The subsequent fresh medium CPU
+control measured 48.380 s update + 5.139 s setup;
+the final medium repeat measured 9.490 + 4.612 s,
+which is 3.80x
+against that fresh CPU control. Short-history fivefold acceptance remains unmet.
+The repeated long candidate meets fivefold on the complete fixed long-history
+update only; promotion to a multi-game campaign remains separate.
+
+All 118 existing selected native/PPO/model/canonical-cache/history-contract tests
+passed in 8.468 s after the final changes (`follow-final-existing-tests.log`).
+Full-state comparison (`follow-final-state-comparison.json`) found exact sampler,
+Torch/Python RNG, Adam step counts and optimizer configuration, with finite
+parameters/moments. Model relative L2 against CPU was 2.16e-5 medium and 1.36e-4
+long; maximum absolute differences were 0.001193 and 0.010361, respectively.
+These checks establish bounded FP32 agreement, not bitwise identity.
+
+Held-out checks passed both preregistered criteria: after medium training,
+223/223 argmax agreement, mean KL 4.07e-14,
+max KL 4.49e-13, value RMSE 2.54e-07; after long training,
+227/227 agreement, mean KL 2.36e-11,
+max KL 3.46e-10, value RMSE 4.29e-06. Each uses 128
+held-out decisions and identical inference implementation for both resulting
+policies. This bounded evidence does not establish future playing-strength
+preservation. Evidence: `follow-final-heldout-medium.json` and
+`follow-final-heldout-long.json`; source hashes match the repeated long-run
+snapshot for every final numerical source file.
+
+At 2026-11-13T19:46:08+00:00,
+the official report remained running with latest published checkpoint 1765;
+its checkout remained clean at 9ca85df. No launch/runtime selection, process,
+weight or checkpoint was changed. Only the separate experimental branch is
+published; tests, benchmarks, probes and raw artifacts remain private.
+
+Final exception cleanup (`follow-final-failure-cleanup`) deliberately stopped after
+one optimizer step and again verified model/Adam CPU return, original foreach
+configuration and owned-process cleanup (0.952 s update,
+4.494 s setup). This is cleanup, not rollback of the applied
+private step. No official update or checkpoint was published.

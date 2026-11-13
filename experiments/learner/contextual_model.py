@@ -929,8 +929,8 @@ def _semantic(value):
                      _set("components", [_semantic(component) for component in value.components]))
     if is_dataclass(value):
         children = []
-        for field in fields(value):
-            name, item = field.name, getattr(value, field.name)
+        for name in c._field_names(type(value)):
+            item = getattr(value, name)
             # Additive profile fields must not add even an "absent" node to
             # old observations: archived values/probabilities remain exact.
             if item is None and (type(value) is c.TownPanel and name in ("armies", "tavern")
