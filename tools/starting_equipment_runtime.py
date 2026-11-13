@@ -9,17 +9,17 @@ from tools import run_tiny_selfplay_one_game as verified_runtime
 ROOT = Path(__file__).resolve().parents[1]
 VERSION = 'no-artifacts-v1'
 RELEASE = dict(
-    directory=campaign.ARTIFACTS / 'runtime/local-v8-taverns-static-neutrals-v1',
-    freeze_sha='4c0a91f831e866dc3e78b1f0a55bd2d6d8ba6bb7c61eaa55085e46d744238e50',
-    preflight_sha='dcd7042f42218ed4eb9255c4fbfa012fc31e66304f748480b4bbf5a227e3679b',
-    validation=campaign.ARTIFACTS / 'runtime/local-v8-taverns-static-neutrals-v1/native-acceptance.json',
-    validation_sha='98c26da6406e238fd3eeff9a7818fcc07c98c15fab02ec5be850bb581a41b40f',
+    directory=campaign.ARTIFACTS / 'runtime/local-v8-sleep-resume-v1',
+    freeze_sha='9f292727eaabe781c0463c21713dcedde5d152be412ffad68d4a5d3c1604b983',
+    preflight_sha='85d8baad32d400dcd1542d921e86104732e28a0c5fdb1e560e620f326cb2f086',
+    validation=campaign.ARTIFACTS / 'runtime/local-v8-sleep-resume-v1/native-acceptance.json',
+    validation_sha='5c6dbcea17609a576d414ae82696c89647d89f8dd50ec9ab0423d4560dab17c9',
     schema='heroes-starting-artifacts-native-v1',
 )
 CYCLE_MAP = ROOT / 'experiments/explorer/maps/hero-management-v3.vmap'
 CYCLE_MAP_SHA = '2ddd04177e17f588922cc7733ec4fa049be10bb0f020f7387fd7285ea1604056'
 CYCLE_ACCEPTANCE = RELEASE['directory'] / 'scenario-acceptance.json'
-CYCLE_ACCEPTANCE_SHA = '0c328103d291c3576d9f76e0ae87fdf950f733528bb5ebe082c5fc191ba092b2'
+CYCLE_ACCEPTANCE_SHA = 'cb5c757365eea066bd740ff2f84d075cda738f600cf28b8df76e87d867715d12'
 NATIVE_SPAWN_MAP = ROOT / 'experiments/explorer/maps/hero-management-v4.vmap'
 NATIVE_SPAWN_MAP_SHA = 'a076b4dca6410b5dc16388dc47333b036323a94c8fe412500cd9f31b78bcc833'
 

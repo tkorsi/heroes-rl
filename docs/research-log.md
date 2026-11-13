@@ -4262,3 +4262,33 @@ acba6e passed all nine pairs, but its obsolete mutant check expected exit 2/3;
 the native mutant correctly rejected with exit 1 and an init game-state digest
 divergence. Restore the already used v8 hire proof and correct return-code
 expectation; preserve both failed attempts and rerun with fresh reserved seeds.
+
+Equipment attempt `214a03` passed: 220 controls, nine paired initializations,
+all three random-bonus branches, both hired-hero restrictions, a rejected
+wrong-setting mutant, 64/62 frozen choices, exact policy reconstruction and
+native replay. Elapsed 30.23 seconds; no optimizer updates or admitted samples.
+The receipt is pinned as the new runtime's native acceptance.
+
+Scenario attempt 01 exposed the restored probe's obsolete direct close action
+from a recruitment overlay, rejected before transmission. Attempt 02 uses
+existing panel unwind actions. It deliberately repeats the November 7 mechanics
+seeds 2,020,000,032/33 as deterministic regression fixtures, with fresh prefix
+seed 2,032,000,002 and policy seeds 2,033,000,000/1; none enter training.
+Four mechanics captures/replays passed, including initial Taverns and hiring,
+calendar spawning enabled/disabled and town weekly growth. Actual new-object
+packets occur in the positive calendar control and not the negative control.
+
+The additional checkpoint-1,764 prefix delayed the first policy response for
+35 seconds with bridge timeout zero. It continued to an unscored 53/64-choice
+cutoff, reconstructed both policies with maximum absolute difference zero,
+and passed independent native replay. That replay was also SIGSTOP-paused for
+35 seconds with absent guardian deadlines, resumed via SIGCONT, and completed
+with owned cleanup verified. Scenario acceptance is pinned at
+`runtime/local-v8-sleep-resume-v1/scenario-acceptance.json`; private harnesses,
+raw captures, failed attempts and weights are excluded from Git. Existing
+native shutdown-order checks also passed. These are process-pause controls,
+not a fresh physical closed-lid sleep/wake experiment or reboot recovery proof.
+
+All implementation and runtime acceptance checks are complete; the manual
+launcher preflight is next, after committing its exact runtime pins. No new
+training campaign was launched.
