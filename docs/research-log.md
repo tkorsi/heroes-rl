@@ -4353,3 +4353,105 @@ at the first pre-copy boundary using a private in-process test hook. All these
 gates passed; no checkpoint copies, deletion, seed reservation or training ran.
 Evidence: `/tmp/heroes-retention-gate-check.log`. Only this journal correction
 is published; production guards and private validation tooling are unchanged.
+
+## 2026-11-13 — Isolated PPO profiling and exact one-map experiments
+
+The user requested PPO profiling and acceleration where possible without losing
+quality, explicitly preserving the active training run and authorizing one-map
+experiments. Question: does independent validation, full recurrent-prefix work,
+or gradient computation dominate? Acceptance: use identical copied captures and
+full parent state, attribute kernel phases, and require exact weights, final
+gradients, Adam and all RNG before accepting a numerically unchanged candidate.
+No new campaign, game seed reservation or official sample admission is permitted.
+The experiment plan and chronological journal were written privately before
+execution. This documentation is published from a separate worktree because
+editing the active checkout would violate its clean-source launch contract.
+
+The active run is `run-20261113T124117Z-f8262954`, source 9ca85df, parent 1,764,
+v4 rules and `local-v8-sleep-resume-v1`. Its recovery diagnostic passed with a
+Blue win. That entire diagnostic took approximately 5m10s, including 3m13s
+between game completion and verification receipt; native replay itself reported
+26.54s. First-batch collection/preparation took approximately 29m20s; PPO reported
+13,750 seconds, 8,061 optimizer steps and 257,260 admitted samples, publishing
+1,765. Training-game native replay and probability reconstruction were already
+disabled. Thus removing independent verification cannot explain away this PPO
+cost. The earlier suggestion that prefix recomputation dominates was a hypothesis,
+not a measured conclusion. The second training batch continued throughout this
+investigation and reached 100 engine outcomes without reported capture failures.
+
+Private evidence root:
+`/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-11-13-ppo-profile`.
+`plan.json`, `plan-long.json`, `research-log.md`, `summary.json`, per-trial result
+JSONs, state digests, cProfile data, native OS samples and ownership receipts
+remain local. Source was archived from 9ca85df; production checkpoints/captures
+were copied and hash-bound, never edited. The original native learner manifest
+SHA is 53970605c4560bbe14b655442df373d3577efef3de0c5f824b95cfa22a74b573.
+Workers ran sequentially at nice 19 under 300-second ownership guardians.
+The private build used one low-priority compilation job. No production process
+was sampled, signalled, restarted, reconfigured or replaced.
+
+Primary workload: completed training episode 17, learner Red, 995 decisions,
+10,702 history frames, copied full checkpoint 1,764 including Adam and RNG.
+Each complete disposable PPO update used the original one epoch, 16 decisions
+per window and two windows per minibatch: 32 optimizer steps. The archived
+trajectory is reused only for numerical experiments, not readmitted to training.
+
+| Experiment | Kernel seconds | Exact complete numerical result |
+| --- | ---: | --- |
+| Original 16 workers, cProfile enabled | 46.687 | Reference |
+| One worker, including a short OS sample | 175.310 | Yes |
+| Four workers | 43.613 | Yes |
+| Eight workers, first / repeated | 36.275 / 36.730 | Yes / Yes |
+| Original 16 workers, OS sample enabled | 37.167 | Yes |
+| Original 16 workers, first / repeated, unprofiled | 35.830 / 36.358 | Yes / Yes |
+| Autograd multithreading disabled, 16 explicit native workers retained | 36.585 | Yes |
+| Shared current-weight prefix text cache, private native build | 39.125 | Yes |
+
+Every complete trial matched model, final gradients, Adam, minibatch-generator,
+Torch/Python RNG and numerical PPO metrics exactly. Profiling/sampled runs are
+excluded from the unprofiled thread comparison. Eight workers initially looked
+promising against the instrumented baseline; repetition against unprofiled
+16-worker controls did not confirm an improvement. No thread-setting change is
+recommended from these data. The autograd scheduling switch also did not help.
+
+For the unprofiled 16-worker reference, backward took 24.553s (68.5%), no-grad
+prefix recomputation 5.592s (15.6%), window forward 2.580s (7.2%), and Adam
+0.020s (0.057%). Native sampling put the main thread predominantly inside the
+outer PyTorch autograd engine, with parallel text-gradient tape work, waiting
+workers and frequent small allocations. Idle-worker sample counts are not wall
+time percentages. The sample does not isolate one allocator or operator as the
+sole cause. Ordinary Torch operator profiling was avoided because its callbacks
+would change eligibility for the optimized native tape path.
+
+Length control: the first official batch's learner counts have median 1,429.5,
+mean 2,572.6 and maximum 11,136. Copy episode 100, learner Blue, with 5,975
+samples and 55,784 frames. Retain its complete trajectory and original shuffled
+window schedule, but stop the disposable profile after 16 complete optimizer
+steps. This partial run took 25.065s: prefix 10.842s (43.3%), backward 11.595s
+(46.3%). Setup/encoding/compilation took another 23.939s outside the timed kernel;
+peak process RSS was approximately 4.0 GiB. Thus prefix work is also a major
+bottleneck for long episodes. Do not generalize the medium-map proportions to
+all 100 games or shorten recurrent history solely on that initial measurement.
+
+The exact-cache prototype precomputed unique text encodings once per current-
+weight no-grad prefix and seeded worker-local caches with immutable tensors.
+Caches were discarded before subsequent weight updates. It changed neither
+history length nor PPO settings. Its private native manifest SHA is
+744cc3b9ef80b593f1fe80715d242dcfe30668e237843b6aeebd70119281330c.
+The complete medium-game update preserved all numerical outputs, but prefix
+cost was 6.041s and total 39.125s: no observed benefit. Reject integration;
+one trial does not establish a statistically significant slowdown. The patch,
+build and diagnostic harnesses are not published.
+
+Conclusion: profiling completed, but no faster production change was accepted.
+Further exact optimization should target execution of the main backward graph
+and duplicate no-grad prefix computation, retaining current-weight semantics
+and gradient accumulation order. Memory truncation, larger PPO minibatches or
+stale hidden states change the learning contract and require separate quality
+experiments. These low-priority one-map measurements ran alongside production;
+they are not uncontended full-batch throughput estimates. In particular, several
+windows from one map can share prefixes differently from a 100-game batch.
+All eleven private trials completed with owned cleanup; ten were full updates
+and one was partial profiling. Zero official updates, admitted samples or game
+seeds were produced by this study. The active checkout and its settings remain
+unchanged. Only these compact findings are published on the documentation branch.
