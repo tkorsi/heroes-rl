@@ -64,10 +64,12 @@ The current cycle uses `hero-management-v4`: both starting taverns remain built,
 and native calendar spawning of new neutral armies is restored. This allows
 spawning when native special-month conditions apply, not every day or every month.
 Initial neutrals, their growth, armies, resources and all other rules are unchanged.
-The latest complete checkpoint is 1,764. The November 12 manual 200-game run
-published its first update, then its original 20-hour deadline interrupted the
-second update after overnight sleep. No 1,765 checkpoint or final diagnostic
-was published. New manual cycles have no default time limit.
+The latest complete checkpoint is 1,765. The November 13 CPU run captured
+200 games, but only its first 100-game update was published. The second update
+aborted in native text/autograd memory cleanup at 5,226/10,347 optimizer steps;
+no 1,766 checkpoint was published. Checkpoint 1,765 still needs its diagnostic.
+The user authorized a new 100-game Metal cycle after this process exited,
+including recovery of that diagnostic. New cycles have no default time limit.
 
 The earlier v3 variant disabled calendar spawning and was used through 1,763.
 The v4 selector retains its pinned native acceptance, including the successful
@@ -286,14 +288,17 @@ The `codex/metal-ppo` branch adds an explicit, offline numerical candidate for
 Apple Silicon, using FP32 MPS tensors and custom Metal GRU/tree kernels. It keeps
 PPO settings, full current-weight recurrent prefixes, native recipe validation,
 and the CPU checkpoint/Adam format. It currently supports feature size 32 and
-hidden size 64 and requires the tested PyTorch 2.9.1 MPS shader API. It is not
-selected by any training launcher; the active CPU campaign remains unchanged.
+hidden size 64 and requires the tested PyTorch 2.9.1 MPS shader API. The experimental launcher selects it only with explicit `--metal`; gameplay,
+policy inference and diagnostic verification remain on CPU. The ordinary
+launcher default remains CPU.
 
 The internal `_update(..., use_metal=True)` entry point requires an explicit
 native binding and histories prepared through `metal_backend.checked_backend`.
 It restores model and Adam tensors to CPU, including on failure, and restores the
 optimizer's previous `foreach` setting. Its process uses a 25% MPS recommended
-memory limit. Raw captures, weights, benchmark workers and numerical probes stay
+memory limit. Immutable prefix-plan device storage is cached up to 4 GiB;
+eviction keeps packed CPU constants and reuploads them without rebuilding
+metadata or reusing encoded features across optimizer steps. Raw captures, weights, benchmark workers and numerical probes stay
 in private storage. The research journal records measurements and acceptance
 limits; kernel-only speedups do not establish the requested fivefold complete
 update speedup or equivalent playing strength.
@@ -305,7 +310,19 @@ MPS row writes with exact direct Metal writes within manual-autograd/no-grad
 boundaries. Exact canonical JSON reuse reduces preparation without removing
 validation. Numerical and held-out evidence and negative experiments are recorded
 in the research journal. Campaign-scale memory and playing-strength acceptance
-remain separate from these offline measurements.
+remain separate from these offline measurements. The authorized first full-cycle
+measurement uses the existing launcher in this experimental checkout:
+
+```sh
+./run-100-games.command 100 --metal --check
+./run-100-games.command 100 --metal
+```
+
+It recovers an outstanding diagnostic before the new 100-game batch. Reports
+identify the selected learner backend and record collection/preparation, full
+update, checkpoint and diagnostic phases; wall time includes any system sleep.
+Preparation overlaps gameplay, so its per-game durations must not be added
+again to the combined collection/preparation duration.
 
 ## Source layout
 

@@ -4828,3 +4828,107 @@ one optimizer step and again verified model/Adam CPU return, original foreach
 configuration and owned-process cleanup (0.952 s update,
 4.494 s setup). This is cleanup, not rollback of the applied
 private step. No official update or checkpoint was published.
+
+
+## 2026-11-13 — CPU campaign termination and authorized 100-game Metal cycle
+
+**Question and authorization.** The user requested a live completion audit and,
+once the previous run ended, a full 100-game Metal cycle measurement. The
+previous process has exited; it did not complete its planned 200-game campaign.
+The next run will use the latest published complete checkpoint, 1,765, retain
+all gameplay/PPO settings, recover its outstanding diagnostic first, then play
+100 fresh training games, perform one complete Metal update and verify one final
+diagnostic. Existing leases, seed reservations, source/runtime checks, full
+batch admission, rollback, checkpoint restoration and artifact retirement stay
+active. CPU remains the default; the experimental branch gets explicit opt-in.
+
+**Observed previous run.** `run-20261113T124117Z-f8262954`, source `9ca85df`,
+parent 1,764, captured all 200 games. The first batch admitted 100 games and
+257,260 samples; 8,061 optimizer steps published and exactly restored 1,765.
+Engine-reported outcomes: Blue 58, Red 34, eight cutoffs; training replay and
+policy reconstruction were not performed. Collection/preparation took about
+1,760 s and PPO progress recorded 13,750 s; plan to publication was about
+15,569 s. These are retrospective phase boundaries, not a paired Metal control.
+The second batch captured 100 games (Blue 55, Red 32, 13 cutoffs) and contained
+330,327 samples, but PPO stopped at 5,226/10,347 steps after 9,816 s. None of
+that batch was admitted; no 1,766 checkpoint was published.
+
+Coordinator PID 1725 aborted at 2026-11-13 20:31:30 UTC (22:31:30 Kyiv), return
+code -6. macOS report `python3.13-2026-11-13-223132.ips` records
+`___BUG_IN_CLIENT_OF_LIBMALLOC_POINTER_BEING_FREED_WAS_NOT_ALLOCATED`, with
+`UnsafeSplitBackward0` destruction through `native_text::Leaf::release`,
+`Scope::close`, and `NativeModel::end_text_replay`. This locates the failing
+CPU cleanup path; the initial memory-corruption cause is not established. It
+does not demonstrate a deadline, power or OOM failure. The Metal update does
+not use that CPU text backward/replay path; this is not a fix claim for CPU.
+`shutdown.json` confirms owned cleanup and protected-input preservation, no
+supervisor errors. No game/training/caffeinate process remained at the audit.
+The only diagnostic was the recovered 1,764 Blue win, with both policies and
+native replay verified. Checkpoint 1,765 still requires its diagnostic.
+
+The 402 reserved slots beginning at offset 1,647 remain consumed, including
+unused slots; preview must recheck next offset 2,049. Policy SHA256
+`17efd802d78bc8d3b3f5a36fd4c2360a3956a7da0d2c9022e36222c679f5fa67`;
+resume SHA256 `ced4a88b3ac5672391959bc980a3329f09f2625baf7525deabe45fbb88396f7d`.
+The existing retirement path must copy and fully restore that pair before
+removing the reviewed run. Evidence before retirement: report/launch/shutdown,
+`progress/ppo-batch-train-{000,001}.json`, first publication and the macOS crash
+report. Meaningful findings are preserved here.
+
+Retention-reviewed run: `run-20261113T124117Z-f8262954`.
+
+**Prospective acceptance.** Measure recovery diagnostic separately from the
+100-game collection/preparation, complete PPO (including device transfers),
+checkpoint save/restore and final diagnostic; also report total elapsed wall
+time. Success requires 100/100 admitted games, one published and restore-tested
+update, verified final diagnostic and owned cleanup. Do not infer learning or
+paired speedup from differently seeded games. Keep the existing 25% recommended
+MPS allocator cap and CPU/system reserves. Bound device-resident immutable
+prefix-plan caching so the single-history result is not extrapolated to 100
+uncapped histories. Cache eviction/reupload must preserve exact constant bytes
+and existing numerical acceptance; no minibatch, sequence truncation, reward,
+loss, seed or optimizer change is allowed.
+
+Implementation and validation outcomes, exact launch identity and measured
+results will be appended after observation. No new games have been launched
+at this entry.
+
+**Implemented and local validation.** Explicit `--metal` is bound into the
+existing cycle configuration before retirement or seed consumption; checked
+native recipes select Metal only for training preparation/update. Actors and
+diagnostic inference stay CPU. The existing transaction forwards the opt-in and
+preserves rollback. Phase/backend fields and wall durations distinguish recovery
+from the new measured cycle; per-game preparation overlaps collection.
+
+The new immutable-plan cache keeps packed CPU constants and uses a model-owned
+4 GiB LRU for uploaded prefix constants. Eviction/reupload preserves exact bytes;
+oversized plans execute without retention. This bound does not include host
+recipes or transient activations; the existing 25% MPS allocator cap, 48 GiB
+physical headroom and system-pressure checks remain. Private forced-eviction,
+recency, oversize and close-release controls passed. Seven numerical cases passed
+(max output error 4.77e-7, gradient relative L2 5.27e-7, zero padding gradients).
+
+The actual transaction was checked on the saved medium history: an injected
+failure after one optimizer step restored exact model/Adam/gradient/RNG state,
+CPU devices and foreach configuration. A subsequent complete 32-step update
+passed (6.797 s after warmup, setup 3.664 s). This is integration/rollback
+validation, not a new cold timing comparison or official admission.
+118 existing numerical/native/model/history tests passed in 7.016 s. Of 72
+existing controller/training/checkpoint/transaction tests, 70 passed; two legacy
+controller fixture errors (`SimpleNamespace` lacks `stdin`) reproduced unchanged
+on detached control `b9dbcf4`. They are recorded rather than counted as passes;
+no gate or runtime ownership check was removed. Shell syntax/help/argument
+forwarding and explicit backend forwarding checks passed. Evidence stays in
+private `run-investigations/2026-11-13-metal-ppo/campaign-*` files; no test, probe
+or benchmark source/artifact is included in the published diff.
+
+The unmodified CPU checkout read-only preview restored 1,765 exactly, confirmed
+100 training plus two diagnostics and next fresh offset 2,049 (202 reserved
+slots required, none reserved by preview). AC power and 759 GiB free disk were
+observed. Final candidate preflight and launch are still pending at this entry.
+
+A private synthetic preparation integration also passed for CPU and Metal:
+actual admission, encoding, native compilation/recipe validation and backend
+selection ran on eight frames; parameter flags and receipt registration/file
+contents were checked. Only capture loading/completion envelope were mocked.
+This is wiring evidence, not a native game or official training receipt.

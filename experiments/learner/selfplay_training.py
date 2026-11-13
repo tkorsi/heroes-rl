@@ -163,6 +163,8 @@ def _plan(path, digest):
                 and value.get("equipment_policy") == TEN_GAMEPLAY["equipment_policy"],
                 "Ten-game self-play must declare its army and equipment rules")
         if value["schema"] == CYCLE_SCHEMA:
+            require(cfg.get("learner_backend", "cpu") in ("cpu", "metal"),
+                    "Unknown cycle learner backend")
             require(type(cfg.get("collection_workers")) is int and cfg["collection_workers"] == 10
                     and cfg.get("collection_scheduling") == "rolling-v1"
                     and type(cfg.get("collection_worker_threads")) is int and cfg["collection_worker_threads"] == 1
@@ -484,6 +486,9 @@ def prepare_live_capture(bound, learner_model, opponent_model, *, remaining):
     _admit((rollout,), learner_model, native=True)
     native = bound.plan['execution']['native_learner']
     backend = load_backend(native['manifest'], native['sha256'])
+    if bound.plan['configuration'].get('learner_backend', 'cpu') == 'metal':
+        from .metal_backend import checked_backend
+        backend = checked_backend(backend)
     flags = tuple(p.requires_grad for p in learner_model.parameters())
     try:
         learner_model.requires_grad_(True)
@@ -536,7 +541,8 @@ def live_native_update(model, optimizer, receipts, *, plan_sha256, config, gener
             registry.pop(id(receipt.binding), None)
     result = transactional_update(model, optimizer, rollouts, config=config, generator=generator,
         remaining=lambda: time_left(remaining), max_optimizer_steps=max_optimizer_steps,
-        enable_training=True, prepared_native_inputs=programs, progress=progress)
+        enable_training=True, prepared_native_inputs=programs, progress=progress,
+        use_metal=cfg.get('learner_backend', 'cpu') == 'metal')
     return replace(result, purpose=PROVENANCE), rollouts
 
 

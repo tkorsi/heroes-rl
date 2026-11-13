@@ -710,8 +710,9 @@ class UpdateRolledBack(RuntimeError):
 
 
 def transactional_update(model, optimizer, rollouts, *, config, generator, remaining, max_optimizer_steps,
-                         enable_training=False, prepared_native_inputs=None, progress=None):
+                         enable_training=False, prepared_native_inputs=None, progress=None, use_metal=False):
     """Restore the entire attempted update on failure, including interrupted steps."""
+    require(type(use_metal) is bool, "Metal selection must be explicit")
     parameters = tuple(model.parameters())
     state, optimizer_state = deepcopy(model.state_dict()), deepcopy(optimizer.state_dict())
     gradients = tuple(None if p.grad is None else p.grad.detach().clone() for p in parameters)
@@ -744,7 +745,8 @@ def transactional_update(model, optimizer, rollouts, *, config, generator, remai
             model.requires_grad_(True)
         result = _update(model, optimizer, rollouts, config=config, generator=generator,
             before_step=remaining, after_step=completed, max_optimizer_steps=max_optimizer_steps,
-            **({"prepared_native_inputs": prepared_native_inputs} if prepared_native_inputs is not None else {}))
+            **({"prepared_native_inputs": prepared_native_inputs} if prepared_native_inputs is not None else {}),
+            **({"use_metal": True} if use_metal else {}))
         remaining()
         observe("optimizer_done")
         return result

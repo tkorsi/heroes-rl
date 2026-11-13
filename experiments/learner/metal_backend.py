@@ -1,17 +1,39 @@
 """Experimental batched FP32 Metal backend; admission remains with the caller."""
 
 import math
-from collections import defaultdict
+from collections import OrderedDict, defaultdict
 import torch
 from torch.nn import functional as F
 from .metal_gru import gru
 
 D = "mps"
 FULL_PREFIX_PLAN = True
+# Bound retained device constants; activations still use the MPS allocator limit.
+PREFIX_PLAN_CACHE_BYTES = 4 * 1024**3
 
 
 def tensor(x, dtype=torch.long):
     return torch.tensor(x, dtype=dtype)
+
+
+def _upload_plan(plan):
+    arenas = {dtype: values.to(D) for dtype, values in plan["_arenas"].items()}
+
+    def move(value):
+        if isinstance(value, torch.Tensor):
+            start = value.storage_offset()
+            return arenas[value.dtype][start : start + value.numel()].view(value.shape)
+        if isinstance(value, dict):
+            return {key: move(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [move(item) for item in value]
+        if isinstance(value, tuple):
+            return tuple(move(item) for item in value)
+        return value
+
+    result = move({key: value for key, value in plan.items() if key != "_arenas"})
+    del move
+    return result
 
 
 class _History:
@@ -21,10 +43,11 @@ class _History:
         self.frame_count = len(frames)
         self.plans = {}
 
-    def plan(self, start, end, decisions=()):
+    def plan(self, start, end, decisions=(), *, device=True):
         key = (start, end, tuple(decisions))
         if key in self.plans:
-            return self.plans[key]
+            result = self.plans[key]
+            return _upload_plan(result) if device else result
         wanted = set(decisions)
         jobs = [i for i in range(start, end) if self.frames[i]["root"] >= 0]
         roots = []
@@ -281,7 +304,7 @@ class _History:
             "heads": heads,
             "decision_states": tensor([x[0] for x in decision_plan]),
         }
-        # Upload two contiguous constant arenas instead of thousands of tiny copies.
+        # Keep packed CPU constants so evicted device plans need no recompilation.
         found = []
 
         def collect(v):
@@ -297,11 +320,13 @@ class _History:
         collect(result)
         del collect
         replacement = {}
+        arenas = {}
         for dtype in (torch.int64, torch.float32):
             entries = [v for v in found if v.dtype == dtype]
             if not entries:
                 continue
-            packed = torch.cat([v.reshape(-1) for v in entries]).to(D)
+            packed = torch.cat([v.reshape(-1) for v in entries])
+            arenas[dtype] = packed
             offset = 0
             for v in entries:
                 replacement[id(v)] = packed[offset : offset + v.numel()].view(v.shape)
@@ -320,8 +345,9 @@ class _History:
 
         result = replace(result)
         del replace
+        result["_arenas"] = arenas
         self.plans[key] = result
-        return result
+        return _upload_plan(result) if device else result
 
 
 class NativeModel:
@@ -332,6 +358,8 @@ class NativeModel:
         self.f = features
         self.h = hidden
         self.p = {}
+        self._prefix_plans = OrderedDict()
+        self._prefix_plan_bytes = 0
 
     def begin_text_replay(self, *args):
         self.pending = []
@@ -353,6 +381,30 @@ class NativeModel:
 
     def close(self):
         self.end_text_replay()
+        self._prefix_plans.clear()
+        self._prefix_plan_bytes = 0
+
+    def _prefix_plan(self, history, end):
+        key = (history, end)
+        if key in self._prefix_plans:
+            self._prefix_plans.move_to_end(key)
+            return self._prefix_plans[key][0]
+        host = history.plan(0, end, device=False)
+        size = sum(
+            arena.numel() * arena.element_size() for arena in host["_arenas"].values()
+        )
+        while (
+            self._prefix_plans
+            and self._prefix_plan_bytes + size > PREFIX_PLAN_CACHE_BYTES
+        ):
+            entry = self._prefix_plans.popitem(last=False)
+            self._prefix_plan_bytes -= entry[1][1]
+            del entry
+        plan = _upload_plan(host)
+        if size <= PREFIX_PLAN_CACHE_BYTES:
+            self._prefix_plans[key] = (plan, size)
+            self._prefix_plan_bytes += size
+        return plan
 
     def prepare_window_text(self, history, start, end, decisions, workers):
         self.pending.append((history, start, end, tuple(decisions)))
@@ -477,7 +529,11 @@ class NativeModel:
     def prefix(self, history, stops, workers):
         with torch.no_grad():
             plan_end = history.frame_count if FULL_PREFIX_PLAN else max(stops)
-            plan = history.plan(0, plan_end)
+            plan = (
+                self._prefix_plan(history, plan_end)
+                if FULL_PREFIX_PLAN
+                else history.plan(0, plan_end)
+            )
             initial = torch.zeros((1, self.h), device=D)
             if not plan["jobs"]:
                 result = {s: initial[0] for s in stops}

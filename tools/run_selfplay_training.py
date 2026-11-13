@@ -1124,12 +1124,14 @@ def collect_batch(plan_path, plan, learner, opponent, launch, save_attempt, *, p
             if live:
                 current_stage = 'preparation'
                 set_phase(progress_path(launch['output'], plan['schedule'][job['index']]['episode']), 'preparing PPO')
+                preparation_started = time.monotonic()
                 with (wall_limit(verification_remaining()) if math.isfinite(verification_remaining()) else nullcontext()):
                     receipt = training.prepare_live_capture(job['binding'], learner, opponent,
                                                             remaining=verification_remaining)
                 manifest = read(job['folder'] / 'manifest.json')
                 row = plan['schedule'][job['index']]
                 attempt = dict(**row, status='captured', verification_status='not_performed',
+                    preparation_seconds=time.monotonic() - preparation_started,
                     cleanup_verified=True, replay_verified=False, both_policies_reconstructed=False,
                     episode_status=manifest['status'], termination_reason=manifest['termination_reason'],
                     outcomes=manifest['outcomes_by_player'], rewards=manifest['rewards_by_player'],
@@ -1568,9 +1570,15 @@ def finalize_stopped_run(output, launch):
         no_unpublished_experience_admitted=True), new=True)
 
 
-def ten_configuration(checked, seconds, *, games=None):
+def ten_configuration(checked, seconds, *, games=None, use_metal=False):
     from experiments.learner import selfplay_training as training
     from experiments.learner.ppo import PPOConfig
+    require(type(use_metal) is bool and (not use_metal or CYCLE_MODE),
+            'Metal PPO is an explicit cycle-only experiment')
+    if use_metal:
+        import torch
+        require(torch.backends.mps.is_available() and hasattr(torch.mps, 'compile_shader'),
+                'Metal PPO requires MPS and torch.mps.compile_shader')
     inherited = validate_configuration(checked['inherited_configuration'] if 'inherited_configuration' in checked
         else read(bound(checked['parent']['launch']))['configuration'])
     cfg = {key: deepcopy(inherited[key]) for key in
@@ -1586,6 +1594,7 @@ def ten_configuration(checked, seconds, *, games=None):
                phase_deadlines_seconds={'training': seconds, 'update': seconds})
     if CYCLE_MODE:
         cfg.update(schema='heroes-selfplay-ten-then-check-config-v1',
+                   learner_backend='metal' if use_metal else 'cpu',
                    training_verification='not_performed', evaluation_games_per_cycle=1,
                    collection_workers=10, collection_worker_threads=1, preparation_workers=1,
                    collection_scheduling='rolling-v1', memory_reserve_gib=48,
@@ -1956,6 +1965,8 @@ def prepare_ten(args, inspected):
                 == args.run_dir.resolve(), 'Continue only from the latest registered ten-game run')
     requested = getattr(args, 'games', None) if CYCLE_MODE else None
     sizes = cycle_batch_sizes(requested) if requested is not None else None
+    configuration = ten_configuration(checked, seconds, games=sizes[0] if sizes else None,
+        use_metal=getattr(args, 'metal', False))
     reserved_cycles = (1 if sizes else args.batches) + int(inspected.get('pending_evaluation', False))
     width = requested + 1 if sizes else cycle_width()
     output = private_output(args.output or TEN_BASE / ('run-' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
@@ -1973,7 +1984,7 @@ def prepare_ten(args, inspected):
         parent_policy_sha256=inspected['parent']['policy']['sha256'], protected=inspected['protected'],
         reservations=reservations, batches=args.batches, reserved_cycles=reserved_cycles,
         pending_evaluation=inspected.get('pending_evaluation', False),
-        configuration=ten_configuration(checked, seconds, games=sizes[0] if sizes else None), execution=checked['execution'],
+        configuration=configuration, execution=checked['execution'],
         policy_support=checked['experiment']['policy_support'], equipment_policy=checked['equipment_policy'],
         army_information=checked['army_information'], maximum_seconds=seconds,
         hard_deadline_monotonic=None if seconds is None else now + seconds,
@@ -2162,10 +2173,11 @@ def ten_coordinator(args):
     launch = load_ten_launch(args.plan, args.sha256)
     require(os.getppid() == launch['supervisor_pid'], 'Only the lease owner may launch ten-game training')
     configure_native(launch['execution'])
-    output = Path(launch['output']); started = time.monotonic()
+    output = Path(launch['output']); started = time.monotonic(); started_wall = time.time()
     state = training.restore_checkpoint_pair(launch['parent_pair'], expected_metadata=launch['parent_pair']['metadata'],
         expected_ppo_config=PPO, expected_optimizer_steps=launch['parent_optimizer_steps'])
     report = dict(schema=TEN_LAUNCH + '-result', status='running', mode='training', batches=[],
+        learner_backend=launch['configuration'].get('learner_backend', 'cpu'), inference_backend='cpu',
         optimizer_updates=0, admitted_games=0, training_samples_admitted=0,
         parent_checkpoint=state.progress.updates, latest_checkpoint=state.progress.updates,
         owned_cleanup_verified=False, protected_inputs_unchanged=False)
@@ -2178,6 +2190,8 @@ def ten_coordinator(args):
         path, plan, opponent = ten_batch_plan(launch, state, name=name, mode=mode, start=start,
                                              opponent_model=opponent_model, opponent_policy=opponent_policy, count=count)
         phase = dict(name=name, mode=mode, plan=binding(path), status='collecting',
+                     learner_backend=launch['configuration'].get('learner_backend', 'cpu') if mode == 'training' else None,
+                     collection_started_utc=datetime.now(timezone.utc).isoformat(),
                      comparison_checkpoint='batch_start',
                      checkpoint_before=state.progress.updates, weights_before=state.weights_sha256,
                      planned_games=len(plan['schedule']),
@@ -2192,9 +2206,12 @@ def ten_coordinator(args):
                 write(path.parent / 'attempts.json', phase['attempts'])
                 write(output / 'report.json', report)
         deadlines = batch_phase_deadlines(launch)
+        collection_started = time.monotonic(); collection_wall = time.time()
         receipts, attempts = collect_batch(path, plan, state.model, opponent, launch, record,
                                            phase_deadline=deadlines['training'])
-        phase.update(status='verified', attempts=attempts, counts=ten_outcomes(attempts))
+        phase.update(status='verified', attempts=attempts, counts=ten_outcomes(attempts),
+                     collection_and_preparation_seconds=time.monotonic() - collection_started,
+                     collection_and_preparation_wall_seconds=time.time() - collection_wall)
         write(output / 'report.json', report)
         return path, plan, phase, receipts, deadlines
 
@@ -2216,6 +2233,7 @@ def ten_coordinator(args):
             phase['status'] = 'updating'; write(output / 'report.json', report)
             update_progress = PPOProgress(ppo_progress_path(output, phase['name'])) if CYCLE_MODE else None
             state.model.train().requires_grad_(True)
+            update_started = time.monotonic(); update_wall = time.time()
             with (wall_limit(phase_remaining(deadlines['update']))
                   if math.isfinite(phase_remaining(deadlines['update'])) else nullcontext()):
                 result, rollouts = (training.live_native_update if CYCLE_MODE else training.native_update)(state.model, state.optimizer, receipts,
@@ -2223,6 +2241,8 @@ def ten_coordinator(args):
                     remaining=lambda: phase_remaining(deadlines['update']),
                     max_optimizer_steps=plan['configuration']['max_optimizer_steps'],
                     **({'progress': update_progress} if CYCLE_MODE else {}))
+            phase['update_seconds'] = time.monotonic() - update_started
+            phase['update_wall_seconds'] = time.time() - update_wall
             state.model.eval()
             next_progress = TrainingProgress(state.progress.updates + 1, state.progress.rollouts + batch_sizes[index],
                                              state.progress.decisions + result.samples)
@@ -2238,6 +2258,7 @@ def ten_coordinator(args):
                 training_games=batch_sizes[index])
             if update_progress is not None:
                 update_progress.phase('saving')
+            checkpoint_started = time.monotonic()
             with (wall_limit(phase_remaining(deadlines['update'], 0))
                   if math.isfinite(phase_remaining(deadlines['update'], 0)) else nullcontext()):
                 pair = training.save_checkpoint_pair(path.parent / 'checkpoint', state.model, state.optimizer,
@@ -2255,6 +2276,7 @@ def ten_coordinator(args):
                 publication = binding(path.parent / 'publication.json')
                 write(TEN_BASE / 'latest-checkpoint.json', dict(schema=TEN_LAUNCH + '-latest',
                     publication=publication, checkpoint=pair, optimizer_steps=steps))
+            phase['checkpoint_seconds'] = time.monotonic() - checkpoint_started
             state.model.requires_grad_(False)
             state = replace(state, progress=next_progress, sampler_state=sampler, checkpoint=pair['checkpoint'],
                 optimizer_steps=steps, metadata=metadata, weights_sha256=pair['weights_sha256'])
@@ -2297,6 +2319,8 @@ def ten_coordinator(args):
         except Exception as error:
             report.update(status='stopped', protection_error=str(error))
         report['elapsed_seconds'] = time.monotonic() - started
+        report['elapsed_wall_seconds'] = time.time() - started_wall
+        report['ended_utc'] = datetime.now(timezone.utc).isoformat()
         write(output / 'report.json', report)
     return report
 
@@ -2331,6 +2355,7 @@ def main(argv=None):
         ten.add_argument('--hours', type=float, default=None)
         if name.startswith('cycle-'):
             ten.add_argument('--games', type=int, help='10–1000 training games; PPO batches up to 100, one final diagnostic')
+            ten.add_argument('--metal', action='store_true', help='Opt into experimental Metal PPO; CPU gameplay and diagnostics')
         ten.add_argument('--output', type=Path)
         ten.add_argument('--run-dir', type=Path, required=name in ('batch10-continue', 'cycle-continue'))
     for name in ('_coordinator', '_capture', '_report'):
@@ -2375,6 +2400,10 @@ def main(argv=None):
                              or (args.hours is not None and math.isfinite(args.hours)
                                  and 120 <= args.hours * 3600 <= max_hours * 3600)),
                         f'Use 1–100 batches and a finite budget up to {max_hours:g} hours')
+                if getattr(args, 'metal', False):
+                    # Reject unsupported selection before retirement or seed reservation.
+                    ten_configuration(inspected['checked'], None if args.hours is None else args.hours * 3600,
+                        games=cycle_batch_sizes(requested)[0] if requested is not None else None, use_metal=True)
                 if args.run_dir is not None:
                     require(inspected['lineage'] is not None and inspected['lineage']['runs']
                         and Path(read(bound(inspected['lineage']['runs'][-1]))['output']).resolve() == args.run_dir.resolve(),
@@ -2391,7 +2420,8 @@ def main(argv=None):
                         checkpoint=inspected['state'].progress.updates,
                         exact_model_adam_rng_progress_sampler_pool=True,
                         configuration=ten_configuration(inspected['checked'], None if args.hours is None else args.hours * 3600,
-                            games=cycle_batch_sizes(requested)[0] if requested is not None else None),
+                            games=cycle_batch_sizes(requested)[0] if requested is not None else None,
+                            use_metal=getattr(args, 'metal', False)),
                         training_games=args.batches * cycle_games(), held_out_games=(args.batches + int(inspected.get('pending_evaluation', False))) if CYCLE_MODE else 0,
                         total_physical_games=args.batches * cycle_width() + int(inspected.get('pending_evaluation', False)),
                         expected_optimizer_updates=args.batches,
