@@ -23,6 +23,16 @@ alive with unattended waiting or repeated polling by default; continuous
 monitoring requires an explicit request. User-launched work must run independently
 of the Codex conversation. This rule does not waive runtime or validation gates.
 
+## One main development line
+
+`main` is the canonical development branch and `/Users/orsi/Projects/Heroes` is
+the working checkout. Keep current implementation, configuration and research
+findings together there; do not accumulate long-lived experiment branches or
+duplicate working directories. Publish incremental, focused commits to `main`
+when authorized. Temporary isolation must be reintegrated and removed when its
+work is complete. Preserve required historical source identities, checkpoints
+and runtime assets in private storage before retiring a working copy.
+
 Read `README.md` before changing this project. It is the single authoritative
 document for the purpose, agreed constraints, experiment stages, and current
 status. Update it when an experiment changes these decisions.

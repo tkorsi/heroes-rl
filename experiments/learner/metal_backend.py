@@ -189,29 +189,37 @@ class _History:
             size = w * h
             from itertools import accumulate
 
-            attribute_ends = list(accumulate(len(x["object_attributes"]) for x in maps))
+            delta = None
+            if start == 0 and not decisions:
+                from .metal_map_delta import build_plan
+
+                delta = build_plan(maps, w, h)
             map_plan = {
                 "width": w,
                 "height": h,
-                "terrain": torch.stack([m["terrain"] for m in maps]),
-                "road": torch.stack([m["road"] for m in maps]),
-                "flags": torch.stack([m["flags"] for m in maps]),
-                "attributes": torch.cat([m["object_attributes"] for m in maps]),
-                "indices": torch.cat(
-                    [m["object_indices"] + j * size for j, m in enumerate(maps)]
-                ),
                 "positions": tensor(map_positions),
                 "own": tensor([local[m["own"]] for m in all_maps]),
                 "reuse": tensor(map_reuse),
                 "count": len(maps),
                 "cpu_positions": map_positions,
                 "cpu_reuse": map_reuse,
-                "attribute_ends": attribute_ends,
             }
-        if map_plan is not None and start == 0 and not decisions:
-            from .metal_map_delta import build_plan
-
-            map_plan["delta"] = build_plan(maps, w, h)
+            if delta is not None:
+                # Prefix-only sparse CNNs do not consume dense per-map features.
+                map_plan["delta"] = delta
+            else:
+                map_plan.update(
+                    terrain=torch.stack([m["terrain"] for m in maps]),
+                    road=torch.stack([m["road"] for m in maps]),
+                    flags=torch.stack([m["flags"] for m in maps]),
+                    attributes=torch.cat([m["object_attributes"] for m in maps]),
+                    indices=torch.cat(
+                        [m["object_indices"] + j * size for j, m in enumerate(maps)]
+                    ),
+                    attribute_ends=list(
+                        accumulate(len(x["object_attributes"]) for x in maps)
+                    ),
+                )
         decision_plan = []
         jobindex = {i: j for j, i in enumerate(jobs)}
         mindex = {jobs[j]: map_reuse[i] for i, j in enumerate(map_positions)}
@@ -321,7 +329,7 @@ class _History:
         del collect
         replacement = {}
         arenas = {}
-        for dtype in (torch.int64, torch.float32):
+        for dtype in (torch.int64, torch.int32, torch.float32):
             entries = [v for v in found if v.dtype == dtype]
             if not entries:
                 continue
@@ -469,14 +477,17 @@ class NativeModel:
             nm = bisect.bisect_left(m["cpu_positions"], frame_limit)
             if nm:
                 unique = max(m["cpu_reuse"][:nm]) + 1
-                na = m["attribute_ends"][unique - 1]
                 m = {
                     **m,
                     "count": unique,
-                    **{k: m[k][:unique] for k in ("terrain", "road", "flags")},
-                    **{k: m[k][:na] for k in ("attributes", "indices")},
                     **{k: m[k][:nm] for k in ("positions", "own", "reuse")},
                 }
+                if m.get("delta") is None:
+                    na = m["attribute_ends"][unique - 1]
+                    m.update(
+                        **{k: m[k][:unique] for k in ("terrain", "road", "flags")},
+                        **{k: m[k][:na] for k in ("attributes", "indices")},
+                    )
             else:
                 m = None
         if m and frame_limit is not None and m.get("delta") is not None:
@@ -553,7 +564,7 @@ class NativeModel:
                     states[bisect.bisect_left(plan["jobs"], s) - 1]
                     if bisect.bisect_left(plan["jobs"], s)
                     else initial[0]
-                ).detach()
+                ).detach().clone()
                 for s in stops
             }
             if not FULL_PREFIX_PLAN:

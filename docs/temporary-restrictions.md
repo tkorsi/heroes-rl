@@ -2,13 +2,15 @@
 
 These restrictions simplify early adventure-policy learning. They are not final
 rules of Heroes III and must not be forgotten when interpreting results.
+The current cycle uses `hero-management-v4`; historical maps and captures keep
+the rules under which they were created.
 
 | Restriction | Current scope | Removal work |
 | --- | --- | --- |
-| Prebuilt starting taverns | The prepared `hero-management-v3` variant gives both starting towns a Tavern at no resource cost. Hiring still costs native gold and requires a free visitor slot. | Remove each starting Tavern in a new map version; compare recovery after hero loss. |
-| No calendar neutral spawns | In `hero-management-v3`, new months do not create wandering neutral armies. Initial neutrals, existing stack growth and special-week town growth remain native. | Re-enable calendar spawning in a new map version and measure its effect separately. |
+| Prebuilt starting taverns | `hero-management-v4` retains the v3 starting Tavern in both towns at no resource cost. Hiring still costs native gold and requires a free visitor slot. | Remove each starting Tavern in a new map version; compare recovery after hero loss. |
+| Calendar neutral spawning restored | Since v4, native special-month conditions can create wandering neutral armies. This does not mean new armies appear every month. Initial neutrals, existing growth and town growth retain their native rules. | This restriction was removed on November 12, 2026. Keep v3's disabled-spawning map for historical provenance. |
 | Automatic combat | Adventure experiments delegate tactical combat to BattleAI. | Add and validate a separate battle policy before claiming end-to-end learned play. |
-| No manual troop-slot management | The trained-1753 one-game experiment retains the recruitment-only action restrictions. | Restore stack rearrangement and upgrades in a separately versioned experiment after the adventure baseline is evaluated. |
+| No manual troop-slot management | The current cycle retains the recruitment-only action restrictions introduced for the trained-1753 lineage. | Restore stack rearrangement and upgrades in a separately versioned experiment after the adventure baseline is evaluated. |
 | No artifacts anywhere | `no-artifacts-v1` removes all hero equipment and disables every artifact, including spellbooks and war machines, throughout the game. Starts, hires, purchases, loot and rewards are covered. | Restore normal artifact acquisition in a separately versioned experiment; report that removing catapults and spellbooks changes siege and spell access. |
 | One-action town cooldown | `visible-interaction-budget-recruit-only-town-cooldown-v1` excludes `open_town` after a player closes a town, until that player completes a different action. It also applies after an empty visit. | Review repeat openings and menu alternation after the frozen game. Remove the cooldown by selecting a different support version and retain the original version for replay. |
 | Consecutive identical commands | `visible-interaction-budget-hero-relative-cooldown-v1` retains the town rule and excludes the previous command for each player. Another hero, tile or quantity is a different command. Mandatory choices and window exits stay available, and a repeated end turn is allowed when it is the only available action. | Measure repeated commands, travel and menu alternation. Select a separate support version to remove the restriction. |
@@ -66,6 +68,14 @@ restoring ordinary artifact behavior. Siege and spell access intentionally diffe
 On 7 November 2026 the user added the tavern and calendar-spawn restrictions and
 chose gradual removal of temporary restrictions in later experiments. Each
 removal must declare its rule/version and parent checkpoint, preserve the prior
-variant, and distinguish a rule effect from policy learning. The new variant
-passed native validation; it has not yet been used for training. The hundred-game
-cycle selects this map; historical one-game modes retain `hero-management-v2`.
+variant, and distinguish a rule effect from policy learning. The v3 variant
+passed native validation and was used by training cycles through checkpoint
+1,763; historical one-game modes retain `hero-management-v2`.
+
+On November 12, 2026 the user restored native calendar spawning in v4 while
+retaining starting taverns and the other restrictions. The selector checks that
+v4 differs from v3 only by the spawn override and descriptive text. It reuses the
+pinned, replay-verified native-default spawning control from v3 acceptance;
+this is not a claim of a new v4 mechanics capture. Subsequent training has used
+v4, and the latest complete published checkpoint is 1,765. See the
+[research journal](research-log.md) for each run's map, parent and outcome.

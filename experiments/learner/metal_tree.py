@@ -22,13 +22,17 @@ NAMES = [
 
 
 class Context:
+    def __init__(self, retain_backward=True):
+        self.retain_backward = retain_backward
+
     def save_for_backward(self, *values):
-        self.saved_tensors = values
+        if self.retain_backward:
+            self.saved_tensors = values
 
 
 class Tree(torch.autograd.Function):
     @staticmethod
-    def forward(ctx, plan, *parameters):
+    def forward(ctx, plan, retain_backward, *parameters):
         p = dict(zip(NAMES, parameters))
         f = p["tree.0.bias"].numel()
         table = parameters[0].new_zeros((plan["n"] + 1, f))
@@ -39,8 +43,8 @@ class Tree(torch.autograd.Function):
                 if not d:
                     result = table.new_zeros((count, f))
                 else:
-                    x = F.embedding(d["ids"], p["byte.weight"], padding_idx=0)
-                    c = Context()
+                    x = p["byte.weight"][d["ids"]]
+                    c = Context(retain_backward)
                     seq = FusedGRU.forward(
                         c,
                         x,
@@ -68,7 +72,7 @@ class Tree(torch.autograd.Function):
                 else:
                     children = table[d["children"]]
                     if k == "ordered":
-                        c = Context()
+                        c = Context(retain_backward)
                         seq = FusedGRU.forward(
                             c,
                             children,
@@ -94,10 +98,11 @@ class Tree(torch.autograd.Function):
             from .metal_tree_kernels import write_rows
 
             write_rows(table, idx, result)
-            saved.append((k, idx, d, aux, result))
-        ctx.plan = plan
-        ctx.saved = saved
-        ctx.save_for_backward(*parameters)
+            if retain_backward:
+                saved.append((k, idx, d, aux, result))
+        if retain_backward:
+            ctx.saved = saved
+            ctx.save_for_backward(*parameters)
         return table
 
     @staticmethod
@@ -151,7 +156,7 @@ class Tree(torch.autograd.Function):
                 add("tree.0.weight", delta.T @ aux["input"])
                 add("tree.0.bias", delta.sum(0))
                 dx = delta @ p["tree.0.weight"]
-                arena.index_add_(0, d["tags"], dx[:, :f])
+                arena.index_put_((d["tags"],), dx[:, :f], accumulate=True)
                 pooled = dx[:, f:]
                 if "children" not in d:
                     continue
@@ -163,9 +168,9 @@ class Tree(torch.autograd.Function):
                         .unsqueeze(1)
                         .expand(-1, d["children"].shape[1], -1)
                     )
-                arena.index_add_(0, d["children"].reshape(-1), children.reshape(-1, f))
-        return (None, *[grads.get(n) for n in NAMES])
+                arena.index_put_((d["children"].reshape(-1),), children.reshape(-1, f), accumulate=True)
+        return (None, None, *[grads.get(n) for n in NAMES])
 
 
 def encode(plan, parameters):
-    return Tree.apply(plan, *[parameters[n] for n in NAMES])
+    return Tree.apply(plan, torch.is_grad_enabled(), *[parameters[n] for n in NAMES])

@@ -1,7 +1,8 @@
 # Historical implementation and experiment notes
 
-This archive preserves the detailed notes accumulated before the October 25,
-2026 consolidation. Statements labeled "current" below describe their original
+This archive preserves detailed notes from earlier consolidations, including
+the dated README chronology moved here on November 14, 2026. Statements labeled
+"current" below describe their original
 milestones, not the current project state. See the [root README](../README.md)
 for the authoritative scope, status, source layout, and operating constraints.
 
@@ -3881,3 +3882,185 @@ consecutive reset prefixes and a real contextual movement sequence. Resource-loa
 amortization measured about 1.65× process-wall improvement on a tiny end-turn
 fixture with warm files; this is not a training-throughput claim. The ordinary
 cold client remains the fallback.
+
+
+## 2026-11-14 — Preserved README chronology before Metal adoption
+
+The following sections preserve the former README at `78e3788`. Launch commands,
+branch references, pending work, retention instructions and next-seed numbers
+describe their original dates; they are not instructions for the current cycle.
+The [current README](../README.md) selects the adopted full-D Metal backend after
+the user accepted CPU/Metal numerical differences. The numerical failures below
+remain part of the evidence; adoption does not retroactively make those checks pass.
+The append-only [research log](research-log.md) contains the detailed attempts,
+source identities and private artifact references.
+
+### Frozen first-win workflow (historical)
+
+Use `./play-one-selfplay.sh --check --until-first-win` to inspect the configuration.
+To launch manually, use `./play-one-selfplay.sh --run --until-first-win --seconds 7200 --max-games 100`.
+The mode starts with up to ten workers. Use `--workers` to compare concurrency
+under the same time budget. Waiting captures occupy worker slots, and one
+additional verifier slot is reserved for a victory candidate. The disk reserve
+defaults to 30 GiB and is configurable with `--disk-reserve-gib`.
+
+The experiment uses the pinned original map and large frozen checkpoint 1,753,
+with hero-relative coordinates, the existing cooldowns, artifact restrictions
+and troop-slot rules. Only the gameplay horizons increase, to 5,840 days and
+158,720 ordinary plus 5,120 reserved choices per player. Each game reserves fresh
+seeds and retains verification evidence in private storage. A victory requires
+exact policy reconstruction and native replay. Cutoffs are unscored, and
+interrupted games are tracked separately. Training admission and PPO updates
+are disabled.
+
+To count wins across a fixed number of attempts, use
+`./play-one-selfplay.sh --run --games 20 --seconds 7200`. This uses the same
+frozen setup and continues after verified victories. The dashboard and final
+report show Red and Blue wins, with separate counts for cutoffs, failures and
+interruptions. The time budget can end the run before all attempts settle.
+
+### Cycle chronology and Metal investigation before adoption
+
+The current cycle uses `hero-management-v4`: both starting taverns remain built,
+and native calendar spawning of new neutral armies is restored. This allows
+spawning when native special-month conditions apply, not every day or every month.
+Initial neutrals, their growth, armies, resources and all other rules are unchanged.
+The latest complete checkpoint is 1,765. The November 13 CPU run captured
+200 games, but only its first 100-game update was published. The second update
+aborted in native text/autograd memory cleanup at 5,226/10,347 optimizer steps;
+no 1,766 checkpoint was published. The authorized November 13–14 Metal trial
+recovered the 1,765 diagnostic (verified Blue win on day 87), then captured all
+100 new games in 31m11s. Its update hit the retained 26.88 GiB MPS allocator
+limit at 6,022/8,583 steps after 1h28m49s on the PPO progress clock. The update
+rolled back; zero games were admitted, and no 1,766 or final diagnostic exists.
+Post-failure full-state restoration of 1,765 passed. The Mac slept and resumed;
+the attempt took 2h03m31s on the monotonic clock and 5h59m30s wall time, including
+the recovery diagnostic. This is a failed full-cycle measurement, not evidence
+of the targeted fivefold speedup. Keep this run's raw captures for the offline
+investigation. New cycles have no default time limit.
+
+A private memory-corrected Metal candidate subsequently completed the same
+100-game update (273,913 samples, 8,583 optimizer steps) under the original 25%
+MPS cap. Full trial D also aligns GRU expression order and disables FP
+contraction in its GRU kernels. Its same-input CPU/Metal comparison measured
+5h30m54s versus 46m34s
+including preparation: **7.105x faster for the complete update**, or
+11.473x for PPO alone. Both runs observed AC/Automatic power at their endpoints;
+this is one pair, not a repeated benchmark or a full campaign timing. Gameplay
+and final-game verification are excluded.
+
+The full-update policies nevertheless failed the predeclared numerical
+comparison bounds: 439/450 conditional argmax matches, with KL and value errors
+also above their limits. These checks compare the resulting policies on recorded
+states, not playing strength. The memory and timing results do not establish
+preserved learning quality. Full candidates C and D failed those bounds despite
+D's improved local numerical checks. Follow-up isolated changes removed two
+sources of GPU forward variability in the sampled cases, but did not generally
+improve CPU agreement; they have not received another complete-update test.
+The candidates remain private and unadopted; the production backend and
+published checkpoint remain unchanged. See the research log for exact scope,
+failed attempts, power-mode corrections and private evidence references.
+
+The earlier v3 variant disabled calendar spawning and was used through 1,763.
+The v4 selector retains its pinned native acceptance, including the successful
+native-default spawning control and replay, and checks that the map changes only
+the spawning override and descriptive text. This reuses historical native evidence;
+it does not claim a newly executed v4 mechanics capture. Historical maps remain.
+Restrictions will continue to be removed one at a time.
+
+The November 7 continuation completed all fifty games, one PPO update and its
+fully validated diagnostic, advancing checkpoint 1,756 to 1,757 in 01:23:14.
+The diagnostic reached the 365-day limit without a winner. The worker-registration
+race and duplicate native-recipe storage were fixed; numerical parity checks
+passed without changing gameplay, PPO settings or native resource bounds.
+The subsequent 100-game launch
+`run-20261107T155027Z-dfd8ff19` stopped at the 30 GiB disk reserve after 13 captured
+terminals, with no admitted batch or PPO update. Its analysis is in the journal.
+This completed cycle establishes execution correctness, not improved playing strength.
+
+After artifact retirement, `run-20261107T161908Z-3d80d63a` completed 100/100
+training captures and one PPO update to checkpoint 1,758 in 05:38:13 on November 7.
+Engine-reported training outcomes were Blue 69, Red 14 and 17 day-limit cutoffs;
+training replay/policy reconstruction was intentionally not performed. The fresh
+1,758 diagnostic ended in a Blue victory and passed native replay and exact
+two-policy reconstruction. The November 9 read-only audit restored the full
+1,758 state and confirmed clean shutdown, no active workers and no newer
+registered launch. The completed behavioral analysis found a day-18 capture of
+Red's empty town after Red lost both heroes attacking Blue; neither side built
+or recruited town troops. The preceding 100 games already used 1,757 weights
+on v3 and had 83 engine-reported natural terminals, so the decisive diagnostic
+does not establish improvement from the update. Findings are in the research
+journal. Its reviewed raw artifacts were retired at the next launch after the
+full 1,758 checkpoint pair was copied and restored in retained storage.
+
+The authorized November 9 run `run-20261109T141819Z-14d160b4` captured all 100
+games from 1,758: 66 engine-reported Blue wins, 16 Red wins and 18 day cutoffs,
+with no capture failures. The user stopped it on November 10 at 02:11 Kyiv,
+before the shared deadline. PPO had reached 6,826/9,073 minibatches but had not
+published a checkpoint: zero games/samples were committed to training, 1,758
+remained the latest complete state, and no diagnostic ran. Closed-lid sleep
+consumed over three hours of the wall-clock budget; the existing `caffeinate -i`
+does not prevent that sleep. Post-stop full-state restoration and owned process
+cleanup passed. Its analyzed raw data were retired at the explicitly authorized
+November 10 retry, which started from 1,758 with fresh seed offset 541.
+
+That retry, `run-20261110T113903Z-94c3b975`, completed all 100 captures, one PPO
+update and the validated diagnostic on November 10 in 07:52:07 (coordinator
+time). Training outcomes were 60 engine-reported Blue wins, 19 Red wins and
+21 day cutoffs, with zero capture failures. All 100 games and 341,569 samples
+were admitted; 10,697 optimizer steps produced checkpoint 1,759. Exact full-state
+restoration, both diagnostic policy reconstructions and native replay passed,
+with owned cleanup verified and protected inputs unchanged. Blue won the
+diagnostic on day 19: it captured Red's town on day 12 after defeating its
+14-pikeman garrison; Red's surviving 25-pikeman hero did not recover a town
+within seven days. The earlier capture and a modest reduction in window-action
+share are descriptive observations, not proof of stronger play. Analysis is in
+the journal. Its reviewed raw artifacts were retired at the November 11 launch
+after preserving the checkpoint; that reservation started at offset 642.
+
+The user-launched `run-20261111T115614Z-5c919e30` completed on November 11
+in 04:28:18 coordinator time: 100 captures, 253,760 admitted samples, 7,956
+optimizer steps and checkpoint 1,760. Training engine outcomes were Blue 65,
+Red 16 and 19 day cutoffs, without capture failures. The fully verified
+diagnostic reached the 365-day limit without a winner or town capture. Both
+sides built and recruited; garrison swaps visibly added 162 pikemen to Red's
+hero and 316 pikemen plus 91 halberdiers to Blue's hero. These forces did not
+produce a town capture. Final Red had no heroes and 445 garrison pikemen;
+Blue retained two heroes. Full restore/preflight and owned cleanup passed.
+Analysis is in the journal and this run is retention-reviewed. Keep its raw
+artifacts until the next authorized launch; the next fresh seed offset is 743.
+
+### Verified batches of ten (historical)
+
+These are historical commands, dependent on raw history that the single-run
+retention policy retires. Use the current `--cycle` launcher for continuation.
+Previously, `./continue-selfplay.sh --batch-ten --check --batches 1 --hours 10` provided a
+read-only preflight. To launch one batch manually, use
+`./continue-selfplay.sh --batch-ten --run --batches 1 --hours 10`. Set
+`--batches 10` for ten successive batches (100 training games), subject to the
+same overall ten-hour deadline. No held-out evaluation games are added.
+
+Each batch collects ten games concurrently with balanced learner seats and a
+frozen copy of the current policy as opponent. Only the scheduled learner's
+trajectory from each game enters PPO. All ten games must pass policy
+reconstruction and native replay before one update and a complete checkpoint
+roundtrip. A partial or failed batch never trains. Captured game cutoffs and
+verification failures are separate, potentially overlapping counts; Red and Blue
+win totals include verified wins only. Unverified captured victories remain
+explicitly labelled. Reports include checkpoint and weight changes per batch.
+
+This separate lineage preserves the full original 1,753 checkpoint and uses
+fresh, durably consumed seeds. Subsequent launches require
+`./continue-selfplay.sh --batch-ten --resume --run-dir PRIVATE_RUN_PATH --batches 1 --hours 10`;
+the path must identify its latest run. Continuation restores the latest complete
+published checkpoint, never an in-flight update. The launcher rejects concurrent
+game/training activity and retains a 30 GiB disk reserve. Do not change the
+source checkout while a run uses it.
+
+The map, large network, PPO/Adam settings, terminal rewards and current temporary
+rules are unchanged. The experiment retains the first-win mode's extended
+horizons: 5,840 days and 158,720 ordinary plus 5,120 reserved choices per player.
+Ten games per update replaces the historical four-game batch contract. More
+decisive self-play games alone do not establish stronger play; evaluation against
+frozen 1,753 is recorded as a future option and is currently disabled. Meaningful
+research steps and corrections belong in [the research journal](research-log.md).

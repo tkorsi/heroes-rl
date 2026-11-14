@@ -5620,3 +5620,63 @@ This is a documentation-only change, applied to the working checkout and the
 current Metal experiment checkout. Validation is limited to reviewing the text
 and Git diffs; no project script, experiment, training or monitoring loop runs.
 No model, checkpoint, seed allocation, runtime configuration or launcher changes.
+
+## 2026-11-14 — Consolidate main and adopt measured Metal PPO
+
+The user requests one current `main`, removal of obsolete branches and working
+copies, clear navigation to core implementation/research findings, and GitHub
+synchronization. They also explicitly choose Metal and accept the observed
+CPU/Metal numerical differences. This supersedes the earlier non-adoption
+decision; the failed numerical comparisons remain recorded and do not become
+passes. No playing-strength equivalence is inferred from this decision.
+
+GitHub `main` was `d785587` (October 30). The current accepted line `6050886`
+contained all 118 subsequent commits, including the user-owned launch policy.
+Local `main` fast-forwarded from `989dcd0` to that line; merge `78e3788` preserved
+the separately committed policy history from `2a64930` with no content changes.
+The only merge conflict was a duplicate journal entry already present in the
+latest journal; all research records were retained. Existing published tests and
+validation assets are inherited unchanged, not newly authored for this cleanup.
+
+Before cleanup, local branch/remote/tag refs and worktree inventory were saved
+under private `Heroes-artifacts/repository-archive/2026-11-14-main-consolidation`.
+`branches.bundle` verified as a complete Git history; editor checkpoint refs
+were excluded, and this backup is not published. Deletion requires checking
+active processes, ignored state, runtime links and unique changes first. Existing
+hash-bound source, validation and historical-launcher paths are retained rather
+than breaking continuation through cosmetic relocation.
+
+Adopt precisely full trial D's six numerical files, identified in the preceding
+measurement, plus its existing-controller environment/source-identity transition.
+Do not include the later unmeasured deterministic pool/delta variant. The manual
+`run-100-games.command` now defaults to Metal PPO, with explicit `--cpu` fallback;
+gameplay and diagnostic inference remain CPU. All PPO settings, 25% MPS cap,
+4 GiB immutable cache, resource guards, full-state restoration and exact source
+checks remain. This adoption does not launch training or publish checkpoint 1,766.
+
+Validation for this integration is static only under the user's launch policy:
+verify exact measured file hashes, inspect diffs and source-gate transitions,
+parse syntax without importing project code, and prepare the existing preflight
+command for the user. Previously recorded numerical/full-update evidence applies
+to the exact D files; a newly executed integrated preflight or test suite is not
+claimed. No project script, numerical experiment or training is run by Codex.
+
+Cleanup outcome: 63 obsolete worktree directories were removed after preserving
+43 ignored/private-state entries by same-volume rename and one tracked-change
+patch. One already-missing worktree registration was pruned. The main checkout
+and two detached dependency snapshots remain: `Heroes-metal-ppo` is referenced
+by the saved Metal investigation, and `runs/perf-worktree` supplies historical
+runtime links. Neither is an active development branch. All 65 unique original
+worktree HEADs are preserved in verified `worktree-heads.bundle`; branch tips
+and tags are preserved separately in `branches.bundle`. The private
+`cleanup-result.json` records exact source/destination paths and preserved inodes.
+Checkpoint 1,765, seed lineage, locked Python, accepted runtime/native builds,
+saved 100-game cohort and open replay/game applications were not removed.
+
+The concise README now leads to `docs/architecture.md`; dated README chronology
+is retained in `docs/project-history.md`. The restriction register identifies
+v4 calendar spawning as restored and starting taverns as still enabled. Static
+checks passed for six Python ASTs, seven pinned source digests, both launcher
+shell syntax checks, local navigation targets and whitespace. No project code
+was imported to perform these checks. GitHub publication and branch retirement
+are recorded below after remote read-back.

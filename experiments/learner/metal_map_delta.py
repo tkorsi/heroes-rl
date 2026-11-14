@@ -10,6 +10,23 @@ def _long(values):
     return torch.tensor(values, dtype=torch.int64)
 
 
+_KERNEL_INDEX_KEYS = (
+    "first_group", "first_cell", "first_neighbors",
+    "second_group", "second_cell", "second_neighbors", "second_pool",
+)
+
+
+def _compact_kernel_indices(plan):
+    """Use exact int32 constants when all shader indices fit; retain int64 otherwise."""
+    limit = torch.iinfo(torch.int32)
+    if all(not plan[key].numel() or
+           (int(plan[key].min()) >= limit.min and int(plan[key].max()) <= limit.max)
+           for key in _KERNEL_INDEX_KEYS):
+        for key in _KERNEL_INDEX_KEYS:
+            plan[key] = plan[key].to(torch.int32)
+    return plan
+
+
 def build_plan(maps, width, height):
     """Compile sparse CPU metadata before the enclosing device-arena upload."""
     import numpy as np
@@ -141,7 +158,7 @@ def build_plan(maps, width, height):
         result = torch.from_numpy(data)
         return result.reshape(*shape) if shape else result
 
-    return {
+    result = {
         "terrain": torch.stack([m["terrain"] for m in groups]),
         "road": torch.stack([m["road"] for m in groups]),
         "flags": torch.stack([m["flags"] for m in groups]).clone(),
@@ -174,6 +191,7 @@ def build_plan(maps, width, height):
         "second_neighbors": packed(second_neighbors, np.int64, -1, 9),
         "second_pool": packed(second_pool, np.int64),
     }
+    return _compact_kernel_indices(result)
 
 
 def encode(model, maps):
@@ -199,10 +217,10 @@ def encode(model, maps):
     )
     objects = weight.new_zeros((group_count * size, 16))
     if attribute_count:
-        objects.index_add_(
-            0,
-            d["indices"][:attribute_count],
+        objects.index_put_(
+            (d["indices"][:attribute_count],),
             encoded[d["anchor_attribute_ids"][:attribute_count]],
+            accumulate=True,
         )
     grid = torch.cat(
         [
@@ -235,43 +253,24 @@ def encode(model, maps):
         # Construct only cells that changed, and gather neighborhood indices.
         object_delta = weight.new_zeros((delta_count, 16))
         if object_count:
-            object_delta.index_add_(
-                0,
-                d["object_targets"][:object_count],
+            object_delta.index_put_(
+                (d["object_targets"][:object_count],),
                 encoded[d["object_ids"][:object_count]]
                 * d["object_scales"][:object_count, None],
+                accumulate=True,
             )
         delta = torch.cat([object_delta, d["delta_flags"][:delta_count]], -1)
         delta = torch.cat([delta.new_zeros((1, 21)), delta], 0)
-        patches = (
-            delta[d["first_neighbors"][:first_count]]
-            .permute(0, 2, 1)
-            .reshape(first_count, 21 * 9)
-        )
-        first_linear = F.linear(patches, weight[:, 12:, :, :].reshape(16, 21 * 9))
-        first_cells = first.permute(0, 2, 3, 1).reshape(group_count, size, 16)
-        first_values = first_cells[
-            d["first_group"][:first_count], d["first_cell"][:first_count]
-        ]
-        first_delta = (first_values + first_linear).tanh() - first_values.tanh()
-        first_delta = torch.cat([first_delta.new_zeros((1, 16)), first_delta], 0)
-        patches = (
-            first_delta[d["second_neighbors"][:second_count]]
-            .permute(0, 2, 1)
-            .reshape(second_count, 16 * 9)
-        )
-        second_linear = F.linear(
-            patches, model.p["map_cnn.2.weight"].reshape(16, 16 * 9)
-        )
-        second_cells = second.permute(0, 2, 3, 1).reshape(group_count, size, 16)
-        second_values = second_cells[
-            d["second_group"][:second_count], d["second_cell"][:second_count]
-        ]
-        second_delta = (second_values + second_linear).tanh() - second_values.tanh()
-        pooled.index_add_(
-            0,
-            d["second_pool"][:second_count],
-            second_delta / ((width // 4) * (height // 4)),
-        )
+        from .metal_map_kernels import sparse_first, sparse_second
+
+        first_cells = first.permute(0, 2, 3, 1).reshape(group_count * size, 16).contiguous()
+        first_delta = sparse_first(delta, d["first_neighbors"][:first_count],
+            d["first_group"][:first_count], d["first_cell"][:first_count],
+            first_cells, weight, size)
+        second_cells = second.permute(0, 2, 3, 1).reshape(group_count * size, 16).contiguous()
+        sparse_second(first_delta, d["second_neighbors"][:second_count],
+            d["second_group"][:second_count], d["second_cell"][:second_count],
+            second_cells, model.p["map_cnn.2.weight"], d["second_pool"][:second_count],
+            pooled, size, float((width // 4) * (height // 4)))
     flat = pooled.reshape(count, 4, 4, 16).permute(0, 3, 1, 2).reshape(count, 256)
     return model.linear(flat, "map_global.2").tanh()

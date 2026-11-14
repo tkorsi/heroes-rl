@@ -1,11 +1,18 @@
-# Manual local training
+# Historical manual local training
+
+This document preserves the October 2026 original-map and cloud-to-local
+workflows. Its checkpoints, time limits and commands describe those lineages;
+they are not the current continuation route. Use the
+[current README](../../README.md#run-a-training-cycle) for the Metal-default
+10–1,000-game cycle. Retained scripts and configurations remain for source
+compatibility and historical provenance, not as instructions to restart them.
 
 The user runs a local script, waits for its result, then asks for analysis.
 The script makes **no language-model API calls**, starts no cloud agent and creates no
 scheduled task. The cloud Teacher has finished and handed back the full state;
 see [its final handoff](teacher-cloud-to-local-handoff-20261026.md).
 
-## Current original-map continuation
+## Original-map continuation at checkpoint 699 (historical)
 
 The first original-map run stopped at checkpoint 699 after 280 admitted games.
 Its remaining 4,720 games use `./continue-original-4720.sh` after the Mac 699

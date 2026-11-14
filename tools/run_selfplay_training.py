@@ -1464,12 +1464,21 @@ def supervise(launch):
     display = (BatchProgressDisplay(output / 'progress', launch=launch) if launch.get('schema') == TEN_LAUNCH
                else ProgressDisplay(output / 'progress'))
     try:
+        coordinator_environment = None
+        if launch.get('configuration', {}).get('learner_backend', 'cpu') == 'metal':
+            require(launch['configuration'].get('metal_matmul_preference') == '1'
+                    and launch['configuration'].get('metal_fast_math') == '0',
+                    'Metal PPO requires the reviewed matrix-kernel and precision configuration')
+            # The child receives these before Python/Torch starts; PyTorch latches them on first use.
+            coordinator_environment = {**os.environ, 'PYTORCH_MPS_PREFER_METAL': '1',
+                                       'PYTORCH_MPS_FAST_MATH': '0'}
         with (output / 'coordinator.log').open('xb') as log:
             process = guarded_popen([sys.executable, str(Path(__file__).resolve()), '_coordinator',
                     '--plan', str(path), '--sha256', binding(path)['sha256']],
                 deadline_monotonic=launch['hard_deadline_monotonic'], deadline_wall=launch['hard_deadline_unix'],
                 evidence_path=output / 'coordinator-deadline.jsonl', cwd=ROOT,
-                stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT)
+                stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
+                **({'env': coordinator_environment} if coordinator_environment is not None else {}))
             if launch.get('schema') == TEN_LAUNCH:
                 emitted, last_report = set(), 0.0
                 while process.poll() is None:
@@ -1600,6 +1609,9 @@ def ten_configuration(checked, seconds, *, games=None, use_metal=False):
                    collection_scheduling='rolling-v1', memory_reserve_gib=48,
                    training_storage='owned-binary-v1', training_history_audit='not_performed',
                    training_bridge_ledger=False, training_history_jsonl=False)
+    if use_metal:
+        cfg['metal_matmul_preference'] = '1'
+        cfg['metal_fast_math'] = '0'
     return cfg
 
 
@@ -2006,6 +2018,12 @@ def load_ten_launch(path, sha):
     launch = read(path)
     require(launch.get('schema') == TEN_LAUNCH and launch['source'] == source_identity(),
             'Ten-game launch source changed')
+    if launch['configuration'].get('learner_backend', 'cpu') == 'metal':
+        require(launch['configuration'].get('metal_matmul_preference') == '1'
+                and launch['configuration'].get('metal_fast_math') == '0'
+                and os.environ.get('PYTORCH_MPS_PREFER_METAL') == '1'
+                and os.environ.get('PYTORCH_MPS_FAST_MATH') == '0',
+                'Metal PPO matrix-kernel or precision environment differs from its launch')
     if 'requested_games' in launch:
         require(launch.get('batch_sizes') == cycle_batch_sizes(launch['requested_games'])
                 and launch['batches'] == len(launch['batch_sizes']), 'Requested batch partition changed')
@@ -2181,6 +2199,9 @@ def ten_coordinator(args):
         optimizer_updates=0, admitted_games=0, training_samples_admitted=0,
         parent_checkpoint=state.progress.updates, latest_checkpoint=state.progress.updates,
         owned_cleanup_verified=False, protected_inputs_unchanged=False)
+    if report['learner_backend'] == 'metal':
+        report['metal_matmul_preference'] = os.environ['PYTORCH_MPS_PREFER_METAL']
+        report['metal_fast_math'] = os.environ['PYTORCH_MPS_FAST_MATH']
     write(output / 'report.json', report, new=True)
     previous_pair, publication = launch['parent_pair'], launch['parent_publication']
     update_progress = None
@@ -2196,6 +2217,9 @@ def ten_coordinator(args):
                      checkpoint_before=state.progress.updates, weights_before=state.weights_sha256,
                      planned_games=len(plan['schedule']),
                      attempts=[dict(**row, status='not_started') for row in plan['schedule']])
+        if mode == 'training' and report['learner_backend'] == 'metal':
+            phase['metal_matmul_preference'] = report['metal_matmul_preference']
+            phase['metal_fast_math'] = report['metal_fast_math']
         target = 'evaluations' if CYCLE_MODE and mode == 'diagnostic' else 'batches'
         report.setdefault(target, []).append(phase); write(output / 'report.json', report)
         record_lock = threading.Lock()

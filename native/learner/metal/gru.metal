@@ -1,5 +1,6 @@
 #include <metal_stdlib>
 using namespace metal;
+#pragma STDC FP_CONTRACT OFF
 kernel void backward_gru(device const float* incoming,device const float* states,device const float* gates,
  device const float* wh,device float* dgi,device float* dgh,device float* dh0,
  constant uint& T,constant uint& H,uint b [[threadgroup_position_in_grid]],uint j [[thread_index_in_threadgroup]]) {
@@ -41,9 +42,9 @@ kernel void forward_gru_simd(device const float* gi, device const float* wh, dev
   if(lane==0){
    uint base=(b*T+t)*3*H;uint g=(b*T+t)*4*H;
    an0+=bh[2*H+j];an1+=bh[2*H+j+1];
-   float r0=1.0f/(1.0f+exp(-(gi[base+j]+ar0+bh[j]))),z0=1.0f/(1.0f+exp(-(gi[base+H+j]+az0+bh[H+j]))),n0=tanh(gi[base+2*H+j]+r0*an0);
-   float r1=1.0f/(1.0f+exp(-(gi[base+j+1]+ar1+bh[j+1]))),z1=1.0f/(1.0f+exp(-(gi[base+H+j+1]+az1+bh[H+j+1]))),n1=tanh(gi[base+2*H+j+1]+r1*an1);
-   h0=(1-z0)*n0+z0*hidden[j];h1=(1-z1)*n1+z1*hidden[j+1];
+   float r0=1.0f/(1.0f+exp(-((ar0+bh[j])+gi[base+j]))),z0=1.0f/(1.0f+exp(-((az0+bh[H+j])+gi[base+H+j]))),n0=tanh(gi[base+2*H+j]+r0*an0);
+   float r1=1.0f/(1.0f+exp(-((ar1+bh[j+1])+gi[base+j+1]))),z1=1.0f/(1.0f+exp(-((az1+bh[H+j+1])+gi[base+H+j+1]))),n1=tanh(gi[base+2*H+j+1]+r1*an1);
+   h0=(hidden[j]-n0)*z0+n0;h1=(hidden[j+1]-n1)*z1+n1;
    gates[g+j]=r0;gates[g+H+j]=z0;gates[g+2*H+j]=n0;gates[g+3*H+j]=an0;
    gates[g+j+1]=r1;gates[g+H+j+1]=z1;gates[g+2*H+j+1]=n1;gates[g+3*H+j+1]=an1;
   }
@@ -61,7 +62,7 @@ kernel void forward_gru_r16(device const float* gi,device const float* wh,device
  for(uint t=0;t<T;t++){
   float ar=0,az=0,an=0;for(uint q=0;q<H/R;q++){float h=hidden[q*R+lane];ar+=wr[q]*h;az+=wz[q]*h;an+=wn[q]*h;}
   for(uint offset=R/2;offset;offset/=2){ar+=simd_shuffle_xor(ar,offset);az+=simd_shuffle_xor(az,offset);an+=simd_shuffle_xor(an,offset);}
-  float h=0;if(lane==0){uint i=(b*T+t)*3*H,g=(b*T+t)*4*H;an+=bh[2*H+j];float r=1/(1+exp(-(gi[i+j]+ar+bh[j]))),z=1/(1+exp(-(gi[i+H+j]+az+bh[H+j]))),n=tanh(gi[i+2*H+j]+r*an);h=(1-z)*n+z*hidden[j];gates[g+j]=r;gates[g+H+j]=z;gates[g+2*H+j]=n;gates[g+3*H+j]=an;}
+  float h=0;if(lane==0){uint i=(b*T+t)*3*H,g=(b*T+t)*4*H;an+=bh[2*H+j];float r=1/(1+exp(-((ar+bh[j])+gi[i+j]))),z=1/(1+exp(-((az+bh[H+j])+gi[i+H+j]))),n=tanh(gi[i+2*H+j]+r*an);h=(hidden[j]-n)*z+n;gates[g+j]=r;gates[g+H+j]=z;gates[g+2*H+j]=n;gates[g+3*H+j]=an;}
   threadgroup_barrier(mem_flags::mem_threadgroup);if(lane==0){hidden[j]=h;states[(b*(T+1)+t+1)*H+j]=h;}
   threadgroup_barrier(mem_flags::mem_threadgroup);
  }
@@ -109,9 +110,9 @@ kernel void forward_gru_simd_lengths(device const float* gi, device const float*
   if(lane==0){
    uint base=(b*T+t)*3*H;uint g=(b*T+t)*4*H;
    an0+=bh[2*H+j];an1+=bh[2*H+j+1];
-   float r0=1.0f/(1.0f+exp(-(gi[base+j]+ar0+bh[j]))),z0=1.0f/(1.0f+exp(-(gi[base+H+j]+az0+bh[H+j]))),n0=tanh(gi[base+2*H+j]+r0*an0);
-   float r1=1.0f/(1.0f+exp(-(gi[base+j+1]+ar1+bh[j+1]))),z1=1.0f/(1.0f+exp(-(gi[base+H+j+1]+az1+bh[H+j+1]))),n1=tanh(gi[base+2*H+j+1]+r1*an1);
-   h0=(1-z0)*n0+z0*hidden[j];h1=(1-z1)*n1+z1*hidden[j+1];
+   float r0=1.0f/(1.0f+exp(-((ar0+bh[j])+gi[base+j]))),z0=1.0f/(1.0f+exp(-((az0+bh[H+j])+gi[base+H+j]))),n0=tanh(gi[base+2*H+j]+r0*an0);
+   float r1=1.0f/(1.0f+exp(-((ar1+bh[j+1])+gi[base+j+1]))),z1=1.0f/(1.0f+exp(-((az1+bh[H+j+1])+gi[base+H+j+1]))),n1=tanh(gi[base+2*H+j+1]+r1*an1);
+   h0=(hidden[j]-n0)*z0+n0;h1=(hidden[j+1]-n1)*z1+n1;
    gates[g+j]=r0;gates[g+H+j]=z0;gates[g+2*H+j]=n0;gates[g+3*H+j]=an0;
    gates[g+j+1]=r1;gates[g+H+j+1]=z1;gates[g+2*H+j+1]=n1;gates[g+3*H+j+1]=an1;
   }
@@ -129,7 +130,7 @@ kernel void forward_gru_r16_lengths(device const float* gi,device const float* w
  for(uint t=0;t<min(T,uint(lengths[b]));t++){
   float ar=0,az=0,an=0;for(uint q=0;q<H/R;q++){float h=hidden[q*R+lane];ar+=wr[q]*h;az+=wz[q]*h;an+=wn[q]*h;}
   for(uint offset=R/2;offset;offset/=2){ar+=simd_shuffle_xor(ar,offset);az+=simd_shuffle_xor(az,offset);an+=simd_shuffle_xor(an,offset);}
-  float h=0;if(lane==0){uint i=(b*T+t)*3*H,g=(b*T+t)*4*H;an+=bh[2*H+j];float r=1/(1+exp(-(gi[i+j]+ar+bh[j]))),z=1/(1+exp(-(gi[i+H+j]+az+bh[H+j]))),n=tanh(gi[i+2*H+j]+r*an);h=(1-z)*n+z*hidden[j];gates[g+j]=r;gates[g+H+j]=z;gates[g+2*H+j]=n;gates[g+3*H+j]=an;}
+  float h=0;if(lane==0){uint i=(b*T+t)*3*H,g=(b*T+t)*4*H;an+=bh[2*H+j];float r=1/(1+exp(-((ar+bh[j])+gi[i+j]))),z=1/(1+exp(-((az+bh[H+j])+gi[i+H+j]))),n=tanh(gi[i+2*H+j]+r*an);h=(hidden[j]-n)*z+n;gates[g+j]=r;gates[g+H+j]=z;gates[g+2*H+j]=n;gates[g+3*H+j]=an;}
   threadgroup_barrier(mem_flags::mem_threadgroup);if(lane==0){hidden[j]=h;states[(b*(T+1)+t+1)*H+j]=h;}
   threadgroup_barrier(mem_flags::mem_threadgroup);
  }
