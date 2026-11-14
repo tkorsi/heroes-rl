@@ -67,9 +67,17 @@ Initial neutrals, their growth, armies, resources and all other rules are unchan
 The latest complete checkpoint is 1,765. The November 13 CPU run captured
 200 games, but only its first 100-game update was published. The second update
 aborted in native text/autograd memory cleanup at 5,226/10,347 optimizer steps;
-no 1,766 checkpoint was published. Checkpoint 1,765 still needs its diagnostic.
-The user authorized a new 100-game Metal cycle after this process exited,
-including recovery of that diagnostic. New cycles have no default time limit.
+no 1,766 checkpoint was published. The authorized November 13–14 Metal trial
+recovered the 1,765 diagnostic (verified Blue win on day 87), then captured all
+100 new games in 31m11s. Its update hit the retained 26.88 GiB MPS allocator
+limit at 6,022/8,583 steps after 1h28m49s on the PPO progress clock. The update
+rolled back; zero games were admitted, and no 1,766 or final diagnostic exists.
+Post-failure full-state restoration of 1,765 passed. The Mac slept and resumed;
+the attempt took 2h03m31s on the monotonic clock and 5h59m30s wall time, including
+the recovery diagnostic. This is a failed full-cycle measurement, not evidence
+of the targeted fivefold speedup. The Metal path remains experimental and needs
+a measured memory-peak correction before another campaign. Keep this run's raw
+captures for that investigation. New cycles have no default time limit.
 
 The earlier v3 variant disabled calendar spawning and was used through 1,763.
 The v4 selector retains its pinned native acceptance, including the successful

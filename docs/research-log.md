@@ -4994,3 +4994,114 @@ The canonical fresh dependency preparation and subsequent explicit
 checkout now has the pinned VCMI revision, initialized upstream submodules and
 exact root patch/overlay agreement. The accepted runtime binaries are reused
 unchanged; no rebuild or new native mechanics claim is made.
+
+
+## 2026-11-14 — Full Metal100 attempt: MPS limit, rollback and timing boundary
+
+**Identity and actual execution.** The preceding prospective acceptance applies.
+After the dependency correction and successful fourth read-only preflight,
+`./run-100-games.command 100 --metal` ran from the clean, synchronized
+`codex/metal-ppo` checkout at
+`2fc67101b5b8d0ff75bedc91800f2e972d5dbcb9`. Run
+`run-20261113T211610Z-a9566f61` started at 2026-11-13 21:16:10.620279 UTC;
+parent checkpoint 1,765, parent optimizer steps 115,479. The accepted native
+manifest remained `remove-telemetry-v1-attempt1/manifest.json`, SHA256
+`53970605c4560bbe14b655442df373d3577efef3de0c5f824b95cfa22a74b573`.
+Python 3.13 / PyTorch 2.9.1 / NumPy 2.3.5 ran on the M4 Max, 40 GPU cores,
+128 GiB RAM. CPU actors and diagnostics, ten rolling actors, one thread each,
+hero-management-v4, starting taverns, restored native calendar neutrals and the
+365-day horizon remained unchanged. PPO retained 16 decisions/window, two
+windows/minibatch, one epoch, its original losses and Adam settings. Only the
+explicit Metal update backend and previously documented implementation changed.
+The 25% recommended-memory MPS cap and existing resource guards remained active.
+
+Reservation offset 2,251/count 202/cycle width 101 was consumed, including
+unused slots. Recovery used engine seed 1,980,002,251 (policy base
+1,982,004,502); training began at engine seed 1,980,002,352. Retirement preserved
+and restored 1,765 before deleting the reviewed first live attempt. No source
+or run configuration changed during the timed attempt; no concurrent profiling
+or experiment was injected.
+
+**Observed recovery and captures.** The pending 1,765 diagnostic passed exact
+two-policy reconstruction and native replay: Blue won on day 87. Recovery
+collection/preparation/verification took 209.487082 s (3m29s), separately from
+the new 100 games. All 100 training games completed and were prepared in
+1,871.353404 s (31m11s). Engine-reported outcomes were Blue 66, Red 27 and seven
+cutoffs, with zero capture failures. Training replay and policy reconstruction
+were intentionally not performed. The prepared cohort contained 273,913
+learner samples and planned 8,583 optimizer steps. Per-game preparation summed
+to 1,491.634949 s but overlapped collection; it must not be added to 1,871 s.
+The small progress summaries report final maximum player-day median 106.5,
+mean 130.54 and range 7–366; these are calendar positions, not verified game
+lengths or evidence of improved play.
+
+**Failure and preservation.** The coordinator stopped at
+2026-11-14 03:15:41.350942 UTC. PPO progress recorded 6,022/8,583 completed
+steps, phase `rolled_back`, elapsed 5,329 s (1h28m49s). The exception was
+`MPS backend out of memory`: MPS allocated 26.05 GiB, other allocations
+203.55 MiB, maximum allowed 26.88 GiB, attempted new allocation 1.99 GiB.
+This establishes an allocator-limit failure; it does not show that all physical
+RAM was exhausted or identify the precise tensor operation. The exception's
+generic suggestion to disable the high-watermark limit was not applied.
+The transaction reported exact model, Adam and RNG restoration. There was no
+published update, no admitted game/sample and no 1,766 checkpoint or diagnostic.
+The earlier recovered 1,765 Blue game must not be reported as a post-update test.
+
+`shutdown.json` records return code 1, owned cleanup verified, protected inputs
+unchanged and an empty error list. No owned training/caffeinate/VCMI process
+remained. The retained 1,765 policy/resume hashes still match their launch
+bindings. The subsequent existing command
+`./run-100-games.command 100 --metal --check` passed exact restoration of model,
+Adam, RNG, progress, sampler and opponent pool without gameplay or reservation.
+It reports next fresh offset 2,453, 101 slots for a future 100 games plus final
+check (no pending recovery), `reserved=false`.
+
+**Timing and system conditions.** Coordinator monotonic elapsed time was
+7,411.102674 s (2h03m31s); wall elapsed was 21,569.648805 s (5h59m30s), including
+the recovery diagnostic. Their difference was 14,158.546132 s (3h55m59s).
+macOS logs confirm sleep/dark-wake intervals and a lid/HID wake at 04:38:43
+Kyiv. The same process resumed and advanced afterward. AC power was observed
+at launch; after wake the Mac reported battery power (92%, later 85%). These
+observations validate survival of this sleep episode, not recovery from process
+exit or reboot. Monotonic elapsed is not GPU kernel time and may include awake
+maintenance intervals or contention. The failed update has no final
+`update_seconds` field; 5,329 s is the saved PPO progress clock, not a completed
+update measurement. No fixed-power, controlled speedup can be inferred here.
+
+The prior CPU100 admitted 257,260 samples in 8,061 steps, with about 13,750 s of
+PPO progress time. This attempt used different seeds, parent weights, history
+composition and sample count, and did not finish. Therefore neither a full-cycle
+speedup nor the fivefold complete-update target is established. The earlier
+6.41–6.49x result remains limited to its paired single-history offline trial;
+it cannot be extrapolated to this 100-history workload. Playing strength and
+post-update quality were not evaluated because no update was published.
+
+**Read-only source investigation and next experiment boundary.** The 4 GiB LRU
+bounds uploaded immutable prefix constants only. It does not bound transient
+tree/GRU/CNN activations. Inspection found no demonstrated unbounded ownership
+in that LRU. `Tree.forward` retains manual GRU backward intermediates until
+return even for no-grad prefixes; `metal_map_delta.encode` materializes complete
+neighborhood patch tensors for the selected prefix. Manual `ctx.saved` also
+outlives managed saved-tensor cleanup while previous PPO graph references remain.
+These are candidates for memory reduction, not a proven location of this failure: the stopped report
+contains no allocation stack or failing shape. Different histories also require
+separate current-weight prefix reconstruction; single-history cache locality
+and map composition do not represent the full cohort. No speculative numerical
+fix, guard relaxation or further campaign was launched after this failure.
+
+All 100 binary captures remain for a targeted, isolated memory investigation.
+The current launcher has no supported resume of already captured games after
+process exit: completion/admission ownership is process-local, and a new cycle
+retires reviewed artifacts, reserves fresh seeds and recollects. Reconstructing
+private receipt registries or bypassing admission is not an authorized recovery
+mechanism. Keep this cohort until the next authorized launch under the existing
+retention policy; a targeted investigation should extract its reproduction before then.
+
+Retention-reviewed run: `run-20261113T211610Z-a9566f61`.
+
+Private evidence: the run's launch/report/shutdown, recovery verification,
+`progress/ppo-batch-train-000.json`, training attempts and retained checkpoint;
+`run-investigations/2026-11-13-metal-ppo/campaign-live-2.log`,
+`campaign-metal-preflight-4.log`, `campaign-post-failure-check.log` and private
+research notes. Public changes after the stopped attempt are documentation only;
+no tests, probes, benchmarks, weights or raw captures are published.
