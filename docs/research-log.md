@@ -5603,3 +5603,20 @@ specified fresh games, balanced seats and statistical criteria; small smoke game
 or a post-hoc relaxation of the failed numerical bounds cannot supply that proof.
 Only this research record and README are synchronized; all diagnostic code,
 private candidates, tensors, weights and raw captures remain local.
+
+## 2026-11-14 — User-owned execution outside Codex
+
+The user establishes the first rule in `AGENTS.md`: project scripts and all
+training are launched personally outside Codex by default. The agent prepares
+scripts and commands; an assistant launch needs an explicit exception for that
+run. The rule also covers saved-data PPO updates, profiling, benchmarks and
+diagnostic experiments, including detached, delegated and remote execution.
+Earlier launch permissions do not carry forward. Requested read-only status
+inspection and lightweight status instrumentation remain possible, while
+unattended waiting or repeated monitoring is not the default. Runtime and
+validation gates remain in force. README now reflects the same policy.
+
+This is a documentation-only change, applied to the working checkout and the
+current Metal experiment checkout. Validation is limited to reviewing the text
+and Git diffs; no project script, experiment, training or monitoring loop runs.
+No model, checkpoint, seed allocation, runtime configuration or launcher changes.

@@ -14,9 +14,12 @@ The current launcher accepts 10–1,000 training games (default 500), with ten
 rolling actors and PPO updates in complete batches of at most 100 games.
 One validated self-play game follows the final saved update.
 The lineage began at checkpoint 1,753; continuation restores its latest complete
-published checkpoint. Launches remain manual by default; on November 7 the user
-authorized the agent to fix worker registration and execute one complete
-fifty-game continuation with progress reports every thirty minutes.
+published checkpoint. The user launches project scripts and training outside
+Codex by default, including offline PPO benchmarks and diagnostic experiments.
+The agent prepares scripts and commands, and inspects existing runs on request;
+it does not launch workloads or monitor them continuously without an explicit
+instruction. Earlier one-time launch permissions do not authorize new runs.
+See Rule 1 in [AGENTS.md](AGENTS.md).
 Start other experiments with an explicit hypothesis, configuration, seed allocation, output directory and
 acceptance criteria. Choose explicitly between fresh weights and a verified
 checkpoint. Keep diagnostic games separate from training admission.

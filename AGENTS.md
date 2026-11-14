@@ -1,5 +1,28 @@
 # Heroes experiment workspace
 
+## Rule 1: the user launches scripts and training
+
+By default, the user personally launches project scripts and all training
+outside Codex. Prepare the code, script and exact command, then hand them to the
+user. Do not start or resume training, self-play, evaluation games, replay jobs,
+profiling, numerical probes or benchmarks yourself. This includes PPO updates
+on saved games and isolated CPU/Metal experiments without checkpoint publication.
+
+An exception requires an explicit user instruction authorizing assistant
+execution and applies only within that instruction's scope.
+Requests to fix, optimize, investigate or continue work are not launch permission;
+permissions for earlier runs do not authorize later ones. This applies equally
+to direct tool calls, inline code, detached/background processes, supervisors, subagents,
+remote jobs and scheduled tasks.
+
+Code/file/Git work and lightweight read-only inspection remain allowed. When
+asked to check progress, inspect the user's existing process, logs, metrics or
+status endpoint without starting or restarting a workload. Existing scripts may
+expose lightweight status information for this purpose. Do not keep a Codex turn
+alive with unattended waiting or repeated polling by default; continuous
+monitoring requires an explicit request. User-launched work must run independently
+of the Codex conversation. This rule does not waive runtime or validation gates.
+
 Read `README.md` before changing this project. It is the single authoritative
 document for the purpose, agreed constraints, experiment stages, and current
 status. Update it when an experiment changes these decisions.
