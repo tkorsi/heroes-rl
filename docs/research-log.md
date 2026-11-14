@@ -5680,3 +5680,18 @@ checks passed for six Python ASTs, seven pinned source digests, both launcher
 shell syntax checks, local navigation targets and whitespace. No project code
 was imported to perform these checks. GitHub publication and branch retirement
 are recorded below after remote read-back.
+
+Publication and retirement completed: commit `8185957` was pushed explicitly to
+`origin/main` and its exact SHA read back from GitHub. All 76 other remote heads
+were removed in one atomic, per-ref lease-guarded push after verifying each tip
+against `branches.bundle`; 81 non-main local branches were then removed against
+the same archived inventory. Remote and local branch listings now contain only
+`main`. The previously open PR #30 was closed because its head was already
+included in main's history through the accepted integration; its historical
+embedded-engine proposal was not reapplied. No GitHub comments were sent.
+Private `branch-retirement-plan.json`, `branch-retirement-result.json` and command
+logs preserve the exact retired refs. No weights, raw artifacts, Git backup
+bundles or editor checkpoint refs were pushed. The two detached dependency
+snapshots remain unchanged and the root checkout is the single development
+location. The final publication records this outcome in a documentation-only
+follow-up; no launch, preflight, test suite or numerical workload was executed.
