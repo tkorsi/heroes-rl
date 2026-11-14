@@ -5769,3 +5769,22 @@ efficient economy or coherent long-term planning. These are observations of the
 existing policy, not evidence of improvement since the previous checkpoint or
 of learning from the newly adopted Metal backend. Full training after source
 consolidation and the test suite were not run in this task.
+
+The decisive sequence is more specific than a general army-strength advantage.
+On day 65 Blue attacked the town at (4,7) with 63 pikemen and four lizardmen
+against 42 halberdiers, capturing it with 38 pikemen remaining (Blue history
+sequences 13,879–13,895; Red 16,043–16,046). On day 67 Red destroyed that last
+Blue field army at (0,16), retaining 60 pikemen and one griffin (Red
+16,254–16,259; Blue 14,146–14,151). Blue recruited 42 halberdiers in the captured
+town on day 67 and hired a replacement hero on day 68. Red submitted no
+`move_to` targeting a town between that battle and the day-72 terminal; on day
+69 its hero passed (3,8), near the lost town, before moving away. Red still had
+a substantial army when the seven-day loss rule triggered. This identifies a
+failure to act on the town-loss deadline in this trajectory; it does not prove
+that a recapture attack would have won. Battle results came from BattleAI.
+
+Useful troop-management behavior was also observed within the restricted action
+space: Red combined troops into a 66-pikeman hero army through a garrison swap
+on day 37. Blue bought 70 pikemen on day 35 and moved them out of the garrison
+on day 47; this army later took the town. The twelve-day mobilization delay is
+another reason not to equate successful actions with efficient planning.
