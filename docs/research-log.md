@@ -5105,3 +5105,501 @@ Private evidence: the run's launch/report/shutdown, recovery verification,
 `campaign-metal-preflight-4.log`, `campaign-post-failure-check.log` and private
 research notes. Public changes after the stopped attempt are documentation only;
 no tests, probes, benchmarks, weights or raw captures are published.
+
+
+## 2026-11-14 — Authorized preserved-cohort Metal memory correction (prospective)
+
+The user authorizes diagnosing and correcting the Metal allocation failure, then
+measuring a complete update on the same 100 saved games, targeting fivefold
+speedup. The immutable source cohort is `run-20261113T211610Z-a9566f61`, parent
+1,765, 273,913 learner samples and 8,583 planned optimizer steps. No new games,
+seeds, retirement or official checkpoint publication are part of this offline
+comparison. Hash-bound restricted loading and pure capture validation supply
+diagnostic numerical inputs without fabricating live admission ownership.
+
+Before experiments, distinguish active tensors from allocator-reserved heap
+capacity; test immutable-cache fragmentation, unneeded no-grad auxiliary
+retention and sparse CNN patch peaks. Preserve the 25% MPS memory cap, PPO/Adam,
+full current-weight histories, minibatch order and all resource guards. Require
+reproduction evidence, FP32 numerical/gradient checks and a complete paired
+CPU/Metal update with setup, transfer, update and restore timing separated.
+A partial update or extrapolation cannot establish the 5x target. Experiments
+and raw results remain private; publish only necessary production changes and
+compact findings. The user explicitly chose battery-powered measurements;
+record power state and elapsed/active time rather than implying an AC benchmark.
+
+## 2026-11-14 — Preserved 100-game update: memory completion, 6.945x timing, numerical failure
+
+**Scope and identity.** This is the authorized offline investigation, not a new
+training campaign. All runs restore the complete original checkpoint 1,765 and
+consume the same 100 captures from `run-20261113T211610Z-a9566f61`: 273,913
+samples, 17,165 windows and 8,583 optimizer steps. The source base is
+`0d8b9549ca55723996e51861e4062210ce8e345d`; numerical sources equal the failed
+campaign's `2fc6710` source. The initial-state file SHA256 is
+`d663f65fb6493b3addade2316b27bd3f2ac463b612a2683864427683f3b778bf`;
+the cohort-manifest SHA256 is
+`cb1e878d5c283ab5a4387948d9a04fb937b09d1ad690528ce333c940794376c5`.
+The comparison retains one PPO epoch, 16 decisions/window, two windows/minibatch,
+Torch threads 1, native prefix threads 16, nice 19, the 25% MPS hard cap and the
+4 GiB immutable-constant LRU. No new seed, game, admission, official update or
+checkpoint publication occurred. Checkpoint 1,765 and next seed offset 2,453
+remain unchanged. All experiments and raw results stay outside Git.
+
+**Memory reproduction and correction.** The original failure requested another
+1.99 GiB at the allocator limit. The original minibatch 6,023 contains window
+ordinals 612/4,017 from episodes 4/27, with prefix boundaries 54,943/60,749.
+A fresh isolated reproduction did not exhaust memory, but its allocation trace
+identified a 2,136,644,352-byte sparse CNN neighborhood gather and a contiguous
+copy with shape `[3709452,16,9]`, matching the failed request size. This is direct
+allocation evidence, not proof that every retained byte belonged to that tensor.
+The old isolated map path reached 8,581,425,920 active MPS bytes.
+
+The private candidate fuses no-grad sparse CNN gathering/weight application and
+pooled accumulation, range-checks compact int32 indices while retaining 64-bit
+address arithmetic and an int64 fallback, removes redundant prefix-only dense
+metadata, avoids unused no-grad tree auxiliaries, and clones small prefix
+boundaries instead of retaining views of complete state storage. Grad-enabled
+loss-window semantics and memory guards remain. An attempted destructive clear
+of saved tree intermediates broke repeated backward with `retain_graph=True`;
+it was reverted before full runs, and the repeated-backward control passed.
+The compact actual-window control reduced observed map active peak to
+723,980,032 bytes; CPU-plan constants for these two histories fell from
+1,458,134,272 to 471,600,444 bytes. These are local measurements, not whole-run
+memory claims. Candidate versus original Metal maximum prefix/output differences
+were 2.09e-7/2.38e-7 and gradient relative L2 4.98e-8. Existing CPU-relative prefix
+error around 3.40e-4 persisted. Both earlier actual-window attempts,
+`fused-memory-failing-window` and `baseline-failing-window-control`, failed their
+original 1e-4 absolute CPU prefix/output assertions and exited with errors;
+owned cleanup passed. After the unchanged original Metal baseline also failed,
+the subsequent local regression criterion explicitly added direct candidate
+versus original comparisons, retained the 1e-4 CPU gradient-relative limit, and
+bounded CPU output error by the measured baseline plus 1e-5. The compact control
+passed this revised local criterion, not the original absolute CPU criterion.
+This scoped revision did not change any full-update policy bounds or establish
+full training equivalence. Seven synthetic GRU/tree/head/map numerical cases
+and padding-gradient checks passed; their small scope does not establish full
+training parity. An allocator soft-watermark control showed no benefit and was
+not adopted. Offline shader compilation lacked MetalToolchain; actual Torch
+runtime compilation succeeded without installation.
+
+**Attempts and intermediate controls.** Trial A was deliberately interrupted
+before PPO because the private loader incorrectly forced a full GC after every
+game, unlike production. Exact rollback and cleanup passed. It was not an OOM.
+Only the private forced collections were removed; ordinary automatic GC remained
+unchanged, with passive timing instrumentation added identically to both later
+workers. Trial B completed all 8,583 steps without OOM, with peak process RSS
+67,940,974,592 bytes, but the user switched Low Power to Automatic during it.
+Its combined 7,007.632081 seconds cannot establish a controlled speed ratio.
+
+Subsequent 200-step controls on episodes 4/27 tested Metal matrix-kernel selection
+and graphless indexing/accumulation. They used 13,453 samples, 842 windows and
+an exact rollback after the partial update; their shuffle and normalization
+differ from the full cohort. With matching Battery/Automatic endpoints, the
+matrix preference improved 57.207140 to 50.810228 seconds (1.126x), and graphless
+operations alone to 45.536845 seconds (1.256x). The combined control measured
+40.821217 seconds, but Battery changed to AC between its endpoint observations:
+the initially stated 1.401x ratio and matching-power assertion were explicitly
+withdrawn. Its numerical result remains valid. Both compared snapshots were
+Metal, not CPU; all 450 recorded conditional argmax choices matched, maximum KL
+was 3.07e-12 and worst value RMSE 9.48e-7. Seven synthetic numerical cases and the
+actual failed-window control also passed their registered baseline-relative
+criteria. Loss-window padding, larger caches and GC-policy changes were not
+adopted.
+
+**Complete paired timing.** Trial C uses the frozen overlays
+`graphless-gather-scatter`, `prefix-pruned`, `memory-candidate` and
+`map-candidate/fused-int32`, with `PYTORCH_MPS_PREFER_METAL=1` in a fresh process.
+Its exact source inventory is retained privately. The sequential CPU control
+uses no overlays and unsets this preference. Both reuse identical worker/loader,
+initial state, cohort, PPO settings and native acceptance. C exited and completed
+owned cleanup before CPU started. Both runs observed AC/Automatic, powermode 0
+and low-power false at start/end; manual observations during CPU also stayed AC.
+The assistant did not alter power settings. Endpoint observations are not
+continuous power-profile proof. Active/wall times agree within milliseconds.
+
+| Full 100-game numerical update | CPU | Metal C |
+| --- | ---: | ---: |
+| Preparation, seconds | 1,072.344527 | 1,192.313358 |
+| PPO, seconds | 18,781.578800 | 1,666.522696 |
+| Combined, seconds | 19,853.923327 | 2,858.836054 |
+| Peak process RSS, bytes | 31,978,635,264 | 48,270,114,816 |
+| Samples / optimizer steps | 273,913 / 8,583 | 273,913 / 8,583 |
+
+The measured combined ratio is **6.944757569x**; PPO alone is **11.269920801x**.
+This is one same-input sequential pair, with no confidence interval, excluding
+capture and final-game verification. It is not a measured complete campaign
+speedup. Both workers returned zero with owned cleanup, exact initial/prepared
+state, unchanged source bindings, finite CPU-restored tensors (39 model,
+117 Adam, 31 gradients), restored optimizer settings and exact private save/load
+roundtrips. C finished with zero active MPS bytes and 7,681,294,336 driver bytes;
+coarse progress samples do not measure every within-step peak. The previously
+observed native CPU abort on another cohort did not recur; this does not prove
+that older issue fixed.
+
+**Full-update numerical acceptance failed; no adoption.** The comparator passed
+exact initial state, final RNG/sampler/progress/opponent-pool identity, Adam
+configuration/step counts, finite tensors and conditional support checks. CPU/C
+model relative L2 was 0.0242810851, maximum absolute difference 0.0704162493;
+Adam moment relative L2 errors were 0.126554886/0.0435645293. Final gradient
+relative L2 was 0.110466695, but these gradients were evaluated at different
+trajectory states immediately before their final optimizer step and cannot
+diagnose a backward implementation error directly.
+
+Both policies use identical original reference Metal inference, with matrix
+preference absent, on eight fixed 16-decision windows from each of earlier
+episodes 17/100 (seeds 1,980,001,864 / 1,980,001,947). These fixtures are outside
+the current cohort but already contributed to parent 1,765; they are not
+never-trained evaluation data. The predeclared bounds remain agreement >=0.999,
+mean/max conditional KL <=1e-6/1e-5, value RMSE <=0.001, and exact supports.
+
+| Fixture | Matching conditional argmax | Mean / maximum KL | Value RMSE |
+| --- | ---: | ---: | ---: |
+| Episode 17 | 224/227 | 9.74293e-5 / 8.87122e-4 | 0.045416482 |
+| Episode 100 | 210/223 | 6.90846e-5 / 0.002145940 | 0.027895365 |
+
+Overall agreement was 434/450, not a count of games or entire decisions. Both
+fixtures failed all four numerical bounds. The comparator persisted results,
+then returned 1 for the failed assertion; cleanup passed. No bounds were relaxed.
+This establishes numerical divergence, not poorer playing strength. The timing
+target passed, but the combined speed-and-quality objective remains unfulfilled.
+Production integration has not passed numerical acceptance.
+
+Saved B also failed against the same CPU final state: 436/450 argmax agreement,
+model relative L2 0.0237884390 and fixture value RMSE 0.04027854/0.03299335.
+B/C model relative L2 was 0.00683829364. B already contains the memory corrections:
+these comparisons exclude C's later indexing/kernel preference as the sole cause,
+but do not exonerate the memory corrections or prove inevitable FP32 drift.
+B's mixed-power timing remains excluded.
+
+**Bounded divergence investigation.** Static independent reviews found no input,
+normalization, sample-order, PPO formula or obvious gradient-formula mismatch.
+CPU prefix/replay contributions are folded in deterministic order despite worker
+threads. A same-gradient control repeated one saved final CPU clipped-gradient
+vector (31 non-None tensors) for 8,583 Adam steps without PPO feedback; it did not
+replay the actual gradient sequence:
+CPU foreach=True equaled original None exactly; MPS foreach=True equaled False
+exactly. MPS/CPU final model relative L2 was 4.29e-7, with moment errors
+5.61e-8/1.47e-8. This does not explain the much larger full trajectory difference
+and provides no reason to change optimizer settings.
+
+Ten real-PPO gradient-only comparisons use common parent and completed-CPU
+weights with data selected by original minibatch ordinals 1, 100, 1,000, 6,023 and
+8,583. These are data positions, not historical weight snapshots. All 100 captures
+were decoded for per-game GAE and exact global advantage normalization; only
+nine histories were compiled. Seven of ten prefix comparisons exceeded the diagnostic
+maximum-absolute 1e-4 bound;
+maximum prefix/log error was 3.40e-4/5.63e-4. Nine gradient-relative errors ranged
+1.22e-5 to 8.39e-5; the completed-CPU-weight / step-1,000 selection reached
+2.37e-4. All clipping masks matched. Model/Adam/RNG and source checks passed;
+zero optimizer steps occurred. These local discrepancies do not yet attribute
+full drift. Next controls compare the original pre-memory Metal stack and a
+forward-only CPU-order GRU overlay against the same bound vectors. A separate
+no-contraction shader variant is prepared but unexecuted. Further full updates
+require evidence of a material local improvement; the original policy failure
+remains in force.
+
+**Private evidence.** All paths below are relative to
+`/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-11-14-metal-memory`:
+`cohort-manifest.json`, `failure-minibatch.json`, the append-only private journals,
+`metal-full-100-{a,b,c}`, `cpu-full-100-a`,
+`comparison-full-100-{b,c}/comparison.json`, `full-b-versus-c-state.json`,
+`adam-same-gradient-control`, `common-state-minibatches-c`, and each overlay's
+manifest/diff. The frozen full-worker/loader SHA256 values are
+`625384fca3dc812c9eac329b555ed0dc4312773cecbfdcbf593284d8bc95cd8f` /
+`d846c385f353ef907f23578a76a7564c5f266de9be4636250c60a52adf6277a6`.
+All raw state, captures, probes and diagnostic infrastructure remain private;
+this public update records evidence and limitations only.
+
+## 2026-11-14 — GRU expression order and FP32 contraction: revised full trial D
+
+The original pre-memory Metal stack was evaluated on the same ten common-weight
+PPO cases. Its CPU discrepancies were essentially the same as C's: direct
+original/C maxima were prefix 4.17e-7, log probability 4.77e-7, value 1.19e-7 and
+gradient relative L2 3.38e-7. All clipping masks matched. These sampled local
+errors predate the memory corrections; they do not prove the cause of the full
+trajectory divergence. This compares whole stacks, including absent/present
+matrix-kernel preference. The control completed in 214.888 seconds, with exact
+bindings and cleanup.
+
+A first private shader variant aligns recurrent-bias grouping and hidden-state
+interpolation with CPU expression order. All ten gradient errors decreased, but
+five prefix comparisons regressed and maximum prefix error increased at both
+common weight snapshots. Its 217.810-second control was therefore insufficient
+to justify another full update by itself. Backward code was unchanged.
+
+A separate variant additionally disables FP contraction with
+`#pragma STDC FP_CONTRACT OFF`. The pragma covers all four forward and both
+backward GRU kernels; this second variant is not forward-only. Shader SHA256:
+`7f934168448120e9798474f3e847b3ccb0063d36dd6e87617e85970e881a6111`.
+All ten common-weight cases improved versus C: prefix errors fell 6.24–33.77x
+and gradient-relative errors 2.48–25.27x. Maximum prefix/gradient errors were
+1.81794e-5 / 2.76056e-6 at parent weights and 2.36034e-5 / 2.16353e-5 at
+completed-CPU weights. All diagnostic 1e-4 flags, clipping masks and gradient
+presence checks passed. Maximum value errors were 1.10e-6 / 4.72e-6. The control
+completed in 210.808 seconds, including 195.427 seconds of preparation; runtime
+shader compilation and cleanup passed. No optimizer steps occurred.
+
+This is material local improvement at both weight sets, not full-update quality
+acceptance. The subsequent existing seven-case numerical suite also passed:
+maximum output error 4.77e-7, gradient relative L2 5.31e-7, zero padding-row
+gradients, with verified cleanup. All probes and candidate code remain private.
+
+**Prospective full D measurement.** The predeclared next trial restores the exact
+original 1,765 state and all 100 immutable captures, retaining all 8,583 steps,
+PPO/Adam, shuffle, guards, threads, priority and cache settings. It reuses the
+unchanged full worker and loader. The no-contraction overlay precedes the four
+frozen C overlays; only the GRU shader's source content differs from C.
+`PYTORCH_MPS_PREFER_METAL=1` and `PYTORCH_MPS_FAST_MATH=0` are passed before fresh
+Python startup. The existing completed CPU control will be reused; this is not
+another independent CPU replicate. Timing comparability and the original fixed
+recorded-policy bounds remain required, without post-hoc relaxation. Production
+integration remains pending this evidence.
+
+D launched with unbounded ownership supervision and `caffeinate`, on observed
+AC/Automatic, powermode 0, low-power false. Independent read-only audits verified
+all 74 frozen input bindings and all 60 resolved startup source bindings. Its
+initial-state file is byte-identical to CPU/C. The unchanged worker does not
+record FAST_MATH in its own environment field; the retained launch and owner
+argv explicitly record the executed zero value. No new game, seed, admission or
+official checkpoint is involved. Results are pending at this entry.
+
+Private evidence, under the same investigation directory:
+`common-state-original-10`, `common-state-gru-order-10`,
+`common-state-gru-no-contract-10`, `gru-cpu-order-no-contract/manifest.json`,
+`full-d-plan.md`, `full-d-input-bindings.json` (SHA256
+`60e5ceafa74c78df89a22aada5777ad18fe2e6c662751e82bcfc896179c004bc`) and
+`metal-full-100-d`. The production transition proposal is private and unapplied;
+it would bind both precision/kernel settings in existing startup and source
+validation paths, with no new orchestration or published diagnostic tooling.
+
+**Full D outcome and unchanged acceptance failure.** D completed all 100 histories,
+273,913 samples and 8,583 steps, with supervisor return code 0 and verified owned
+cleanup. Preparation took 1,157.210402 seconds, PPO 1,636.999826 seconds, combined
+2,794.210228 seconds (46m34s). Against the same completed CPU control, the measured
+combined ratio is **7.105379234x**, PPO-only **11.473170920x**. These timings
+exclude capture and final-game verification. D is another Metal measurement
+against the existing CPU control, not an additional independent CPU replicate.
+Start/end power signatures match AC/Automatic, powermode 0 and low-power false;
+intermediate observations stayed AC. Active and wall durations agree within
+microseconds. Peak process RSS was 48,158,474,240 bytes. Initial/prepared identity,
+all 67 final source bindings, finite CPU-restored tensors (39 model, 117 Adam,
+31 gradients), optimizer-setting restoration, private save/load roundtrip and
+owned cleanup passed. Final private state digest:
+`330cd22f5fa3f8a7c7ac0a5b333669fa7976ee5d529a90cbf5cad08780839276`.
+
+The unchanged comparator then ran in a separate guarded process, with both
+policies evaluated by the same original reference inference. Prefer-Metal,
+FAST_MATH and allocator environment overrides were explicitly absent.
+The full comparison again passed state/RNG/sampler/pool identity, exact Adam
+configuration/step counts, finite tensors and conditional supports, but failed
+all four fixed numerical policy bounds on both fixtures:
+
+| Fixture | Matching conditional argmax | Mean / maximum KL | Value RMSE |
+| --- | ---: | ---: | ---: |
+| Episode 17 | 224/227 | 7.41553e-5 / 0.001042062 | 0.042081047 |
+| Episode 100 | 215/223 | 6.59979e-5 / 0.002282997 | 0.033871096 |
+
+Overall conditional agreement was 439/450 (97.5556%), compared with C's 434/450.
+Model relative L2 fell from 0.0242810851 to 0.0170347106, but its maximum absolute
+error increased to 0.0777812991. Adam first/second-moment relative errors were
+0.1747195395 / 0.0211049101; last pre-step gradient relative error was
+0.0837634599 at different trajectory states. Both maximum KL values and the
+second fixture's value RMSE worsened relative to C. Thus the local precision
+improvement did not establish full-update numerical equivalence or improved
+playing strength. The comparator persisted its complete failure report, returned
+1 for the failed policy assertion, and verified cleanup without errors.
+
+The fivefold timing target has been exceeded and the corrected memory path has
+completed this cohort repeatedly under the original cap. The combined speed and
+preserved-quality objective is still unfulfilled. No acceptance threshold is
+relaxed, no production candidate is adopted, and no official checkpoint changes.
+Full evidence is in `metal-full-100-d/result.json`,
+`comparison-full-100-d/comparison.json`, their source inventories and shutdown
+records. No further full update is scheduled on the basis of these results.
+
+Before the final bounded diagnostic: reuse the frozen V2 common-state helper
+with exact D arithmetic, the same nine histories, two common weight snapshots,
+five data selections and two repeats. Inject the saved exact native CPU prefix
+boundary into each loss window, while retaining the separately computed GPU
+boundary for comparison. Compare outputs and real-PPO gradients to native CPU,
+and compare the repeats directly after cleanup. This separates prefix error from
+loss-window/backward error and measures local GPU variation; it does not test
+full-trajectory reproducibility or waive the failed policy bounds. No optimizer
+step or game is involved. The prospective record and outputs are under
+`common-state-d-cpu-prefix-repeat2` in the same private investigation directory.
+
+## 2026-11-14 — Localizing repeat variability in current-weight prefixes
+
+The exact-CPU-prefix control completed 20 cases (ten selections/weight pairs,
+two repeats), with all no-update/state/source checks and owned cleanup passed.
+Injected boundaries, repeated logs, values, losses and clipping norms were
+bitwise equal. Gradient repeat variation was at most 1.41e-7 relative; native CPU
+gradient errors fell to maxima 1.54e-6 / 4.01e-6 at parent/completed-CPU weights.
+However, the separately computed GPU boundaries varied between repeats by up to
+1.14e-5 / 3.33e-5. This provides an actionable local repeatability issue, not a
+proof that it explains the failed full-update comparison. The maximum difference
+was episode 40, completed-CPU weights, boundary frame 50,755.
+
+A single-history localization freezes each stage's operands. Its first attempt
+failed the existing native compile gate because the private probe omitted
+`train().requires_grad_(True)` preparation. It stopped before any GPU stage,
+returned 1 and cleaned up. The separately hashed correction adds only that
+existing preparation; measured operations remain no-grad. The corrected attempt
+completed in 28.67 seconds with unchanged inputs/model/Adam/RNG/source and no
+gradients. Three fixed-input sparse CNN pooling calls differed by up to 3.28e-7
+before the global-map projection. Three complete GRU calls on the same encoded
+input `[1,46356,96]` produced bitwise-identical full sequences and boundaries.
+This directly locates variation in the pooled atomic additions for this case;
+it is not an exhaustive audit of all preceding operations.
+
+A private pool-only candidate stably groups affected cells by map/bin and gives
+each bin/channel one writer, retaining anchor-first, separately area-divided
+additions. It preserves checked int32/int64 handling and introduces no im2col or
+large activation tensor. Fifty-four synthetic map comparisons passed the existing
+2e-6 CPU tolerance (maximum error 9.69e-8); 24 nonempty sparse CSR dispatches
+actually exercised both index variants. Frozen pooling repeats and int32/int64
+results were bitwise equal. Empty bins, selected-prefix offsets, zero rows and
+no-grad checks passed, followed by the seven existing regressions. Those seven
+regressions alone do not cover sparse pooling. All bound inputs and cleanup
+checks passed; the small sampled memory values are not true peak measurements.
+
+Six ordinary episode-40 prefix passes (parent/completed-CPU weights, three each)
+showed that pool-only correction was insufficient. Parent boundaries were
+bitwise repeatable, but completed-CPU boundaries still varied up to 8.11e-6;
+pooled/map outputs also varied slightly. CPU-error ranges overlapped earlier D
+draws, and the parent's maximum error was slightly worse. No general accuracy or
+full-update claim follows, and no full run was launched from that result.
+
+The next frozen-input control isolated two object scatters, both anchor
+convolutions and adaptive pooling. It completed in 30.43 seconds with all
+state/source/no-gradient and cleanup checks passed. The remaining variation was
+directly reproduced in `object_delta.index_put_(accumulate=True)`: maximum
+1.19e-7 with identical values and zero destinations. All changed rows belonged
+to 32 of 119 targets receiving three heterogeneous contributions; single- and
+double-hit targets were identical. The anchor scatter, convolutions and adaptive
+pool were bitwise repeatable in these controls. This is sampled attribution,
+not a claim that no other history can expose another source.
+
+The next private candidate will replace only the demonstrated delta-object
+scatter with a stable per-target sum over the already gathered/scaled FP32
+values, alongside deterministic pooling. Anchor scatter remains unchanged.
+It must retain partial-prefix boundaries, checked index widths, zero outputs,
+resource limits and original PPO. Before considering another complete update,
+require direct captured triple-hit checks, synthetic/regression gates, then the
+same real-PPO common-weight cases with ordinary computed prefixes and repeated
+execution. Repeatability and CPU numerical agreement are separate criteria;
+neither waives D's failed full-policy bounds. Production code and checkpoint
+1,765 remain unchanged.
+
+Private evidence: `common-state-d-cpu-prefix-repeat2`,
+`prefix-localization-d-{one,two}`, `deterministic-pool-validation`,
+`pool-prefix-repeat-candidate-one/all-D-boundary-comparison.json`,
+`upstream-map-localization-one/scatter-collision-analysis.json`, their plans,
+source manifests, results and shutdown records. All are under the previously
+identified private investigation directory; no probe or raw tensor is published.
+
+
+The combined pool/delta candidate passed its three prerequisite gates before
+real-history testing. The full captured 161,319-row scatter and all 119
+three-contribution targets matched explicit source-order CPU sums bitwise in
+three repeats for both index widths. Actual GPU operands passed readback
+immutability checks. All 54 map comparisons passed the unchanged 2e-6 tolerance
+(maximum 9.69e-8), including 24 nonempty pooling and 16 object-sum launches;
+partial-prefix, offset, zero-row and no-grad controls passed. The seven existing
+regressions also passed. All three processes exited zero, verified owned cleanup,
+and preserved all 91 bound inputs. These are local operator results, not a
+full-update equivalence claim. Evidence: `deterministic-pool-delta-validation`;
+candidate manifest SHA256
+`2e9e65a1cc64d355c49477d7b5cf0846934109bdc7666ea08416df36682a2aee`.
+
+Before the next real-history control, freeze V3 helper SHA256
+`2e4a7052026506a82a8bf3c116754556ea89262ff2f4ffa6b9dbe5424bdb4215`
+and its source/cohort/control bindings. Recompile the same nine selected
+histories using the combined candidate; evaluate the same ten common-state
+real-PPO cases with ordinary computed prefixes three times. Reuse original
+100-game advantage normalization and saved native CPU controls; perform no
+optimizer steps. Compare direct repeatability separately from CPU agreement.
+D's injected-CPU-prefix runs supply additional computed-boundary draws only;
+their losses and gradients cannot serve as ordinary-prefix D controls. Use
+D's ordinary-prefix run for that comparison. GPU allocation was granted after
+the prerequisite cleanup; no new full update or game was scheduled.
+
+
+The combined real-history control completed all 30 evaluations (ten cases,
+three repeats) in 224.66 seconds, including 197.38 seconds preparation. All
+existing 1e-4 local diagnostic flags passed, with exact clipping masks, unchanged
+state/source bindings, zero optimizer steps and verified cleanup. All ten cases
+had bitwise-identical computed boundaries, logs, values, losses and clipping
+norms across repeats. Backward repeat variation remained small: maximum gradient
+relative L2 6.29e-8 at parent weights and 1.56e-7 at completed-CPU weights.
+
+This removed sampled forward variation but did not generally improve CPU
+agreement. Maximum CPU prefix errors were 1.3471e-5 / 2.7418e-5 at the two weight
+sets. Three case errors exceeded every observed D boundary draw, only one was
+below all D draws, and six overlapped. Ordinary-prefix gradient error improved
+in seven of ten cases and worsened in three; the worst completed-CPU step-6023
+case increased from 2.16353e-5 to 2.22308e-5 relative L2. Consequently no full
+trial E was scheduled. Evidence: `common-state-pool-delta-repeat3`, its frozen
+bindings, comparison report and cleanup record. Sampled repeatability does not
+waive the failed full-policy bounds or establish retained playing strength.
+
+Before another narrow diagnostic: separate deterministic but differently rounded
+map algebra from ordinary dense Metal arithmetic. Inspect the worst boundary in
+the completed-CPU step-6023 case and define a bounded nonzero-start frame slice
+before it. Compare native CPU map-global features with dense and sparse Metal
+features for identical raw maps and weights; keep tree/GRU error separate. The
+existing dense path must receive a freshly constructed dense plan, never a pruned
+sparse plan reinterpreted as dense. Freeze the selection and helper before any
+numerical execution. No optimizer, new game or full update is part of this
+control, and slice timings cannot predict a complete dense-prefix update.
+
+
+A complementary control reuses the already frozen episode-40 encoded sequence,
+initial hidden state, CPU-final GRU weights and saved repeated GPU outputs from
+`prefix-localization-d-two`. Run only CPU `torch._VF.gru_cell` sequentially for
+each vector with one thread and no gradients, matching native `transition`;
+a batched `nn.GRU` would change the reference input-affine arithmetic. Compare
+full sequences and the final boundary with preserved hashes and owned cleanup.
+No history preparation or fresh GPU execution is needed. This isolates recurrent
+arithmetic on common GPU-produced input, not the episode-4 map discrepancy.
+
+
+The frozen-input CPU GRU control completed without errors: 46,356 per-vector
+transitions took 0.663 seconds, with 1.154 seconds total worker time, zero fresh
+GPU execution, unchanged inputs/source/RNG and verified cleanup. Against the
+identical-input saved Metal sequence, maximum absolute error was 1.66297e-5
+(relative L2 2.75961e-6); the final boundary error was 1.45435e-5 (relative L2
+3.72050e-6). All three saved Metal repeats and their ordinary call were byte
+identical. Thus a systematic CPU/Metal recurrent-arithmetic difference remains
+independently of map encoding. This is the episode-40 frozen sequence, not the
+episode-4 map case, and does not attribute the error to one GRU sub-operation.
+Evidence: `frozen-gru-cpu-reference` and its plan, bindings and shutdown record.
+
+
+The final bounded map control completed in 29.08 seconds, including 25.93 seconds
+preparation, with exit zero and verified cleanup. The predetermined episode-4
+interval `[54879,54943)` contained 31 map-bearing jobs and 16 unique maps.
+Its ordinary sparse-prefix comparison retained all 18,157 required unique maps
+and their original anchors; the dense path was independently built for the
+64-frame slice. Maximum map-global feature differences were 3.57628e-7 for
+native CPU versus dense Metal, 5.36442e-7 for CPU versus sparse Metal, and
+2.98023e-7 between the Metal paths. All 87 bound inputs, model/Adam tensors and
+parent/global RNGs remained unchanged, with no gradients or optimizer steps.
+Timings covered different amounts of work and are not a speed comparison.
+These local map differences do not attribute the complete recurrent drift.
+Evidence: `map-arithmetic-one`, `map-arithmetic-preparation`, their frozen helper,
+source bindings and shutdown record.
+
+Investigation outcome: the memory-corrected candidates completed the original
+100-game update under the original resource limits, and full trial D exceeded
+the fivefold complete-update timing target at 7.105x. Near-exact final-policy
+reproduction failed, and subsequent deterministic-prefix corrections did not
+generally improve CPU agreement. No full trial E, new game, training admission
+or checkpoint publication followed. No production code was adopted. The
+preserved-quality objective remains unresolved: the recorded-state numerical
+gate is not a playing-strength test, and neither retained nor reduced playing
+strength has been demonstrated. A future strength evaluation needs prospectively
+specified fresh games, balanced seats and statistical criteria; small smoke games
+or a post-hoc relaxation of the failed numerical bounds cannot supply that proof.
+Only this research record and README are synchronized; all diagnostic code,
+private candidates, tensors, weights and raw captures remain local.

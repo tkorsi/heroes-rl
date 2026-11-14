@@ -75,9 +75,30 @@ rolled back; zero games were admitted, and no 1,766 or final diagnostic exists.
 Post-failure full-state restoration of 1,765 passed. The Mac slept and resumed;
 the attempt took 2h03m31s on the monotonic clock and 5h59m30s wall time, including
 the recovery diagnostic. This is a failed full-cycle measurement, not evidence
-of the targeted fivefold speedup. The Metal path remains experimental and needs
-a measured memory-peak correction before another campaign. Keep this run's raw
-captures for that investigation. New cycles have no default time limit.
+of the targeted fivefold speedup. Keep this run's raw captures for the offline
+investigation. New cycles have no default time limit.
+
+A private memory-corrected Metal candidate subsequently completed the same
+100-game update (273,913 samples, 8,583 optimizer steps) under the original 25%
+MPS cap. Full trial D also aligns GRU expression order and disables FP
+contraction in its GRU kernels. Its same-input CPU/Metal comparison measured
+5h30m54s versus 46m34s
+including preparation: **7.105x faster for the complete update**, or
+11.473x for PPO alone. Both runs observed AC/Automatic power at their endpoints;
+this is one pair, not a repeated benchmark or a full campaign timing. Gameplay
+and final-game verification are excluded.
+
+The full-update policies nevertheless failed the predeclared numerical
+comparison bounds: 439/450 conditional argmax matches, with KL and value errors
+also above their limits. These checks compare the resulting policies on recorded
+states, not playing strength. The memory and timing results do not establish
+preserved learning quality. Full candidates C and D failed those bounds despite
+D's improved local numerical checks. Follow-up isolated changes removed two
+sources of GPU forward variability in the sampled cases, but did not generally
+improve CPU agreement; they have not received another complete-update test.
+The candidates remain private and unadopted; the production backend and
+published checkpoint remain unchanged. See the research log for exact scope,
+failed attempts, power-mode corrections and private evidence references.
 
 The earlier v3 variant disabled calendar spawning and was used through 1,763.
 The v4 selector retains its pinned native acceptance, including the successful
