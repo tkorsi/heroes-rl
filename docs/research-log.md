@@ -5695,3 +5695,38 @@ bundles or editor checkpoint refs were pushed. The two detached dependency
 snapshots remain unchanged and the root checkout is the single development
 location. The final publication records this outcome in a documentation-only
 follow-up; no launch, preflight, test suite or numerical workload was executed.
+
+## 2026-11-15 — One authorized diagnostic from the consolidated main checkout
+
+Question: how does the latest published policy play one fresh map under the
+current restrictions? The user explicitly authorized the assistant to launch
+this one game. This exception does not authorize training, PPO updates, another
+game or retirement of the saved 100-game investigation cohort.
+
+Read-only preflight on source `f5405308a7ebe42f5a9c7fc5855782c726ff98df`
+passed: `select_cycle_mode()` followed by `ten_inspect()` restored checkpoint
+1,765 with model, Adam, RNG and progress; no pending diagnostic remained.
+Weights digest: `5e88fc9d236204e57fd32f73cd003f19b675a7f6f9d0c25ef6ce376d04cda35e`.
+The accepted runtime is `local-v8-sleep-resume-v1`, with the locked
+`next-launch-numpy235-v1` Python and `remove-telemetry-v1-attempt1` native learner.
+The selected map is `hero-management-v4.vmap`, digest
+`a076b4dca6410b5dc16388dc47333b036323a94c8fe412500cd9f31b78bcc833`.
+
+Existing standalone CLI launchers still select historical checkpoint 1,753;
+the campaign CLI would include training and retention. Therefore invoke the
+existing current-cycle inspection and single-game collection/verification
+functions directly, without changing those launchers or bypassing source,
+runtime, checkpoint, seed or replay checks. Both frozen players use 1,765;
+preserve hero-relative policy support, own-army information, artifact prohibition,
+starting taverns and native calendar spawning. Preserve the current 365-day
+horizon and 158,720 ordinary plus 5,120 reserved choices per player.
+
+Acceptance: exactly one fresh diagnostic capture, exact reconstruction of both
+policies, verified native replay, unchanged protected checkpoint inputs and
+closed owned processes. The standalone evaluation namespace preview is engine
+seed 1,960,000,000 and policy seeds 1,962,000,000/1,962,000,001; reserve durably
+under the machine activity lease before capture. Store the bound plan and raw
+evidence privately under `selfplay-one-game-2x`, with zero training admission or
+optimizer updates. Record actual seeds, timing, result and validation afterward.
+Describe observable adventure-map behavior; combat remains BattleAI. One
+self-play game cannot establish improvement or validate Metal training quality.
