@@ -13,9 +13,10 @@ actions. Combat is handled by BattleAI; screenshots are not policy inputs.
 Use the main checkout at `/Users/orsi/Projects/Heroes`. The user runs these
 commands in Terminal; editing or reviewing this project never starts training.
 The prepared Mac runtime and private game assets must already be available.
-The new Metal default is implemented in source; integrated runtime preflight and
-the test suite have not been rerun under the current no-launch instruction.
-The commands below are for the user to run, not a claim of launch readiness.
+The consolidated source passed current-checkpoint/runtime inspection and one
+replay-verified diagnostic from checkpoint 1,765. A complete Metal training cycle
+and the test suite have not been rerun after consolidation. The commands below
+are for the user to run; the single-game check does not establish full-cycle readiness.
 
 ```sh
 cd /Users/orsi/Projects/Heroes

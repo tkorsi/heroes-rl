@@ -5730,3 +5730,42 @@ evidence privately under `selfplay-one-game-2x`, with zero training admission or
 optimizer updates. Record actual seeds, timing, result and validation afterward.
 Describe observable adventure-map behavior; combat remains BattleAI. One
 self-play game cannot establish improvement or validate Metal training quality.
+
+Observed: the single attempt `selfplay-one-game-2x/run-20261114T220914Z-19c6bccb`
+ran from clean source `4ede04e`, using the previewed seeds (standalone reservation
+offset 0). Its private `plan.json` binds the exact checkpoint, runtime, rules,
+source and protected inputs. Existing `collect()` and `verify_capture()` APIs
+ran under the machine activity lease and `caffeinate -is`, with guarded native
+processes and parallel native replay. The legacy single-game API requires finite
+deadlines, so this diagnostic used its 7,200-second maximum; this does not alter
+the unlimited default for training campaigns. No source code or launcher changed.
+
+The game ended naturally with Blue winning on day 72. Both players used the
+same frozen 1,765 weights. Red made 1,674 policy choices and Blue 1,524. Capture
+and preparation took 87.556 seconds (manifest engine wall time 65.497 seconds);
+the complete attempt including verification and cleanup took 137.963 seconds.
+Native replay took 16.794 seconds within the overlapping verification phase,
+not an additional duration to add to the total.
+
+`report.json` passed; `episode-000001/evaluation-policy-reconstruction.json`
+records zero maximum absolute difference for both reconstructed policies,
+including 3,040 Red and 2,611 Blue conditional distributions. Native replay
+checked all 20,276 client packets, 6,400 messages, 3,806 requests, 3,198 responses
+and 41,120 transactions, with zero unchecked entries and no divergence. Both
+history streams ended naturally on day 72. `shutdown.json` confirms unchanged
+protected inputs/plan and clean owned-process shutdown. An independent read-only
+audit rehashed all 686 protected files and confirmed no owned game/replay process
+remained. There were zero PPO updates, admitted games or admitted samples; the
+official checkpoint remains 1,765 and the saved training cohort was not retired.
+
+Behavioral observations from the sealed player histories: Blue acquired Red's
+remaining town on day 65; Red's day-72 notice explicitly records
+`heroes.baseline.seven_days_without_town`, while Blue's terminal notice records
+`heroes.baseline.all_opponents_defeated`. This is a native victory, not a cutoff
+or a validation error. The policies issued six/five hero hires and five/three
+troop recruitments for Red/Blue, but only two/zero construction actions. Much of
+the action stream is interface opening/closing, so the victory does not establish
+efficient economy or coherent long-term planning. These are observations of the
+existing policy, not evidence of improvement since the previous checkpoint or
+of learning from the newly adopted Metal backend. Full training after source
+consolidation and the test suite were not run in this task.
