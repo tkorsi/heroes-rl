@@ -60,7 +60,10 @@ The next prepared user launch is `./run-100-games.command 100 --mlx` from
 checkpoint **1,768**, with CPU policy inference and MLX PPO. New cycles restore
 manual troop-slot management and upgrades under a new explicit support version;
 all other restrictions and PPO settings remain. Historical captures retain
-their original policy support. This rule change has not yet been played.
+their original policy support. The first restored-stack cycle stopped before
+PPO because the quantity sampler could repeat a command rejected by its guard.
+The correction reproduced that failure from saved history and passed exact
+sampling/evaluation checks; the next 100-game continuation still starts at 1,768.
 
 ## MLX results and remaining performance work
 

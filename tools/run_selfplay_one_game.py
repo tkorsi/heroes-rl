@@ -367,7 +367,7 @@ MLX_PPO_SOURCES = {
     'experiments/learner/builtin_gameplay.py': {'before': 'c3f02c1e5895d1fdfa56408018a170c635fd11dc7c23b2b4c667646a6667cf17',
         'after': 'b25b0dc1ef1b389a73ae3d141e37f7348ce68f2718f441fa8787d3d84615133a'},
     'experiments/learner/contextual_model.py': {'before': 'e3afd30e2638e190c518d46b6f5b83f4709c3e998dcab20e8ae4ca6157903fb9',
-        'after': '331eeb9afedf43c1a632dc02680d2dda054d154a0c890bad19fc9fbefc3a337d'},
+        'after': '3f0d74ee3ad47c7cf9eb0f4b6db9f525bc7ff00c8e0024bdace5aeca809d81bf'},
     'experiments/learner/first_run.py': {'before': '645e1ca237b2eee9f0338d0a8b8e388aac7ee5d952e205ea666e55481fecd81a',
         'after': '4f13f4467e70913406f180aa79f928f529b565c443dca68a99ecdc1985234e3f'},
     'experiments/learner/inference.py': {'before': 'ba95349f5265c6bd3aaff2caf607af86975f74f8addca1f2b4a2a4bf78a101e8',

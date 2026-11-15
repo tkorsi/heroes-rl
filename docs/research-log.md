@@ -6846,3 +6846,138 @@ the experimental branch and active source identity. Defer switching the working
 checkout to main until that campaign finishes. Checkpoint and runtime assets
 remain private and unchanged. This records consolidation, not new training or
 validation results.
+
+
+### 2026-11-15 — Investigate restored-stack capture failure; 1000 games deferred
+
+The user withdrew the requested next 1000-game cycle and requested investigation
+of the failed current campaign. No launch/restart or numerical probe is authorized.
+Evidence: `run-20261115T131956Z-07d9b15c`, source `534f947`, parent 1768,
+CPU policy / MLX PPO / restored-stack support. Campaign stopped after 1160.779 s
+(19m21s), exit 1. Episode 37, engine seed 1980002893, failed during capture:
+manifest `failure_detail` is `Fixed-weight diagnostic failed: ValueError:
+Conditional action construction disagrees with support`. It reached day 227,
+last Red decision seq 100717. This is a policy action-construction failure before
+PPO, not evidence of a Metal update failure. Native -9 is recorded during failed
+capture shutdown; it alone must not be labeled GPU OOM.
+
+Report status denominators differ: engine outcomes record 58 naturally completed
+games (42 Blue,16 Red), whereas attempt states contain 50 captured, nine
+interrupted, one failed and 40 not started. Eight of the interrupted attempts had
+completed engine games but preparation was interrupted. Zero samples admitted,
+zero PPO updates, no checkpoint 1769, no final diagnostic. Latest remains complete
+1768, weights `e7d559efa7ea1e56e7abc6e5debb78dbc4bb0c698bda3b0ee917e9098e70161d`.
+Campaign-owned cleanup and protected inputs passed. No partial batch may train.
+
+Read-only bounded extraction from the 7.1-GiB partial-policy-evidence.json shows
+Red successfully split four creatures on day 227: source army-slot-369 to
+army-slot-364, subject object-39, submitted seq 100711, split result accepted
+seq 100716, then decision seq 100717. Afterward source count is nine and target
+count four. Blue's last decision remains day 226. The failed newly sampled action
+is not serialized, so do not claim its exact count was independently recovered.
+
+Code inspection identifies a matching definite defect: split/transfer count
+sampling ignores the immediately repeated quantity, while the final guard rejects
+that command. The existing recruit/trade path already excludes repeated counts.
+A repeated count of four for the same slots at this next decision therefore
+passes native quantity range checks but fails final guarded support. A second
+related defect filters an entire slot pair when count one is forbidden even when
+other counts remain legal. These branches were inaccessible under the old
+recruitment-only restriction and were not covered by the initial restored-action
+checks. Exact stochastic reproduction has not run.
+
+Local correction on main reuses the existing quantity representative and excluded
+count-tree logic for split/transfer; keep the final legality check and all cooldowns.
+Update the exact changed model-source pin. A non-neural control-flow check passed
+10,912 count-tree paths (maxima 2..32, each excluded quantity and each allowed
+target) and representative checks for split/transfer count-one exclusion. It
+performed no model forward, optimizer, game or replay. Full model reconstruction
+and end-to-end validation remain pending user-authorized execution. No new test,
+probe or benchmark files are published. No commit or push performed for this fix.
+
+The prior user-authorized main consolidation is already on GitHub (`1b4bd95`).
+With the campaign stopped and no active training processes, switched the canonical
+checkout to main as previously deferred. Preserve the experiment branch and all
+failed-run evidence; generated native/framework-comparison build assets remain
+local. Do not retire this failed run before preserving the bounded failure inputs.
+
+
+### 2026-11-15 — Authorized saved-failure reconstruction and validation
+
+The user explicitly authorized assistant execution of checks on the saved failed
+party, followed by commit/GitHub sync only if checks pass, and preparation of
+100 fresh games from 1768. The user will launch training; no new campaign is
+authorized. Acceptance: restore the exact 1768 weights, reconstruct Red's saved
+history and original CPU sampling RNG, reproduce the old support failure at
+seq 100717/day 227, then sample and independently evaluate a valid fixed action
+from the same state/RNG. Also run relevant existing tests and read-only launch
+inspection. No partial failed campaign is admitted to training.
+
+A private streaming reader extracts Red decisions/history from the 7.1-GiB
+partial evidence, preserving compact failure inputs and checkpoint wrappers
+outside Git before retention can retire old raw captures. It compares the
+original distribution methods from published `1b4bd95` against the working
+correction without changing weights or launching an engine. Evidence/scripts
+remain private under `run-investigations/2026-11-15-stack-repeat/`; none are
+publication scope. This entry is appended while extraction is in progress;
+results and any failed validation attempts follow below.
+
+
+Validation completed on the saved failed Red prefix: all 100,718 frames through
+seq 100717 were reconstructed with exact 1768 weights, CPU inference and seed
+1982005786. All 12,726 stored preceding sampled actions matched the original
+methods from `1b4bd95`; maximum value and log-probability differences were both
+zero. Original methods then reproduced the exact support-construction exception
+at seq 100717/day 227. Instrumentation recovered the previously unrecorded failed
+candidate: split_stack, object-39, army-slot-369 to army-slot-364, count 4.
+The original failure diagnosis is now directly confirmed, not just inferred.
+
+Resetting to the identical pre-choice RNG/state, the fixed distribution selected
+count 5 for the same split. Native offers and guard both permit it; independent
+evaluation reproduced its total and individual conditional log probabilities
+exactly. A further 512 seeded samples on this state all passed support and exact
+sample/evaluate agreement. All native quantities 1..9 for this pair were checked:
+4 is excluded and evaluation rejects it; the other eight remain available.
+Differentiable evaluation of those actions produced finite gradients in 19
+parameter tensors, with no optimizer step or weight publication. Existing tests:
+54 passed in 2.842 s across recruit_only_guard, interaction_guard,
+contextual_management_model, selfplay_checkpoint and selfplay_training. These
+are targeted checks, not a claim that the full historical suite is green.
+Reconstruction phase took 69.68 s; no game, training update or native replay ran.
+
+Private evidence: `run-investigations/2026-11-15-stack-repeat/{result.json,
+final-state-result.json,existing-tests.log,check-saved.log,check-final-state.log}`.
+Preserved compact Red history (about 81 MiB), decisions, full failing frame,
+guard, recurrent/RNG state, both policy wrappers, plan, failure manifest and
+finalization, plus private reproduction scripts. `preservation-manifest.json`
+records their sizes/hashes. This bounded archive remains outside campaign
+retention and Git; it permits subsequent investigation after ordinary retirement.
+Complete parent checkpoint 1768 remains governed by the existing retention gate.
+
+Retention-reviewed run: `run-20261115T131956Z-07d9b15c`.
+
+The user authorized committing/syncing this verified production correction.
+Publish only the model fix, exact source pin and documentation, without tests,
+validation scripts, captures or weights. Prepare a new user-run 100-game cycle
+from complete 1768 with fresh seeds, CPU policy / MLX PPO, restored troop
+management and all other existing restrictions. Launcher preflight follows the
+clean commit; full fresh-campaign success remains unobserved.
+
+
+A separate transfer-window fixture passed all remaining quantities after a
+count-one repeat, rejected the repeated quantity, and passed 128 exact
+sample/evaluate checks (`transfer-check.log`). The validated candidate model SHA
+is `3f0d74ee3ad47c7cf9eb0f4b6db9f525bc7ff00c8e0024bdace5aeca809d81bf`.
+Together the saved-state and fixture checks cover both corrected branches.
+
+
+Clean-source read-only preflight passed on local `d070595`: exact complete 1768
+restore, 100 training + one diagnostic, CPU policy, MLX PPO, restored-stack
+support, one update, no wall-clock deadline. Fresh engine base 1980002958,
+101 reserved candidates previewed but reserved=false (no seeds consumed).
+No gameplay, update or artifact cleanup occurred. Evidence:
+`run-investigations/2026-11-15-stack-repeat/retry-100-preflight.log`.
+After this documentation-only amendment, repeat inspection on the final commit
+and retain `retry-100-preflight-final.log`, then sync that exact main to GitHub.
+User command remains `./run-100-games.command 100 --mlx`; this is a fresh
+100-game continuation from 1768, not resumption/admission of the failed batch.

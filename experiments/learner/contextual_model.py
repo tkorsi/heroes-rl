@@ -1791,8 +1791,8 @@ class ContextualDistribution:
         return self.guard is None or self.guard.permits(action, self.observation, self.offers)
 
     def _filtered(self, choices, action_for):
-        # Guard predicates depend on the action's actors, not its quantity. The
-        # count tree therefore retains every native count for an admitted pair.
+        # Quantity-bearing choices supply a permitted representative; their
+        # count tree separately excludes an immediately repeated quantity.
         if self.guard is None:
             return choices
         return tuple(choice for choice in choices if self._permitted(action_for(choice)))
@@ -1819,9 +1819,10 @@ class ContextualDistribution:
                             selection=control.ref if control.panel == "recruitment" else None)
 
     def _pair_action(self, kind, pair):
-        source, destination, _ = pair
-        return self._action(kind, selection=source, destination=destination,
-                            count=1 if kind in ("transfer_stack", "split_stack") else None)
+        source, destination, maximum = pair
+        if kind in ("transfer_stack", "split_stack"):
+            return self._quantity_representative(kind, maximum, selection=source, destination=destination)
+        return self._action(kind, selection=source, destination=destination)
 
     def _repeated_quantity(self, action):
         return self.guard.repeated_quantity(action, self.observation, self.offers) if self.guard else None
@@ -2018,21 +2019,13 @@ class ContextualDistribution:
                 destinations.index(action.destination) if action else None)
             destination = destinations[destination_index]
             subject = self.offers.context.subject
-            low, maximum = 1, (exchange.maximum(selection, destination) if exchange else
+            maximum = (exchange.maximum(selection, destination) if exchange else
                                c.army_operation_maximum(self.offers.armies, kind, selection, destination))
-            high = maximum if kind in ("transfer_stack", "split_stack") else 1
             features = self._features(_node("transfer_quantity" if kind == "transfer_stack" else kind + "_quantity", _army_slot(self.observation, selection, receiving=False),
                                            _army_slot(self.observation, destination, receiving=True)))
-            depth = 0
-            while low < high:
-                middle = (low + high) // 2
-                logits = self._quantity_logits(features, low, high, maximum, depth)
-                selected = int(action.count > middle) if action else None
-                branch = choose(f"count:{low}:{high}", logits, selected)
-                if branch: low = middle + 1
-                else: high = middle
-                depth += 1
-            count = low if kind in ("transfer_stack", "split_stack") else None
+            if kind in ("transfer_stack", "split_stack"):
+                excluded = self._repeated_quantity(self._action(kind, selection=selection, destination=destination, count=1))
+                count = self._choose_count(choose, features, maximum, action.count if action else None, excluded)
         elif kind in ("construct", "back", "recruit", "hire_hero", "swap_garrison", "upgrade_stack"):
             subject = self.offers.context.subject
             if kind == "upgrade_stack":
