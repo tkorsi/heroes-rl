@@ -6981,3 +6981,202 @@ After this documentation-only amendment, repeat inspection on the final commit
 and retain `retry-100-preflight-final.log`, then sync that exact main to GitHub.
 User command remains `./run-100-games.command 100 --mlx`; this is a fresh
 100-game continuation from 1768, not resumption/admission of the failed batch.
+
+
+### 2026-11-15 — First successful restored-stack cycle after repeat-count fix
+
+User requested a current-run status/error check only. Read existing reports;
+no workload, replay or optimizer was launched. `run-20261115T140446Z-0a723861`
+on source `10ddb9f94586e99beb9d9032efeb8f691fe0a0fe` completed from parent 1768
+to 1769: 100 captured/admitted games, zero failures or interruptions, 466,381
+samples, 14,598 optimizer steps. CPU inference / MLX PPO, restored-stack support,
+MLX/MLX-metal 0.31.1. Engine training outcomes: Blue 73, Red 25, two cutoffs;
+training captures do not receive independent reconstruction/native replay.
+Collection/preparation 2,217.5668 s (36m58s), production PPO 1,791.9264 s
+(29m52s), final diagnostic/verification 154.0003 s, full cycle 4,170.1019 s
+(69m30s), completed 15:14:18 UTC. The strict 600-second PPO target is not met.
+Larger histories/action counts prevent a direct backend speed comparison with
+the previous restricted 228,930-sample run.
+
+Checkpoint 1769 passed the report's complete restore verification; weights
+`733002cd969ca2a4b9d151d71a37027d2e29a07bd20fafc3404d17e88a7d8e27`.
+Exit zero, empty shutdown errors, owned cleanup and protected inputs passed.
+No recurrence of the support-construction failure was reported in 100 training
+games or the diagnostic. This establishes a successful campaign, not immunity
+to every possible future management state.
+
+Diagnostic Blue (frozen 1768) beat Red (new 1769). Both policies reconstructed
+exactly: Red 1,737 actions/values and 4,102 conditionals, Blue 2,825 and 7,145;
+maximum difference zero, native replay passed. Restored actions were exercised:
+Red/Blue split 88/65 times, merged 26/41, swapped stacks 554/1,513; Red also
+upgraded twice. These are submitted-action counts, not a claim that every
+operation was strategically useful or improved playing strength. Numerous
+rearrangements warrant behavioral analysis before claiming learning.
+Evidence: run report/shutdown and diagnostic neural-rollout/reconstruction JSON.
+No commit, push, new launch or artifact removal performed during this check.
+
+
+### 2026-11-15 — Detailed 1769 diagnostic: useful consolidation and slot cycles
+
+Question: explain Blue's win, distinguish newly available management actions
+from learned improvement, and identify whether rearrangement is productive.
+Acceptance: trace events/armies and compare exact slot states within consecutive
+submitted swap runs; do not infer strength or intent from counts. Read-only
+analysis of existing player histories and rollout audit, no engine/model job.
+Evidence: `run-20261115T140446Z-0a723861/evaluation-000/execution/episode-000001/`
+`agents/{red,blue}/history-v8.jsonl`, `neural-rollout.json`, and reconstruction.
+Source/backend/weights identities are in the preceding successful-cycle entry.
+Red is 1769, Blue frozen 1768; both use CPU and restored-stack support. Day 31
+natural terminal, Blue wins. Exact policy reconstruction and replay passed.
+
+Red clears the nearby neutral on day 1 and buys 14 pikemen, builds upgraded
+level-1 dwelling on day 5, hires a hero and combines it with town troops through
+garrison swap (25 pikemen), upgrades that stack on day 6. A second hired hero
+on day 16 brings 20 pikemen; a cross-hero swap passes the 25 halberdiers to it,
+and the other hero upgrades its 20 pikemen on day 18. Red builds marketplace
+day 19. Useful actions exist, but troops are scattered: before decisive fights,
+25 pikemen on original hero, 22 halberdiers on another, four on another and
+19 in town. Only 14 creatures purchased all game, three additional heroes hired.
+Red sells two units of resource 5 for 100 gold on day 19, then buys one unit of
+that same resource for 5,000 gold on day 23; ends that day with 105 gold. No
+later construction uses it in this game. This is an observed poor exchange
+sequence, not a claim about unobserved policy intent.
+
+Blue buys 28 pikemen day 14 and 14 day 16, hires three heroes over days 14–15.
+Repeated cross-army movement ultimately yields useful consolidation on day 18:
+28 purchased town pikemen plus 12 from a hired hero form 40, then a merge into
+the original hero's 25 produces 65 (Blue history seq 10673). Blue wins neutral
+combat and captures the wood mine day 19. Day 20 kills Red's one-gnoll hero.
+Day 22 Red original hero kills one Blue hero, falling from 25 to 15 pikemen;
+day 23 Red's 22-halberdier hero attacks Blue's 65-pikeman hero and dies, Blue
+retains 54. Day 27 Blue's weaker 15-pikeman/six-archer hero fails attacking
+Red town; its 19-halberdier garrison falls to five. Day 28 Blue's 54-pikeman
+hero captures that town, retaining 53. Day 29 Blue kills the four-halberdier
+hero, day 31 its other hero (three griffins +21 goblins before combat) kills
+Red's final 15-pikeman hero and wins. Blue's consolidation and Red's dispersed
+forces explain the decisive material mismatch. Failed day-27 assault also
+shows Blue's play was imperfect. Combat choices are BattleAI's, not the policy's.
+
+Slot analysis uses every submitted swap_stacks matched to its result and the
+latest preceding/following own_armies observation. Exact layout signatures retain
+subject, slot, creature and count; inventory signatures aggregate creature counts
+per subject, ignoring slot. A run ends at any other submitted action. These
+metrics are descriptive, not a learned usefulness classifier.
+Red: 554 swaps across 264 runs; 552 preserve every subject's inventory, 72 return
+to a layout already seen in that run, 31 are two-step returns; longest run 12
+(day 26, seq 12187–12264). Blue: 1513 swaps across 304 runs; 1498 preserve each
+subject's inventory, 442 return to an earlier run layout, 80 are two-step returns;
+longest run 30 on day 1, seq 114–317. Thus 2050/2067 swaps (~99.2%) only change
+slot layout, and 514 swap completions return to an earlier full army layout in
+the same consecutive-action run. Counts are returns, not distinct cycles, and
+must not be added as disjoint categories. No swapped result was rejected.
+
+Swap share of all decisions: Red 554/1737=31.9%, Blue 1513/2825=53.6%. Red also
+splits 88 and merges 26 times, Blue splits 65 and merges 41. Pure reordering can
+affect battle deployment, so unchanged inventory alone does not prove uselessness;
+repeated reversals and returns with no intervening travel/battle are direct
+behavioral-loop evidence. Most reordering has no observed lasting contribution,
+whereas a small number of cross-hero operations demonstrably build useful armies.
+The command cooldown compares ordered command arguments, so A-to-B and B-to-A
+swaps are different commands; it neither recognizes equivalent inverse swaps nor
+remembers visited army layouts. The existing 32-management-action budget bounds
+bursts, not all possible later loops. Terminal-only rewards with gamma=1 have no
+explicit per-action cost; this is a plausible contributor, not a proved causal
+training diagnosis. Do not introduce penalties or new restrictions without a
+separate user decision.
+
+Positive Red examples relative to the previous recorded 1768 diagnostic are
+first-day neutral combat, construction and upgrades, but upgrades/stack operations
+were forbidden in that older game. The frozen 1768 Blue in the current game also
+uses restored actions and constructs the winning consolidated stack. Therefore
+new management behavior is not evidence that the 1769 update learned it. Red
+makes fewer swaps both absolutely and as a fraction, but one unmatched game with
+different positions/armies is not a reliable improvement/regression measure.
+Current Red move targets still favor x=0 (96/132 versus Blue 76/157); Red ends
+17 turns with some hero movement remaining, Blue zero. Overall no clear strength
+improvement is established; useful behaviors coexist with costly cycles.
+No code changes, simulations, training, commit, push or artifact removal in this
+review. Research findings are appended locally.
+
+
+### 2026-11-15 — Prepare cycle-aware swaps and user-run 1000 games from 1769
+
+User request: fix slot-rearrangement loops while preserving useful troop
+management, prepare 1000 games from 1769; the user launches training personally.
+No game, optimizer, numerical probe or benchmark launch is authorized here.
+Hypothesis: a history-derived visited-layout mask prevents exact rearrangement
+cycles without removing native split/merge/transfer/upgrade actions or legitimate
+new formations. Acceptance: version the new support, keep old snapshots and
+checkpoint restore valid, block returns in both swap directions across window
+reopening, reset on meaningful world progress, preserve the observed 65-pikeman
+consolidation and mandatory exits, run existing tests and non-neural fixture/
+recorded-history checks, and inspect a clean 1000-game preview (ten 100-game
+updates, one final diagnostic, CPU policy / MLX PPO, no deadline).
+
+Implementation adds `visible-interaction-budget-hero-relative-stack-cycle-v1`.
+Tracker records semantic complete owned-army slot layouts at decisions, scoped
+to the existing visible-progress epochs. A decision snapshot carries only the
+canonical unordered subject/slot pairs whose swapped result has already been
+seen. Slot refs/revisions and UI navigation cannot evade the mask. The existing
+progress reset covers travel/world changes, a new day, combat and successful
+recruitment/construction/upgrades; closing/opening windows does not reset it.
+Only swap_stacks gains the visited-layout restriction. Split/merge/transfer,
+quantity exclusion, garrison changes and upgrades retain existing legality and
+budgets. Mandatory dialogs bypass optional restrictions as before. No reward,
+model shape, engine, precision, PPO hyperparameter or backend change.
+
+This removes exact cycles, not every strategically unhelpful novel permutation;
+unchanged historical rules remain available for reconstruction. Broader changes
+to action cost, exploration or formation budgets are outside this change.
+Validation results follow. All validation code/evidence remain private and out
+of any published diff.
+
+
+Validation: 54 existing tests passed in 2.675 s (recruit_only_guard,
+interaction_guard, contextual_management_model, selfplay_checkpoint,
+selfplay_training). Private non-neural fixtures passed inverse and longer-cycle
+rejection, window reopen persistence, novel-swap allowance, travel-progress
+reset, tracker-copy isolation, strict snapshot roundtrip/rejection, historical
+snapshot shape, all seven restored management kinds, optional close and a
+mandatory policy-selected level-up choice. No numerical probe or game ran.
+Evidence: private `run-investigations/2026-11-15-stack-cycles/`
+`existing-tests.log` and `check-rules-final.log`.
+
+Recorded-history annotation on the 1769 diagnostic passed 4,562 decision snapshot
+roundtrips. It would reject 200/554 Red swaps and 637/1,513 Blue swaps (837 total),
+while all 2,495 non-swap chosen actions retained their original permissibility.
+Blue's useful merge to 65 pikemen remains allowed. Attempt 1 checked the wrong
+submitted sequence number for that merge and failed its coverage assertion;
+no action-preservation assertion failed. Inspection identified submitted seq
+10668, result seq 10673; attempt 2 corrected the harness and passed. This also
+corrects the earlier detailed-review reference to seq 10671. Evidence:
+`check-recorded.log`, `check-recorded-02.log`, `recorded-result.json`.
+These are annotations of fixed histories, not a counterfactual game trajectory,
+measured speedup or evidence that all remaining permutations are useful.
+All validation scripts/results remain private and outside the staged diff.
+
+Retention-reviewed run: `run-20261115T140446Z-0a723861`.
+
+Prepare a local production commit and read-only 1,000-game inspection from
+complete 1769. The existing launcher already partitions 1,000 into ten batches
+of 100 with one final diagnostic and twice the 500-game dashboard height; no
+new launch wrapper or training job is added. Keep CPU policy / MLX PPO, starting
+taverns, native neutral spawning, no artifacts, automatic combat, existing
+cooldowns and native management legality. No wall-clock deadline, no new seed
+reservation until the user launches. No merge or push is authorized by this
+preparation request; keep the experimental comparison branch unchanged.
+
+
+Clean-source 1,000-game read-only preflight passed on local `551fce7`: exact
+complete checkpoint 1769 restore, CPU inference, MLX PPO, new cycle-aware support,
+ten batches of 100, ten optimizer updates and one held-out diagnostic (1001
+physical games). No deadline, seed reservation, cleanup, gameplay or optimizer
+execution occurred. Next unreserved engine base 1980003059, count 1001; policy
+base 1982006118, count 2002. Evidence: private `stack-cycles/next-1000-preflight.log`.
+Actual training and diagnostic `_plan` gates plus metadata checks also passed
+on temporary read-only copies carrying current source identities/new support,
+and unknown support was rejected (`stack-cycles/plan-gates.log`). No checkpoint
+was saved by these checks. A documentation-only amendment follows; repeat preview
+on the final clean source (`next-1000-preflight-final.log`) before user handoff.
+Production source/configuration only is committed locally; validation scripts,
+raw captures and test changes are absent. GitHub publication is not performed.

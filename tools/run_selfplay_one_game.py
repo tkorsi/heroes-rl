@@ -375,9 +375,9 @@ MLX_PPO_SOURCES = {
     'experiments/learner/ppo.py': {'before': 'fd8fb522b7e5717fcf3b8f1e9c58dd56f12b330ab86fd910c1340359f4513e36',
         'after': 'd5ef8bea00e888056376d50efaffcd8889b1d7ea2000f7c0d22dd7f99ea4a945'},
     'experiments/learner/selfplay_training.py': {'before': 'acfd55b3b7ade3e1857a3581d4ebb505618b63141bbefcf9b745632eb59be906',
-        'after': '2595573a4bb2f6e915dd89e970bf9dffd2e3f090962b999a984d2e4ccb660247'},
+        'after': 'fa5d8aaecf5d1548548f8b89d15a8c476079e5117692dbc2e1330f04bfe713de'},
     'tools/run_selfplay_training.py': {'before': 'de8bb75ad0f001a83ad8a6210c9b8cffec20927748b84e9afa2d1db57d37395b',
-        'after': 'e403967f4cddf25fc0bfeaf580954bbdb968c898e27dd7f11e93d20efa048e37'},
+        'after': '8f89fa8743156768191313cd58cd452408be727d5f598eaaa08879db0fbc1343'},
     'experiments/learner/mlx_backend.py': {'before': None,
         'after': 'b8a4671dfcdcc75801391e82b67d594ba651c84e72a64e5fd9d7f06c3fa19692'},
     'experiments/learner/mlx_model.py': {'before': None,
@@ -397,9 +397,9 @@ MLX_PPO_SOURCES = {
     'dependencies/learner-mlx.lock': {'before': None,
         'after': '9422f835a2998903a52b6660840d63e430df3b9be4231cfd388d2fa221dc5f79'},
     'experiments/learner/interaction_guard.py': {'before': 'eeec528257a70169353d7c8c8e15b22874405a20589e8bcdf7d63a241aea6639',
-        'after': '0514d69d042b4bf06c49ed6a6056bedfe21f8c0adfafb95de4115a0d4ba1c641'},
+        'after': 'ebb934732fa5f4a67d88614bfbf6daa0fd1899cbec7581c0de05090c83e782e1'},
     'experiments/learner/checkpoints.py': {'before': '58e3519d14cdee7bfc427515af07759103aa913bd128a97c436c0a5d8b91a2e3',
-        'after': '2af04de646f18b99341871b88ee424fcd7245c60575a03a21dde0be638fca0cd'},
+        'after': 'ce47204c29a8069c9fc65127dfdfdee34bd1e350ab9047c6035268765b1566e2'},
 }
 
 MLX_PPO_NEW = frozenset(name for name, pins in MLX_PPO_SOURCES.items() if pins['before'] is None)
@@ -578,9 +578,9 @@ def source_identity():
 
 
 def policy_support(plan):
-    from experiments.learner.interaction_guard import RECRUIT_ONLY_VERSIONS, STACK_MANAGEMENT_VERSION
+    from experiments.learner.interaction_guard import RECRUIT_ONLY_VERSIONS, STACK_MANAGEMENT_VERSION, STACK_CYCLE_VERSION
     version = plan.get('policy_support')
-    require(version in (campaign.GUARD, *RECRUIT_ONLY_VERSIONS, STACK_MANAGEMENT_VERSION),
+    require(version in (campaign.GUARD, *RECRUIT_ONLY_VERSIONS, STACK_MANAGEMENT_VERSION, STACK_CYCLE_VERSION),
             'Unknown or missing one-game policy support')
     return version
 

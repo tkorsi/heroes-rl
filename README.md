@@ -36,7 +36,7 @@ wall-clock deadline. No automatic launch or restart is scheduled. See
 
 | Current contract | Behavior |
 | --- | --- |
-| Published state | Latest complete checkpoint **1,768**; restore model, Adam, RNG and progress together |
+| Published state | Latest complete checkpoint **1,769**; restore model, Adam, RNG and progress together |
 | Collection | Ten rolling actors; balanced learner seats against a frozen copy of the batch-start policy |
 | Updates | Complete batches of at most 100 games; save and restore-check each update |
 | Backend | CPU policy and MLX PPO; compatible checkpoint and sampling boundaries |
@@ -56,16 +56,32 @@ grid height of 500. On macOS, `caffeinate -is` permits display sleep while keepi
 idle computation awake. Closing the lid or requesting sleep may still pause the
 process; it continues after wake. Keep Terminal open and power connected.
 
-The next prepared user launch is `./run-100-games.command 100 --mlx` from
-checkpoint **1,768**, with CPU policy inference and MLX PPO. New cycles restore
-manual troop-slot management and upgrades under a new explicit support version;
-all other restrictions and PPO settings remain. Historical captures retain
-their original policy support. The first restored-stack cycle stopped before
-PPO because the quantity sampler could repeat a command rejected by its guard.
-The correction reproduced that failure from saved history and passed exact
-sampling/evaluation checks; the next 100-game continuation still starts at 1,768.
+Current cycles use CPU policy inference and MLX PPO, with restored manual
+troop-slot management and upgrades under an explicit support version. New
+cycles exclude swaps that return to an army layout already observed since the
+last meaningful visible progress; reopening windows does not reset this memory.
+All other restrictions and PPO settings remain. Historical captures retain their original
+policy support. The first restored-stack attempt failed before PPO; its repaired
+retry completed and published checkpoint **1,769**. See the research journal for
+the saved-failure reproduction and subsequent campaign evidence.
+
+The next prepared user continuation is **1,000 new games from checkpoint 1,769**:
+`./run-100-games.command 1000 --mlx`. It uses ten batches of 100, ten PPO updates
+and one final diagnostic. The cycle-aware swap rule changes policy support,
+not rewards or PPO. Split/merge/transfer/upgrade actions stay available. Other
+restrictions and the no-deadline behavior remain; this cycle has not been run.
+Novel but unhelpful rearrangements can still occur; only exact layout cycles
+are excluded by the new rule.
 
 ## MLX results and remaining performance work
+
+The first restored-stack cycle after the repeat-count fix completed from 1,768
+to **1,769**: all 100 captures admitted, zero failures, 466,381 samples and 14,598
+optimizer steps. Collection/preparation took 36m58s, complete PPO 29m52s and the
+full cycle 69m30s. The final diagnostic passed exact two-policy reconstruction
+and native replay; Blue (frozen 1,768) beat Red (new 1,769). Stack operations
+were exercised without the previous failure; high rearrangement counts require
+behavioral analysis, and one diagnostic does not establish strength changes.
 
 The user-run **CPU policy / MLX PPO** cycle continued 1,767 to **1,768** with
 100 new games, 228,930 samples and 7,179 optimizer steps. Collection/preparation

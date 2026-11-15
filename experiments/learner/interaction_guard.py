@@ -18,9 +18,10 @@ RECRUIT_ONLY_VERSION = "visible-interaction-budget-recruit-only-v1"
 TOWN_COOLDOWN_VERSION = "visible-interaction-budget-recruit-only-town-cooldown-v1"
 HERO_RELATIVE_VERSION = "visible-interaction-budget-hero-relative-cooldown-v1"
 STACK_MANAGEMENT_VERSION = "visible-interaction-budget-hero-relative-stack-management-v1"
-HERO_RELATIVE_VERSIONS = (HERO_RELATIVE_VERSION, STACK_MANAGEMENT_VERSION)
+STACK_CYCLE_VERSION = "visible-interaction-budget-hero-relative-stack-cycle-v1"
+HERO_RELATIVE_VERSIONS = (HERO_RELATIVE_VERSION, STACK_MANAGEMENT_VERSION, STACK_CYCLE_VERSION)
 RECRUIT_ONLY_VERSIONS = (RECRUIT_ONLY_VERSION, TOWN_COOLDOWN_VERSION, HERO_RELATIVE_VERSION)
-SUPPORTED_VERSIONS = (VERSION, REVEALED_VERSION, *RECRUIT_ONLY_VERSIONS, STACK_MANAGEMENT_VERSION)
+SUPPORTED_VERSIONS = (VERSION, REVEALED_VERSION, *RECRUIT_ONLY_VERSIONS, STACK_MANAGEMENT_VERSION, STACK_CYCLE_VERSION)
 # Temporary experiment restriction. Removing it requires a new explicit support
 # selection; historical captures must continue to reconstruct this exact set.
 # Whole-hero garrison changes are separate from moving stacks between slots.
@@ -141,6 +142,46 @@ def management_subjects(action, observation, offers):
     return tuple(sorted(subjects or {action.subject}))
 
 
+def _swap_key(armies, source, destination):
+    left, a = c.army_slot(armies, source)
+    right, b = c.army_slot(armies, destination)
+    first, second = sorted(((left.subject, a.slot), (right.subject, b.slot)))
+    return (*first, *second)
+
+
+def _army_layout(observation, armies):
+    # Semantic subjects/slots survive window closure and revision-ref changes.
+    rows = {}
+    for army in observation.own_armies or ():
+        slots = [(None, 0)] * 7
+        for slot in army.slots:
+            slots[slot.slot] = (slot.creature, slot.count)
+        rows[army.subject] = tuple(slots)
+    for army in armies:
+        rows[army.subject] = tuple((slot.creature, slot.count) for slot in army.slots)
+    return tuple(sorted(rows.items()))
+
+
+def _blocked_swaps(observation, offers, seen):
+    armies = offers.armies or ()
+    if not armies:
+        return ()
+    layout = _army_layout(observation, armies)
+    result = set()
+    for source, destination, _ in c.army_operation_choices(armies, "swap_stacks"):
+        key = _swap_key(armies, source, destination)
+        if key in result:
+            continue
+        rows = dict(layout)
+        left, a, right, b = key
+        x, y = rows[left][a], rows[right][b]
+        slots = list(rows[left]); slots[a] = y; rows[left] = tuple(slots)
+        slots = list(rows[right]); slots[b] = x; rows[right] = tuple(slots)
+        if tuple(sorted(rows.items())) in seen:
+            result.add(key)
+    return tuple(sorted(result))
+
+
 def _strings(values, name):
     if type(values) is not tuple or any(type(item) is not str or not item for item in values):
         raise ValueError(f"Expected immutable nonempty {name} strings")
@@ -156,6 +197,7 @@ class GuardSupport:
     movable_heroes: tuple[str, ...] = ()
     blocked_coordinates: tuple[tuple[str, int, int], ...] = ()
     previous_command: tuple[str, ...] | None = None
+    blocked_swaps: tuple[tuple[str, int, str, int], ...] = ()
 
     def __post_init__(self):
         if self.version not in SUPPORTED_VERSIONS:
@@ -165,6 +207,16 @@ class GuardSupport:
                 or any(type(item) is not str for item in self.previous_command)
                 or not self.previous_command[0] or not self.previous_command[1]):
             raise ValueError("Malformed previous command in interaction guard")
+        if type(self.blocked_swaps) is not tuple or (self.version != STACK_CYCLE_VERSION and self.blocked_swaps):
+            raise ValueError("Unexpected blocked army swaps")
+        for key in self.blocked_swaps:
+            if (type(key) is not tuple or len(key) != 4
+                    or any(type(key[i]) is not str or not key[i] for i in (0, 2))
+                    or any(type(key[i]) is not int or not 0 <= key[i] < 7 for i in (1, 3))
+                    or (key[0], key[1]) >= (key[2], key[3])):
+                raise ValueError("Malformed blocked army swap")
+        if self.blocked_swaps != tuple(sorted(set(self.blocked_swaps))):
+            raise ValueError("Expected unique sorted blocked army swaps")
         _strings(self.blocked_management_subjects, "management subjects")
         _strings(self.movable_heroes, "movable heroes")
         if type(self.blocked_navigation) is not tuple:
@@ -198,6 +250,9 @@ class GuardSupport:
         if action.kind == "move_to":
             return self._permits_movement(action.subject, action.x, action.y,
                                           self._revealed_coordinates(action.subject, observation))
+        if action.kind == "swap_stacks" and self.version == STACK_CYCLE_VERSION:
+            if _swap_key(offers.armies, action.selection, action.destination) in self.blocked_swaps:
+                return False
         if action.kind in MANAGEMENT_KINDS:
             return not set(management_subjects(action, observation, offers)).intersection(self.blocked_management_subjects)
         return nav_key(action, observation, offers) not in self.blocked_navigation
@@ -255,6 +310,8 @@ class GuardSupport:
         }
         if self.version in HERO_RELATIVE_VERSIONS:
             value["previous_command"] = (list(self.previous_command) if self.previous_command is not None else None)
+        if self.version == STACK_CYCLE_VERSION:
+            value["blocked_swaps"] = [list(key) for key in self.blocked_swaps]
         return value
 
     @classmethod
@@ -263,19 +320,25 @@ class GuardSupport:
         if type(value) is not dict:
             raise ValueError("Malformed interaction guard support")
         relative = value.get("version") in HERO_RELATIVE_VERSIONS
-        if set(value) != (names | {"previous_command"} if relative else names):
+        expected = names | ({"previous_command"} if relative else set())
+        if value.get("version") == STACK_CYCLE_VERSION:
+            expected |= {"blocked_swaps"}
+        if set(value) != expected:
             raise ValueError("Malformed interaction guard support")
         if any(type(value[name]) is not list for name in names - {"version"}):
             raise ValueError("Guard support collections must be JSON arrays")
         if any(type(item) is not list for name in ("blocked_navigation", "blocked_coordinates") for item in value[name]):
             raise ValueError("Guard support rows must be JSON arrays")
+        swaps = value.get("blocked_swaps", [])
+        if type(swaps) is not list or any(type(key) is not list for key in swaps):
+            raise ValueError("Blocked army swaps must be JSON rows")
         previous = value.get("previous_command")
         if previous is not None and type(previous) is not list:
             raise ValueError("Previous command must be a JSON array or null")
         return cls(value["version"], tuple(tuple(key) for key in value["blocked_navigation"]),
                    tuple(value["blocked_management_subjects"]), tuple(value["movable_heroes"]),
                    tuple(tuple(item) for item in value["blocked_coordinates"]),
-                   tuple(previous) if previous is not None else None)
+                   tuple(previous) if previous is not None else None, tuple(tuple(key) for key in swaps))
 
 
 def _world(observation):
@@ -301,6 +364,7 @@ class Tracker:
         self.navigation = Counter()
         self.management = Counter()
         self.failed_coordinates = set()
+        self.army_layouts = set()
         self.town_reopen_blocked = False
         self.previous_command = None
         self.previous_move = None
@@ -312,16 +376,18 @@ class Tracker:
 
     def copy(self):
         # Frames/observations are immutable and may contain large visible maps.
-        # Transactional encoders copy only the three mutable accumulators.
+        # Transactional encoders copy only mutable accumulators.
         result = copy(self)
         result.navigation = self.navigation.copy()
         result.management = self.management.copy()
         result.failed_coordinates = self.failed_coordinates.copy()
+        result.army_layouts = self.army_layouts.copy()
         return result
 
     def _progress(self):
         self.navigation.clear()
         self.failed_coordinates.clear()
+        self.army_layouts.clear()
         self.epoch += 1
 
     def observe(self, frame):
@@ -356,10 +422,14 @@ class Tracker:
             navigation = {key for key, count in self.navigation.items() if count >= NAVIGATION_LIMIT}
             if self.town_reopen_blocked:
                 navigation.update(("open_town", subject) for subject in frame.offers.town_refs)
+            blocked_swaps = ()
+            if self.version == STACK_CYCLE_VERSION:
+                self.army_layouts.add(_army_layout(frame.observation, frame.offers.armies or ()))
+                blocked_swaps = _blocked_swaps(frame.observation, frame.offers, self.army_layouts)
             return GuardSupport(self.version,
                 tuple(sorted(navigation)),
                 tuple(sorted(subject for subject, count in self.management.items() if count >= MANAGEMENT_LIMIT)),
-                movable, tuple(sorted(blocked)), self.previous_command)
+                movable, tuple(sorted(blocked)), self.previous_command, blocked_swaps)
         if frame.kind == "submitted":
             self.action = frame.action
         elif frame.kind == "consumed":

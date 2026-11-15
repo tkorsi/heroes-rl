@@ -2015,7 +2015,7 @@ def prepare_ten(args, inspected):
         reservations=reservations, batches=args.batches, reserved_cycles=reserved_cycles,
         pending_evaluation=inspected.get('pending_evaluation', False),
         configuration=configuration, execution=checked['execution'],
-        policy_support=(interaction_guard.STACK_MANAGEMENT_VERSION
+        policy_support=(interaction_guard.STACK_CYCLE_VERSION
                         if CYCLE_MODE else checked['experiment']['policy_support']), equipment_policy=checked['equipment_policy'],
         army_information=checked['army_information'], maximum_seconds=seconds,
         hard_deadline_monotonic=None if seconds is None else now + seconds,
@@ -2485,8 +2485,8 @@ def main(argv=None):
                         next_command='cycle-run' if CYCLE_MODE else
                             ('batch10-run' if inspected['lineage'] is None else 'batch10-continue'))
                     if CYCLE_MODE:
-                        from experiments.learner.interaction_guard import STACK_MANAGEMENT_VERSION
-                        result['policy_support'] = STACK_MANAGEMENT_VERSION
+                        from experiments.learner.interaction_guard import STACK_CYCLE_VERSION
+                        result['policy_support'] = STACK_CYCLE_VERSION
                     if requested is not None:
                         held_out = 1 + int(inspected.get('pending_evaluation', False))
                         result.update(training_games=requested, held_out_games=held_out,

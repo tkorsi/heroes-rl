@@ -239,9 +239,9 @@ def _sha256(value):
 def _check_selfplay_gameplay_metadata(metadata, interface):
     """A new v8 self-play lineage cannot masquerade as built-in or legacy v4 play."""
     from .contextual import EXPANDED_ENVIRONMENT
-    from .interaction_guard import HERO_RELATIVE_VERSION, REVEALED_VERSION, STACK_MANAGEMENT_VERSION
+    from .interaction_guard import HERO_RELATIVE_VERSION, REVEALED_VERSION, STACK_MANAGEMENT_VERSION, STACK_CYCLE_VERSION
     ten_game = type(metadata) is dict and metadata.get("training_contract") in (SELFPLAY_TEN_SCHEMA, SELFPLAY_CYCLE_SCHEMA)
-    guards = ((HERO_RELATIVE_VERSION, STACK_MANAGEMENT_VERSION)
+    guards = ((HERO_RELATIVE_VERSION, STACK_MANAGEMENT_VERSION, STACK_CYCLE_VERSION)
               if ten_game and metadata.get("training_contract") == SELFPLAY_CYCLE_SCHEMA
               else (HERO_RELATIVE_VERSION,) if ten_game else (REVEALED_VERSION,))
     if (interface != EXPANDED_ENVIRONMENT or type(metadata) is not dict

@@ -131,7 +131,8 @@ def _plan(path, digest):
     if value.get("schema") == CYCLE_SCHEMA:
         require(type(batch_count) is int and 10 <= batch_count <= 100, "Cycle batch requires 10–100 games")
     game_count = 1 if evaluation else batch_count if ten_game else 4
-    guards = ((interaction_guard.HERO_RELATIVE_VERSION, interaction_guard.STACK_MANAGEMENT_VERSION)
+    guards = ((interaction_guard.HERO_RELATIVE_VERSION, interaction_guard.STACK_MANAGEMENT_VERSION,
+               interaction_guard.STACK_CYCLE_VERSION)
               if value.get("schema") == CYCLE_SCHEMA else
               (interaction_guard.HERO_RELATIVE_VERSION,) if ten_game else (interaction_guard.REVEALED_VERSION,))
     require(value.get("schema") in (SCHEMA, TEN_SCHEMA, CYCLE_SCHEMA) and value.get("mode") in ("training", "diagnostic")
