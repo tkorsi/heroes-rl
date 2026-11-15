@@ -5788,3 +5788,1061 @@ space: Red combined troops into a 66-pikeman hero army through a garrison swap
 on day 37. Blue bought 70 pikemen on day 35 and moved them out of the garrison
 on day 47; this army later took the town. The twelve-day mobilization delay is
 another reason not to equate successful actions with efficient planning.
+
+## 2026-11-15 — Prepare an isolated three-framework PPO comparison
+
+Question: how much time does a complete current-policy PPO update take with
+the existing optimized PyTorch/Metal implementation, Python/MLX and Swift/MLX?
+The user requested the separate branch `codex/ppo-framework-comparison`, based
+on main `d131d92100363b213787e1673163d11773135649`, and will launch all scripts.
+The user clarified that collection/inference should be shared across all three
+updates and that the PyTorch reference is the current optimized Metal backend,
+not a new stock-MPS implementation. No experiment execution, merge or push is
+authorized. Publication requires an explicit instruction; journal work does not
+grant publication permission.
+
+Design: collect ten fresh native games from complete checkpoint 1,765 on v4,
+with the existing 365-day/158,720+5,120-choice rules and balanced learner seats.
+Reuse the real capture registration and capture-only preparation path, with a
+private experiment launch and independent consumed seed ledger (engine namespace
+1,990,000,000+, policy namespace 1,992,000,000+). Do not register this experiment
+in the official training lineage, retire existing captures or run a final game.
+Each optimizer trial restores identical weights, named Adam moments/counters
+and exact minibatch order; all targets and complete histories are preserved.
+The numerical kernel may update disposable benchmark copies only. No trial
+publishes 1,766 or remints official admission from saved evidence.
+
+Implementation is isolated under `experiments/framework_comparison` and
+`native/framework-comparison`, with manual preparation and three PPO launchers.
+MLX ports include the complete semantic tree, map CNN, recurrent memory,
+conditional heads, PPO loss, gradient clipping and restored Adam. Prefixes are
+rebuilt with current weights and detached at the original window boundary.
+Python MLX 0.31.1 and Swift MLX 0.31.4 share core version 0.31.1; SwiftPM pins and
+CPython 3.13/macOS-arm64 wheel hashes are fixed. Dependencies/build artifacts and
+results go to private storage. The production numerical sources are unchanged.
+
+Prospective acceptance: complete ten-game capture/preparation; exact bound input
+identities; first scheduled minibatch finite with maximum log-probability/value
+differences <=0.02/0.002 against CPU behavior before any Adam step; all declared
+samples, epochs and optimizer steps completed; finite final weights/moments;
+unchanged official checkpoint/protected inputs and clean owned-process shutdown.
+Initial sanity is not gradient or quality equivalence. Report any failed gate
+separately, preserve its evidence, and never time a partial update as successful.
+
+Timing boundaries: report collection/preparation, portable export, backend
+preparation, synchronized optimizer work, saving and whole process separately.
+The portable export preplans MLX windows; the unchanged Metal path still plans
+inside PPO. Charge conversion to MLX when deriving complete pipeline times and
+retain the actual shared-workflow total. MLX dense prefix maps and the optimized
+Metal sparse implementation compute equivalent model functions using different
+algorithms; timings cannot isolate language overhead. One run per backend cannot
+establish stable acceleration or training quality. See `docs/framework-comparison.md`
+for the complete user-run protocol and artifact layout.
+
+Validation performed so far is static only: Python AST parsing, shell syntax,
+source review of tensor layouts/GRU/PPO/Adam and dependency metadata. Swift is
+being compiled without running the executable; record its final result below.
+No game, inference probe, replay, PPO update, checkpoint publication or benchmark
+has been launched by the assistant for this experiment. Source changes remain
+local and uncommitted pending the user's publication boundary; the existing
+clean-committed-checkout gate remains intact.
+
+Static validation outcome: all four Python modules, embedded setup Python and
+four shell launchers parse successfully; local documentation links and whitespace
+checks pass. The full Swift release build compiled and linked MLX and the
+experiment executable. Initial compiler errors in a large report expression and
+the default-device API reference were corrected before the successful build;
+no executable was run. Cross-review checked GRU gate equations, map tensor
+layouts/pooling, hierarchical heads, loss clipping and named Adam inactive-gradient
+semantics. This is source/compile evidence only, not a numerical pass.
+
+A further static deployment check found that SwiftPM did not build the required
+Metal shader library. `xcrun metal --version` also reported the optional Metal
+Toolchain missing; no toolchain download or system upgrade was attempted. The
+pinned Python `mlx-metal` 0.31.1 wheel contains `mlx/lib/mlx.metallib`; the Swift
+vendored core matches official MLX v0.31.1 revision
+`ce45c52505c8158ea48d2a54e8caae05efd86bfe`. Its native loader searches beside the
+executable for `mlx.metallib`. User setup now verifies the installed wheel RECORD,
+copies that same-core precompiled library beside the Swift executable and writes
+a size/hash receipt; launch checks bind the binary, receipt and library. The
+macOS-26 wheel inspected without installation had library SHA256
+`198488eb61359e953580a9c4530400feee1a06dd2f28a930a6ffa58aec66a597`.
+The actual setup command and GPU loading remain unexecuted in this task.
+
+The user subsequently authorized exactly one local commit of the prepared
+experiment, launchers, dependencies and documentation on the experiment branch.
+This authorization explicitly excludes merge, push and execution. The final
+static checks and compile-only Swift result are included in that local snapshot;
+main and GitHub remain at their preceding revision. The first numerical results
+are still pending the user's launches.
+
+## 2026-11-15 — Correct the comparison dependency lock location
+
+The user's first manual attempt on experiment commit
+`59f0aa5515700926ecec022b5347f3854948dd04` installed MLX/MLX-Metal 0.31.1 and
+NumPy 2.3.5 and built the Swift release executable successfully (165.26 seconds,
+per the supplied terminal output). The colocated Metal resource setup completed.
+Collection then failed inside `ten_inspect()` before creating a study or reserving
+seeds: `verify_runtime_sources()` requested
+`dependencies/framework-comparison-mlx.lock` from historical base commit
+`b47c1b9aed1bbe8d2c52d87a02bcdac3e4931617`, where that new file does not exist.
+The subsequent Metal PPO command failed because no shared cohort existed.
+These are preparation failures, not game outcomes or numerical failures: zero
+games and zero optimizer steps ran in these attempts. The private experiment
+directory contains setup outputs but no study pointer or experiment seed ledger.
+
+Cause and proposed correction: the existing production source inventory includes
+every file in `dependencies/*`. The new isolated MLX lock was placed there even
+though production capture uses the unchanged Torch environment. Move the lock,
+without changing versions or hashes, to
+`experiments/framework_comparison/mlx.lock` and update the setup reference.
+Keep all production inventory, historical hash and clean-checkout gates intact.
+Acceptance for this correction is unchanged lock content, exact agreement of the
+production inventory with its reviewed historical sources, and valid launcher
+syntax. No game, PPO update, replay or numerical probe is authorized here.
+Installed dependencies and the existing Swift build can be reused.
+
+Local validation passed: the unchanged `verify_runtime_sources()` accepted all
+225 current source hashes when evaluated with the existing inventory functions
+and constants, without importing launch controllers or neural modules. A changed
+PPO hash was still rejected. The relocated lock is byte-identical to the file in
+`59f0aa5`; shell syntax checks for all four launchers and `git diff --check`
+passed. Independent source review found no other comparison files entering the
+production inventory. This establishes the reported source-gate correction only;
+collection and numerical execution remain untested. The fix is local and
+uncommitted. A further local commit needs fresh user authorization before the
+user can pass the unchanged clean-checkout gate; no merge or push was performed.
+
+The user then explicitly authorized one additional local commit of this lock
+relocation, setup reference and documentation. Merge, push and workload execution
+remain outside that authorization. The next manual step is the ten-game
+preparation command; repeating successful dependency setup is unnecessary.
+
+## 2026-11-15 — Analyze the first user-run three-framework comparison
+
+Question: does the observed Metal timing advantage reflect equivalent PPO work,
+and which implementation differences could explain it? This analysis reads
+existing artifacts and source only; no new game, replay, probe or PPO workload
+was authorized or launched. Evidence is under
+`/Users/orsi/Projects/Heroes-artifacts/framework-comparison/study-20261114T225228Z-f35d0fb9`:
+`launch.json`, `report.json`, `bundle/manifest.json`, `results/*/trial.json`,
+`results/*/backend/result.json`, and `comparison.json`. All trial source commits
+are `8d502e0ec26f13960cd6063b56699214468b3e7c`. The common manifest SHA256 is
+`30368956be6e0db22d6787c89ef1dc1d1235d542a66fbbb4db65447dfdc5e73d`;
+initial weights SHA256 is
+`5e88fc9d236204e57fd32f73cd003f19b675a7f6f9d0c25ef6ce376d04cda35e`.
+Manifest, result and final-weight artifact bindings were checked during analysis.
+
+The user collected ten games from complete checkpoint 1,765, with experiment
+seed offset 0 (engine base 1,990,000,000; policy base 1,992,000,000), v4 rules and
+the existing 365-day horizon. All ten were captured: six Blue wins and four Red
+wins, with zero cutoffs/capture failures. These are engine-reported capture-only
+outcomes, not replay-verified evidence or measurements of the updated policies.
+Collection/preparation took 140.375 seconds and portable export 19.761 seconds.
+Each disposable update completed 10,885 samples and 343 Adam steps. Correction
+to the earlier design description: actual `tools/run_selfplay_training.py:PPO`
+specifies one epoch, and all three implementations used that same configuration;
+the earlier statement of two epochs came from the class default and was wrong.
+
+All trials passed, with protected inputs unchanged and clean owned-process
+shutdown. Host snapshots agree on Apple M4 Max, 128 GiB RAM, AC power and
+Automatic mode. Runtime versions were Torch 2.9.1, Python MLX/MLX-Metal 0.31.1,
+Swift MLX 0.31.4 with core 0.31.1. In Metal/Python-MLX/Swift-MLX order, preparation
+times were 5.855/1.352/0.670 seconds, update times 65.009/202.825/251.318 seconds,
+full update times 70.864/204.177/251.988 seconds, and supervised process times
+75.422/207.902/258.925 seconds. Full-update ratios against Metal are 2.881x and
+3.556x. There is one trial per backend; no component profile, thermal trace or
+randomized repeated comparison establishes attribution or stable speedup.
+
+Initial prediction checks covered 32 samples before Adam: maximum log-probability
+and value differences against CPU behavior were 4.77e-7/5.96e-7 for Metal and
+3.81e-6/3.64e-6 for both MLX ports. Aggregate value losses were
+0.500390732441/0.500391440547/0.500391431426; approximate KL values were
+0.002290436242/0.002290355779/0.002290353677. Final model relative L2 differences
+against Metal were 0.000245365 (Python MLX) and 0.000236256 (Swift MLX), with
+maximum absolute parameter differences 0.0191512 and 0.0184053. Close aggregate
+metrics and a first-minibatch forward check do not establish full-gradient or
+playing-strength equivalence. No official checkpoint was published.
+
+Source audit found no concrete discrepancy in the reviewed model/PPO equations,
+GAE, schedule, restored Adam or full current-weight prefix/detach contract.
+Execution strategies differ: Metal uses fused GRU forward/backward, custom tree
+gradient kernels and sparse current-weight prefix-map deltas; MLX uses composed
+operations, explicit recurrent loops and dense map CNNs without graph compilation.
+These are plausible speed mechanisms, not measured per-component attributions.
+
+The timed work is also unequal beyond intentional kernel optimization. Both MLX
+ports check all model weights and Adam moments after every minibatch; Metal does
+that full-state check after its update timer (while retaining per-step loss and
+gradient-norm checks). MLX prints/writes progress 343 times versus Metal's 35.
+Swift recreates/parses prefix NumericPlans each minibatch, while Python caches
+converted plans; Swift reads each finite-check scalar separately, while Python
+combines the checks into one scalar. These costs prevent interpreting the result
+as an intrinsic framework or language ranking. Their time contribution is unknown.
+Any follow-up should first align validation/reporting scope and plan caching,
+then profile recurrent/map/tree execution and evaluate MLX compilation separately
+on the same cohort with unchanged PPO and explicit numerical checks. This is a
+recommendation, not an implemented change or launch authorization. Only local
+documentation was updated; no commit, merge or push was made.
+
+## 2026-11-15 — Align optimized MLX execution for a two-game comparison
+
+The user explicitly authorized implementation changes and assistant execution of
+a two-game comparison. This is a scoped exception to the default manual-launch
+rule, not permission for an official campaign, checkpoint publication, merge or
+push. Hypothesis: the previous timing gap partly reflects missing fused kernels,
+dense prefix-map recomputation and unequal host/validation overhead in the MLX
+ports. Reuse the first balanced pair from the completed ten-game cohort (learner
+Red then Blue) with parent 1,765, identical Adam/RNG and one PPO epoch. These are
+offline disposable updates from already captured histories; no new game, seed
+reservation or official admission is needed. The ten-game source cohort remains
+immutable and bound in a new derived-study report.
+
+Implementation target: reuse the current Metal GRU/tree/map kernel algorithms
+through shared MLX shader definitions in Python and Swift; keep full current-weight
+prefixes and the original gradient boundary. Align prefix-plan caches and progress
+frequency, and retain all per-step MLX full-state finite checks by adding the same
+checks to the isolated Torch trial. Do not weaken production source/runtime gates
+or modify the campaign numerical implementation. Run bounded local forward and
+gradient checks before the complete two-game updates. Acceptance requires finite
+outputs/gradients, declared tolerances recorded with each check, all selected
+samples/steps completed, identical source data and protected checkpoint inputs,
+clean child shutdown and a report of any remaining implementation differences.
+Record failed/interrupted checks as well as successful ones; speed alone is not
+learning-quality evidence. No additional local commit is authorized yet.
+
+Implementation and bounded-validation progress: both MLX ports now use shared
+production-derived GRU/tree/map shader bodies with custom first-order gradients,
+sparse prefix maps and cached immutable plans. Dynamic sequence/map sizes are
+runtime uint32 buffers rather than template arguments, avoiding a shader
+specialization for each prefix length. Per-step full-state checks remain in MLX
+and were added to the isolated Torch Adam wrapper; progress cadence is aligned.
+MLX functional scatter buffers still differ from Torch's mutable arena, so do not
+claim identical allocation or dispatch costs. The campaign code is unchanged.
+
+Private checks under `framework-comparison/local-validation/` passed: three GRU
+forward/backward shapes (including H64/T300 and padded H32), a real 793-node,
+19-group tree, and sixteen sparse-map cases with current and perturbed weights.
+Maximum errors against Torch/MPS were approximately 5.96e-7 for GRU gradients,
+5.7e-7 for tree gradients, and 8.20e-7 for map outputs (map bound 2e-5). Initial
+compile/numerical failures identified scalar Metal builtin syntax, signed scalar
+comparison and byte-embedding gradient width (8, not the tree feature width 32);
+these were corrected and the affected checks repeated. The full Python MLX first
+minibatch (32 samples; recurrent prefixes 1,412/1,039 frames) passed against the
+current optimized Torch computation: gradient max absolute 6.71e-7 and relative
+L2 4.49e-7; after perturbing GRU/CNN weights the relative L2 was 4.06e-7.
+See `fused-ops-parity.py`, `fused-ops-check.log`, `full-minibatch-parity.json`
+and their recorded source hashes. A later Python result-report-only change is
+explicitly recorded as a post-validation source review in the private report.
+
+Swift release compilation and its first GRU/tree checks passed, but extending
+the private probe exposed an intermittent tree mismatch and then a Metal GPU
+address fault, before the new full-minibatch section. With Metal API/GPU validation
+enabled, the same probe passed, including first-minibatch prediction errors below
+6e-7. This is an unresolved failure at this point, not a successful Swift benchmark.
+Preserve `swift-optimized/probe-full-first-minibatch*.log` and
+`swift-optimized/probe-metal-validation.log`; diagnose and retest normal execution
+before any complete PPO timing. No full update has run in this task yet.
+
+Failure correction: pooled/embedding atomic outputs were declared explicitly,
+but this alone did not resolve the Swift mismatch. Joint gradient evaluation
+and removal of redundant zero-plus-first-gradient operations also did not resolve
+it. The final diagnosis identified an input-ABI collision in the shared kernel
+adapter. In pinned MLX core 0.31.1, `custom_kernel.cpp` selects a Metal `constant`
+pointer for input arrays smaller than eight elements and a `device` pointer for
+larger arrays; scalar inputs also change pointer/reference syntax. Reusing one
+kernel name across these signatures triggers `clear_library()` when generated
+source changes. The pinned device uses command buffers with unretained references
+and releases cached pipelines on library invalidation, consistent with the
+observed timing-dependent address faults and validation-layer masking.
+
+Both adapters now include input dtype, rank, small-array address-space class,
+runtime-parameter names and output dtype in the pipeline cache key/name. Runtime
+dimension values remain ordinary uint32 buffer arguments. After this correction,
+Swift passed 20/20 fresh normal-mode processes containing the GRU/tree forward
+and backward cases and a full real first minibatch with both sparse prefixes.
+No GPU validation layer or per-kernel synchronization was used in those repeats.
+See `swift-optimized/probe-abi-cache-repeated.json` and its twenty logs. Python's
+final full-minibatch check against current source hashes passed for original
+and perturbed weights: gradient relative L2 4.31e-7 and 4.46e-7, respectively;
+maximum absolute gradient differences 5.66e-7 and 5.07e-7. Earlier failures remain
+in the private logs and are not counted as successful trials.
+
+The official experiment `--setup` completed a fresh Swift release build in
+18.55 seconds and copied the pinned Metal resource. Its source and shared-kernel
+hashes match the final source. Python AST, JSON parsing, all launcher syntax and
+whitespace checks pass. Prospective timing protocol: derive the balanced pair
+once, then run three fresh-process trials per backend in rotating order
+(Metal/Python/Swift, Python/Swift/Metal, Swift/Metal/Python), restoring the same
+parent for every trial. Report the median and range and keep compile/setup outside
+the timed processes; first-use shader compilation inside a process stays included.
+No additional games or official training updates are part of this protocol.
+
+Final timing review found that Metal repeats the full source/capture verification
+inside its child, in addition to the common runner verification. Keep this gate,
+but record its duration as `child_preflight_seconds` before starting numerical
+preparation. The full supervised process duration still includes that work.
+This aligns the numerical timing scope without removing any validation. Final
+staged review found no further numerical or ownership defects; source hashes of
+the numerical implementations and the Swift setup receipt remain unchanged.
+
+The user explicitly approved one local commit of the prepared optimizations,
+shared shaders, two-game comparison mode and documentation, followed by the
+scoped comparison. No merge or push is authorized. Private validation scripts,
+compiler products and raw evidence are excluded from the staged change.
+
+## 2026-11-15 — Completed optimized two-game PPO comparison
+
+Executed the authorized protocol from clean local commit
+`8da9caac68904c2c616948eaf961c6f854879e7f` on
+`codex/ppo-framework-comparison`. No merge or push occurred. Preparation command:
+`./prepare-ppo-comparison.command --two --study /Users/orsi/Projects/Heroes-artifacts/framework-comparison/study-20261114T225228Z-f35d0fb9`.
+Derived study `study-20261114T234306Z-1e6adbe7` preserves original indices [0,1],
+balanced learner colors and parent 1,765; no new game, seed or admission was
+created. Its manifest SHA-256 is
+`3b8a498e70a5a51a5d12fee8436c917940a778caa71a2b536fcfe62079ce6561`.
+The unchanged starting weights hash is
+`5e88fc9d236204e57fd32f73cd003f19b675a7f6f9d0c25ef6ce376d04cda35e`.
+The pair contains 801 + 288 = 1,089 samples, 69 windows and 35 optimizer steps,
+one epoch. Torch 2.9.1 / NumPy 2.3.5 / Python 3.13 and the pinned MLX 0.31.1 core
+runtimes were retained; Swift uses mlx-swift 0.31.4 / Swift 6.2. The M4 Max with
+128 GiB RAM was on AC power in Automatic mode throughout.
+
+Ran each existing `run-ppo-{metal,python-mlx,swift-mlx}.command` with the explicit
+derived `--study` path. Round orders were Metal/Python/Swift,
+Python/Swift/Metal and Swift/Metal/Python, each restoring the same parent state.
+All nine attempts completed and passed; none failed or was interrupted.
+
+| Round | Metal full update | Python/MLX full update | Swift/MLX full update |
+| --- | ---: | ---: | ---: |
+| 1 | 9.760424 s | 2.152762 s | 2.268684 s |
+| 2 | 8.625214 s | 1.680775 s | 1.525859 s |
+| 3 | 9.159370 s | 1.535182 s | 1.496446 s |
+| Median | 9.159370 s | 1.680775 s | 1.525859 s |
+
+Median supervised process durations were 17.581609, 5.945088 and 5.808817
+seconds. These include post-run verification and Metal's repeated child
+preflight, so they are not GPU execution times. Ready-bundle full-update ratios
+are 5.449x and 6.003x, but MLX export precomputes GAE, normalized advantages,
+window order and immutable prefix/joined minibatch plans; Metal rebuilds them
+inside its timed update. Portable export cost 2.012082 seconds. Charging that
+entire cost to each MLX median gives 3.692857 / 3.537941 seconds and ratios
+2.480x / 2.589x. These are conservative accounting estimates, not measured
+integrated production-pipeline durations: export includes experiment-only file
+serialization and hashing. No profile assigns seconds to individual GPU kernels
+or host operations. The MLX memory peaks were approximately 200 MB (Python) and
+212–215 MB (Swift), well inside the unchanged reserve.
+
+Saved-state audit passed for all 39 parameter tensors / 74,344 FP32 values.
+All values/moments were finite, final RNG matched the exported schedule exactly,
+and Adam counters increased by the exact active counts (+35 ordinary tensors,
++29 coordinate heads, +5 quantity heads). Initial prediction errors were at most
+1.43e-6 for log probability and 7.15e-7 for value. Across all nine trials,
+value loss was 0.6403089476–0.6403090209 and approximate KL
+0.000406017918–0.000406020359; clip fraction matched at 0.001836547291.
+MLX final weight relative L2 difference from the first Metal trial was
+1.348e-5–2.125e-5, equivalent to 0.159–0.250% of the actual update norm.
+The largest absolute difference, 0.001684, was `coordinate.2.bias`, a shared
+coordinate-logit offset that cancels in exact-arithmetic softmax. Excluding only
+that tensor, cross-backend final-weight relative L2 was 2.217e-6–3.128e-6,
+comparable to Metal's own repeated-run range of 2.899e-6–3.058e-6. Remaining
+differences were at most 0.0368% of the reference update norm. Adam first/second
+moment relative differences were at most 2.189e-6 / 1.797e-8. This supports close
+numerical agreement on the pair, not bitwise reproducibility or equal strength.
+
+No skipped optimizer work or deferred GPU work outside the timer was found:
+both MLX implementations evaluate parameters/moments and check finiteness every
+step, then synchronize before recording completion. All trial source, input,
+result and backend-asset bindings passed; cleanup was verified with no errors.
+An independent audit rehashed all 686 protected files successfully. Checkpoint
+1,765 and the original ten-game cohort remain intact. Numerical and timing
+analysis used saved artifacts only and did not run additional training.
+
+Evidence lives under the derived private study: `comparison.json`,
+`timing-analysis.json`, `numerical-analysis.json`, and all nine `results/*`
+directories. Only the requested implementation was committed; these post-run
+documentation updates remain local and uncommitted. The original comparison was
+uneven in optimization coverage; the aligned ports reverse its observed ranking
+on this small pair. Remaining limits: different MLX buffer allocation and standard
+framework operators, preparation placement, driver/filesystem cache effects,
+three repetitions and only two games (about one tenth of the original samples).
+Do not infer 10/100-game speed or stronger play. No official checkpoint was
+published, and no branch was merged or pushed.
+
+## 2026-11-15 — MLX production migration and fresh 100-game timing target
+
+The user explicitly requested migration to MLX, authorized assistant execution
+and sustained optimization until PPO on 100 games takes no more than ten minutes,
+and requested progress updates every twenty minutes. They then clarified that
+the acceptance run must use **100 new games**, continuing from the latest saved
+checkpoint, rather than a benchmark on a previously saved cohort. Latest complete
+state is checkpoint 1,765 / 115,479 optimizer steps, independently hash-checked.
+No merge or push was authorized. Previous diagnostic/seed/admission/retention
+requirements remain; the next official unused reservation offset is 2,453.
+
+Hypothesis: the optimized Python MLX implementation can retain its small-cohort
+advantage in the live cycle by building plans in memory, without intermediate
+NPY/JSON export. Move the neural network kernels/model into the canonical learner,
+retain PPO equations, all current-weight history, the complete one-epoch schedule,
+Adam state and sampling RNG. Migrate live neural inference as well, with the
+existing CPU checkpoint/tensor/sampling boundaries retained for compatibility;
+this is not a claim that all PyTorch dependencies have already been removed.
+Do not assume gameplay becomes faster. Both capture and diagnostic reconstruction
+must explicitly select the same bound inference backend and keep exact replay.
+
+Acceptance: all 100 fresh games complete under the existing rules and enter one
+ordinary admitted update; no truncated training schedule or smaller loss set.
+The existing production `phase.update_seconds` / `update_wall_seconds` boundary
+must be at most 600 seconds, including admission checks, transaction snapshots,
+conversion, GAE/plan construction, current-weight prefix reconstruction, backward,
+Adam, synchronization and import back to the compatible checkpoint state. Report
+collection/preparation, checkpoint save and the final replay-verified diagnostic
+separately. Require finite states, exact checkpoint roundtrip, protected original
+inputs and verified owned-process cleanup. If the first new run misses the target,
+record the actual denominator/time and diagnose before the next authorized attempt;
+do not reinterpret a saved-data microbenchmark as a successful fresh campaign.
+
+Bounded implementation/rollback/replay probes may reuse private saved inputs;
+they are validation only, not the requested final timing run or fresh admission.
+Install a new hash-pinned combined environment at `python/mlx-v1/venv`, leaving
+the old runtime intact. The source gate will retain the historical exact source
+transitions and bind the complete new MLX code, shaders and dependency lock.
+Implementation and numerical validation are in progress; no fresh game or
+official update has started at this entry.
+
+Integration validation: the new in-memory MLX adapter completed the disposable
+1,089-sample / 35-step pair in 2.7657 seconds including GAE, plan building,
+initialization, numerical update, CPU state import and cleanup. Counts, minibatch
+RNG and named Adam counters matched. An injected exception after two steps passed
+the unchanged transaction's exact model/Adam/RNG/gradient-flag rollback. The first
+standalone harness attempt stopped before GPU work because it omitted the required
+single ATen thread; setting the same thread limit as the campaign corrected the
+harness. Maximum weight difference from an earlier MLX repeat was 0.000731235;
+maximum Adam-moment difference was 6.519e-9. Prior MLX repeats already differed
+by 0.000415–0.000634, predominantly in the common coordinate bias. Do not claim
+bitwise equivalence from these observations. Reports are private
+`framework-comparison/mlx-production-{adapter,rollback}-probe-20261115.json`.
+
+The MLX policy adapter passed both complete saved histories: 9,711 frames,
+1,089 decisions, identical sampled CPU/MLX actions under the probe seeds, hidden
+maximum error 3.87e-6 and value error 7.75e-7. More importantly, the existing
+session plus exact reconstruction gate reproduced all 1,089 actions/values and
+1,861 conditionals with maximum difference zero after a cold MLX cache reset.
+Serial inference took 15.51 seconds on MLX versus 5.12 on CPU; this is a measured
+slowdown for incremental policy calls, not the concurrent game-cycle timing.
+Evidence: `framework-comparison/local-validation/mlx-policy/result.json` and
+`replay-full.log`. No reconstruction tolerance was weakened.
+
+The existing targeted unit run executed 97 tests: 94 passed and three errored.
+All three errors reproduced on an archived clean `8da9caa` source tree: two old
+controller mocks lack the stdin registration channel, and one historical source
+fixture omits a previously required starting-equipment dependency. No test was
+changed or published, and these are not new MLX regressions. Preserve
+`python/mlx-v1/unit-checks.log` and `baseline-failures.log`; do not call the whole
+suite green. The first baseline confirmation accidentally ran in the current
+directory and was corrected by rerunning from the actual archived source.
+
+Canonical production MLX code has no dependency on comparison orchestration.
+The optional comparison-import refactor was preserved privately in
+`python/mlx-v1/comparison-canonical-imports.patch` and restored out of the working
+diff; old experiment files stay unchanged. Production shader copies live under
+`native/learner/mlx`. The prefix cache now accounts for actual normalized
+FP32/int32 arrays, including expanded uint8/bool inputs and separately converted
+aliases. This changes accounting only, not the validated neural equations.
+
+Retirement audit found that the earlier full-100 Metal investigation still read
+the original run directory. Before ordinary retirement, preserve only its 406
+required inputs (8,325,497,121 bytes) as independent APFS clones under
+`run-investigations/2026-11-14-metal-memory/preserved-cohort/run-20261113T211610Z-a9566f61`.
+Every original/archive hash and size matched the pinned cohort manifest. Receipt
+`preserved-cohort/preservation-manifest.json` records the original/archive prefix
+mapping; later use of the frozen absolute-path loader requires explicit restore
+or remapping. Original files remain untouched until standard retirement. This
+keeps the completed research reproducible while ordinary old campaign artifacts
+can be removed and exact checkpoint state retained.
+
+Final source review: all sixteen MLX migration entries match current bytes;
+the actual 234-file runtime inventory and both historical native/scenario
+acceptance chains pass exact transition checks. Deliberately altered hashes and
+an omitted MLX policy file reject. Evidence: `python/mlx-v1/source-transition-check.json`.
+Prepare one focused local production commit so the unchanged clean-checkout gate
+can admit the authorized fresh cycle. No test, probe, benchmark-script change,
+raw result, checkpoint, merge or push is included. The historical comparison
+implementation is retained unchanged; production owns its canonical MLX modules.
+
+
+## 2026-11-15 — First fresh production MLX cycle; scaling target missed
+
+Authorized assistant execution continued on local branch
+`codex/ppo-framework-comparison`, source
+`4210efdef3f3bf851e049dd33a9e3a7ce480494d`, using
+`./run-100-games.command 100 --mlx` and the pinned combined
+`python/mlx-v1/venv` runtime. Run
+`selfplay-ten-then-check/run-20261115T000548Z-0add1c7f` continued the complete
+checkpoint 1,765 (115,479 optimizer steps; weights
+`5e88fc9d236204e57fd32f73cd003f19b675a7f6f9d0c25ef6ce376d04cda35e`).
+Training engine seeds were 1,980,002,453–1,980,002,552, with 50 learner seats
+of each color; diagnostic seed was 1,980,002,553. MLX performed live neural
+scoring and PPO under the unchanged scenario, PPO, admission and resource rules.
+The user authorized continued work when disconnecting power. Every actual
+recorded power observation through completion still reported AC power and
+Automatic mode; this is not a battery benchmark. Observations are in
+`python/mlx-v1/fresh-100-power-observations.jsonl`.
+
+All 100 captures completed without capture failures: engine outcomes were
+64 Blue wins, 32 Red wins and four cutoffs. These training games deliberately
+did not receive replay/policy reconstruction. They contributed **259,090 eligible
+PPO samples** from 259,097 sampled decisions (seven bootstrap-only decisions),
+not 259,097 training samples. The complete update executed all **8,119 steps**.
+Collection plus overlapping preparation took 2,570.5726 seconds. The complete
+production update phase took **1,137.2352 seconds (18m57s)**; the numerical adapter
+accounted for 1,068.3779 seconds, including 162.9678 seconds of plan building,
+35.0831 seconds of post-state validation and 8.6288 seconds of cleanup. Timing
+subfields overlap with the adapter update field and must not be added to it.
+The approximately 68.86-second outer difference includes admission/transaction
+work; its exact breakdown has not yet been profiled. The 600-second criterion
+was missed. The earlier two-game comparison did not predict this larger workload
+reliably. Different cohorts also prevent treating the old 1,637-second Metal
+measurement as a controlled same-data speedup for this run.
+
+The cycle published and exact-roundtrip-verified checkpoint **1,766**, now
+123,598 total optimizer steps, with weights
+`e6b29324db6375ebb315b2f2376469c89d05626f96b53b60c0cb7a0cab7e55cc`.
+Reported PPO metrics were policy loss 0.00169306, value loss 0.4619262,
+approximate KL 0.00387454 and clip fraction 0.0285422. The final diagnostic
+ended naturally with new-policy Red defeating frozen batch-start Blue.
+Both policies reconstructed exactly: 497/413 actions and values, 903/742
+conditionals, maximum difference zero; native replay also passed. One outcome
+is not evidence of improved playing strength. The complete cycle took
+3,781.8988 seconds (63m02s) and ended at 01:08:52 UTC. Final report/shutdown
+confirm exit zero, owned cleanup and unchanged protected inputs. No repository
+source changed while the campaign was active. No merge or push was performed.
+
+Retention-reviewed run: `run-20261115T000548Z-0add1c7f`.
+The sealed captures remain available for the following bounded numerical
+investigation until the next reviewed launch; the checkpoint pair must survive
+ordinary retention.
+
+Next question: which prefix, planning, backward or optimizer component prevents
+the full phase from reaching 600 seconds without changing PPO or truncating
+current-weight histories? Private candidates prepared during the live run
+retain only requested no-gradient GRU boundary states, and compile fixed Adam
+arithmetic/finite checks while preserving individual active-parameter counters.
+Neither candidate ran during the campaign. Synthetic selected-state equivalence,
+real-history numerical/state comparisons, memory guards, unchanged inactive
+parameters/counters, and transaction rollback precede adoption. A saved-data
+probe is diagnostic only; final acceptance requires another **fresh 100-game
+continuation** from the latest complete checkpoint.
+
+After PPO and checkpoint publication, a CPU-only private preparation overlapped
+the final diagnostic, without changing source or performing GPU computations.
+It restored parent 1,765, bound sealed episodes 1 and 42, and built native
+histories for 10,038 PPO samples / 314 planned steps in 35.0771 seconds.
+Episode 42 has 1,790 sampled decisions but 1,789 PPO samples. This selected
+long/near-median pair and its 314,183,601-byte native payload are in
+`framework-comparison/local-validation/mlx-scale/cohort-1765-long-median`;
+they are not live admission capabilities. The private profiling harness records
+inclusive host versus synchronized-attribution timing separately; resource
+checks run at least once per second and their overhead has its own field.
+GPU probes begin only after the completed campaign's owned cleanup.
+
+The user subsequently reserved the **next fresh training launch for themselves**.
+Continue the authorized isolated optimization/validation work and prepare the
+next command, but do not start another game campaign. Therefore the 600-second
+fresh-100 acceptance remains pending the user's next launch, even if an offline
+probe becomes faster.
+
+Initial synchronized attribution on the selected pair completed 32 bounded steps
+in 5.2560 seconds; the private CPU parent model/Adam/RNG stayed unchanged.
+Inclusive recurrent-prefix work took 4.0693 seconds: main GRU 2.1335 seconds,
+initial construction of two full prefix plans 1.1731 seconds, sparse map 0.3948
+seconds, tree 0.1249 seconds. Forward/backward took 0.2608, joined planning
+0.1595, Adam 0.0745, post-state checks 0.1100 seconds. Synchronization changes
+scheduling, and these nested fields cannot be summed. Evidence:
+`mlx-scale/synchronized-32/result.json`. This identifies serial prefix GRU as
+the largest warm component on this pair, not an optimizer-dominated workload.
+
+The selected-state-only GRU candidate passed all 56 exact synthetic comparisons,
+nine invalid cases, and empty/mixed prefix wiring. It failed its speed hypothesis:
+at 10,000 frames, median baseline was 13.876 ms versus candidate 14.974 ms.
+The extra per-step selection branch is a hypothesis for this slowdown; it was
+not separately measured. Do not adopt this candidate as a speed improvement.
+Evidence: `mlx-scale/prefix-selected-candidate/synthetic-result.json`.
+Next private candidates vary the GRU reduction width or keep all hidden
+coordinates within one SIMD group to reduce synchronization. They must preserve
+full nonlinear recurrence and accepted FP32 agreement; no truncation or
+cross-step caching of learned states is permitted.
+
+The corresponding 32-step host-submission profile took 5.0574 seconds and
+confirmed the same unchanged private CPU parent state. Its prefix total was
+3.8898 seconds. These host rows include deferred GPU work in later checks and
+are not independent kernel timings (`mlx-scale/host-32/result.json`).
+
+The compiled-Adam candidate completed the entire selected pair from identical
+parent state: baseline 33.6557 seconds versus compiled 33.4811 seconds,
+10,038 samples / 314 steps in each, including all adapter planning/import/cleanup.
+A 1.0052x single-pair ratio provides no meaningful speed evidence, so this
+additional optimizer complexity is not selected for production. Individual
+Adam counters and minibatch/Torch/Python RNG states matched exactly. Maximum
+weight difference was 0.0017891 (common coordinate bias); relative L2 was
+2.309e-5. Maximum moment difference was 5.821e-9. These results do not establish
+playing quality or bitwise equivalence. Evidence: `mlx-scale/native-baseline-01`,
+`native-compiled-01`, and `native-optimizer-comparison.json`. The drafted private
+failure/inactive-state harness was not executed because adoption was rejected
+for lack of performance benefit.
+
+Seven no-gate recurrent variants were tested privately on the actual Apple M4
+Max with 128 GiB unified RAM, still on AC power. R8/R4/R2/R1 reductions and
+single-SIMD register/streaming designs all passed the bounded FP32 gates but
+were slower than the existing R16 implementation. At 10,000 frames, baseline
+was 13.850 ms, no-gate R16 13.307 ms, R8 15.118 ms, R4 20.235 ms, R2 24.303 ms,
+R1 38.807 ms, register SIMD32 27.635 ms and streaming SIMD32 41.666 ms. At
+40,000 frames, baseline was 54.690 ms versus no-gate R16 52.575 ms (about 1.04x).
+The R16 no-gate control was bit-exact above 256 frames; all other measured maximum
+errors were at most 8.95e-8. Removing synchronization by increasing serial work
+per lane did not improve speed. Evidence: `mlx-scale/gru-parallel-candidate/`
+`length10000-result.json` and `full-matrix-result.json`.
+
+Next private hypothesis: pack the two independent history prefixes in one GPU
+dispatch while retaining each original projection GEMM shape, full individual
+sequence length, recurrence arithmetic and short/long dispatch threshold.
+This should overlap independent work rather than cache outdated hidden states.
+The analytical probability of different histories in a uniformly shuffled
+two-window minibatch is 97.8995% for the 100-game cohort but 29.3542% for the
+selected long/median pair. These are window-count expectations, not observed
+schedule frequencies; a pair benchmark will underrepresent this opportunity.
+
+Packed-prefix probes confirmed that MLX already overlaps independent lazy
+GRU dispatches. Equal 40,000-frame sequences took 57.44 ms with the baseline,
+55.03 ms with separate no-gate kernels and 55.34 ms packed. The plain 32-step
+real-pair timing was 5.3806 s baseline versus 5.2922 s packed, with a higher
+packed GPU peak. Packing is therefore not selected for production. The initial
+real comparison rejected nonidentical full-encoder recomputations at step 0;
+repeated baseline prefixes themselves varied by 4.41e-6 and 5.13e-6 due to the
+existing nondeterministic sparse-map reductions. The corrected diagnostic
+shared identical encoded vectors and passed bit-exact boundary comparisons
+on all 32 steps. Both failed and corrected reports remain in
+`mlx-scale/gru-packed-candidate/`. Two cached history plans occupied
+134,997,188 bytes, so these pair probes do not establish 4 GiB cache pressure.
+
+Next implementation candidate overlaps GPU prefix evaluation with CPU
+construction of the same minibatch's joined plan. Prefixes still use the
+current weights and full histories, are passed once to that step, and are
+never cached across optimizer updates. Boundary keys are checked at the
+consumer. The existing synchronized path remains the default for direct
+backend callers; production submits via MLX async_eval and later loss/finite
+evaluation waits on its dependencies. Validate full private state/counters/RNG
+and exception rollback before retaining this scheduling change. This does
+not change epochs, minibatches, losses, recurrent formulas or resource caps.
+
+The batch-admission implementation now validates the shared exact plan and
+source before and after all individual receipts instead of hashing the same
+common inputs 100 times. Every registered capability, plan path/hash/JSON,
+schedule position, on-policy weight identity, unused slot, receipt JSON and
+capture envelope hash remains checked; final common validation precedes any
+consumption. Other launch/completion/preparation rechecks remain unchanged.
+Fifteen private CPU-only mocked tests passed, including final validation
+failure retaining all capabilities (`mlx-scale/admission_batch_tests.log`).
+This changes the sampling frequency for common files during admission; it
+does not prove detection of every transient change-and-revert. No cache or
+unchecked caller-supplied plan crosses batches. Actual phase-time benefit
+will be measured on the user's next fresh run.
+
+The canonical candidate now removes unused pooled segment IDs and text/ordered
+row/scale fields, freezes CPU-only metadata tuples, and performs tensor
+conversion with imports outside recursive scalar visits. Five real-plan CPU
+cases passed exact consumed-buffer/metadata/slicing checks and dtype/index
+rejection checks. Long-prefix host conversion fell from 58.86 to 2.03 ms,
+near-median from 15.34 to 1.19 ms, and joined-window conversion from 1.09–1.24
+to 0.67–0.73 ms. Actual two-plan upload accounting fell from 128.74 to 127.31 MiB;
+the cache cap remains 4 GiB. Evidence: `mlx-scale/planning-candidate/cpu-01`.
+Only the Python production plan is compacted; the comparison/Swift schema
+and code remain untouched.
+
+The retained no-gradient main-GRU kernel removes unused backward-gate stores
+while returning every hidden state. It preserves the original R16 recurrence
+above 256 frames and the original short-sequence path otherwise. The slower
+selected-state, alternate-width, SIMD32 and packed candidates stay private.
+The asynchronous adapter explicitly clears prepared-prefix dictionaries both
+after consumption and on failure, then drains submitted GPU work before
+clearing allocator caches. Two canonical failure probes passed: an exception
+after exactly 3 completed steps and a joined-plan exception immediately after
+a nonempty async submission before any completed step. Model/Adam/RNG, mixed
+gradient flags, an existing gradient, modes and progress/checkpoint restored
+exactly; prepared/native/MLX caches cleared. Evidence:
+`mlx-scale/canonical-async-failures-01/{after-three,joined-plan}/result.json`.
+
+A full selected-pair trial on this candidate completed 10,038 samples / 314 steps
+in 31.7434 seconds versus 33.6557 for the earlier baseline (1.0602x; one pair
+comparison, not a 100-game result). The async-only intermediate was 32.3056 s.
+Final individual Adam counters and all RNG states matched. Final loss/KL
+metrics agreed within about 1e-8; clip fraction was identical. Maximum weight
+difference was 0.00414595 in the softmax-invariant common coordinate bias; the
+next largest was 0.000260708 in coordinate output weights. Maximum Adam-moment
+difference was 7.509e-9. This is accepted FP32 variation, not bitwise training
+equivalence or playing-quality evidence. GPU peak was 795,073,736 bytes.
+The private timing excludes official admission; its common-plan optimization
+will need measurement on the next fresh run. Evidence:
+`mlx-scale/native-final-01` and `native-final-comparison.json`.
+
+After the planning changes, the existing live-session/reconstruction numerical
+harness passed 256 saved decisions and 445 conditionals with maximum
+reconstruction difference zero. It launched no game and applied no update
+(`mlx-scale/policy-final/result.json`).
+
+One remaining bounded hypothesis uses FP32 SIMD-group 8x8 matrix multiply for
+the recurrent hidden projection, with no reduced precision or truncated
+history. Preloaded weight tiles produce all 192 gate values; two SIMD groups
+then compute the 64 recurrent coordinates, retaining two barriers per time
+step. This may improve work distribution relative to scalar dot reductions,
+but may also be slower or unsupported. Require bounded synthetic and real
+vector agreement, then a complete private update before any adoption.
+No new training game is authorized for assistant launch.
+
+The FP32 SIMD-matrix kernel compiled through MLX and passed synthetic gates
+through 40,000 frames, but failed the long-prefix speed hypothesis. Nine-repeat
+medians were 1.629 versus 1.503 ms at 1,000 frames, 14.112 versus 14.693 ms
+at 10,000, and 55.909 versus 56.407 ms at 40,000 (baseline versus MMA).
+Maximum full-sequence difference was 8.95e-8, RMSE 8.31e-9. It remains private
+and did not proceed to PPO or production. Reports are
+`mlx-scale/gru-mma-candidate/{initial-1000-10000,followup-40000}.json`.
+The optional offline Metal toolchain/headers were unavailable; no component
+was installed. The existing MLX runtime compiler supports the FP32 APIs
+documented in [Apple's SIMD-matrix example](https://developer.apple.com/videos/play/tech-talks/10858/).
+
+Final targeted existing checks: all 24 tests in selfplay_training,
+selfplay_checkpoint and selfplay_behavior passed in 1.610 seconds. This does
+not erase the three pre-existing errors from the earlier broader suite.
+No test, probe, diagnostic script, benchmark, fixture or raw artifact is
+added to the production commit. All candidate experiments remain private.
+The exact runtime source allowlist is updated only to the reviewed current
+production bytes; its inventories and rejection behavior are unchanged.
+
+A second complete candidate repeat passed the same 10,038 samples / 314 steps
+in 31.8512 seconds (first 31.7434), with exact expected minibatch RNG and
+individual Adam counters and a 798,757,324-byte GPU peak. Against the single
+33.6557-second baseline this supports a modest roughly 6% local improvement,
+not a 2x gain or the 600-second fresh-100 criterion. The next full campaign
+remains user-launched from checkpoint 1,766. No new game or official update
+followed the completed first campaign.
+
+Prepare one local production commit containing only the reviewed learner code,
+shader, exact operational source pins and documentation. Keep every private
+experiment, validation script, raw result and weight out of the staged diff.
+Then run the read-only 100-game MLX launcher inspection against that clean
+commit and checkpoint 1,766 before handing over the command. No merge or push
+is authorized by this handoff.
+
+The read-only launcher inspection passed on the clean production commit:
+checkpoint 1,766 restored exact model/Adam/RNG/progress/sampler/pool; MLX is
+selected for policy and PPO; the requested next cycle is 100 training games
+plus one diagnostic, with one update and no wall-clock deadline. It performed
+no gameplay or optimizer update and did not reserve seeds (next offset 2,554).
+Evidence: `mlx-scale/next-100-preflight-before-journal.log`. After recording
+this result in a documentation-only amendment, repeat the same read-only
+inspection and retain `mlx-scale/next-100-preflight-final.log` for the handoff.
+
+
+### 2026-11-15 — User-run optimized MLX fresh-100 result (1766 to 1767)
+
+Question: do the prepared prefix, plan and admission optimizations improve the
+complete production update on 100 new games? Acceptance remains a complete PPO
+phase at or below 600 seconds, with unchanged admission/checkpoint/diagnostic
+gates. The user launched this campaign; this review only read existing files
+and did not launch any workload.
+
+Source: `13e6bf49a0d7e5d3bd7b038ad6cd335f30373ecf`, clean at launch;
+Python 3.13.5, Torch 2.9.1, MLX/MLX-metal 0.31.1, MLX policy and PPO.
+Evidence: private `selfplay-ten-then-check/run-20261115T111633Z-27357989/`
+`launch.json`, `report.json`, `shutdown.json`, and diagnostic reconstruction.
+Parent 1766 weights `e6b29324db6375ebb315b2f2376469c89d05626f96b53b60c0cb7a0cab7e55cc`;
+training engine seeds 1980002554–1980002653; diagnostic 1980002654.
+Ten rolling actors and existing scenario/rules were retained.
+
+All 100 captures were admitted, with 238,862 PPO samples and 7,487 optimizer
+steps. Engine outcomes were Blue 71, Red 26, three day-limit cutoffs, zero capture
+failures. These training outcomes remain unverified by replay/reconstruction.
+Collection plus overlapping preparation took 2,140.7244 s (35m41s), complete
+production PPO 729.1366 s (12m09s), checkpoint 1.1598 s, and diagnostic including
+verification 213.8603 s. Entire cycle: 3,090.1456 s (51m30s), completed at
+12:08:04 UTC. Shutdown returned zero; owned cleanup and protected inputs passed.
+
+Compared with the preceding fresh-100 MLX run: collection fell from 42m51s,
+PPO from 18m57s, and total from 63m02s. PPO elapsed fell 35.89% (1.560x), but
+samples also fell 7.81% and optimizer steps 7.78%. Throughput normalized by
+samples or steps improved approximately 1.438x. This is encouraging evidence,
+not an isolated causal measurement: histories, checkpoint, seeds and possibly
+power/thermal conditions differ. Recurrent prefix cost is not proportional to
+sample count. No claim that the entire observed gain comes from code alone.
+The 600-second criterion is still missed by 129.14 s; reaching it from this
+result requires about 17.7% less elapsed time.
+
+Adapter full_update was 725.4271 s versus 1,068.3779 s previously; nested plan
+building 97.0012 versus 162.9678 s, state validation 16.7983 versus 35.0831 s.
+Production-minus-adapter overhead fell from about 68.86 to 3.71 s, consistent
+with the common admission-check change. Nested timings must not be summed.
+
+Checkpoint 1767 passed exact model/Adam/RNG/progress/pool restore, with weights
+`b67131a563931d1c26be1a587090c57f9b0726215edd3243def9106cd7055e12`.
+PPO approximate KL 0.00600706, clip fraction 0.0351291, policy loss 0.00237569,
+value loss 0.412056. Different data prevent treating metric changes as quality
+improvement. Diagnostic Red (new 1767) lost naturally to Blue (frozen 1766).
+Both policies reconstructed exactly: Red 1,823 actions/values and 3,204
+conditionals, Blue 1,456 actions/values and 2,476 conditionals; maximum difference
+zero for both. Native replay passed. One loss does not establish regression,
+just as the preceding diagnostic win did not establish stronger play.
+
+Retention-reviewed run: `run-20261115T111633Z-27357989`.
+No artifacts were removed during this review. No commit, merge or push performed.
+
+
+### 2026-11-15 — Prepare user-run CPU-inference / MLX-PPO fresh-100 comparison
+
+Hypothesis: the existing CPU policy path reduces small-request inference overhead
+and complete cycle time relative to MLX policy inference. The user requested
+100 new games continuing complete checkpoint 1767, followed by the usual fresh
+validated diagnostic, and will launch personally. No assistant launch is allowed.
+Acceptance: retain PPO/settings/seed/admission/checkpoint/replay gates, record
+collection, complete update and cycle times plus sample/step denominators; compare
+against the preceding 35m41s / 12m09s / 51m30s cycle. Different fresh histories and
+parent weights limit causal attribution and no strength improvement is assumed.
+
+Implemented: new `--mlx` cycles select CPU policy and unchanged MLX learner.
+Existing actor and diagnostic configuration propagation already selects this
+CPU path. Stored MLX launches accept the two explicit supported policy values
+(cpu or mlx), retaining their recorded choice; exact source identity, runtime
+version and policy binding checks remain. Updated the controller's exact source
+pin to its current bytes, without changing inventories or other gates. No PPO,
+network, engine or optimizer code changed. No seed allocation, game, replay,
+benchmark, numerical probe or optimizer update was launched. Syntax inspection
+only; full clean-checkout preflight is pending a local production commit.
+Prepared user command: `./run-100-games.command 100 --mlx`.
+
+
+Read-only launcher inspection passed on local commit `f5d7397`: parent 1767
+restored exact model/Adam/RNG/progress/sampler/pool; configuration reports CPU
+policy, MLX PPO, 100 training games plus one diagnostic and one update, with no
+wall-clock deadline. No gameplay, optimizer update, deletion or seed reservation
+occurred; next unreserved engine seed is 1980002655 (101 games). Evidence:
+private `framework-comparison/local-validation/mlx-scale/cpu-policy-1767-preflight.log`.
+Only documentation is added in the following amendment; repeat inspection on
+the resulting clean commit before handoff. No merge or push is authorized.
+
+
+### 2026-11-15 — First hybrid launch failed before gameplay; correct plan gate
+
+The user-run `run-20261115T122358Z-b5fb6e5d` on source `8cdb953` stopped
+with exit 1 after 0.6524 seconds. Reported error: `ValueError: MLX capture and
+update must share the pinned policy/runtime contract`. Configuration correctly
+selected CPU inference / MLX PPO, but `selfplay_training._plan` still required
+MLX inference whenever MLX PPO was selected. The previous read-only launcher
+inspection never exercised this capture-plan gate; its success did not establish
+that the hybrid campaign could start. This was an incomplete implementation.
+
+No games completed, zero samples admitted, zero optimizer updates, no diagnostic.
+Latest complete checkpoint remains 1767 with weights
+`b67131a563931d1c26be1a587090c57f9b0726215edd3243def9106cd7055e12`.
+Owned cleanup and protected inputs passed; shutdown errors were empty. No timing
+comparison with the successful 51m30s MLX-inference cycle is valid. Seeds reserved
+for this failed attempt remain consumed (engine range 1980002655–1980002755).
+Evidence: private run `report.json`, `shutdown.json`, `launch.json` and
+`batch-train-000/attempts.json`.
+
+Correction: the capture-plan gate explicitly accepts CPU or MLX inference with
+MLX PPO, keeping the exact pinned runtime, source, schedule, receipt and other
+validation gates. Updated only the changed production source's exact hash pin.
+No network/PPO math/settings changed. Syntax parsing and diff checks are allowed
+file inspection; no game, replay, profile, numerical probe or benchmark was run.
+The hypothesis and acceptance criteria of the preceding hybrid experiment remain
+unmet pending a new user launch. A successful read-only preflight is limited to
+launcher/state/configuration inspection and must not be reported as a successful
+capture-plan or end-to-end execution. No merge or push is authorized.
+
+Retention-reviewed run: `run-20261115T122358Z-b5fb6e5d`.
+
+
+### 2026-11-15 — Successful user-run CPU-inference / MLX-PPO fresh-100 cycle
+
+Question/acceptance follow the preceding hybrid preparation: compare complete
+cycle and collection time, retain exact checkpoint and final diagnostic gates,
+and report denominators instead of inferring either causal speedup or strength
+from different fresh games. The user launched; this review only reads artifacts.
+Source `71923b18403960fd4fcf24eb89d6a2af5f69710c`, run
+`run-20261115T123640Z-aa5cd62b`, parent checkpoint 1767 weights
+`b67131a563931d1c26be1a587090c57f9b0726215edd3243def9106cd7055e12`.
+CPU policy / MLX PPO, MLX and mlx-metal 0.31.1, same scenario and rolling actors.
+Fresh training engine seeds 1980002756–1980002855, diagnostic 1980002856.
+Evidence: private run `launch.json`, `report.json`, `shutdown.json`, and
+`evaluation-000/execution/episode-000001/training-policy-reconstruction.json`.
+
+Status completed, exit zero, zero capture failures, 100 admitted games,
+228,930 samples and 7,179 optimizer steps. Engine outcomes: Blue 64, Red 30,
+six day-limit cutoffs; training captures remain not independently replay-verified.
+Collection and overlapping preparation: 1,390.0022 s (23m10s); complete production
+PPO: 600.1246 s; checkpoint 1.0899 s; diagnostic plus verification 70.3122 s.
+Whole cycle 2,065.8846 s (34m26s), ended 13:11:07 UTC. Owned cleanup and protected
+inputs passed. Adapter full_update 596.9127 s; nested update 588.8830 s,
+plan_build 84.2245 s, state_validation 15.1744 s, cleanup 7.6810 s.
+Do not sum nested timings. The strict <=600 s complete-production criterion is
+still missed by 0.1246 seconds, despite the adapter finishing below 600 seconds.
+
+Against the preceding successful MLX-policy run (`run-20261115T111633Z-27357989`):
+collection 2,140.7244 to 1,390.0022 s (-35.07%, 1.540x); complete PPO 729.1366 to
+600.1246 s (-17.69%); total 3,090.1456 to 2,065.8846 s (-33.15%, 1.496x), saving
+17m04s. Samples decreased 4.16%, steps 7,487 to 7,179. Per eligible sample,
+collection throughput increased 1.476x and PPO throughput 1.164x. Collection
+also includes engine/opponent work and preparation, so this normalization does
+not isolate inference. Different parent weights, seeds, full trajectories and
+uncontrolled power/thermal conditions limit causal attribution; PPO arithmetic
+was not changed by the CPU-inference switch. The complete-cycle result supports
+keeping CPU policy with MLX PPO, but does not establish an exact backend-only
+speed multiplier. Diagnostic duration also depends on the different game.
+
+Checkpoint 1768 published and passed exact model/Adam/RNG/progress/pool restore;
+weights `e7d559efa7ea1e56e7abc6e5debb78dbc4bb0c698bda3b0ee917e9098e70161d`.
+PPO approximate KL 0.00417767, clip fraction 0.0264753, policy loss 0.00128614,
+value loss 0.367145. Red (new 1768) beat Blue (frozen 1767) naturally. Native
+replay passed; both policy reconstructions had maximum absolute difference zero:
+Red 1,050 actions/values and 1,880 conditionals; Blue 345 and 606. One diagnostic
+win is not evidence of improved strength. No new workload was launched by the
+assistant and no commit, merge, push or artifact deletion occurred in this review.
+
+Retention-reviewed run: `run-20261115T123640Z-aa5cd62b`.
+
+
+### 2026-11-15 — Detailed checkpoint-1768 diagnostic behavior review
+
+Question: explain Red's win from recorded actions, events and army transitions,
+and distinguish useful behavior from evidence of general improvement over 1767.
+Acceptance: trace decisive events to both player histories, count effective
+management actions separately from UI navigation, and do not run a new game,
+replay, numerical comparison or benchmark. Read-only artifact analysis only.
+Evidence is the successful `run-20261115T123640Z-aa5cd62b` diagnostic's
+`agents/{red,blue}/history-v8.jsonl`, `neural-rollout.json`, plan and exact
+reconstruction. Source/runtime/seed/parent identities are in the preceding entry.
+Red is 1768, Blue frozen 1767, CPU inference for both; terminal day 33.
+
+Chronology: both start with one hero and 25 pikemen. Red first hires another
+hero on day 9 (11 pikemen, six archers, three griffins), and recruits 28 pikemen
+into the town garrison. Red wins a neutral battle on day 18 without an observed
+army-count loss, then visits/captures the wood mine on day 19 (notice +2 wood/day).
+Day 20 adds 14 garrison pikemen and a hero with 14 pikemen/five archers/three
+griffins. Day 22 Blue attacks Red town at (4,7) with its original 25 pikemen;
+Red has 42 garrison pikemen, loses nine, wins, and Blue loses its hero. This
+links actual troop purchases to a decisive defensive result without asserting
+that the policy anticipated the attack. Blue recruits no creatures at any time.
+
+Day 24 Red recruits 14 more pikemen (garrison 47), hires a hero with 13 pikemen,
+and swaps it into the garrison: the resulting hero has 60 pikemen and town
+has none. The hero stays garrisoned through day 25; a day-26 swap releases it.
+Blue hires a replacement on day 25 with 12 pikemen. On day 30 Red's 60-pikeman
+hero moves to (9,13), attacks that Blue hero, wins with no observed casualties,
+and Blue again has no hero. On day 33 Red's day-9 hero explicitly targets the
+Blue town at (15,7), takes it without another battle and ends the game. This
+was a successful defense followed by removal of the last hero and capture of
+an empty town, not a decisive defended siege or demonstrated battle tactics.
+BattleAI controls combat, the policy controls adventure choices.
+
+Within this one match, Red hired five heroes (six total), recruited four times
+(28+14+14+14=70 pikemen), won all three battles, and captured the wood mine and
+opponent town. Blue hired one hero (two total), recruited zero, won zero of two
+battles, collected a 500-gold resource and ended with 15,000 gold and no assets.
+Red ended with 2,846 gold, six heroes and both towns. No construction action
+was submitted by either policy. Army-exchange dialogs opened repeatedly but
+no inter-hero stack-transfer action was submitted; the garrison swaps are the
+observed effective troop consolidation. The original Red hero retained its
+25-pikeman stack throughout the game.
+
+Limitations remain visible: 397 opens + 397 closes account for 794/1,050 (75.6%)
+of Red decisions, versus 241/345 (69.9%) for Blue. Red issued 207 movement
+commands, 139 targeting x=0; Blue 69 with 36 targeting x=0. This is a pronounced
+left-edge target bias, not proof of a software defect or strategic intent.
+Red leaves some heroes with movement at seven end-turn decisions. First hire
+only on day 9, first neutral victory day 18, first mine day 19; macro planning
+is still weak. More heroes also create more UI actions; decision volume alone
+is not a quality metric.
+
+This match provides positive behavioral examples (spending on relevant troops,
+actual consolidation, exploiting an undefended town), not statistically valid
+improvement evidence. The prior 1767 diagnostic was a loss against 1766, but
+its raw artifacts were retired under retention; do not invent a detailed
+cross-game behavior comparison from its aggregate outcome. Current 1767 Blue
+is directly observed, but sides, seed, stochastic choices differ, and prior
+1767 diagnostic used MLX inference whereas this one uses CPU. No paired-seed,
+seat-swapped quality evaluation was run. Exact reconstructions and replay
+establish execution fidelity, not strength. Documentation remains local;
+no commit, merge, push, deletion or new workload in this review.
+
+
+### 2026-11-15 — Prepare restored troop management from checkpoint 1768
+
+User request: restore troop-slot management for 100 new games from 1768, keep
+other restrictions, CPU inference and MLX PPO; user launches personally.
+Hypothesis: restoring split/merge/swap/transfer/inspection/upgrade actions allows
+useful troop consolidation beyond whole-hero garrison swaps. Acceptance: restore
+exact checkpoint 1768, version the support change, preserve historical semantics,
+retain hero-relative movement, command/town cooldowns and interaction budgets,
+keep map/taverns/artifact ban/BattleAI/PPO unchanged, and prepare 100 games plus
+one exact-reconstruction/native-replay diagnostic without assistant gameplay.
+Quality must not be inferred solely from outcomes after expanding action support.
+
+Implementation adds `visible-interaction-budget-hero-relative-stack-management-v1`
+with the same relative coordinates and cooldown tracking as the prior version,
+but outside the recruitment-only exclusion set. New cycle launches select it;
+per-batch policy wrappers, published metadata, reconstruction and native plans
+carry the exact selected support. Metadata restores accept both historical and
+new cycle variants. No network shape, weights or optimizer initialization changes.
+Exact source pins include the changed guard/model/checkpoint/controller bytes.
+Validation is pending; all test/probe artifacts stay private and unstaged.
+No game, training, replay, profiling or numerical benchmark launch is authorized.
+
+
+Existing tests passed: 48 checks across recruit_only_guard, interaction_guard,
+selfplay_checkpoint and selfplay_training (1.893 s). They preserve historical
+support and checkpoint behavior; no game or production optimizer ran.
+Private non-numerical support validation covered all seven restored action
+kinds using existing army/management/upgrade fixtures, unchanged native offers,
+unchanged other initial guard fields and exact support serialization. Attempt 1
+failed in the validation harness because it passed the legacy armies fixture to
+an incompatible action enumerator (TypeError, before its assertions); attempt 2
+used that fixture's explicit transfer action and passed. Evidence: private
+`mlx-scale/stack-management-{existing-tests,support-checks,support-checks-02}.log`.
+No test or diagnostic code is included in the production commit. Full fresh
+quality and mandatory-dialog behavior remain unobserved until a user game runs.
+
+
+Read-only launcher preflight passed on clean local source `ccde10e`, checkpoint
+1768 exact model/Adam/RNG/progress/sampler/pool, CPU policy, MLX PPO, 100 games
+plus one held-out diagnostic, no deadline, new stack-management support. Next
+engine seed 1980002857, count 101, reserved=false. Evidence:
+`mlx-scale/stack-management-1768-preflight.log`. Additional non-numerical plan
+validation used temporary copies of existing training and diagnostic plans with
+current exact source/implementation identities and the new support, without
+reserving seeds, changing captures, saving checkpoints or executing games.
+Both actual `_plan` gates and checkpoint metadata validation passed, and both
+rejected unknown support and an unpinned MLX runtime. Evidence:
+`mlx-scale/stack-management-plan-gates.log`. This exercises the gate missed by
+the prior hybrid handoff; it is still not an end-to-end game or quality result.
+Documentation-only amendment follows, then repeat read-only preflight on the
+final clean commit for the user. No merge or push performed.
+
+### 2026-11-15 — Authorized production consolidation into main
+
+The user explicitly requested CPU policy / MLX PPO in main and clarified that
+the experimental comparison branch must be preserved. Consolidate production
+code/configuration, restored troop management and research findings from
+`534f947`, excluding comparison runners, Swift/Python framework prototypes,
+comparison-only dependency files and launch scripts. Keep those on the local
+`codex/ppo-framework-comparison` branch, without publishing its tooling.
+Production learner source bytes are unchanged from the prepared source; existing
+48 tests and plan/preflight checks are recorded above, not rerun during gameplay.
+No tests, probes or benchmarks are added to this publication.
+
+A user-launched campaign `run-20261115T131956Z-07d9b15c` is currently active
+in the canonical checkout. Therefore prepare this focused main tree with a
+private Git index; do not switch the running checkout, modify its files/index,
+stop/restart its process or change its HEAD. Publish main separately, preserving
+the experimental branch and active source identity. Defer switching the working
+checkout to main until that campaign finishes. Checkpoint and runtime assets
+remain private and unchanged. This records consolidation, not new training or
+validation results.

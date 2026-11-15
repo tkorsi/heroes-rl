@@ -768,11 +768,12 @@ def phase_remaining(budget, reserve=None):
         raise TimeoutError(f"Self-play {budget['phase']} phase deadline exhausted") from error
 
 
-def configure_native(execution):
+def configure_native(execution, *, policy_backend='cpu'):
     import torch
     from experiments.learner import ppo
     from experiments.learner.native_execution import check_native_execution
     from experiments.learner.native_backend import verified_manifest
+    from experiments.learner.mlx_policy import set_policy_backend
     check_native_execution(execution)
     native = execution['native_learner']
     verified_manifest(native['manifest'], native['sha256'])
@@ -782,6 +783,7 @@ def configure_native(execution):
     ppo.REPLAY_TEXT_LEAVES = False
     ppo.TEXT_REPLAY_WORKERS = 0
     ppo.EXPERIMENTS = frozenset()
+    set_policy_backend(policy_backend)
 
 
 def batch_plan(launch, state, index, start, count, previous_policy):
@@ -835,7 +837,7 @@ def capture_worker(args):
                 and args.deadline <= launch['hard_deadline_monotonic']
                 and args.wall_deadline <= launch['hard_deadline_unix']),
             'Worker cannot extend the campaign deadline')
-    configure_native(plan['execution'])
+    configure_native(plan['execution'], policy_backend=plan['configuration'].get('policy_backend', 'cpu'))
     row = plan['schedule'][args.index]
     ten = plan.get('schema') in (training.TEN_SCHEMA, training.CYCLE_SCHEMA)
     cfg = plan['configuration']
@@ -1232,7 +1234,7 @@ def coordinator(args):
     if launch.get('schema') == TEN_LAUNCH:
         return ten_coordinator(args)
     require(os.getppid() == launch['supervisor_pid'], 'Only the lease-owning supervisor may launch this campaign')
-    configure_native(launch['execution'])
+    configure_native(launch['execution'], policy_backend=launch['configuration'].get('policy_backend', 'cpu'))
     output = Path(launch['output']); started = time.monotonic()
     write(output / 'coordinator-claim.json', dict(pid=os.getpid(), launch_sha256=args.sha256,
           reservation=launch['reservation']), new=True)
@@ -1579,11 +1581,24 @@ def finalize_stopped_run(output, launch):
         no_unpublished_experience_admitted=True), new=True)
 
 
-def ten_configuration(checked, seconds, *, games=None, use_metal=False):
+def mlx_runtime_identity():
+    from importlib.metadata import version
+    import mlx.core as mx
+    require(mx.metal.is_available(), 'MLX requires an Apple GPU')
+    versions = {name: version(name) for name in ('mlx', 'mlx-metal')}
+    require(versions == {'mlx': '0.31.1', 'mlx-metal': '0.31.1'},
+            'MLX runtime differs from dependencies/learner-mlx.lock')
+    return versions
+
+
+def ten_configuration(checked, seconds, *, games=None, use_metal=False, use_mlx=False):
     from experiments.learner import selfplay_training as training
     from experiments.learner.ppo import PPOConfig
     require(type(use_metal) is bool and (not use_metal or CYCLE_MODE),
             'Metal PPO is an explicit cycle-only experiment')
+    require(type(use_mlx) is bool and (not use_mlx or CYCLE_MODE) and not (use_metal and use_mlx),
+            'Select one cycle learner backend')
+    mlx_runtime = mlx_runtime_identity() if use_mlx else None
     if use_metal:
         import torch
         require(torch.backends.mps.is_available() and hasattr(torch.mps, 'compile_shader'),
@@ -1603,7 +1618,7 @@ def ten_configuration(checked, seconds, *, games=None, use_metal=False):
                phase_deadlines_seconds={'training': seconds, 'update': seconds})
     if CYCLE_MODE:
         cfg.update(schema='heroes-selfplay-ten-then-check-config-v1',
-                   learner_backend='metal' if use_metal else 'cpu',
+                   learner_backend='mlx' if use_mlx else ('metal' if use_metal else 'cpu'),
                    training_verification='not_performed', evaluation_games_per_cycle=1,
                    collection_workers=10, collection_worker_threads=1, preparation_workers=1,
                    collection_scheduling='rolling-v1', memory_reserve_gib=48,
@@ -1612,6 +1627,8 @@ def ten_configuration(checked, seconds, *, games=None, use_metal=False):
     if use_metal:
         cfg['metal_matmul_preference'] = '1'
         cfg['metal_fast_math'] = '0'
+    if use_mlx:
+        cfg.update(policy_backend='cpu', mlx_runtime=mlx_runtime)
     return cfg
 
 
@@ -1961,6 +1978,7 @@ def ten_inspect():
 
 
 def prepare_ten(args, inspected):
+    from experiments.learner import interaction_guard
     require(shutil.disk_usage(ARTIFACTS).free >= TEN_DISK_RESERVE_GIB * 1024**3,
             'Ten-game launch requires the existing 30 GiB disk reserve after artifact retirement')
     require(type(args.batches) is int and 1 <= args.batches <= 100,
@@ -1978,7 +1996,7 @@ def prepare_ten(args, inspected):
     requested = getattr(args, 'games', None) if CYCLE_MODE else None
     sizes = cycle_batch_sizes(requested) if requested is not None else None
     configuration = ten_configuration(checked, seconds, games=sizes[0] if sizes else None,
-        use_metal=getattr(args, 'metal', False))
+        use_metal=getattr(args, 'metal', False), use_mlx=getattr(args, 'mlx', False))
     reserved_cycles = (1 if sizes else args.batches) + int(inspected.get('pending_evaluation', False))
     width = requested + 1 if sizes else cycle_width()
     output = private_output(args.output or TEN_BASE / ('run-' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
@@ -1997,7 +2015,8 @@ def prepare_ten(args, inspected):
         reservations=reservations, batches=args.batches, reserved_cycles=reserved_cycles,
         pending_evaluation=inspected.get('pending_evaluation', False),
         configuration=configuration, execution=checked['execution'],
-        policy_support=checked['experiment']['policy_support'], equipment_policy=checked['equipment_policy'],
+        policy_support=(interaction_guard.STACK_MANAGEMENT_VERSION
+                        if CYCLE_MODE else checked['experiment']['policy_support']), equipment_policy=checked['equipment_policy'],
         army_information=checked['army_information'], maximum_seconds=seconds,
         hard_deadline_monotonic=None if seconds is None else now + seconds,
         hard_deadline_unix=None if seconds is None else wall + seconds,
@@ -2018,6 +2037,10 @@ def load_ten_launch(path, sha):
     launch = read(path)
     require(launch.get('schema') == TEN_LAUNCH and launch['source'] == source_identity(),
             'Ten-game launch source changed')
+    if launch['configuration'].get('learner_backend', 'cpu') == 'mlx':
+        require(launch['configuration'].get('mlx_runtime') == mlx_runtime_identity()
+                and launch['configuration'].get('policy_backend') in ('cpu', 'mlx'),
+                'MLX runtime or policy backend differs from its launch')
     if launch['configuration'].get('learner_backend', 'cpu') == 'metal':
         require(launch['configuration'].get('metal_matmul_preference') == '1'
                 and launch['configuration'].get('metal_fast_math') == '0'
@@ -2054,7 +2077,7 @@ def ten_batch_plan(launch, state, *, name, mode, start, opponent_model, opponent
     metadata = training.metadata(binding(Path(launch['output']) / 'launch.json')['sha256'],
         launch['original_parent']['policy'], opponent_policy, campaign_id=launch['campaign_id'],
         purpose=mode, training_contract=training.CYCLE_SCHEMA if CYCLE_MODE else training.TEN_SCHEMA,
-        training_games=count)
+        training_games=count, policy_support=launch["policy_support"])
     opponent = deepcopy(opponent_model).eval().requires_grad_(False)
     opponent_id = f"{launch['campaign_id']}-{name}-frozen"
     for filename, model, checkpoint in (('learner.pt', state.model, state.checkpoint),
@@ -2190,18 +2213,21 @@ def ten_coordinator(args):
     from validation.probes.validate_hero_policy import wall_limit
     launch = load_ten_launch(args.plan, args.sha256)
     require(os.getppid() == launch['supervisor_pid'], 'Only the lease owner may launch ten-game training')
-    configure_native(launch['execution'])
+    configure_native(launch['execution'], policy_backend=launch['configuration'].get('policy_backend', 'cpu'))
     output = Path(launch['output']); started = time.monotonic(); started_wall = time.time()
     state = training.restore_checkpoint_pair(launch['parent_pair'], expected_metadata=launch['parent_pair']['metadata'],
         expected_ppo_config=PPO, expected_optimizer_steps=launch['parent_optimizer_steps'])
     report = dict(schema=TEN_LAUNCH + '-result', status='running', mode='training', batches=[],
-        learner_backend=launch['configuration'].get('learner_backend', 'cpu'), inference_backend='cpu',
+        learner_backend=launch['configuration'].get('learner_backend', 'cpu'),
+        inference_backend=launch['configuration'].get('policy_backend', 'cpu'),
         optimizer_updates=0, admitted_games=0, training_samples_admitted=0,
         parent_checkpoint=state.progress.updates, latest_checkpoint=state.progress.updates,
         owned_cleanup_verified=False, protected_inputs_unchanged=False)
     if report['learner_backend'] == 'metal':
         report['metal_matmul_preference'] = os.environ['PYTORCH_MPS_PREFER_METAL']
         report['metal_fast_math'] = os.environ['PYTORCH_MPS_FAST_MATH']
+    if report['learner_backend'] == 'mlx':
+        report['mlx_runtime'] = mlx_runtime_identity()
     write(output / 'report.json', report, new=True)
     previous_pair, publication = launch['parent_pair'], launch['parent_publication']
     update_progress = None
@@ -2279,7 +2305,7 @@ def ten_coordinator(args):
             metadata = training.metadata(binding(path)['sha256'], launch['original_parent']['policy'],
                 plan['opponent_checkpoint'], campaign_id=launch['campaign_id'], purpose='training',
                 training_contract=training.CYCLE_SCHEMA if CYCLE_MODE else training.TEN_SCHEMA,
-                training_games=batch_sizes[index])
+                training_games=batch_sizes[index], policy_support=plan["policy_support"])
             if update_progress is not None:
                 update_progress.phase('saving')
             checkpoint_started = time.monotonic()
@@ -2379,7 +2405,9 @@ def main(argv=None):
         ten.add_argument('--hours', type=float, default=None)
         if name.startswith('cycle-'):
             ten.add_argument('--games', type=int, help='10–1000 training games; PPO batches up to 100, one final diagnostic')
-            ten.add_argument('--metal', action='store_true', help='Opt into experimental Metal PPO; CPU gameplay and diagnostics')
+            backend = ten.add_mutually_exclusive_group()
+            backend.add_argument('--metal', action='store_true', help='PyTorch/Metal PPO; CPU gameplay and diagnostics')
+            backend.add_argument('--mlx', action='store_true', help='MLX PPO with CPU gameplay and diagnostics; compatible checkpoint format')
         ten.add_argument('--output', type=Path)
         ten.add_argument('--run-dir', type=Path, required=name in ('batch10-continue', 'cycle-continue'))
     for name in ('_coordinator', '_capture', '_report'):
@@ -2424,10 +2452,11 @@ def main(argv=None):
                              or (args.hours is not None and math.isfinite(args.hours)
                                  and 120 <= args.hours * 3600 <= max_hours * 3600)),
                         f'Use 1–100 batches and a finite budget up to {max_hours:g} hours')
-                if getattr(args, 'metal', False):
+                if getattr(args, 'metal', False) or getattr(args, 'mlx', False):
                     # Reject unsupported selection before retirement or seed reservation.
                     ten_configuration(inspected['checked'], None if args.hours is None else args.hours * 3600,
-                        games=cycle_batch_sizes(requested)[0] if requested is not None else None, use_metal=True)
+                        games=cycle_batch_sizes(requested)[0] if requested is not None else None,
+                        use_metal=getattr(args, 'metal', False), use_mlx=getattr(args, 'mlx', False))
                 if args.run_dir is not None:
                     require(inspected['lineage'] is not None and inspected['lineage']['runs']
                         and Path(read(bound(inspected['lineage']['runs'][-1]))['output']).resolve() == args.run_dir.resolve(),
@@ -2445,7 +2474,7 @@ def main(argv=None):
                         exact_model_adam_rng_progress_sampler_pool=True,
                         configuration=ten_configuration(inspected['checked'], None if args.hours is None else args.hours * 3600,
                             games=cycle_batch_sizes(requested)[0] if requested is not None else None,
-                            use_metal=getattr(args, 'metal', False)),
+                            use_metal=getattr(args, 'metal', False), use_mlx=getattr(args, 'mlx', False)),
                         training_games=args.batches * cycle_games(), held_out_games=(args.batches + int(inspected.get('pending_evaluation', False))) if CYCLE_MODE else 0,
                         total_physical_games=args.batches * cycle_width() + int(inspected.get('pending_evaluation', False)),
                         expected_optimizer_updates=args.batches,
@@ -2455,6 +2484,9 @@ def main(argv=None):
                         disk_reserve_available=shutil.disk_usage(ARTIFACTS).free >= TEN_DISK_RESERVE_GIB * 1024**3,
                         next_command='cycle-run' if CYCLE_MODE else
                             ('batch10-run' if inspected['lineage'] is None else 'batch10-continue'))
+                    if CYCLE_MODE:
+                        from experiments.learner.interaction_guard import STACK_MANAGEMENT_VERSION
+                        result['policy_support'] = STACK_MANAGEMENT_VERSION
                     if requested is not None:
                         held_out = 1 + int(inspected.get('pending_evaluation', False))
                         result.update(training_games=requested, held_out_games=held_out,

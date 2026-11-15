@@ -239,13 +239,15 @@ def _sha256(value):
 def _check_selfplay_gameplay_metadata(metadata, interface):
     """A new v8 self-play lineage cannot masquerade as built-in or legacy v4 play."""
     from .contextual import EXPANDED_ENVIRONMENT
-    from .interaction_guard import HERO_RELATIVE_VERSION, REVEALED_VERSION
+    from .interaction_guard import HERO_RELATIVE_VERSION, REVEALED_VERSION, STACK_MANAGEMENT_VERSION
     ten_game = type(metadata) is dict and metadata.get("training_contract") in (SELFPLAY_TEN_SCHEMA, SELFPLAY_CYCLE_SCHEMA)
-    guard = HERO_RELATIVE_VERSION if ten_game else REVEALED_VERSION
+    guards = ((HERO_RELATIVE_VERSION, STACK_MANAGEMENT_VERSION)
+              if ten_game and metadata.get("training_contract") == SELFPLAY_CYCLE_SCHEMA
+              else (HERO_RELATIVE_VERSION,) if ten_game else (REVEALED_VERSION,))
     if (interface != EXPANDED_ENVIRONMENT or type(metadata) is not dict
             or not _sha256(metadata.get("plan_sha256"))
             or type(metadata.get("campaign_id")) is not str or not metadata["campaign_id"].strip()
-            or metadata.get("policy_support") != guard
+            or metadata.get("policy_support") not in guards
             or metadata.get("opponent_pool") != "selfplay-batch-start-v1"
             or metadata.get("purpose") not in ("training", "diagnostic")
             or metadata.get("learner_only_ppo") is not True

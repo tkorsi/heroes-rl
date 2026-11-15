@@ -283,9 +283,22 @@ def ppo_update(model, optimizer, rollouts, *, config=PPOConfig(), generator):
     return _update(model, optimizer, rollouts, config=config, generator=generator)
 
 
-def _update(model, optimizer, rollouts, *, use_metal=False, **options):
-    if type(use_metal) is not bool:
-        raise ValueError("Metal selection must be explicit")
+def _update(model, optimizer, rollouts, *, use_metal=False, use_mlx=False, **options):
+    if type(use_metal) is not bool or type(use_mlx) is not bool or (use_metal and use_mlx):
+        raise ValueError("Select exactly one explicit numerical backend")
+    if use_mlx:
+        if NATIVE_EXECUTION is None or options.get('prepared_native_inputs') is None:
+            raise ValueError("MLX update requires an explicit native binding and checked prepared histories")
+        if (type(NATIVE_EXECUTION) is not dict
+                or set(NATIVE_EXECUTION) != {"manifest", "sha256", "prefix_threads"}
+                or type(NATIVE_EXECUTION["prefix_threads"]) is not int
+                or not 1 <= NATIVE_EXECUTION["prefix_threads"] <= 256
+                or PREFIX_HELPERS or EXPERIMENTS):
+            raise ValueError("Invalid or conflicting native learner execution")
+        from .native_backend import load_backend
+        load_backend(NATIVE_EXECUTION["manifest"], NATIVE_EXECUTION["sha256"])
+        from .mlx_backend import update
+        return update(model, optimizer, rollouts, **options)
     device = nullcontext()
     if use_metal:
         if NATIVE_EXECUTION is None or options.get('prepared_native_inputs') is None:

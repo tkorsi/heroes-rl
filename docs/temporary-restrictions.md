@@ -10,12 +10,12 @@ the rules under which they were created.
 | Prebuilt starting taverns | `hero-management-v4` retains the v3 starting Tavern in both towns at no resource cost. Hiring still costs native gold and requires a free visitor slot. | Remove each starting Tavern in a new map version; compare recovery after hero loss. |
 | Calendar neutral spawning restored | Since v4, native special-month conditions can create wandering neutral armies. This does not mean new armies appear every month. Initial neutrals, existing growth and town growth retain their native rules. | This restriction was removed on November 12, 2026. Keep v3's disabled-spawning map for historical provenance. |
 | Automatic combat | Adventure experiments delegate tactical combat to BattleAI. | Add and validate a separate battle policy before claiming end-to-end learned play. |
-| No manual troop-slot management | The current cycle retains the recruitment-only action restrictions introduced for the trained-1753 lineage. | Restore stack rearrangement and upgrades in a separately versioned experiment after the adventure baseline is evaluated. |
+| Manual troop-slot management restored | New cycles from checkpoint 1,768 use `visible-interaction-budget-hero-relative-stack-management-v1`, restoring split, merge, swap, transfer, stack inspection and upgrades. Historical recruitment-only captures retain their original support. | Prepared for the next user-run cycle; not yet observed in new games. |
 | No artifacts anywhere | `no-artifacts-v1` removes all hero equipment and disables every artifact, including spellbooks and war machines, throughout the game. Starts, hires, purchases, loot and rewards are covered. | Restore normal artifact acquisition in a separately versioned experiment; report that removing catapults and spellbooks changes siege and spell access. |
 | One-action town cooldown | `visible-interaction-budget-recruit-only-town-cooldown-v1` excludes `open_town` after a player closes a town, until that player completes a different action. It also applies after an empty visit. | Review repeat openings and menu alternation after the frozen game. Remove the cooldown by selecting a different support version and retain the original version for replay. |
 | Consecutive identical commands | `visible-interaction-budget-hero-relative-cooldown-v1` retains the town rule and excludes the previous command for each player. Another hero, tile or quantity is a different command. Mandatory choices and window exits stay available, and a repeated end turn is allowed when it is the only available action. | Measure repeated commands, travel and menu alternation. Select a separate support version to remove the restriction. |
 
-The troop-slot restriction was explicitly requested on 30 October 2026. It excludes
+The historical troop-slot restriction was explicitly requested on 30 October 2026. It excludes
 `split_stack`, `merge_stacks`, `swap_stacks`, `transfer_stack`, `open_stack`,
 `select_upgrade` and `upgrade_stack`. Buying creatures remains available, including
 already upgraded creatures offered by a dwelling. Native recruitment chooses its
@@ -79,3 +79,14 @@ pinned, replay-verified native-default spawning control from v3 acceptance;
 this is not a claim of a new v4 mechanics capture. Subsequent training has used
 v4, and the latest complete published checkpoint is 1,765. See the
 [research journal](research-log.md) for each run's map, parent and outcome.
+
+
+On November 15, 2026 the user requested restoration of troop-slot management
+for 100 fresh games continuing complete checkpoint 1,768, with CPU inference and
+MLX PPO. The new support version retains hero-relative coordinates, consecutive
+command exclusion, town reopening cooldown, revealed movement and visible
+interaction budgets. Only the seven troop-slot action exclusions are removed.
+Native legality, capacity and mandatory-dialog rules remain. Starting taverns,
+no-artifacts-v1 (including spellbooks/war machines), automatic combat, neutral
+spawning and scenario limits are unchanged. Historical rules remain available.
+No new game or training run has been performed for this rule change yet.

@@ -2,7 +2,7 @@
 # Check by default; select the ten-game experiment explicitly with --batch-ten.
 set -eu
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-TRAINER_PYTHON=${HEROES_PYTHON:-"$HOME/Projects/Heroes-artifacts/python/next-launch-numpy235-v1/venv/bin/python"}
+TRAINER_PYTHON=${HEROES_PYTHON:-"$HOME/Projects/Heroes-artifacts/python/mlx-v1/venv/bin/python"}
 if [ ! -x "$TRAINER_PYTHON" ]; then
     echo "Set HEROES_PYTHON to the project's locked Python interpreter." >&2
     exit 2

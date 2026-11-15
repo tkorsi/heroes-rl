@@ -1656,6 +1656,9 @@ class ContextualActorCritic(nn.Module):
         return result
 
     def forward_step(self, frame, state):
+        from .mlx_policy import get_policy_backend, forward_step as mlx_forward_step
+        if get_policy_backend() == "mlx":
+            return mlx_forward_step(self, frame, state)
         self._check_step(frame, state)
         if frame.semantics is None:
             return StepOutput(state, None)
@@ -1709,7 +1712,7 @@ class ContextualDistribution:
 
     def _coordinate_positions(self, subject, width, height):
         hx = hy = 0
-        if self.guard is not None and self.guard.version == interaction_guard.HERO_RELATIVE_VERSION:
+        if self.guard is not None and self.guard.version in interaction_guard.HERO_RELATIVE_VERSIONS:
             hx, hy, _ = next(hero.position for hero in self.observation.heroes if hero.handle == subject)
         return self.model._float([((x - hx) / max(width - 1, 1), (y - hy) / max(height - 1, 1))
                                   for y in range(height) for x in range(width)])

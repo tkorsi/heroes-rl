@@ -25,12 +25,18 @@ of the Codex conversation. This rule does not waive runtime or validation gates.
 
 ## One main development line
 
+Do not merge branches/PRs or push directly to `main` without the user's explicit
+instruction for that publication. Preparing changes or recording research does
+not authorize publication. When publication is desirable, ask and wait. An
+explicitly requested experiment may use its own local branch; do not merge it
+back or retire it automatically.
+
 `main` is the canonical development branch and `/Users/orsi/Projects/Heroes` is
 the working checkout. Keep current implementation, configuration and research
 findings together there; do not accumulate long-lived experiment branches or
 duplicate working directories. Publish incremental, focused commits to `main`
-when authorized. Temporary isolation must be reintegrated and removed when its
-work is complete. Preserve required historical source identities, checkpoints
+when authorized. Reintegrate and remove temporary isolation only after the user
+explicitly authorizes that step. Preserve required historical source identities, checkpoints
 and runtime assets in private storage before retiring a working copy.
 
 Read `README.md` before changing this project. It is the single authoritative

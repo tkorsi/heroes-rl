@@ -361,6 +361,50 @@ METAL_MEMORY_SOURCES = {
 METAL_MEMORY_NEW = frozenset(name for name, pins in METAL_MEMORY_SOURCES.items() if pins['before'] is None)
 
 
+# Exact reviewed MLX PPO/policy transition from 8da9caa. Existing runtime and
+# scenario receipts are retained only for these content-bound source additions.
+MLX_PPO_SOURCES = {
+    'experiments/learner/builtin_gameplay.py': {'before': 'c3f02c1e5895d1fdfa56408018a170c635fd11dc7c23b2b4c667646a6667cf17',
+        'after': 'b25b0dc1ef1b389a73ae3d141e37f7348ce68f2718f441fa8787d3d84615133a'},
+    'experiments/learner/contextual_model.py': {'before': 'e3afd30e2638e190c518d46b6f5b83f4709c3e998dcab20e8ae4ca6157903fb9',
+        'after': '331eeb9afedf43c1a632dc02680d2dda054d154a0c890bad19fc9fbefc3a337d'},
+    'experiments/learner/first_run.py': {'before': '645e1ca237b2eee9f0338d0a8b8e388aac7ee5d952e205ea666e55481fecd81a',
+        'after': '4f13f4467e70913406f180aa79f928f529b565c443dca68a99ecdc1985234e3f'},
+    'experiments/learner/inference.py': {'before': 'ba95349f5265c6bd3aaff2caf607af86975f74f8addca1f2b4a2a4bf78a101e8',
+        'after': '77cb68abf091c11fc313f1359d99ca0a7af2d5374913d3ea98c71e4f652387d2'},
+    'experiments/learner/ppo.py': {'before': 'fd8fb522b7e5717fcf3b8f1e9c58dd56f12b330ab86fd910c1340359f4513e36',
+        'after': 'd5ef8bea00e888056376d50efaffcd8889b1d7ea2000f7c0d22dd7f99ea4a945'},
+    'experiments/learner/selfplay_training.py': {'before': 'acfd55b3b7ade3e1857a3581d4ebb505618b63141bbefcf9b745632eb59be906',
+        'after': '2595573a4bb2f6e915dd89e970bf9dffd2e3f090962b999a984d2e4ccb660247'},
+    'tools/run_selfplay_training.py': {'before': 'de8bb75ad0f001a83ad8a6210c9b8cffec20927748b84e9afa2d1db57d37395b',
+        'after': 'e403967f4cddf25fc0bfeaf580954bbdb968c898e27dd7f11e93d20efa048e37'},
+    'experiments/learner/mlx_backend.py': {'before': None,
+        'after': 'b8a4671dfcdcc75801391e82b67d594ba651c84e72a64e5fd9d7f06c3fa19692'},
+    'experiments/learner/mlx_model.py': {'before': None,
+        'after': '6cf298c6d90faa06d9db6ea1ed20db102712583e734496604a37d6817d3c73f4'},
+    'experiments/learner/mlx_kernels.py': {'before': None,
+        'after': '24482ae8d907201a64011a65c4318d16e1a52449e8e348a9a76acf532b347f82'},
+    'experiments/learner/mlx_map.py': {'before': None,
+        'after': '1d0ef7eaf8e48c32f4cbf0faa97e7ea7d18e5df7b0c4b4290caae2776f9c9884'},
+    'experiments/learner/mlx_plans.py': {'before': None,
+        'after': '07c87b7edb4885adc2aa2907f2d5295dbd3a84c3bd531dcbaec53f2950a282d8'},
+    'experiments/learner/mlx_policy.py': {'before': None,
+        'after': '2695496c747a878bcb3500247ddebbe2ee3c4b67eedec078fe72301937df1da8'},
+    'native/learner/mlx/gru_tree.json': {'before': None,
+        'after': '05e56b525d2ed0622c81158eca739a0e27bfdcf8b70c6d1a9d253cd407cb3de8'},
+    'native/learner/mlx/map.json': {'before': None,
+        'after': '3933eb075394b95f55a505ad74d478de0280008179f218dbdf9b0c9b23a2c0fa'},
+    'dependencies/learner-mlx.lock': {'before': None,
+        'after': '9422f835a2998903a52b6660840d63e430df3b9be4231cfd388d2fa221dc5f79'},
+    'experiments/learner/interaction_guard.py': {'before': 'eeec528257a70169353d7c8c8e15b22874405a20589e8bcdf7d63a241aea6639',
+        'after': '0514d69d042b4bf06c49ed6a6056bedfe21f8c0adfafb95de4115a0d4ba1c641'},
+    'experiments/learner/checkpoints.py': {'before': '58e3519d14cdee7bfc427515af07759103aa913bd128a97c436c0a5d8b91a2e3',
+        'after': '2af04de646f18b99341871b88ee424fcd7245c60575a03a21dde0be638fca0cd'},
+}
+
+MLX_PPO_NEW = frozenset(name for name, pins in MLX_PPO_SOURCES.items() if pins['before'] is None)
+
+
 def verify_runtime_sources(implementation):
     """Bind the base plus exact reviewed storage/UI and support additions."""
     require(STORAGE_PROGRESS_PATHS <= implementation.keys(),
@@ -373,6 +417,8 @@ def verify_runtime_sources(implementation):
             'Evaluation source identity omitted a reviewed Metal PPO dependency')
     require(METAL_MEMORY_SOURCES.keys() <= implementation.keys(),
             'Evaluation source identity omitted a reviewed Metal memory dependency')
+    require(MLX_PPO_SOURCES.keys() <= implementation.keys(),
+            'Evaluation source identity omitted a reviewed MLX dependency')
     def committed(commit, names):
         archive = subprocess.check_output(['git', 'archive', commit, *sorted(names)], cwd=ROOT)
         with tarfile.open(fileobj=io.BytesIO(archive), mode='r:') as source:
@@ -381,7 +427,7 @@ def verify_runtime_sources(implementation):
         require(files.keys() == names, 'Committed evaluation source inventory differs')
         return files
     original = committed(BASE_COMMIT, implementation.keys() - STORAGE_PROGRESS_NEW - STARTING_EQUIPMENT_NEW
-                         - SCENARIO_RULE_SOURCES.keys() - METAL_PPO_NEW - METAL_MEMORY_NEW)
+                         - SCENARIO_RULE_SOURCES.keys() - METAL_PPO_NEW - METAL_MEMORY_NEW - MLX_PPO_NEW)
     original.update(committed(STORAGE_PROGRESS_COMMIT, STORAGE_PROGRESS_PATHS))
     original.update(RECRUIT_ONLY_SOURCE_SHA256)
     original.update({name: pins['after'] for name, pins in DAY_PROGRESS_SOURCES.items()})
@@ -445,6 +491,9 @@ def verify_runtime_sources(implementation):
     require(all(original.get(name) == pins['before'] for name, pins in METAL_MEMORY_SOURCES.items()),
             'Metal memory source transition differs from its reviewed parent')
     original.update({name: pins['after'] for name, pins in METAL_MEMORY_SOURCES.items()})
+    require(all(original.get(name) == pins['before'] for name, pins in MLX_PPO_SOURCES.items()),
+            'MLX source transition differs from its reviewed Metal parent')
+    original.update({name: pins['after'] for name, pins in MLX_PPO_SOURCES.items()})
     require(original == implementation, 'Evaluation changed an existing learner, adapter, engine or replay source')
 
 
@@ -476,7 +525,8 @@ def verify_native_validation_sources(accepted, current):
                    ('reviewed_configurable_games_dashboard', CONFIGURABLE_GAME_SOURCES),
                    ('reviewed_unlimited_cycle_waits', SLEEP_RESUME_SOURCES),
                    ('reviewed_opt_in_metal_ppo', METAL_PPO_SOURCES),
-                   ('reviewed_metal_memory_bound', METAL_MEMORY_SOURCES))
+                   ('reviewed_metal_memory_bound', METAL_MEMORY_SOURCES),
+                   ('reviewed_mlx_ppo_and_policy', MLX_PPO_SOURCES))
     for kind, transition in transitions:
         if all(expected.get(name) == pins['before'] for name, pins in transition.items()):
             expected.update({name: pins['after'] for name, pins in transition.items()})
@@ -523,13 +573,14 @@ def source_identity():
         retention_sources=RETENTION_SOURCES,
         metal_ppo_sources=METAL_PPO_SOURCES,
         metal_memory_sources=METAL_MEMORY_SOURCES,
+        mlx_ppo_sources=MLX_PPO_SOURCES,
         driver=binding(__file__), launcher=binding(ROOT / 'play-one-selfplay-2x.sh'))
 
 
 def policy_support(plan):
-    from experiments.learner.interaction_guard import RECRUIT_ONLY_VERSIONS
+    from experiments.learner.interaction_guard import RECRUIT_ONLY_VERSIONS, STACK_MANAGEMENT_VERSION
     version = plan.get('policy_support')
-    require(version in (campaign.GUARD, *RECRUIT_ONLY_VERSIONS),
+    require(version in (campaign.GUARD, *RECRUIT_ONLY_VERSIONS, STACK_MANAGEMENT_VERSION),
             'Unknown or missing one-game policy support')
     return version
 
@@ -809,7 +860,9 @@ def worker(path, sha, *, identity_check=None, model_loader=None, result_schema=S
     write(output / 'report.json', report, new=True)
     try:
         with wall_limit(campaign.remaining(plan, 30)):
-            identity_check(plan); campaign.configure_native(plan['execution'])
+            identity_check(plan)
+            campaign.configure_native(plan['execution'],
+                policy_backend=plan.get('configuration', {}).get('policy_backend', 'cpu'))
             models = model_loader(plan)
         # The capture and verification timers are sequential: wall_limit rejects
         # nesting, while the process guardian bounds the entire worker.

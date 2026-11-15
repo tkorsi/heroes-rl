@@ -1,0 +1,42 @@
+{
+  "source": "native/learner/metal/map.metal",
+  "adaptation": "Original compact-index kernel bodies; shared loaders supply scalar arguments through a uint32 runtime buffer. Second-pass atomic output stores pooled deltas because MLX custom kernels do not mutate input arrays. Add current-weight anchor pooling after the kernel.",
+  "kernels": {
+    "sparse_first_i32": {
+      "input_names": [
+        "delta",
+        "neighbors",
+        "groups",
+        "cells",
+        "anchors",
+        "weight"
+      ],
+      "output_names": [
+        "out"
+      ],
+      "source": "uint index = thread_position_in_grid.x;\nif(index >= COUNT * 16) return;\n    uint row = index / 16, channel = index % 16;\n    float sum = 0.0f;\n    for(uint input = 0; input < 21; ++input) {\n        for(uint k = 0; k < 9; ++k) {\n            long neighbor = neighbors[row * 9 + k];\n            sum += delta[neighbor * 21 + input] * weight[(channel * 33 + input + 12) * 9 + k];\n        }\n    }\n    float base = anchors[(long(groups[row]) * SIZE + cells[row]) * 16 + channel];\n    out[(row + 1) * 16 + channel] = tanh(base + sum) - tanh(base);",
+      "header": "",
+      "atomic_outputs": false
+    },
+    "sparse_second_i32": {
+      "input_names": [
+        "delta",
+        "neighbors",
+        "groups",
+        "cells",
+        "anchors",
+        "weight",
+        "bins"
+      ],
+      "output_names": [
+        "pooled"
+      ],
+      "source": "uint index = thread_position_in_grid.x;\nif(index >= COUNT * 16) return;\n    uint row = index / 16, channel = index % 16;\n    float sum = 0.0f;\n    for(uint input = 0; input < 16; ++input) {\n        for(uint k = 0; k < 9; ++k) {\n            long neighbor = neighbors[row * 9 + k];\n            sum += delta[neighbor * 16 + input] * weight[(channel * 16 + input) * 9 + k];\n        }\n    }\n    float base = anchors[(long(groups[row]) * SIZE + cells[row]) * 16 + channel];\n    float difference = (tanh(base + sum) - tanh(base)) / AREA;\n    atomic_fetch_add_explicit(&pooled[long(bins[row]) * 16 + channel], difference, memory_order_relaxed);",
+      "header": "",
+      "atomic_outputs": true
+    }
+  },
+  "source_sha256": {
+    "native/learner/metal/map.metal": "0ab846ae0cd8fe8cf2396d30b5f26400ad3a0db6509bb3912f0a50ce78df7db1"
+  }
+}

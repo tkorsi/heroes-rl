@@ -1,0 +1,168 @@
+{
+  "schema": "heroes-shared-metal-kernels-v1",
+  "source_sha256": {
+    "native/learner/metal/gru.metal": "7f934168448120e9798474f3e847b3ccb0063d36dd6e87617e85970e881a6111",
+    "native/learner/metal/tree.metal": "8bb7a18d56974c5e91b46b2e5bf0e367f7417eed46051aeb9c6988c952bd4592"
+  },
+  "kernels": {
+    "backward_gru": {
+      "input_names": [
+        "incoming",
+        "states",
+        "gates",
+        "wh"
+      ],
+      "output_names": [
+        "dgi",
+        "dgh",
+        "dh0"
+      ],
+      "source": "uint b = threadgroup_position_in_grid.x;\nuint j = thread_index_in_threadgroup;\n\n threadgroup float dg[192];threadgroup float carry[64];carry[j]=0;\n threadgroup_barrier(mem_flags::mem_threadgroup);\n for(int t=int(T)-1;t>=0;t--) {\n  uint g=(b*T+uint(t))*4*H;float r=gates[g+j],z=gates[g+H+j],n=gates[g+2*H+j],an=gates[g+3*H+j];\n  float dh=carry[j]+incoming[(b*T+uint(t))*H+j];\n  float dn=dh*(1.0f-z)*(1.0f-n*n);\n  float dz=dh*(states[(b*(T+1)+uint(t))*H+j]-n)*z*(1.0f-z);\n  float dr=dn*an*r*(1.0f-r);\n  uint o=(b*T+uint(t))*3*H;\n  dgi[o+j]=dr;dgi[o+H+j]=dz;dgi[o+2*H+j]=dn;\n  dg[j]=dr;dg[H+j]=dz;dg[2*H+j]=dn*r;\n  dgh[o+j]=dr;dgh[o+H+j]=dz;dgh[o+2*H+j]=dn*r;\n  threadgroup_barrier(mem_flags::mem_threadgroup);\n  float prev=dh*z;\n  for(uint k=0;k<3*H;k++)prev+=dg[k]*wh[k*H+j];\n  threadgroup_barrier(mem_flags::mem_threadgroup);\n  carry[j]=prev;\n  threadgroup_barrier(mem_flags::mem_threadgroup);\n }\n dh0[b*H+j]=carry[j];\n",
+      "header": "#include <metal_stdlib>\nusing namespace metal;\n#pragma STDC FP_CONTRACT OFF\n",
+      "atomic_outputs": false
+    },
+    "forward_gru_simd": {
+      "input_names": [
+        "gi",
+        "wh",
+        "bh",
+        "initial"
+      ],
+      "output_names": [
+        "states",
+        "gates"
+      ],
+      "source": "uint b = threadgroup_position_in_grid.x;\nuint s = simdgroup_index_in_threadgroup;\nuint lane = thread_index_in_simdgroup;\n\n threadgroup float hidden[64];uint j=2*s;\n if(lane==0){hidden[j]=initial[b*H+j];hidden[j+1]=initial[b*H+j+1];states[b*(T+1)*H+j]=hidden[j];states[b*(T+1)*H+j+1]=hidden[j+1];}\n float wr0[2],wz0[2],wn0[2],wr1[2],wz1[2],wn1[2];\n for(uint q=0;q<H/32;q++){uint k=q*32+lane;wr0[q]=wh[j*H+k];wz0[q]=wh[(H+j)*H+k];wn0[q]=wh[(2*H+j)*H+k];wr1[q]=wh[(j+1)*H+k];wz1[q]=wh[(H+j+1)*H+k];wn1[q]=wh[(2*H+j+1)*H+k];}\n threadgroup_barrier(mem_flags::mem_threadgroup);\n for(uint t=0;t<T;t++){\n  float ar0=0,az0=0,an0=0,ar1=0,az1=0,an1=0;\n  for(uint q=0;q<H/32;q++){float h=hidden[q*32+lane];ar0+=wr0[q]*h;az0+=wz0[q]*h;an0+=wn0[q]*h;ar1+=wr1[q]*h;az1+=wz1[q]*h;an1+=wn1[q]*h;}\n  ar0=simd_sum(ar0);az0=simd_sum(az0);an0=simd_sum(an0);ar1=simd_sum(ar1);az1=simd_sum(az1);an1=simd_sum(an1);\n  float h0=0,h1=0;\n  if(lane==0){\n   uint base=(b*T+t)*3*H;uint g=(b*T+t)*4*H;\n   an0+=bh[2*H+j];an1+=bh[2*H+j+1];\n   float r0=1.0f/(1.0f+exp(-((ar0+bh[j])+gi[base+j]))),z0=1.0f/(1.0f+exp(-((az0+bh[H+j])+gi[base+H+j]))),n0=tanh(gi[base+2*H+j]+r0*an0);\n   float r1=1.0f/(1.0f+exp(-((ar1+bh[j+1])+gi[base+j+1]))),z1=1.0f/(1.0f+exp(-((az1+bh[H+j+1])+gi[base+H+j+1]))),n1=tanh(gi[base+2*H+j+1]+r1*an1);\n   h0=(hidden[j]-n0)*z0+n0;h1=(hidden[j+1]-n1)*z1+n1;\n   gates[g+j]=r0;gates[g+H+j]=z0;gates[g+2*H+j]=n0;gates[g+3*H+j]=an0;\n   gates[g+j+1]=r1;gates[g+H+j+1]=z1;gates[g+2*H+j+1]=n1;gates[g+3*H+j+1]=an1;\n  }\n  threadgroup_barrier(mem_flags::mem_threadgroup);\n  if(lane==0){hidden[j]=h0;hidden[j+1]=h1;states[(b*(T+1)+t+1)*H+j]=h0;states[(b*(T+1)+t+1)*H+j+1]=h1;}\n  threadgroup_barrier(mem_flags::mem_threadgroup);\n }\n",
+      "header": "#include <metal_stdlib>\nusing namespace metal;\n#pragma STDC FP_CONTRACT OFF\n",
+      "atomic_outputs": false
+    },
+    "forward_gru_r16": {
+      "input_names": [
+        "gi",
+        "wh",
+        "bh",
+        "initial"
+      ],
+      "output_names": [
+        "states",
+        "gates"
+      ],
+      "source": "uint b = threadgroup_position_in_grid.x;\nuint tid = thread_index_in_threadgroup;\n\n constexpr uint R=16;uint j=tid/R,lane=tid%R;threadgroup float hidden[64];\n if(lane==0){hidden[j]=initial[b*H+j];states[b*(T+1)*H+j]=hidden[j];}\n float wr[64/R],wz[64/R],wn[64/R];for(uint q=0;q<H/R;q++){uint k=q*R+lane;wr[q]=wh[j*H+k];wz[q]=wh[(H+j)*H+k];wn[q]=wh[(2*H+j)*H+k];}\n threadgroup_barrier(mem_flags::mem_threadgroup);\n for(uint t=0;t<T;t++){\n  float ar=0,az=0,an=0;for(uint q=0;q<H/R;q++){float h=hidden[q*R+lane];ar+=wr[q]*h;az+=wz[q]*h;an+=wn[q]*h;}\n  for(uint offset=R/2;offset;offset/=2){ar+=simd_shuffle_xor(ar,offset);az+=simd_shuffle_xor(az,offset);an+=simd_shuffle_xor(an,offset);}\n  float h=0;if(lane==0){uint i=(b*T+t)*3*H,g=(b*T+t)*4*H;an+=bh[2*H+j];float r=1/(1+exp(-((ar+bh[j])+gi[i+j]))),z=1/(1+exp(-((az+bh[H+j])+gi[i+H+j]))),n=tanh(gi[i+2*H+j]+r*an);h=(hidden[j]-n)*z+n;gates[g+j]=r;gates[g+H+j]=z;gates[g+2*H+j]=n;gates[g+3*H+j]=an;}\n  threadgroup_barrier(mem_flags::mem_threadgroup);if(lane==0){hidden[j]=h;states[(b*(T+1)+t+1)*H+j]=h;}\n  threadgroup_barrier(mem_flags::mem_threadgroup);\n }\n",
+      "header": "#include <metal_stdlib>\nusing namespace metal;\n#pragma STDC FP_CONTRACT OFF\n",
+      "atomic_outputs": false
+    },
+    "backward_gru_lengths": {
+      "input_names": [
+        "incoming",
+        "states",
+        "gates",
+        "wh",
+        "lengths"
+      ],
+      "output_names": [
+        "dgi",
+        "dgh",
+        "dh0"
+      ],
+      "source": "uint b = threadgroup_position_in_grid.x;\nuint j = thread_index_in_threadgroup;\n\n threadgroup float dg[192];threadgroup float carry[64];carry[j]=0;\n threadgroup_barrier(mem_flags::mem_threadgroup);\n for(int t=int(min(uint(T),uint(lengths[b])))-1;t>=0;t--) {\n  uint g=(b*T+uint(t))*4*H;float r=gates[g+j],z=gates[g+H+j],n=gates[g+2*H+j],an=gates[g+3*H+j];\n  float dh=carry[j]+incoming[(b*T+uint(t))*H+j];\n  float dn=dh*(1.0f-z)*(1.0f-n*n);\n  float dz=dh*(states[(b*(T+1)+uint(t))*H+j]-n)*z*(1.0f-z);\n  float dr=dn*an*r*(1.0f-r);\n  uint o=(b*T+uint(t))*3*H;\n  dgi[o+j]=dr;dgi[o+H+j]=dz;dgi[o+2*H+j]=dn;\n  dg[j]=dr;dg[H+j]=dz;dg[2*H+j]=dn*r;\n  dgh[o+j]=dr;dgh[o+H+j]=dz;dgh[o+2*H+j]=dn*r;\n  threadgroup_barrier(mem_flags::mem_threadgroup);\n  float prev=dh*z;\n  for(uint k=0;k<3*H;k++)prev+=dg[k]*wh[k*H+j];\n  threadgroup_barrier(mem_flags::mem_threadgroup);\n  carry[j]=prev;\n  threadgroup_barrier(mem_flags::mem_threadgroup);\n }\n dh0[b*H+j]=carry[j];\n",
+      "header": "#include <metal_stdlib>\nusing namespace metal;\n#pragma STDC FP_CONTRACT OFF\n",
+      "atomic_outputs": false
+    },
+    "forward_gru_simd_lengths": {
+      "input_names": [
+        "gi",
+        "wh",
+        "bh",
+        "initial",
+        "lengths"
+      ],
+      "output_names": [
+        "states",
+        "gates"
+      ],
+      "source": "uint b = threadgroup_position_in_grid.x;\nuint s = simdgroup_index_in_threadgroup;\nuint lane = thread_index_in_simdgroup;\n\n threadgroup float hidden[64];uint j=2*s;\n if(lane==0){hidden[j]=initial[b*H+j];hidden[j+1]=initial[b*H+j+1];states[b*(T+1)*H+j]=hidden[j];states[b*(T+1)*H+j+1]=hidden[j+1];}\n float wr0[2],wz0[2],wn0[2],wr1[2],wz1[2],wn1[2];\n for(uint q=0;q<H/32;q++){uint k=q*32+lane;wr0[q]=wh[j*H+k];wz0[q]=wh[(H+j)*H+k];wn0[q]=wh[(2*H+j)*H+k];wr1[q]=wh[(j+1)*H+k];wz1[q]=wh[(H+j+1)*H+k];wn1[q]=wh[(2*H+j+1)*H+k];}\n threadgroup_barrier(mem_flags::mem_threadgroup);\n for(uint t=0;t<min(uint(T),uint(lengths[b]));t++){\n  float ar0=0,az0=0,an0=0,ar1=0,az1=0,an1=0;\n  for(uint q=0;q<H/32;q++){float h=hidden[q*32+lane];ar0+=wr0[q]*h;az0+=wz0[q]*h;an0+=wn0[q]*h;ar1+=wr1[q]*h;az1+=wz1[q]*h;an1+=wn1[q]*h;}\n  ar0=simd_sum(ar0);az0=simd_sum(az0);an0=simd_sum(an0);ar1=simd_sum(ar1);az1=simd_sum(az1);an1=simd_sum(an1);\n  float h0=0,h1=0;\n  if(lane==0){\n   uint base=(b*T+t)*3*H;uint g=(b*T+t)*4*H;\n   an0+=bh[2*H+j];an1+=bh[2*H+j+1];\n   float r0=1.0f/(1.0f+exp(-((ar0+bh[j])+gi[base+j]))),z0=1.0f/(1.0f+exp(-((az0+bh[H+j])+gi[base+H+j]))),n0=tanh(gi[base+2*H+j]+r0*an0);\n   float r1=1.0f/(1.0f+exp(-((ar1+bh[j+1])+gi[base+j+1]))),z1=1.0f/(1.0f+exp(-((az1+bh[H+j+1])+gi[base+H+j+1]))),n1=tanh(gi[base+2*H+j+1]+r1*an1);\n   h0=(hidden[j]-n0)*z0+n0;h1=(hidden[j+1]-n1)*z1+n1;\n   gates[g+j]=r0;gates[g+H+j]=z0;gates[g+2*H+j]=n0;gates[g+3*H+j]=an0;\n   gates[g+j+1]=r1;gates[g+H+j+1]=z1;gates[g+2*H+j+1]=n1;gates[g+3*H+j+1]=an1;\n  }\n  threadgroup_barrier(mem_flags::mem_threadgroup);\n  if(lane==0){hidden[j]=h0;hidden[j+1]=h1;states[(b*(T+1)+t+1)*H+j]=h0;states[(b*(T+1)+t+1)*H+j+1]=h1;}\n  threadgroup_barrier(mem_flags::mem_threadgroup);\n }\n",
+      "header": "#include <metal_stdlib>\nusing namespace metal;\n#pragma STDC FP_CONTRACT OFF\n",
+      "atomic_outputs": false
+    },
+    "forward_gru_r16_lengths": {
+      "input_names": [
+        "gi",
+        "wh",
+        "bh",
+        "initial",
+        "lengths"
+      ],
+      "output_names": [
+        "states",
+        "gates"
+      ],
+      "source": "uint b = threadgroup_position_in_grid.x;\nuint tid = thread_index_in_threadgroup;\n\n constexpr uint R=16;uint j=tid/R,lane=tid%R;threadgroup float hidden[64];\n if(lane==0){hidden[j]=initial[b*H+j];states[b*(T+1)*H+j]=hidden[j];}\n float wr[64/R],wz[64/R],wn[64/R];for(uint q=0;q<H/R;q++){uint k=q*R+lane;wr[q]=wh[j*H+k];wz[q]=wh[(H+j)*H+k];wn[q]=wh[(2*H+j)*H+k];}\n threadgroup_barrier(mem_flags::mem_threadgroup);\n for(uint t=0;t<min(uint(T),uint(lengths[b]));t++){\n  float ar=0,az=0,an=0;for(uint q=0;q<H/R;q++){float h=hidden[q*R+lane];ar+=wr[q]*h;az+=wz[q]*h;an+=wn[q]*h;}\n  for(uint offset=R/2;offset;offset/=2){ar+=simd_shuffle_xor(ar,offset);az+=simd_shuffle_xor(az,offset);an+=simd_shuffle_xor(an,offset);}\n  float h=0;if(lane==0){uint i=(b*T+t)*3*H,g=(b*T+t)*4*H;an+=bh[2*H+j];float r=1/(1+exp(-((ar+bh[j])+gi[i+j]))),z=1/(1+exp(-((az+bh[H+j])+gi[i+H+j]))),n=tanh(gi[i+2*H+j]+r*an);h=(hidden[j]-n)*z+n;gates[g+j]=r;gates[g+H+j]=z;gates[g+2*H+j]=n;gates[g+3*H+j]=an;}\n  threadgroup_barrier(mem_flags::mem_threadgroup);if(lane==0){hidden[j]=h;states[(b*(T+1)+t+1)*H+j]=h;}\n  threadgroup_barrier(mem_flags::mem_threadgroup);\n }\n",
+      "header": "#include <metal_stdlib>\nusing namespace metal;\n#pragma STDC FP_CONTRACT OFF\n",
+      "atomic_outputs": false
+    },
+    "pooled_forward": {
+      "input_names": [
+        "table",
+        "children",
+        "tags",
+        "offsets",
+        "counts",
+        "scale",
+        "w",
+        "bias"
+      ],
+      "output_names": [
+        "out",
+        "inp"
+      ],
+      "source": "uint b = threadgroup_position_in_grid.x;\nuint j = thread_index_in_threadgroup;\n\n threadgroup float x[64];float pool=0;uint K=uint(counts[b]);uint start=uint(offsets[b]);\n for(uint k=0;k<K;k++)pool+=table[children[start+k]*H+j];\n if(K)pool/=scale[b];\n x[j]=table[tags[b]*H+j];x[H+j]=pool;\n inp[b*2*H+j]=x[j];inp[b*2*H+H+j]=pool;\n threadgroup_barrier(mem_flags::mem_threadgroup);\n float v=bias[j];for(uint k=0;k<2*H;k++)v+=w[j*2*H+k]*x[k];out[b*H+j]=tanh(v);\n",
+      "header": "#include <metal_stdlib>\nusing namespace metal;\n#pragma STDC FP_CONTRACT OFF\n",
+      "atomic_outputs": false
+    },
+    "pooled_backward": {
+      "input_names": [
+        "incoming",
+        "out",
+        "children",
+        "tags",
+        "offsets",
+        "counts",
+        "scale",
+        "w"
+      ],
+      "output_names": [
+        "arena",
+        "delta"
+      ],
+      "source": "uint b = threadgroup_position_in_grid.x;\nuint j = thread_index_in_threadgroup;\n\n uint K=uint(counts[b]);uint start=uint(offsets[b]);threadgroup float d[32];float y=out[b*H+j];d[j]=incoming[b*H+j]*(1-y*y);atomic_store_explicit(&delta[b*H+j],d[j],memory_order_relaxed);\n threadgroup_barrier(mem_flags::mem_threadgroup);\n float a=0,c=0;for(uint k=0;k<H;k++){a+=d[k]*w[k*2*H+j];c+=d[k]*w[k*2*H+H+j];}\n atomic_fetch_add_explicit(&arena[tags[b]*H+j],a,memory_order_relaxed);\n if(K){c/=scale[b];for(uint k=0;k<K;k++)atomic_fetch_add_explicit(&arena[children[start+k]*H+j],c,memory_order_relaxed);}\n",
+      "header": "#include <metal_stdlib>\nusing namespace metal;\n#pragma STDC FP_CONTRACT OFF\n",
+      "atomic_outputs": true
+    },
+    "embedding_scatter": {
+      "input_names": [
+        "ids",
+        "values"
+      ],
+      "output_names": [
+        "target"
+      ],
+      "source": "uint index = thread_position_in_grid.x;\n\n if(index>=rows*width)return;\n uint row=index/width,column=index%width;long id=ids[row];\n if(id!=0)atomic_fetch_add_explicit(&target[id*width+column],values[index],memory_order_relaxed);\n",
+      "header": "#include <metal_stdlib>\nusing namespace metal;\n#pragma STDC FP_CONTRACT OFF\n",
+      "atomic_outputs": true
+    },
+    "prefix_gru_r16_all": {
+      "input_names": [
+        "gi",
+        "wh",
+        "bh",
+        "initial"
+      ],
+      "output_names": [
+        "states"
+      ],
+      "source": "uint b = threadgroup_position_in_grid.x;\nuint tid = thread_index_in_threadgroup;\n\n constexpr uint R=16;uint j=tid/R,lane=tid%R;threadgroup float hidden[64];\n if(lane==0){hidden[j]=initial[b*H+j];}\n float wr[64/R],wz[64/R],wn[64/R];for(uint q=0;q<H/R;q++){uint k=q*R+lane;wr[q]=wh[j*H+k];wz[q]=wh[(H+j)*H+k];wn[q]=wh[(2*H+j)*H+k];}\n threadgroup_barrier(mem_flags::mem_threadgroup);\n for(uint t=0;t<T;t++){\n  float ar=0,az=0,an=0;for(uint q=0;q<H/R;q++){float h=hidden[q*R+lane];ar+=wr[q]*h;az+=wz[q]*h;an+=wn[q]*h;}\n  for(uint offset=R/2;offset;offset/=2){ar+=simd_shuffle_xor(ar,offset);az+=simd_shuffle_xor(az,offset);an+=simd_shuffle_xor(an,offset);}\n  float h=0;if(lane==0){uint i=(b*T+t)*3*H;an+=bh[2*H+j];float r=1/(1+exp(-((ar+bh[j])+gi[i+j]))),z=1/(1+exp(-((az+bh[H+j])+gi[i+H+j]))),n=tanh(gi[i+2*H+j]+r*an);h=(hidden[j]-n)*z+n;}\n  threadgroup_barrier(mem_flags::mem_threadgroup);if(lane==0){hidden[j]=h;states[(b*T+t)*H+j]=h;}\n  threadgroup_barrier(mem_flags::mem_threadgroup);\n }\n",
+      "header": "#include <metal_stdlib>\nusing namespace metal;\n#pragma STDC FP_CONTRACT OFF\n",
+      "atomic_outputs": false
+    }
+  }
+}

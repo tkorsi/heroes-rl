@@ -119,8 +119,12 @@ markers in place; the coordinator reads them before cleanup.
 
 ## Setup reference
 
-The prepared Mac launcher uses `HEROES_PYTHON`, or its existing locked interpreter
-under `Heroes-artifacts/python/next-launch-numpy235-v1/`. Accepted native manifests
+The prepared Mac launcher uses `HEROES_PYTHON`, or its locked interpreter
+under `Heroes-artifacts/python/mlx-v1/`, installed from
+`dependencies/learner-mlx.lock`. This adds MLX/MLX Metal 0.31.1 while preserving
+the existing Torch 2.9.1 / NumPy 2.3.5 checkpoint and native-history dependencies.
+The previous interpreter remains intact under `python/next-launch-numpy235-v1/`.
+Accepted native manifests
 also bind Python, Torch and compiled library identities. The validated macOS
 runtime is CPython 3.13 / Torch 2.9.1; Linux CPU uses its separate CPython 3.12
 lock. A successful import alone does not establish checkpoint compatibility.

@@ -17,8 +17,10 @@ REVEALED_VERSION = "visible-interaction-budget-revealed-v1"
 RECRUIT_ONLY_VERSION = "visible-interaction-budget-recruit-only-v1"
 TOWN_COOLDOWN_VERSION = "visible-interaction-budget-recruit-only-town-cooldown-v1"
 HERO_RELATIVE_VERSION = "visible-interaction-budget-hero-relative-cooldown-v1"
+STACK_MANAGEMENT_VERSION = "visible-interaction-budget-hero-relative-stack-management-v1"
+HERO_RELATIVE_VERSIONS = (HERO_RELATIVE_VERSION, STACK_MANAGEMENT_VERSION)
 RECRUIT_ONLY_VERSIONS = (RECRUIT_ONLY_VERSION, TOWN_COOLDOWN_VERSION, HERO_RELATIVE_VERSION)
-SUPPORTED_VERSIONS = (VERSION, REVEALED_VERSION, *RECRUIT_ONLY_VERSIONS)
+SUPPORTED_VERSIONS = (VERSION, REVEALED_VERSION, *RECRUIT_ONLY_VERSIONS, STACK_MANAGEMENT_VERSION)
 # Temporary experiment restriction. Removing it requires a new explicit support
 # selection; historical captures must continue to reconstruct this exact set.
 # Whole-hero garrison changes are separate from moving stacks between slots.
@@ -158,7 +160,7 @@ class GuardSupport:
     def __post_init__(self):
         if self.version not in SUPPORTED_VERSIONS:
             raise ValueError("Unsupported interaction guard version")
-        if self.previous_command is not None and (self.version != HERO_RELATIVE_VERSION
+        if self.previous_command is not None and (self.version not in HERO_RELATIVE_VERSIONS
                 or type(self.previous_command) is not tuple or len(self.previous_command) < 6
                 or any(type(item) is not str for item in self.previous_command)
                 or not self.previous_command[0] or not self.previous_command[1]):
@@ -251,7 +253,7 @@ class GuardSupport:
             "movable_heroes": list(self.movable_heroes),
             "blocked_coordinates": [list(item) for item in self.blocked_coordinates],
         }
-        if self.version == HERO_RELATIVE_VERSION:
+        if self.version in HERO_RELATIVE_VERSIONS:
             value["previous_command"] = (list(self.previous_command) if self.previous_command is not None else None)
         return value
 
@@ -260,7 +262,7 @@ class GuardSupport:
         names = {"version", "blocked_navigation", "blocked_management_subjects", "movable_heroes", "blocked_coordinates"}
         if type(value) is not dict:
             raise ValueError("Malformed interaction guard support")
-        relative = value.get("version") == HERO_RELATIVE_VERSION
+        relative = value.get("version") in HERO_RELATIVE_VERSIONS
         if set(value) != (names | {"previous_command"} if relative else names):
             raise ValueError("Malformed interaction guard support")
         if any(type(value[name]) is not list for name in names - {"version"}):
@@ -366,7 +368,7 @@ class Tracker:
             self.consumed = True
             self.action_epoch = self.epoch
             obs, offers = self.decision.observation, self.decision.offers
-            if self.version == HERO_RELATIVE_VERSION:
+            if self.version in HERO_RELATIVE_VERSIONS:
                 self.previous_command = _command_key(self.action, obs, offers)
                 self.previous_move = ((self.action.subject, self.action.x, self.action.y)
                                       if self.action.kind == "move_to" else None)
@@ -380,7 +382,7 @@ class Tracker:
             self._progress()
         elif frame.kind == "result" and self.action is not None and self.consumed:
             result = frame.result
-            if self.version in (TOWN_COOLDOWN_VERSION, HERO_RELATIVE_VERSION) and result.accepted:
+            if self.version in (TOWN_COOLDOWN_VERSION, *HERO_RELATIVE_VERSIONS) and result.accepted:
                 # Only a resolved player choice advances this cooldown. Changes
                 # in the visible world may reset the separate navigation budget.
                 self.town_reopen_blocked = (self.action.kind == "close" and result.status == "closed"

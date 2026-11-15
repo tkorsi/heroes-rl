@@ -1,0 +1,11 @@
+# Production Apple Silicon learner: preserve the existing checkpoint/runtime dependencies.
+-r learner.lock
+
+mlx==0.31.1 \
+    --hash=sha256:9a6d3410fc951bd28508fed9c1ab5d9903f6f6bb101c3a5d63d4191d49a384a1 \
+    --hash=sha256:20bd7ba19882603ac22711092d0e799f1ff7b5183c2c641d417dab4d2423d99e \
+    --hash=sha256:4c4565d6f4f8ce295613ee342d313ee5ab0b0eab9a6272954450f8343f7876bc
+mlx-metal==0.31.1 \
+    --hash=sha256:70741174131dbf7fdd479cb730e06e08c358eac3bf7905d9e884e7960cfdd5b8 \
+    --hash=sha256:6c56bd8cd27743e635f5a90a22535af7c31bd22b4b126d46b6da2da52d72e413 \
+    --hash=sha256:e7324b7c56b519ae67c025d3ced07e5d35bc3a9f19d4c45fe4927f385148c59e

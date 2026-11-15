@@ -81,7 +81,8 @@ def implementation_identity():
     from experiments.episodes.scoring import engine_recipe_digests
     result = engine_recipe_digests(ROOT)
     patterns = ("experiments/headless/*.py", "experiments/learner/*.py", "experiments/episodes/*.py",
-                "validation/probes/*.py", "tests/*.py", "tests/native/*", "dependencies/*")
+                "validation/probes/*.py", "tests/*.py", "tests/native/*", "dependencies/*",
+                "native/learner/mlx/*.json")
     paths = {ROOT / "tools/prepare_vcmi.py", CONFIG}
     for pattern in patterns:
         paths.update(ROOT.glob(pattern))
