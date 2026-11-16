@@ -7180,3 +7180,150 @@ was saved by these checks. A documentation-only amendment follows; repeat previe
 on the final clean source (`next-1000-preflight-final.log`) before user handoff.
 Production source/configuration only is committed locally; validation scripts,
 raw captures and test changes are absent. GitHub publication is not performed.
+
+
+### 2026-11-16 — 1000-game training saved; final cleanup not certified
+
+User asked whether `Process cleanup deadline exhausted; closure is not verified`
+is a problem. Read-only inspection, no workload, kill, recovery, receipt rewrite
+or gate bypass. Run `run-20261115T230642Z-da5480b8`, source `9e85dd2`, CPU
+policy / MLX PPO / cycle-aware stacks, parent 1769. All ten batches are
+checkpoint_verified, 1000 captures/admissions, 10 PPO updates, 4,892,383 samples.
+Zero capture failures or interruptions; engine outcomes Blue 681, Red 284,
+35 cutoffs. Latest complete published checkpoint 1779, weights
+`30fec04b42477288e6f0d94b311196deaae464e94718df1e8d657e82ca886ca3`.
+Final paired restore verification is true, policy/resume files exist and their
+SHA256 values match the publication; latest-checkpoint.json points to this pair.
+Collection/preparation sum 30,515.8663 s, complete PPO sum 20,788.0849 s;
+overall elapsed 51,661.9329 s (14h21m02s), coordinator ended 13:27:45 UTC.
+
+Final diagnostic evaluation-009 passed: Blue wins, Red loses; exact
+reconstruction has max difference zero for both policies (Red 4047 actions/values,
+9495 conditionals; Blue 3875,9182), native replay passed. Training captures are
+not independently replay-verified. The coordinator returned zero, but final
+supervision recorded owned_cleanup_verified=false and marked report stopped.
+Protected inputs are unchanged. Thus training publication and diagnostic success
+must be distinguished from an uncertified shutdown; do not call the entire
+campaign cleanly completed or discard its saved updates.
+
+Supervisor finally uses close_owned_process(timeout=5) and then audits each
+execution deadline receipt with cleanup_from_evidence(timeout=5). The identical
+TimeoutError can arise at either step and does not name the offending group;
+the existing log cannot conclusively identify the original timeout's exact group
+or cause. Coordinator guardian recorded parent_exited at 13:27:47 UTC; shutdown
+file was written about 19 seconds later. Current ps shows no training coordinator,
+VCMI client or process_deadline worker. Do not infer proof of historical closure
+solely from that current command-name search.
+
+Read 2003 deadline receipts (2003 launches,1991 distinct recorded PGIDs); one
+historical numeric group currently maps to an unrelated Codex node_repl. Its
+PID/PGID 70187 was the native worker for batch 004 episode 71 at 04:56 UTC and
+its guardian recorded parent_exited at 04:57. Current node process start is
+15:47:42 Kyiv (13:47 UTC), after this run's cleanup failure. This demonstrates
+numeric PGID reuse and why historical groups must not be signalled; it does
+NOT establish the cause of the original timeout, since this current process
+started afterward. No process was killed. A future repair/reconciliation must
+preserve identity-aware ownership and fresh closure evidence. The current
+owned_cleanup_verified=false blocks ten_inspect and therefore another launch;
+do not manually flip the flag or bypass the gate. No retirement marker for this
+run is added before shutdown reconciliation.
+
+Correction to earlier diagnostic interpretations: the evaluation plan binds
+BOTH learner and frozen-opponent weights to 1779's identical digest. The name
+`evaluation-009-frozen` does not mean checkpoint 1778. Source inspection also
+confirms the preceding published controller (`10ddb9f`) passed state.model and
+previous_pair['policy'] AFTER its update when constructing the final diagnostic.
+Earlier journal/chat assertions that 1769 Red played against 1768 Blue (and that
+similar final diagnostics compared adjacent checkpoints) were incorrect. Those
+within-game behavioral observations remain valid, but they are self-play of the
+same current checkpoint, not direct evidence for an adjacent-checkpoint win/loss.
+Do not reuse those outcome-based strength comparisons. No new paired-seed quality
+evaluation was performed. Evidence: run report/shutdown/latest publication,
+evaluation plan/reconstruction and archived controller source.
+
+
+### 2026-11-16 — Authorized cleanup fix and fresh closure reconciliation
+
+User requested correcting final cleanup and verifying process completion so the
+next launch is unblocked, preserving complete checkpoint 1779 and launching no
+training. Acceptance: retain fail-closed behavior for live/ambiguous original
+processes, never signal historical numeric groups, distinguish reused process
+identities, batch receipt inspection, preserve original failure evidence, and
+set closure verified only after a successful fresh audit. Verify exact model/
+Adam/RNG/progress through read-only launch inspection afterward; no game or PPO.
+
+Checkpoint 1779 policy and complete resume plus original report/shutdown/launch,
+latest pointer and consumed-seed ledger have hash-verified private backups under
+`run-investigations/2026-11-16-cleanup/` (`preserved-inputs.json`). Original run
+and checkpoints remain in place. The known timeout's original offending group
+is not identifiable from its old error; do not present PID reuse as proved cause.
+The previous check did independently demonstrate a reused PGID after the run.
+
+Implementation keeps guardian ownership/signalling unchanged. Receipt cleanup
+accepts a batch, validates each launch receipt, uses one current process-table
+snapshot per pass, and checks matching private-session membership. A matching
+numeric session leader is excluded only when its process birth is provably
+later than the recorded creation upper bound (with a one-second precision
+margin). Missing legacy identity data or uncertain/live originals still block.
+Existing direct-child cleanup receives a creation upper bound from its Popen.
+Supervisor writes explicit closure-audit evidence and batches historical receipts
+under one bounded 30-second deadline rather than running ps for each receipt.
+These are existing cleanup functions, not a replacement orchestration/recovery
+system. Private process-control validation runs only benign helper subprocesses;
+no game, model or optimizer execution. Results and reconciliation follow.
+
+
+Validation passed: 22 existing process_deadline tests (final run 2.547 s), plus
+seven private lifecycle/identity cases (0.503 s). Private checks cover different
+sessions with reused PGIDs, newer same-ID private-session leaders, live original
+and birth-time-ambiguous leaders, surviving descendants with no leader, unresolved
+receipts, a 2003-receipt single-snapshot batch, and a real benign owned helper
+that remains blocked while alive and closes only after ownership release. No
+historical numeric group was signalled by receipt inspection. Tests and private
+scripts stay outside the production commit. Original deadline-exhaustion and
+late-scan rejection tests remain green. Evidence: private cleanup investigation
+`process-tests-final.log`, `private-tests-final.log`, `check_cleanup.py`.
+
+Under the existing exclusive activity lease, a fresh audit matched every expected
+worker/native/coordinator receipt against the complete report (2003), checked all
+ten checkpoint pairs' policy/resume hashes, and rechecked protected inputs and
+the original latest pointer/seed ledger. The corrected audit verified all 1991
+distinct groups in 0.0801 s with zero original live members. Current PGID 70187
+was safely excluded by its different session (SID 1). This confirms present
+closure; it does not identify the cause of the original finalization timeout.
+Evidence: run `closure-recheck.json`, a private copy, and `reconcile.log`.
+
+Only after the audit passed, shutdown/report were atomically updated to closure
+verified and completed, retaining `initial_errors` / `initial_supervisor_errors`
+and a binding to the new audit. Original report/shutdown remain hash-bound in
+private backup. Coordinator return code and original end time are unchanged.
+All checkpoint, latest pointer, launch and seed ledger hashes remain unchanged.
+No training or replay ran; no samples were newly admitted and no weights updated.
+No artifacts were deleted and the unrelated reused-PGID process was not killed.
+This is fresh evidence reconciliation, not manually bypassing a failed gate.
+
+Prepare a local production commit with only cleanup code, exact source pins
+and documentation, then run the normal read-only launcher check against 1779.
+No new launch, merge or GitHub push is authorized by this cleanup request.
+
+
+Final hardening keeps a member that disappears between ps and getsid unresolved
+until another whole-table snapshot, because it may have forked before exiting.
+A private regression requires that second snapshot. Final validation: 22 existing
+tests passed in 2.562 s and eight private checks in 0.583 s; logs are
+`process-tests-release.log` and `private-tests-release.log`. No validation files
+are staged. A second fresh full audit with the release implementation passed
+2003 receipts /1991 groups in 0.2873 s, zero original live members, same safely
+excluded different-session PGID. `closure-recheck-final.json` binds the preceding
+audit and the release implementation; report/shutdown point to this later proof.
+Checkpoint, pointer, launch and seed ledger hashes are unchanged again.
+
+Normal read-only launcher inspection passed on clean local `ee5ce83`: complete
+1779 model/Adam/RNG/progress/sampler/pool restored exactly, no pending diagnostic
+or cleanup block. It performed zero gameplay/optimizer updates, reserved no seeds
+and removed no artifacts. Evidence: private cleanup investigation
+`ready-1779-preflight.log`. This check revalidates the full saved publication
+chain, not only the manually repaired report fields. Record this result and the
+last conservative race hardening in a local amendment, then repeat the read-only
+inspection against its clean final source (`ready-1779-preflight-final.log`).
+No GitHub push, new training campaign, native replay or evaluation game performed.

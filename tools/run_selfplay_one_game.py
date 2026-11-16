@@ -377,7 +377,7 @@ MLX_PPO_SOURCES = {
     'experiments/learner/selfplay_training.py': {'before': 'acfd55b3b7ade3e1857a3581d4ebb505618b63141bbefcf9b745632eb59be906',
         'after': 'fa5d8aaecf5d1548548f8b89d15a8c476079e5117692dbc2e1330f04bfe713de'},
     'tools/run_selfplay_training.py': {'before': 'de8bb75ad0f001a83ad8a6210c9b8cffec20927748b84e9afa2d1db57d37395b',
-        'after': '8f89fa8743156768191313cd58cd452408be727d5f598eaaa08879db0fbc1343'},
+        'after': '9208a843cfed3c17f93738735bbf2238ff1016def60743da4e6a55734148a971'},
     'experiments/learner/mlx_backend.py': {'before': None,
         'after': 'b8a4671dfcdcc75801391e82b67d594ba651c84e72a64e5fd9d7f06c3fa19692'},
     'experiments/learner/mlx_model.py': {'before': None,
@@ -400,6 +400,8 @@ MLX_PPO_SOURCES = {
         'after': 'ebb934732fa5f4a67d88614bfbf6daa0fd1899cbec7581c0de05090c83e782e1'},
     'experiments/learner/checkpoints.py': {'before': '58e3519d14cdee7bfc427515af07759103aa913bd128a97c436c0a5d8b91a2e3',
         'after': 'ce47204c29a8069c9fc65127dfdfdee34bd1e350ab9047c6035268765b1566e2'},
+    'experiments/headless/process_deadline.py': {'before': '51c57c043dd2edf0f38da1f958e459e6b9704d62d8a6a0914225004135186d99',
+        'after': 'bfa965bce46cf64f0a8ac84777dcf077a4823da9025f9c0be16e665c343478d9'},
 }
 
 MLX_PPO_NEW = frozenset(name for name, pins in MLX_PPO_SOURCES.items() if pins['before'] is None)

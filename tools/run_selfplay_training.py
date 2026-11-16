@@ -1522,9 +1522,18 @@ def supervise(launch):
     finally:
         try:
             if process is not None:
-                close_owned_process(process, timeout=5)
-            for evidence in output.glob('*/execution/*-deadline.jsonl' if CYCLE_MODE else 'batch-*/execution/*-deadline.jsonl'):
-                cleanup_from_evidence(evidence, timeout=5)
+                try:
+                    close_owned_process(process, timeout=5)
+                except Exception as error:
+                    raise RuntimeError(f'Coordinator cleanup PID {process.pid}: {error}') from error
+            evidence = sorted(output.glob('*/execution/*-deadline.jsonl' if CYCLE_MODE else 'batch-*/execution/*-deadline.jsonl'))
+            if process is not None:
+                evidence.append(output / 'coordinator-deadline.jsonl')
+            closure = {}
+            try:
+                cleanup_from_evidence(evidence, timeout=30, audit=closure)
+            finally:
+                write(output / 'process-closure.json', closure, new=True)
         except Exception as error:
             errors.append(str(error))
             cleanup_errors.append(str(error))

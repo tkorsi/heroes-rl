@@ -36,7 +36,7 @@ wall-clock deadline. No automatic launch or restart is scheduled. See
 
 | Current contract | Behavior |
 | --- | --- |
-| Published state | Latest complete checkpoint **1,769**; restore model, Adam, RNG and progress together |
+| Published state | Latest complete checkpoint **1,779**; restore model, Adam, RNG and progress together |
 | Collection | Ten rolling actors; balanced learner seats against a frozen copy of the batch-start policy |
 | Updates | Complete batches of at most 100 games; save and restore-check each update |
 | Backend | CPU policy and MLX PPO; compatible checkpoint and sampling boundaries |
@@ -65,15 +65,25 @@ policy support. The first restored-stack attempt failed before PPO; its repaired
 retry completed and published checkpoint **1,769**. See the research journal for
 the saved-failure reproduction and subsequent campaign evidence.
 
-The next prepared user continuation is **1,000 new games from checkpoint 1,769**:
-`./run-100-games.command 1000 --mlx`. It uses ten batches of 100, ten PPO updates
-and one final diagnostic. The cycle-aware swap rule changes policy support,
-not rewards or PPO. Split/merge/transfer/upgrade actions stay available. Other
-restrictions and the no-deadline behavior remain; this cycle has not been run.
-Novel but unhelpful rearrangements can still occur; only exact layout cycles
-are excluded by the new rule.
+The completed 1,000-game continuation from 1,769 used ten batches of 100,
+ten PPO updates and one final diagnostic, publishing **1,779**. Cycle-aware
+swap support and all other restrictions remain. Only exact layout cycles are
+excluded; novel but unhelpful rearrangements can still occur. No further
+training launch is scheduled or performed by the assistant.
 
 ## MLX results and remaining performance work
+
+The 1,000-game continuation published checkpoints 1,770–**1,779**: all games
+admitted, ten PPO updates, 4,892,383 samples, 14h21m02s total. Final diagnostic
+reconstruction/replay passed. Final process cleanup initially timed out. A fresh identity-aware audit of
+2,003 receipts / 1,991 groups subsequently certified closure, preserving the
+original failure and the new audit separately. Report status is completed;
+saved 1,779 policy/resume hashes and seed consumption are unchanged. Cleanup
+now batches process-table inspection and distinguishes reused PGIDs from live
+original sessions; ambiguous/live originals still block continuation.
+Both final diagnostic seats use 1,779 weights; earlier references below to the
+Blue diagnostic seat as the previous checkpoint are incorrect. See the explicit
+research-log correction; those diagnostic outcomes do not compare checkpoints.
 
 The first restored-stack cycle after the repeat-count fix completed from 1,768
 to **1,769**: all 100 captures admitted, zero failures, 466,381 samples and 14,598

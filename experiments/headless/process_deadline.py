@@ -13,6 +13,7 @@ exec, and ``deadline_expired`` records the impending signal, not an outcome.
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 import json
 import math
 import os
@@ -102,6 +103,7 @@ def guarded_popen(command, *, deadline_monotonic, deadline_wall, evidence_path, 
         process._deadline_owner_fd = owner_write
         process._deadline_evidence_path = path
         process._deadline_guarded = True
+        process._deadline_created_before_wall = time.time()
         return process
     except BaseException as error:
         os.close(owner_write)
@@ -226,18 +228,64 @@ if __name__ == "__main__":
 from .env import VcmiLauncher  # noqa: E402
 
 
-def group_live_members(group, *, timeout=1.0):
-    """Inspect only a recorded private PGID; zombies are no longer executing."""
-    if type(group) is not int or group <= 1 or group == os.getpgrp():
-        raise ValueError("Expected a separate recorded process group")
+def _live_processes(*, timeout):
     result = subprocess.run(["ps", "-axo", "pid=,pgid=,stat="], text=True,
                             capture_output=True, check=True, timeout=timeout)
     members = []
     for line in result.stdout.splitlines():
         fields = line.split()
-        if len(fields) == 3 and int(fields[1]) == group and not fields[2].startswith("Z"):
-            members.append({"pid": int(fields[0]), "process_group": group, "state": fields[2]})
+        if len(fields) == 3 and not fields[2].startswith("Z"):
+            members.append({"pid": int(fields[0]), "process_group": int(fields[1]), "state": fields[2]})
     return tuple(members)
+
+
+def group_live_members(group, *, timeout=1.0):
+    """Inspect only a recorded private PGID; zombies are no longer executing."""
+    if type(group) is not int or group <= 1 or group == os.getpgrp():
+        raise ValueError("Expected a separate recorded process group")
+    return tuple(row for row in _live_processes(timeout=timeout) if row["process_group"] == group)
+
+
+def _original_group_members(group, members, created_before, *, end, wall, audit=None):
+    # A PGID can be reused while an overnight campaign retains old receipts.
+    # No historical identifier ever authorizes sending a signal here.
+    if not members or type(created_before) not in (int, float):
+        return members
+    owned = []
+    for member in members:
+        _cleanup_remaining(end, wall)
+        try:
+            session = os.getsid(member["pid"])
+        except ProcessLookupError:
+            # It may have forked before exiting; require another whole-table
+            # observation before certifying that its group is empty.
+            owned.append(member)
+            continue
+        if session == group:
+            owned.append(member)
+        elif audit is not None:
+            audit.setdefault("reused_groups", []).append(dict(group=group, pid=member["pid"],
+                reason="different_private_session", current_session=session))
+    if not owned or not any(row["pid"] == group for row in owned):
+        return tuple(owned)
+    # lstart is second-granular on both macOS and Linux. Only a strictly later
+    # birth beyond its precision margin proves this is a new session leader.
+    result = subprocess.run(["ps", "-p", str(group), "-o", "lstart="], text=True,
+        capture_output=True, timeout=_cleanup_remaining(end, wall),
+        env={**os.environ, "LC_ALL": "C", "TZ": "UTC"})
+    _cleanup_remaining(end, wall)
+    if result.returncode not in (0, 1):
+        raise RuntimeError("Cannot inspect recorded process leader birth: " + str(group))
+    if result.returncode or not result.stdout.strip():
+        return tuple(owned)  # Recheck a leader that disappeared during inspection.
+    born = datetime.strptime(result.stdout.strip(), "%a %b %d %H:%M:%S %Y").replace(tzinfo=timezone.utc).timestamp()
+    if born > created_before + 1:
+        if audit is not None:
+            audit.setdefault("reused_groups", []).append(dict(group=group,
+                reason="newer_session_leader", created_before_wall=created_before,
+                current_leader_started_wall=born))
+        return ()
+    return tuple(owned)
 
 
 def _cleanup_deadlines(timeout, deadline_monotonic=None, deadline_wall=None):
@@ -285,6 +333,8 @@ def close_owned_process(process, *, timeout=2.0, deadline_monotonic=None, deadli
         process.wait(timeout=_cleanup_remaining(end, wall))
         while True:
             members = group_live_members(process.pid, timeout=_cleanup_remaining(end, wall))
+            members = _original_group_members(process.pid, members,
+                getattr(process, "_deadline_created_before_wall", None), end=end, wall=wall)
             remaining = _cleanup_remaining(end, wall)
             if not members:
                 return
@@ -293,48 +343,77 @@ def close_owned_process(process, *, timeout=2.0, deadline_monotonic=None, deadli
         process.poll()
 
 
-def cleanup_from_evidence(path, *, timeout=2.0, deadline_monotonic=None, deadline_wall=None):
-    """Verify recorded groups stopped after a worker failure or normal close.
+def cleanup_from_evidence(path, *, timeout=2.0, deadline_monotonic=None, deadline_wall=None, audit=None):
+    """Certify closure from one receipt or a bounded batch after owner release.
 
-    Launcher pipe EOF stops an orphan even if this receipt was not yet written.
-    This helper never signals a recorded numeric PID/PGID that may be reused.
-    Call only after closing/waiting for the owning worker. An unexpectedly live
-    group conservatively fails verification, without harming another process.
+    Historical receipts only authorize inspection. A different session or a
+    provably newer session leader is not the original group. Unknown/live
+    original members fail closed. Bulk audits share one process-table scan and
+    one fixed deadline rather than spawning ps for every historical receipt.
     """
     end, wall = _cleanup_deadlines(timeout, deadline_monotonic, deadline_wall)
-    path = Path(path)
-    if not path.exists():
-        return ()
-    groups = set()
-    launch_requested = launch_failed = False
-    for line in path.read_text().splitlines():
-        _cleanup_remaining(end, wall)
-        row = json.loads(line)
-        if row.get("schema") != SCHEMA:
-            raise ValueError("Unexpected supervision evidence schema")
-        if row.get("event") == "launch_requested":
-            launch_requested = True
-        elif row.get("event") == "launch_failed":
-            launch_failed = True
-        if row.get("event") == "wrapper_started":
-            group = row["process_group"]
-            if row["writer_pid"] != row["leader_pid"] or group != row["leader_pid"]:
-                raise ValueError("Supervision evidence does not bind its own private leader")
-            groups.add(group)
-    if launch_requested and not groups and not launch_failed:
-        # The owner may die after Popen but before the wrapper's first write.
-        # Its pipe guardian still stops that child once scheduled, but this
-        # incomplete receipt supplies no PGID whose closure we can observe.
-        raise RuntimeError("Unresolved process launch; closure cannot be verified from this receipt")
-    while groups:
-        live = False
-        for group in sorted(groups):
-            members = group_live_members(group, timeout=_cleanup_remaining(end, wall))
+    bulk = not isinstance(path, (str, os.PathLike))
+    paths = tuple(Path(item) for item in path) if bulk else (Path(path),)
+    groups, starts = set(), {}
+    if audit is not None:
+        audit.update(receipts=len(paths), verified=False, reused_groups=[])
+    for receipt in paths:
+        if not receipt.exists():
+            if bulk:
+                raise FileNotFoundError("Missing process receipt: " + str(receipt))
+            continue
+        if audit is not None:
+            audit["checking_receipt"] = str(receipt)
+        launch_requested = launch_failed = False
+        recorded = set()
+        for line in receipt.read_text().splitlines():
             _cleanup_remaining(end, wall)
-            live = live or bool(members)
+            row = json.loads(line)
+            if row.get("schema") != SCHEMA:
+                raise ValueError("Unexpected supervision evidence schema: " + str(receipt))
+            launch_requested |= row.get("event") == "launch_requested"
+            launch_failed |= row.get("event") == "launch_failed"
+            if row.get("event") == "wrapper_started":
+                group = row["process_group"]
+                if (type(group) is not int or group <= 1 or row["writer_pid"] != group
+                        or row["leader_pid"] != group):
+                    raise ValueError("Supervision evidence does not bind its own private leader")
+                recorded.add(group)
+                stamp = row.get("wall_time")
+                if type(stamp) in (int, float) and math.isfinite(stamp) and stamp > 0:
+                    starts[group] = max(starts.get(group, stamp), stamp)
+        if launch_requested and not recorded and not launch_failed:
+            raise RuntimeError("Unresolved process launch; closure cannot be verified from this receipt: " + str(receipt))
+        groups.update(recorded)
+    if audit is not None:
+        audit["groups"] = len(groups)
+        audit.pop("checking_receipt", None)
+    while groups:
+        remaining = _cleanup_remaining(end, wall)
+        table = None
+        if bulk:
+            table = {}
+            for row in _live_processes(timeout=remaining):
+                table.setdefault(row["process_group"], []).append(row)
+        _cleanup_remaining(end, wall)
+        live = []
+        for group in sorted(groups):
+            if audit is not None:
+                audit["checking_group"] = group
+            members = (tuple(table.get(group, ())) if bulk
+                       else group_live_members(group, timeout=_cleanup_remaining(end, wall)))
+            members = _original_group_members(group, members, starts.get(group), end=end, wall=wall, audit=audit)
+            _cleanup_remaining(end, wall)
+            live.extend(members)
+        if audit is not None:
+            audit["live_original_members"] = live
+            audit.pop("checking_group", None)
         if not live:
             break
         time.sleep(min(POLL_SECONDS, _cleanup_remaining(end, wall)))
+    _cleanup_remaining(end, wall)
+    if audit is not None:
+        audit["verified"] = True
     return tuple(sorted(groups))
 
 
