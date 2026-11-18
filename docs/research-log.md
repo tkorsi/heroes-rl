@@ -7478,3 +7478,123 @@ changed. Following the precedent of `d0f0fb0`, that single pin is updated to the
 new controller digest `8b1fa8d1c215a3c779b59ce8e41d84a22629d7587f10745ed3ec1fe70b5fcd24`;
 no other source pin or check changes. The refusal reserved no seeds and changed
 no run artifacts.
+
+### 2026-11-18 — Replace the training pipeline with one small package (refactor branch)
+
+**Goal (user request).** Throw away dead and overbuilt code and reduce the
+project to a simple core that is quick to change and to optimize, while keeping
+what learning needs: the engine binding, the policy, PPO and checkpoint
+continuity from 1,784. Work on branch `claude/project-thread-tlvy67`; nothing
+was merged to `main` and the user's checkout was not edited.
+
+**Acceptance criteria, set before the rewrite.** (1) The moved policy
+recomputes recorded decisions of captured games bit for bit. (2) The MLX update
+of the new layout hands its GPU backend the same inputs as the old one for the
+same games. (3) Checkpoint 1,784 imports into the new format with identical
+weights, Adam state, shuffle generator and counters. (4) The loop runs end to
+end against a scripted engine: play, update, save, resume. (5) A first real run
+on the Mac, launched by the user. Criterion 5 is open.
+
+**Implemented.** The loop is now the `heroes/` package: 34 Python files and
+8,823 lines in the repository, down from 466 files and 121,882 lines.
+
+- `heroes/engine/`: process launch, wire protocol, a two-seat environment that
+  classifies each game as completed, truncated or failed.
+- `heroes/actor.py`: plays one game with one set of weights on both seats and
+  builds the learner seat's trajectory.
+- `heroes/learner/`: PPO targets and loss windows shared by a plain autograd
+  reference update and the MLX update.
+- `heroes/checkpoint.py`: one file per update plus `latest.json`, and a one-time
+  import of the previous `policy.pt`/`resume.pt` pair.
+- `heroes/train.py`: restore, collect a batch with a pool of actor processes,
+  update, save, repeat.
+- `heroes/model/policy.py`, `heroes/game/contract.py`, `heroes/game/guard.py`
+  and `heroes/learner/mlx/` are the existing policy, typed contract, interaction
+  guard and MLX learner, moved and trimmed.
+
+Removed, and still in Git history up to `5efe811`: launch plans, capture
+bindings and receipts, evidence envelopes, source-hash pins, the supervisor and
+its fourteen launch scripts, retention and cleanup audits, the final diagnostic
+game with two-policy reconstruction and native replay, the CPU native and
+PyTorch/Metal learner backends, the replay inspector app, map generators,
+recording tools, `validation/`, `reports/`, `configs/` and the previous test
+suite. `engine/` is unchanged.
+
+**Behaviour that changed.** These are deliberate simplifications, not
+measurements.
+
+1. *Truncation.* A decision of either seat past day 365, or after 163,840
+   answered decisions, stops the game at once. The learner keeps every completed
+   action whose following decision its policy saw, and that decision's value is
+   the bootstrap. The previous paired cutoff with bounded continuation and
+   dialog draining is gone. The separate 5,120 reserved choices are folded into
+   the single action limit.
+2. *No proof frames.* Histories no longer end with `finalized`,
+   `cutoff_finalized` or `failure` frames. The policy never read them.
+3. *Failed games are replaced.* A failed game is logged and another is played.
+   A run stops only when more games failed than the batch needs, or when the
+   first ten all failed. Previously one failed capture stopped the cycle.
+4. *No final diagnostic.* No game is reconstructed or natively replayed. The
+   diagnostic that the interrupted run of 2026-11-18 still owed is not carried
+   over.
+5. *Seeds.* Engine and sampling seeds are drawn fresh per game and written to
+   `log.jsonl`. The seed reservation ledger is gone.
+6. *One guard version.* Only
+   `visible-interaction-budget-hero-relative-stack-cycle-v1` remains
+   executable. One model schema remains, `heroes-context-model-v6`.
+7. *Memo validity.* Encodings reused while acting are tied to the parameters'
+   version counters instead of a bit comparison of the weights on every frame.
+8. *Every checkpoint is kept.* Nothing retires old files.
+
+Unchanged: PPO settings (λ 1, clip 0.2, value clip 0.2, value coefficient 0.5,
+gradient norm 0.5, one epoch, windows of 16 decisions, two windows per
+minibatch, Adam 3e-4, normalized advantages), ten actors, 100 games per update,
+both seats on the batch-start weights with the learner seat alternating, the
+engine settings and environment, the scenario, `no-artifacts-v1`, and the MLX
+network, kernels and first-minibatch sanity limits. Engine replay logging stays
+on by default because the engine has never been run without it; `--no-replay-log`
+switches it off.
+
+**What actually ran.** Everything below ran in a cloud sandbox on Linux x86-64
+with CPython 3.13 and Torch 2.9.1. No VCMI, no Metal and no MLX kernel ran, and
+nothing ran on the Mac. The inputs were read-only copies of the checkpoint 1,784
+pair and of three captured games (episodes 000006, 000011 and 000019 of
+`run-20261118T104905Z-ebe300b5`, batch 000) with that batch's `learner.pt`.
+No PPO update was run on captured games.
+
+- *Policy regression.* For both seats of the three games (19,667 frames, 2,580
+  recorded decisions), the old code's recomputed log-probabilities, values and
+  final recurrent state were hashed at `5efe811`. The new code reproduces every
+  hash, before and after the trim.
+- *Trajectory and recipe.* For the three learner histories (1,433 samples) the
+  new sample builder returns the same decisions, log-probabilities, values and
+  reward as the stored samples, and the compiled recipe has the same digest as
+  the old compiler's. The only difference is the old trailing proof frame, one
+  empty recipe entry.
+- *MLX boundary.* The GPU backend class was replaced by a recorder in both the
+  old and the new update, so no numerical step ran. For the three games the two
+  updates produce identical manifests, whole-game prefix plans, 46 minibatch
+  plans with their old log-probabilities, values, advantages and returns, and
+  the same shuffle generator state afterwards.
+- *Checkpoint import.* The 1,784 pair imports with weights digest `6f5f6592…`
+  as recorded, progress 1,784 updates / 9,822 games / 12,926,530 decisions /
+  406,884 optimizer steps, and survives a save and load unchanged.
+- *Tests.* 25 tests pass. They use `tests/fake_vcmi.py`, a scripted stand-in
+  that speaks the real wire protocol over real sockets, with random weights.
+  They cover natural, terminal-closed, truncated, crashed and silent games, PPO
+  targets and windows, the reference update, the acting memo, checkpoints
+  including a synthetic legacy pair, recipe compilation, and the whole loop
+  with resume and legacy import.
+
+**Limitations.** The scripted engine is not VCMI: it plays end-turn-only games
+on a one-tile map. Engine behaviour under the new environment (startup, the
+stop at a limit, shutdown, ten concurrent processes) is untested until the first
+real run. The MLX path is verified up to the backend boundary only; its
+first-minibatch check against recorded behaviour is the remaining safeguard.
+None of this says anything about learning or playing strength.
+
+**Next.** The user launches a small trial into a scratch state folder, for
+example `./train.command 10 --games-per-update 10 --state
+~/Projects/Heroes-artifacts/training-trial`, then the real run. The assistant
+ran no gameplay, training, replay or benchmark on real data beyond the
+forward-only regression above.

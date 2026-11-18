@@ -9,10 +9,11 @@ engine's offers and the recorded history stay as they are.
 A ``Tracker`` follows one seat's frames and, at every decision, returns the
 ``GuardSupport`` that says what is currently excluded:
 
-* a navigation step taken twice without anything changing in the visible world
+* a navigation step already taken twice since the visible world last changed
 * any stack management by a hero or town that already did 32 such moves today
 * a swap that would recreate an army layout already seen since the last progress
-* a destination that just failed, the tile a hero stands on, and unrevealed tiles
+* a move to an unrevealed tile, to the hero's own tile, to its previous target
+  or to a target that failed since the last progress
 * repeating the previous command exactly, and reopening a town right after closing it
 """
 from collections import Counter

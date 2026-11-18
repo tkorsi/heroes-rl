@@ -23,6 +23,13 @@ alive with unattended waiting or repeated polling by default; continuous
 monitoring requires an explicit request. User-launched work must run independently
 of the Codex conversation. This rule does not waive runtime or validation gates.
 
+## Tests are code work
+
+`python -m pytest` plays scripted games against `tests/fake_vcmi.py` with random
+weights in temporary folders. It starts no VCMI, reads no saved game and never
+touches the training state, so it is not a launch under Rule 1. Anything that
+starts the real engine, reads the state folder or updates real weights is.
+
 ## One main development line
 
 Do not merge branches/PRs or push directly to `main` without the user's explicit
