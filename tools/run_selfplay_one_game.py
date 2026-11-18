@@ -377,7 +377,7 @@ MLX_PPO_SOURCES = {
     'experiments/learner/selfplay_training.py': {'before': 'acfd55b3b7ade3e1857a3581d4ebb505618b63141bbefcf9b745632eb59be906',
         'after': 'fa5d8aaecf5d1548548f8b89d15a8c476079e5117692dbc2e1330f04bfe713de'},
     'tools/run_selfplay_training.py': {'before': 'de8bb75ad0f001a83ad8a6210c9b8cffec20927748b84e9afa2d1db57d37395b',
-        'after': '9208a843cfed3c17f93738735bbf2238ff1016def60743da4e6a55734148a971'},
+        'after': '8b1fa8d1c215a3c779b59ce8e41d84a22629d7587f10745ed3ec1fe70b5fcd24'},
     'experiments/learner/mlx_backend.py': {'before': None,
         'after': 'b8a4671dfcdcc75801391e82b67d594ba651c84e72a64e5fd9d7f06c3fa19692'},
     'experiments/learner/mlx_model.py': {'before': None,

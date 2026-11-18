@@ -7468,3 +7468,13 @@ process; a terminated worker or coordinator still stops the run through the
 existing failure paths and preserves the last published checkpoint. Validation:
 the module compiles; no test, `--check`, gameplay or training was run by the
 assistant. The user launches personally.
+
+Correction (same day): the first relaunch after `fadbdc9` stopped before any
+gameplay with "Evaluation changed an existing learner, adapter, engine or
+replay source". `verify_runtime_sources` in `tools/run_selfplay_one_game.py`
+binds the cycle controller to an exact reviewed SHA256 (the `after` pin of
+`tools/run_selfplay_training.py` in `MLX_PPO_SOURCES`), which the guard removal
+changed. Following the precedent of `d0f0fb0`, that single pin is updated to the
+new controller digest `8b1fa8d1c215a3c779b59ce8e41d84a22629d7587f10745ed3ec1fe70b5fcd24`;
+no other source pin or check changes. The refusal reserved no seeds and changed
+no run artifacts.
