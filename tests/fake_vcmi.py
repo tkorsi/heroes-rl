@@ -89,7 +89,7 @@ def main():
         sys.exit("Headless game start failed: no profile at " + str(CONFIG))
     if SCRIPT["end"] == "abort":
         print("Headless game start failed: scripted", flush=True)
-        os.abort()
+        sys.exit(134)
     seats = [Seat(0), Seat(1)]
     day = 1
     while True:

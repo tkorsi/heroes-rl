@@ -292,12 +292,27 @@ class Env:
                 request = self._next_request()
                 if request is not None:
                     return request
-            try:
-                event = self.events.get(timeout=self.limits.idle_seconds)
-            except queue.Empty:
+            event = self._wait()
+            if event is None:
                 self._fail("engine_silent", f"No engine event for {self.limits.idle_seconds} s")
-                continue
-            self._fold(event)
+            else:
+                self._fold(event)
+
+    def _wait(self):
+        """The next engine event, or None once the engine was silent for too long.
+
+        It waits a second at a time. A wait without a timeout is not interrupted
+        by signals on every platform, and an actor that is told to stop must not
+        sit out a silent engine.
+        """
+        idle = self.limits.idle_seconds
+        deadline = None if idle is None else time.monotonic() + idle
+        while True:
+            try:
+                return self.events.get(timeout=1 if deadline is None else max(0, min(1, deadline - time.monotonic())))
+            except queue.Empty:
+                if deadline is not None and time.monotonic() >= deadline:
+                    return None
 
     # -- the end of a game -----------------------------------------------------
     def _finish(self):

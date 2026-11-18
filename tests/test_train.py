@@ -12,8 +12,9 @@ import pytest
 from heroes import checkpoint
 from heroes.actor import Job
 from heroes.config import Config
+from heroes.__main__ import main
 from heroes.model.policy import weights_sha256
-from heroes.train import Pool, train
+from heroes.train import Log, Pool, train
 from test_checkpoint import write_legacy
 
 
@@ -66,6 +67,57 @@ def test_training_continues_from_the_previous_pipelines_checkpoint(config):
     assert [record["number"] for record in _log(config) if record["event"] == "game"] in ([9823, 9824], [9824, 9823])
 
 
+def test_a_state_folder_that_lost_its_pointer_is_not_started_over(config):
+    # A first save that was cut short left only its own file; that run simply starts again.
+    checkpoint.save(config.state, checkpoint.fresh(learning_rate=3e-4))
+    (config.state / "latest.json").unlink()
+    train(replace(config, keep_game_files=True), 2, fresh=True, out=io.StringIO())
+    kept = sorted(folder.name for folder in (config.state / "kept-games").iterdir())
+    assert kept == ["game-0000001", "game-0000002"]
+
+    # Later checkpoints without the pointer are someone's training: refuse, change nothing.
+    (config.state / "latest.json").unlink()
+    before = {path.name: path.read_bytes() for path in (config.state / "checkpoints").iterdir()}
+    with pytest.raises(SystemExit, match="update-000001.pt but no latest.json"):
+        train(config, 2, fresh=True, out=io.StringIO())
+    assert {path.name: path.read_bytes() for path in (config.state / "checkpoints").iterdir()} == before
+    assert not (config.state / "latest.json").exists()
+
+    # Naming the newest checkpoint again is enough to continue. Kept game folders are left alone.
+    (config.state / "latest.json").write_text('{"checkpoint": "checkpoints/update-000001.pt"}')
+    assert train(config, 2, out=io.StringIO()).progress["updates"] == 2
+    assert sorted(folder.name for folder in (config.state / "kept-games").iterdir()) == kept
+    assert not any((config.state / "games").iterdir())
+
+
+def test_check_reports_the_start_and_writes_nothing(config, capsys):
+    paths = ["--state", str(config.state), "--legacy", str(config.legacy), "--vcmi", str(config.vcmi),
+             "--game-data", str(config.game_data), "--backend", "torch"]
+    with pytest.raises(SystemExit, match="--fresh"):
+        main(["check", *paths])
+    write_legacy(config.legacy, updates=1784)
+    main(["check", *paths])
+    report = capsys.readouterr().out
+    assert "starts from legacy checkpoint update-001784" in report and "'updates': 1784" in report
+    assert not config.state.exists()
+    with pytest.raises(SystemExit) as refused:
+        main(["train", "2", "--workers", "0", *paths])
+    assert refused.value.code == 2 and not config.state.exists()
+
+
+def test_a_game_number_is_never_handed_out_twice(tmp_path):
+    log = Log(tmp_path / "log.jsonl")
+    assert log.last_game == 0
+    log.write("job", number=41)
+    log.write("game", number=7, status="failed")
+    log.stream.write('{"event": "job", "numb')  # the run died inside this line
+    log.stream.close()
+    log = Log(tmp_path / "log.jsonl")
+    assert log.last_game == 41
+    log.write("job", number=42)
+    assert json.loads((tmp_path / "log.jsonl").read_text().splitlines()[-1])["number"] == 42
+
+
 def test_training_stops_when_every_game_fails(config, monkeypatch):
     monkeypatch.setenv("FAKE_VCMI", json.dumps({"end": "crash"}))
     with pytest.raises(RuntimeError, match="unclean_exit"):
@@ -114,13 +166,15 @@ def test_an_actor_that_dies_is_replaced(config, monkeypatch):
         started(1), started(2)
         # Killed in the middle of a game: the game comes back as failed.
         os.kill(pool.processes[index].pid, signal.SIGKILL)
-        _, died, game = wait_until(pool.next)
+        _, died, game = wait_until(lambda: next((message for message in [pool.next()]
+                                                 if message is not None and message[0] == "game"), None))
         assert (died, game.job.number, game.reason) == (index, 1, "actor_died")
         assert pool.idle == [index] and list(pool.busy) == [1 - index]
         # Killed while waiting for a game: its replacement still receives the next one.
         os.kill(pool.processes[index].pid, signal.SIGKILL)
         pool.processes[index].join()
-        assert pool.next() is None and pool.idle == [index]
+        wait_until(lambda: pool.next() is None)
+        assert pool.idle == [index]
         pool.submit(path, Job(3, 7, 1, (1, 2)))
         started(3)
         assert pool.busy[index].number == 3

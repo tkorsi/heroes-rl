@@ -31,8 +31,11 @@ from .actor import Game, Job, compile_recipe, play
 from .engine.env import COLORS, Env
 
 
-def restore(config, *, fresh=False):
-    """The newest training state: this pipeline's own, else the legacy one, else a new policy."""
+def restore(config, *, fresh=False, save=True):
+    """The newest training state: this pipeline's own, else the legacy one, else a new policy.
+
+    A state that does not come from this folder is saved as its first checkpoint.
+    """
     path = checkpoint.latest(config.state)
     if path is not None:
         return checkpoint.load(path, learning_rate=config.ppo.learning_rate)
@@ -44,7 +47,13 @@ def restore(config, *, fresh=False):
             raise SystemExit(f"No checkpoint in {config.state} and no earlier one to continue in {config.legacy}.\n"
                              "Pass --fresh to start from a randomly initialized policy.")
         state = checkpoint.import_legacy(*pair, learning_rate=config.ppo.learning_rate)
-    checkpoint.save(config.state, state)
+    earlier = checkpoint.unlisted(config.state, state.updates)
+    if earlier:
+        raise SystemExit(f"{config.state} holds checkpoints up to {earlier[-1]} but no latest.json that names the "
+                         "newest, so starting here would replace them. Nothing was changed. Write latest.json, "
+                         f'for example {{"checkpoint": "checkpoints/{earlier[-1]}"}}, or use another --state folder.')
+    if save:
+        checkpoint.save(config.state, state)
     return state
 
 
@@ -70,7 +79,7 @@ def update_function(config):
 # -- actor processes -----------------------------------------------------------
 
 def _play_job(env, model, job, config, report):
-    directory = config.state / "games" / f"game-{job.number:07d}"
+    directory = config.state / ("kept-games" if config.keep_game_files else "games") / f"game-{job.number:07d}"
     shutil.rmtree(directory, ignore_errors=True)
     started = time.monotonic()
     try:
@@ -104,12 +113,17 @@ def _end_with_trainer(trainer):
     os.kill(os.getpid(), signal.SIGTERM)
 
 
-def worker(config, pipe):
+def _stop_actor(*_):
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)  # once: nothing interrupts the cleanup this starts
+    sys.exit(0)  # unwinds through the game in play, stopping its engine and removing its folder
+
+
+def worker(config, pipe, trainer):
     """One actor process. It plays the games it is handed, one at a time."""
     torch.set_num_threads(1)
     signal.signal(signal.SIGINT, signal.SIG_IGN)  # the trainer handles Ctrl-C and stops its actors
-    signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))  # unwinds through the game, stopping its engine
-    threading.Thread(target=_end_with_trainer, args=(os.getppid(),), daemon=True).start()
+    signal.signal(signal.SIGTERM, _stop_actor)
+    threading.Thread(target=_end_with_trainer, args=(trainer,), daemon=True).start()
     env = Env(config.engine(), config.limits)
     model = loaded = None
 
@@ -159,7 +173,8 @@ class Pool:
 
     def _start(self, index):
         ours, theirs = self.context.Pipe()
-        process = self.context.Process(target=worker, args=(self.config, theirs), name=f"actor-{index}", daemon=True)
+        process = self.context.Process(target=worker, args=(self.config, theirs, os.getpid()),
+                                       name=f"actor-{index}", daemon=True)
         process.start()
         theirs.close()  # the actor now holds the only copy, so its death ends our stream
         self.pipes[index], self.processes[index] = ours, process
@@ -266,16 +281,19 @@ class Log:
     """Append-only ``log.jsonl``: one record per game and per update."""
 
     def __init__(self, path):
-        self.last_game = 0  # the highest game number of earlier runs
+        self.last_game = 0  # the highest game number earlier runs handed out
+        line = "\n"
         if path.exists():
             with path.open() as stream:
                 for line in stream:
-                    if line.startswith('{"event": "game"'):
+                    if line.startswith('{"event": "job"'):
                         try:
                             self.last_game = max(self.last_game, json.loads(line)["number"])
                         except ValueError:
-                            pass  # a line cut short by a crash
+                            pass  # cut short by a crash
         self.stream = path.open("a")
+        if not line.endswith("\n"):
+            self.stream.write("\n")  # the previous run stopped inside a line
 
     def write(self, event, **fields):
         record = {"event": event, "time": datetime.now(timezone.utc).isoformat(timespec="seconds"), **fields}
@@ -291,6 +309,7 @@ def collect(pool, config, path, target, numbers, update, display, log):
     while len(games) < target:
         while pool.idle and len(games) + len(pool.busy) < target:
             number = next(numbers)
+            log.write("job", number=number)  # before the game exists, so its number is never handed out twice
             pool.submit(path, Job(number, secrets.randbelow(2**31 - 1) + 1, number % 2,
                                   (secrets.randbits(62), secrets.randbits(62))))
         message = pool.next()
@@ -333,8 +352,7 @@ def train(config, games, *, fresh=False, out=sys.stderr):
 
 def _train(config, games, update_policy, fresh, out):
     state = restore(config, fresh=fresh)
-    if not config.keep_game_files:
-        shutil.rmtree(config.state / "games", ignore_errors=True)  # left behind by an actor that was killed
+    shutil.rmtree(config.state / "games", ignore_errors=True)  # left behind by actors that were killed
     display, log = Display(out), Log(config.state / "log.jsonl")
     display.line(f"Continuing from update {state.updates} ({state.progress['games']} games, "
                  f"{state.progress['decisions']} decisions) in {config.state}")
@@ -342,7 +360,7 @@ def _train(config, games, update_policy, fresh, out):
               ppo=config.ppo.to_dict(), limits=asdict(config.limits), guard=config.guard)
     # Failed and discarded games keep their numbers, so a number never names two games.
     numbers = itertools.count(max(state.progress["games"], log.last_game) + 1)
-    pool = Pool(config)
+    pool, saved_update = Pool(config), state.updates
     try:
         while games > 0:
             target = min(config.games_per_update, games)
@@ -360,6 +378,7 @@ def _train(config, games, update_policy, fresh, out):
                               "decisions": state.progress["decisions"] + report.samples,
                               "optimizer_steps": state.progress["optimizer_steps"] + report.optimizer_steps}
             saved = checkpoint.save(config.state, state)
+            saved_update = update
             del batch
             log.write("update", update=update, games=target, **tally, samples=report.samples,
                       optimizer_steps=report.optimizer_steps, policy_loss=report.policy_loss,
@@ -373,7 +392,7 @@ def _train(config, games, update_policy, fresh, out):
                          f"PPO {_clock(updated - collected)}")
             games -= target
     except KeyboardInterrupt:
-        display.line(f"Stopped. The next run continues from update {state.updates}; "
+        display.line(f"Stopped. The next run continues from update {saved_update}; "
                      "games of the unfinished batch are discarded.")
     finally:
         pool.shutdown()

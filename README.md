@@ -30,7 +30,7 @@ python -m heroes check        # show what a run would start from; plays nothing
 | --- | --- | --- |
 | `--games-per-update N` | games played with the same weights before one update | 100 |
 | `--workers N` | games in play at once, one process each | 10 |
-| `--keep-game-files` | keep each game's engine folder and logs | deleted |
+| `--keep-game-files` | keep each game's engine folder and logs, in `kept-games/` | deleted |
 | `--backend torch` | slow reference update without MLX | `mlx` |
 | `--state DIR` | where checkpoints and the log go | `~/Projects/Heroes-artifacts/training` |
 | `--fresh` | start from a random policy when the state folder is empty | off |
@@ -72,8 +72,8 @@ The state folder holds everything:
 | --- | --- |
 | `checkpoints/update-NNNNNN.pt` | model, Adam state, shuffle generator and counters after that update |
 | `latest.json` | which checkpoint is newest; switched last, so a crash never leaves a half state |
-| `log.jsonl` | one line per game and per update: outcome, days, samples, losses, timings |
-| `games/` | engine folders of games in play, deleted as each game ends |
+| `log.jsonl` | one line when a game is handed out, one when it ends and one per update: outcome, days, samples, losses, timings |
+| `games/` | engine folders of games in play, deleted as each game ends and emptied when a run starts |
 | `lock` | held by the running trainer, so two runs cannot share one state folder |
 
 ## Where the code is

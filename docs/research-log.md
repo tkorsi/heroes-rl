@@ -7552,7 +7552,8 @@ minibatch, Adam 3e-4, normalized advantages), ten actors, 100 games per update,
 both seats on the batch-start weights with the learner seat alternating, the
 engine settings and environment, the scenario, `no-artifacts-v1`, and the MLX
 network, kernels and first-minibatch sanity limits. Engine replay logging stays
-on; see the correction in the review entry below.
+on. An earlier text of this entry offered a switch for it; the review entry
+below corrects that.
 
 **What actually ran.** Everything below ran in a cloud sandbox on Linux x86-64
 with CPython 3.13 and Torch 2.9.1. No VCMI, no Metal and no MLX kernel ran, and
@@ -7597,3 +7598,132 @@ example `./train.command 10 --games-per-update 10 --state
 ~/Projects/Heroes-artifacts/training-trial`, then the real run. The assistant
 ran no gameplay, training, replay or benchmark on real data beyond the
 forward-only regression above.
+
+### 2026-11-18 — Review of the refactor branch: thirteen findings, one correction
+
+**Question.** Does the new pipeline contain defects that a real run on the Mac
+would hit and that the scripted tests and the three-game regression cannot see?
+
+**Method.** Separate reviewer sessions, which did not see the author's
+reasoning, each compared one area of the new code with the pipeline at `5efe811`
+and with the C++ engine side: the engine binding, what is trained on, the
+trimmed policy/guard/contract, and the trainer with its process pool and
+checkpoints. A second reviewer then tried to refute each finding. A second pass
+reviewed the trainer again and the commit that fixed the first pass. Reviewers
+ran only the scripted engine with random weights, differential tests of old
+against new code on synthetic inputs, and the three existing read-only
+regression checks. No real engine, no MLX and no update on captured games ran.
+The first pass was cut short by a usage limit: its trainer review and the
+challenge of the learning and model findings did not run. The second pass
+covered the trainer, and the author reproduced the learning and model findings
+with tests.
+
+**Correction to the entry above.** That entry and the first README of this
+branch offered `--no-replay-log` to stop the engine's replay logs. This would
+have broken every naturally finished game. In evidence mode the client shuts
+down only on the server's terminal barrier, and the server builds that barrier
+from the replay recorder (`engine/patches/0013`, `0015`, `0029`); without the
+recorder the call throws. This was established by reading the patches, not by
+running the engine. The previous binding refused that configuration. The switch
+is removed and `VCMI_EXPERIMENT_REPLAY=1` is always set. Removing the logs
+needs an engine change and a rebuild.
+
+**Findings of the first pass, fixed in `bac2a10`.**
+
+1. The replay switch above.
+2. A relative state folder reached the engine unresolved, although the engine
+   runs in its binary's folder. Every game would have failed at startup.
+   Reproduced with the scripted engine. The folder is now resolved.
+3. An engine that exits before either seat connects was reported as a reader
+   timeout after five seconds, hiding its exit status and log marker.
+   Reproduced. Readers now stop waiting once the engine has exited.
+4. A dead actor was noticed only after a second without any message from any
+   actor, so not while others reported progress. Reproduced.
+5. An actor killed while idle left its inbox queue locked, so its replacement
+   never received a game and the batch hung. Reproduced. For 4 and 5 every
+   actor now has its own pipe: its death is an end-of-file the trainer sees at
+   once, and a replacement gets a new pipe.
+6. Game numbers restarted from the count of usable games, so failed and
+   discarded games shared numbers with later ones.
+7. The acting memo stayed valid after weight changes that do not bump a
+   parameter's version counter (`assign=True`, a replaced `.data`). No code path
+   of the package does this. The memo key now includes the storage address and
+   loading a state dict drops the memo. In-place writes through
+   `parameter.data` remain undetected and are documented as unsupported.
+
+**Findings of the second pass, fixed in the following commit.**
+
+8. A state folder with checkpoints but without `latest.json` counted as empty:
+   the run re-imported 1,784 (or started from random weights with `--fresh`)
+   and replaced later checkpoints one by one. Nothing in the pipeline removes
+   the pointer, so the trigger is manual. Such a folder is now refused and the
+   message says how to restore the pointer.
+9. The actor's watch for a dead trainer read the parent's process id inside the
+   child. An actor still starting when the trainer was killed never noticed, and
+   with a silent engine it stayed for good. The trainer now passes its own id.
+10. `--workers 0` waited forever without output. Arguments are now checked.
+11. Orphaned actors of a hard-killed trainer could delete the game folders of a
+    run restarted within about a second, because in-flight game numbers were
+    reused. The challenger could reproduce this only with a scripted engine
+    that ignores SIGTERM and judged it unreachable with the real one. It is
+    closed anyway: a `job` record is written to `log.jsonl` when a number is
+    handed out, and numbering continues after the highest such record. The
+    challenger's reproducer no longer collides.
+12. The new startup cleanup of `games/` deleted folders an earlier run had kept
+    with `--keep-game-files`. Kept folders now live in `kept-games/`.
+13. The new actor-death test could misread a progress message under extreme
+    load. Not observed without injected delays; the test now waits for the
+    message it means.
+
+**Changes prompted by reviewer notes that were not findings.**
+
+- The environment waits for engine events one second at a time, so an actor
+  that is told to stop cannot sit out a silent engine. A wait without a timeout
+  is interrupted by signals on Linux, where CPython's locks are semaphores.
+  Where they are a mutex and a condition variable, which to the author's
+  knowledge includes macOS, POSIX does not guarantee that. Not verified on
+  macOS.
+- The actor's SIGTERM handler fires once, so a second signal cannot interrupt
+  the cleanup the first one started.
+- `latest.json` is synced to disk before it is renamed into place.
+- `train.command` attaches `caffeinate -is -w` to the trainer instead of
+  wrapping it, as the previous launcher did, so Ctrl-C returns once the trainer
+  has stopped its games. Checked on Linux with stand-ins for `caffeinate` and
+  Python; not run on macOS.
+- The message after Ctrl-C names the last update that was saved.
+
+**What the reviews found to be equal to the previous pipeline.** These are the
+reviewers' own reports of what they ran.
+
+- The launch (command line, environment, settings, profile layout) equals the
+  recorded production launch apart from paths and ports. Production also ran
+  without an engine deadline.
+- Six real seat histories of up to 4,980 frames round-trip through the new wire
+  protocol frame for frame.
+- On 200,000 random histories the old and the new code select the same trained
+  decisions, reward and usable/unusable verdict. Cutting the three captured
+  games at every day gave 116 of 116 correct truncated trajectories.
+- On 1,400 synthetic histories (26,826 frame encodings) the old and the new
+  encoder agree on every frame. With equal weights and seeds, 3,458 steps and
+  3,912 sampled actions are bit-identical between old and new model.
+- The single remaining guard version equals the old stack-cycle version on
+  16,142 decisions and 1.2 million permission checks.
+- The weights digest equals the old one on 400 random state dicts.
+- The legacy pointer file and the 1,784 pair on the Mac snapshot import as
+  expected (read only).
+- With the scripted engine on Linux: SIGINT, SIGTERM, SIGKILL and SIGHUP in
+  several phases leave no process behind; twelve actors killed at random during
+  a 40-game run gave twelve `actor_died` records, 40 completed games and unique
+  numbers; 200 parallel games over four ending shapes were all classified
+  correctly.
+
+**What actually ran after the fixes.** 32 tests pass, each new test fails
+without its fix, and the three regression checks on captured games pass
+unchanged (19,667 frames and 2,580 decisions; 1,433 samples; 46 minibatch
+plans). The reviewers' reproducers for findings 9 and 11 no longer reproduce.
+
+**Limitations.** Everything ran on Linux. Signal delivery, `flock`, process
+spawning and `caffeinate` on macOS were judged by reading. How the real engine
+reacts to a closed policy socket or to SIGTERM was read from the C++ side and
+from the previous pipeline's production use, not run. The review cannot replace
+the first real run, which remains open.

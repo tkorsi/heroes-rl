@@ -84,6 +84,18 @@ with the frames:
 - A truncated game ends at the last action whose following decision the policy
   saw. That decision's value stands in for the rest of the game.
 
+## Ten games at once
+
+[`heroes/train.py`](../heroes/train.py) keeps `--workers` actor processes, each
+with its own pipe to the trainer. An actor loads the newest checkpoint, plays
+the games it is handed one at a time and sends back each finished `Game`. A
+game's number is written to `log.jsonl` before the game starts, so a number is
+never used twice, even after a run that was killed.
+
+An actor that dies closes its pipe: the trainer replaces it at once and counts
+its game as failed. An actor stops when the trainer is gone and takes its
+engine with it. `lock` in the state folder keeps a second run out.
+
 ## The policy
 
 [`heroes/model/policy.py`](../heroes/model/policy.py). `ContextualEncoder`
@@ -144,7 +156,8 @@ when every step succeeded.
 [`heroes/checkpoint.py`](../heroes/checkpoint.py). A checkpoint is one
 `torch.save` file: model configuration, weights and their SHA-256, Adam state,
 the generator that shuffles minibatches, and the counters. Files are written to
-a temporary name and renamed; `latest.json` is switched last.
+a temporary name and renamed; `latest.json` is switched last. A state folder
+that holds checkpoints but no `latest.json` is refused, not started over.
 
 The previous pipeline wrote a `policy.pt` and a `resume.pt` per update.
 `find_legacy` locates the newest pair and `import_legacy` reads it. This

@@ -9,6 +9,7 @@ complete checkpoint.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import io
 import json
 import os
 from pathlib import Path
@@ -49,33 +50,37 @@ def fresh(*, learning_rate, seed=0):
                  {"updates": 0, "games": 0, "decisions": 0, "optimizer_steps": 0}, "random initialization")
 
 
-def _write(path, payload):
-    path = Path(path)
+def _write(path, data):
+    """Put ``data`` at ``path`` whole: on disk under another name first, then renamed."""
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(path.name + ".tmp")
     with temporary.open("wb") as stream:
-        torch.save(payload, stream)
+        stream.write(data)
         stream.flush()
         os.fsync(stream.fileno())
     os.replace(temporary, path)
 
 
+def _name(updates):
+    return f"update-{updates:06d}.pt"
+
+
 def save(directory, state):
     """Write the checkpoint of ``state.updates`` and make it the latest one."""
     directory = Path(directory)
-    path = directory / "checkpoints" / f"update-{state.updates:06d}.pt"
+    path = directory / "checkpoints" / _name(state.updates)
     digest = weights_sha256(state.model)
-    _write(path, {
+    buffer = io.BytesIO()
+    torch.save({
         "format": FORMAT, "model_config": state.model.config.to_dict(),
         "model_state": {name: value.detach().clone() for name, value in state.model.state_dict().items()},
         "weights_sha256": digest, "optimizer_state": state.optimizer.state_dict(),
         "shuffle_rng": state.generator.get_state(), "progress": dict(state.progress), "origin": state.origin,
-    })
-    pointer = directory / "latest.json"
-    temporary = pointer.with_name("latest.json.tmp")
-    temporary.write_text(json.dumps({"checkpoint": str(path.relative_to(directory)), "weights_sha256": digest,
-                                     **state.progress}, indent=2) + "\n")
-    os.replace(temporary, pointer)
+    }, buffer)
+    _write(path, buffer.getvalue())
+    _write(directory / "latest.json", (json.dumps(
+        {"checkpoint": str(path.relative_to(directory)), "weights_sha256": digest, **state.progress}, indent=2)
+        + "\n").encode())
     return path
 
 
@@ -84,7 +89,22 @@ def latest(directory):
     pointer = Path(directory) / "latest.json"
     if not pointer.is_file():
         return None
-    return Path(directory) / json.loads(pointer.read_text())["checkpoint"]
+    try:
+        return Path(directory) / json.loads(pointer.read_text())["checkpoint"]
+    except (ValueError, KeyError, TypeError):
+        raise SystemExit(f"{pointer} is damaged. It has to name the newest checkpoint of this folder, "
+                         'for example {"checkpoint": "checkpoints/update-001785.pt"}.')
+
+
+def unlisted(directory, updates):
+    """Checkpoints a directory without ``latest.json`` holds besides the one of update ``updates``.
+
+    A run that starts such a directory writes that one file first, so finding
+    only it means the first save was interrupted. Anything else is the work of
+    earlier runs whose pointer was lost, and starting over would replace it.
+    """
+    return sorted(path.name for path in (Path(directory) / "checkpoints").glob("update-*.pt")
+                  if path.name != _name(updates))
 
 
 def load_model(path):

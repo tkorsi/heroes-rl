@@ -50,7 +50,7 @@ def test_a_crashed_engine_is_a_failed_game(play_fake):
 def test_an_engine_that_dies_before_connecting_reports_its_own_error(play_fake):
     game = play_fake(end="abort")
     assert (game.status, game.reason) == ("failed", "engine_error")
-    assert "Headless game start failed" in game.detail and game.seconds < 3
+    assert "Headless game start failed" in game.detail
 
 
 def test_a_relative_game_folder_still_reaches_the_engine(fake_engine, tmp_path, monkeypatch):

@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import replace
-import json
 from pathlib import Path
 
 from .config import Config
@@ -26,24 +25,16 @@ def _config(arguments):
 def _check(config):
     """Report what a training run would start from, without playing or writing anything."""
     from . import checkpoint
-    from .train import update_function
+    from .train import restore, update_function
     config.engine().check()
     print(f"engine     {config.vcmi}")
     print(f"map        {config.game_map}")
-    path = checkpoint.latest(config.state)
-    if path is not None:
-        print(f"state      {config.state}")
-        print(f"continues  {json.loads((config.state / 'latest.json').read_text())}")
-    else:
-        pair = checkpoint.find_legacy(config.legacy)
-        if pair is None:
-            print(f"state      {config.state} (empty; no earlier checkpoint in {config.legacy}; train needs --fresh)")
-        else:
-            state = checkpoint.import_legacy(*pair, learning_rate=config.ppo.learning_rate)
-            print(f"state      {config.state} (empty)")
-            print(f"continues  {state.origin}: {state.progress}")
     update_function(config)
     print(f"backend    {config.backend} is available")
+    state = restore(config, save=False)
+    empty = checkpoint.latest(config.state) is None
+    print(f"state      {config.state}" + (f" (empty; starts from {state.origin})" if empty else ""))
+    print(f"continues  {state.progress}")
 
 
 def main(argv=None):
@@ -69,6 +60,8 @@ def main(argv=None):
     config = _config(arguments)
     if arguments.command == "train" and arguments.games < 1:
         parser.error("games must be positive")
+    if config.workers < 1 or config.games_per_update < 1:
+        parser.error("--workers and --games-per-update must be at least 1")
     try:
         if arguments.command == "check":
             _check(config)

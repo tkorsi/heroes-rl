@@ -8,8 +8,10 @@ if [ ! -x "$PYTHON" ]; then
     echo "Set HEROES_PYTHON to the Python that has torch and mlx installed." >&2
     exit 2
 fi
-# Keep the Mac awake while training; the display may still sleep.
+# Keep the Mac awake until training ends; the display may still sleep. The
+# trainer stays the foreground process, so Ctrl-C returns only once it has
+# stopped its games.
 if command -v caffeinate >/dev/null 2>&1; then
-    exec caffeinate -is "$PYTHON" -m heroes train "$@"
+    caffeinate -is -w $$ &
 fi
 exec "$PYTHON" -m heroes train "$@"
