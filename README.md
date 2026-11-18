@@ -93,15 +93,22 @@ The state folder holds everything:
 
 ## Status
 
-The last checkpoint of the previous pipeline is update **1,784** (9,822 games,
-12.9 million decisions). This pipeline continues from it.
+The last checkpoint of the previous pipeline is update **1,785** (9,922 games,
+13.7 million decisions). This pipeline continues from it.
 
-The refactored pipeline was verified without the engine: three captured games
-replay through the moved policy bit for bit, the MLX update receives
-byte-identical inputs for them, checkpoint 1,784 imports with identical weights
-and optimizer state, and the loop runs end to end against a scripted engine.
-It has **not yet played a real game on the Mac**. Start with a small run into a
-scratch folder before pointing it at the real state:
+The refactored pipeline was first verified without the engine: three captured
+games replay through the moved policy bit for bit, the MLX update receives
+byte-identical inputs for them, the previous pipeline's checkpoints import with
+identical weights and optimizer state, and the loop runs end to end against a
+scripted engine.
+
+On 2026-11-18 it ran on the Mac for the first time: two runs of ten games and
+one PPO update each, into a scratch folder. All 20 games ended naturally, both
+updates were saved, and the second run resumed from the first. A game stopped
+at a limit, a failed game and an interrupted run have not been seen with the
+real engine yet, and nothing has run in the real state folder.
+
+To try a change without touching the real state, use a scratch folder:
 
 ```sh
 ./train.command 10 --games-per-update 10 --state ~/Projects/Heroes-artifacts/training-trial
@@ -114,8 +121,30 @@ cannot train silently.
 ## Making it faster
 
 `log.jsonl` records, for every game, its wall time and recipe compile time, and
-for every update how long collecting, planning and the GPU steps took. Things
-to try first, one at a time:
+for every update how long collecting, planning and the GPU steps took.
+
+The two runs of 2026-11-18, ten games per update:
+
+| | Learner decisions | Collecting | PPO update |
+| --- | --- | --- | --- |
+| Run 1 | 105,875 | 9 min 49 s | 10 min 52 s |
+| Run 2 | 172,718 | 16 min 44 s | 28 min 12 s |
+
+What these numbers say, in the order of what they cost:
+
+- **The update is the largest part, and long games make it worse than
+  proportionally.** Every optimizer step recomputes the recurrent state of the
+  games in its minibatch from their first frame with the current weights, so
+  this part of a game's cost grows with the square of its length. Run 2 held
+  one game with 63,390 learner decisions and needed 9.8 ms per decision, run 1
+  needed 6.2 ms. Changing this changes what the update computes, so it is a
+  decision about the learning method and not only about speed.
+- **Ten games on ten actors take as long as the longest game.** With 100 games
+  per update the actors stay busy and this evens out.
+- A game plays at about 105 decisions per second of both seats together, and
+  its recipe compiles at about 1.6 ms per learner decision.
+
+Things to try, one at a time:
 
 - `--workers`. Ten games at once was chosen for the old pipeline.
 - `--games-per-update`. Fewer games per update means more frequent updates on

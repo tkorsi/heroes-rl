@@ -7727,3 +7727,150 @@ spawning and `caffeinate` on macOS were judged by reading. How the real engine
 reacts to a closed policy socket or to SIGTERM was read from the C++ side and
 from the previous pipeline's production use, not run. The review cannot replace
 the first real run, which remains open.
+
+### 2026-11-18 — First real runs of the new pipeline (user-launched) and timing against main
+
+**Question (user request).** How long does it take to train ten games on `main`
+and on the refactor branch? No acceptance criterion was set in advance. This is
+a read-only comparison of runs the user had already launched; the assistant
+started no game, training, check or benchmark, and edited nothing on the Mac.
+
+**What ran, all launched by the user on the Mac.**
+
+- `main` at `5efe811`: one cycle of 100 games, run
+  `run-20261118T104905Z-ebe300b5`, launched 10:49:05 UTC, parent checkpoint
+  1,784 (weights `6f5f6592…`), CPU policy, MLX PPO, ten actors. It ended with
+  status completed and exit code 0 and published checkpoint 1,785.
+- The branch at `e46fe66` (checked out on the Mac at 21:28 UTC): two runs of ten
+  games and one update each into the scratch folder
+  `~/Projects/Heroes-artifacts/training-trial`, started 21:28:34 and 21:49:56
+  UTC, CPU policy, MLX PPO, ten actors. Engine and sampling seeds of all 20
+  games are in that folder's `log.jsonl`.
+
+Evidence: `launch.json`, `report.json`, `shutdown.json`,
+`batch-train-000/attempts.json`, the 100 episode manifests and
+`latest-checkpoint.json` of the `main` run; `log.jsonl`, `latest.json` and a
+read-only copy of `checkpoints/update-001785.pt` of the trial folder.
+
+**Correction to the two entries above.** They call 1,784 the last checkpoint of
+the previous pipeline and say that a diagnostic game was still owed. Both were
+true for the snapshot the refactor was checked against, taken while the `main`
+run above was collecting. That run then played the owed diagnostic (670 s),
+trained, published **1,785** (9,922 games, 13,713,041 decisions, 431,486
+optimizer steps, weights `6a41cead…`) and passed its own final diagnostic. The
+previous pipeline's last checkpoint is therefore 1,785 and no diagnostic is
+owed.
+
+**Observed: criterion 5 of the refactor, the first real run.**
+
+- The one-time import chose 1,785 from `latest-checkpoint.json`, not the older
+  pair under `retained/`. The copy of `update-001785.pt` loads with weights
+  digest `6a41cead7e35c388b94d60908affddf68760bd42ed650393fdaa0c404028ad3f`,
+  the digest `main` published, and with the same counters.
+- 20 games were handed out and all 20 ended naturally. No game failed, was
+  stopped at a limit or had to be replaced. `games/` is empty afterwards.
+- Both MLX updates completed and were saved. The update raises before its first
+  optimizer step when its first minibatch disagrees with the probabilities
+  recorded during play, so both passed that comparison.
+
+  | Update | Games | Learner samples | Optimizer steps | Approx. KL | Clip fraction | Policy loss | Value loss |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | 1,786 | 9,923 to 9,932 | 105,875 | 3,311 | 0.00278 | 0.0233 | 0.00040 | 0.341 |
+  | 1,787 | 9,933 to 9,942 | 172,718 | 5,400 | 0.00450 | 0.0295 | 0.00096 | 0.465 |
+
+- The second run resumed from the first run's `latest.json`. Weights after
+  1,787 are `ef2ebef0…`.
+- Not observed with the real engine: a game stopped at day 365 or at the action
+  limit, a failed or replaced game, a killed actor, an interrupted run, two runs
+  competing for one folder. Nothing has run in the real state folder
+  `~/Projects/Heroes-artifacts/training`; it does not exist yet. The two trial
+  updates live only in the scratch folder.
+
+**Timings as recorded.**
+
+| | `main`, 100 games | Branch, run 1 | Branch, run 2 |
+| --- | --- | --- | --- |
+| Decisions of both seats | 1,546,610 | 183,683 | 319,372 |
+| Learner samples | 786,511 | 105,875 | 172,718 |
+| Optimizer steps | 24,602 | 3,311 | 5,400 |
+| Diagnostic games | 669.8 s owed + 306.1 s final | none | none |
+| Collection | 3,532.4 s | 589.0 s | 1,004.2 s |
+| Update | 4,798.8 s | 652.4 s | 1,692.0 s |
+| Whole run | 9,317.9 s | 1,241.4 s | 2,696.2 s |
+
+Inside the update, `main` reports 4,767.6 s for the steps including 275.2 s of
+plan building and 54.0 s of state validation; the branch reports 651.4 s
+(31.8 s, 7.1 s) and 1,690.1 s (48.1 s, 10.7 s). The `main` batch had 95 natural
+ends and 5 games stopped at the day limit.
+
+**The same quantities on one scale.**
+
+- *Playing.* Decisions of both seats per second of one game's wall time
+  (`wall_seconds` of the manifest on `main`, `seconds` in `log.jsonl` on the
+  branch): 60.3 on `main` over 100 games, 105.3 on the branch over 20 games. By
+  game size, from under 2,000 to over 45,000 decisions: 82.4, 72.7, 65.2, 60.8,
+  58.6, 58.0 on `main` and 119.6, 119.1, 106.9, 105.1, 106.6, 103.5 on the
+  branch, a ratio of 1.45 to 1.8. On `main` ten games were in play for the whole
+  batch. In a batch of ten the number of games in play falls as games end, so
+  the long games of the trial had fewer neighbours. The two smallest size
+  classes ended while at least eight games were in play in both pipelines; their
+  ratios are 1.45 and 1.64.
+- *After a game.* `main` spent 2,981.0 s of `preparation_seconds` on 786,518
+  learner decisions, 3.79 ms each, in the coordinator and one game at a time;
+  capture receipts trailed the end of their game by 181 s on average and 406 s
+  at most. The branch compiles inside each actor: 451.3 s for 278,593 learner
+  decisions, 1.62 ms each. `main` also wrote 15.1 GB of `training-rollout.bin`
+  for the batch.
+- *Between the end of a game and its arrival in the trainer* the branch needs
+  about 1 s for small games, 13.6 s for the game of 53,393 decisions and 25.8 s
+  for the game of 89,123. This contains engine shutdown, removal of the game
+  folder and the transfer of the pickled trajectory. Not broken down.
+- *Update.* 5.16 optimizer steps per second on `main`, 5.08 in run 1, 3.20 in
+  run 2; per learner sample 6.1 ms, 6.2 ms and 9.8 ms. The code is the same on
+  both sides (the refactor moved it; equality was checked up to the backend
+  boundary). The difference is the mix of game lengths: the sample-weighted mean
+  game length Σ L² / Σ L is 16,120, 20,374 and 34,237 learner decisions.
+  `MLXBackend.prefix_states` encodes each game of a minibatch from frame 0 to
+  that minibatch's last window start at every optimizer step, so this part of a
+  game's cost grows with the square of its length. A least-squares fit of
+  `update = a·ΣL + b·ΣL²` over the three batches gives a = 2.79 ms and
+  b = 2.02e-7 s and reproduces them within 0.2%, 12% and 0.7%; by that fit the
+  one game of 63,390 learner decisions accounts for about 990 s of run 2's
+  1,690 s. Three batches and two parameters do not establish the form; the code
+  does. The five batches of the stopped `main` run earlier that day show the
+  same growth, from 4.26 ms per sample at 500,788 samples to 5.92 ms at 755,229.
+
+**Estimate, not a measurement: `main` on the same ten games.** No ten-game run
+of `main` with the current policy exists. A ten-game batch on ten actors lasts
+as long as its longest game. Taking the rate of `main`'s games above 45,000
+decisions (55.7 to 62.6 per second), its preparation of long games (3.3 to
+3.8 ms per learner decision), 60 s of batch setup and teardown seen in the
+100-game run, the update time measured on the branch, and one final diagnostic
+of 306 to 670 s:
+
+| | `main`, estimated | Branch, measured |
+| --- | --- | --- |
+| The ten games of run 1 (longest: 53,393 decisions) | 33 to 41 min | 20 min 41 s |
+| The ten games of run 2 (longest: 89,123 decisions) | 62 to 71 min | 44 min 56 s |
+
+Not included for `main`: the launch itself, which first analyses and deletes the
+previous run's folder.
+
+**Limitations.** Different games, different weights (1,784 against 1,785 and
+1,786), different times of day, uncontrolled machine load and temperature. The
+`main` rates come from a full ten-actor load, the trial's long games from a
+lighter one. Two ten-game runs differ by a factor of 2.2 on the same code only
+because of the games drawn, so no single ten-game run on either side could
+settle the comparison more precisely than the per-decision rates do. No part of
+the difference in playing speed is attributed to a specific change. Nothing here
+says anything about learning or playing strength.
+
+**What a direct measurement on `main` would require.** The old launcher refuses
+to start until the journal on `main` carries the retention marker for
+`run-20261118T104905Z-ebe300b5`. It would then delete that run's folder and
+train the previous lineage for real, 1,785 to 1,786. Neither was done; the
+decision is the user's.
+
+**Next.** The update's recurrent prefix is the largest remaining cost. Any
+change to it changes what the update computes and is a decision about the
+learning method, to be proposed separately.
