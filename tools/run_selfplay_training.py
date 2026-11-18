@@ -923,26 +923,6 @@ def discard_training_streams(folder):
           dict(training_verification='not_performed', files=removed), new=True)
 
 
-def require_cycle_memory_budget():
-    """Leave substantial headroom for macOS and temporary history compilation."""
-    rows = subprocess.check_output(['ps', '-axo', 'pid=,ppid=,rss='], text=True)
-    processes = [tuple(map(int, line.split())) for line in rows.splitlines()]
-    owned = {os.getpid()}
-    while True:
-        descendants = owned | {pid for pid, parent, rss in processes if parent in owned}
-        if descendants == owned:
-            break
-        owned = descendants
-    resident = sum(rss * 1024 for pid, parent, rss in processes if pid in owned)
-    physical = int(subprocess.check_output(['sysctl', '-n', 'hw.memsize'], text=True))
-    require(resident <= max(8 * 1024**3, physical - 48 * 1024**3),
-            'Cycle memory budget reached; stopping owned processes and preserving the checkpoint')
-    pressure = subprocess.check_output(['memory_pressure', '-Q'], text=True)
-    free_percent = int(pressure.rsplit(':', 1)[-1].strip().removesuffix('%'))
-    require(free_percent >= 20,
-            'System memory pressure reached the cycle reserve; preserving the checkpoint')
-
-
 class CaptureDispatch:
     """Replenish actor processes while main performs deadline-bound preparation.
 
@@ -1486,8 +1466,6 @@ def supervise(launch):
                 while process.poll() is None:
                     display.poll()
                     if time.monotonic() - last_report >= 2:
-                        if CYCLE_MODE:
-                            require_cycle_memory_budget()
                         require(shutil.disk_usage(output).free >=
                                 launch['configuration']['disk_reserve_gib'] * 1024**3,
                                 'Ten-game disk reserve reached; stopping owned workers')
@@ -1630,7 +1608,7 @@ def ten_configuration(checked, seconds, *, games=None, use_metal=False, use_mlx=
                    learner_backend='mlx' if use_mlx else ('metal' if use_metal else 'cpu'),
                    training_verification='not_performed', evaluation_games_per_cycle=1,
                    collection_workers=10, collection_worker_threads=1, preparation_workers=1,
-                   collection_scheduling='rolling-v1', memory_reserve_gib=48,
+                   collection_scheduling='rolling-v1',
                    training_storage='owned-binary-v1', training_history_audit='not_performed',
                    training_bridge_ledger=False, training_history_jsonl=False)
     if use_metal:

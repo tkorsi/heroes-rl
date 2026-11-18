@@ -7444,3 +7444,27 @@ batch-005 plan/attempts and logs of the interrupted episodes) is preserved under
 training, `--check`, replay or benchmark; the user launches personally.
 
 Retention-reviewed run: `run-20261118T003841Z-91a203dd`.
+
+### 2026-11-18 — Remove the cycle owned-process memory guard (user decision)
+
+After the analysis above, the user decided to remove the cycle memory guard
+completely rather than reduce the ten actors. History: the guard was added on
+2026-11-05 (`cf92730`) together with one-game-at-a-time history compilation,
+after an earlier stopped run had shown a memory warning caused by unbounded
+concurrent full-history retention (that stop recorded no measured peak). It ran
+every two seconds in the supervisor and stopped the whole cycle when the summed
+resident memory of the supervisor's process tree exceeded physical RAM minus
+48 GiB, or when `memory_pressure -Q` reported less than 20% free memory.
+
+Implemented: `require_cycle_memory_budget`, its supervisor call and the
+`memory_reserve_gib=48` launch-configuration field are removed from
+`tools/run_selfplay_training.py`; README updated. Unchanged: ten actors, the
+30 GiB disk reserve, deadlines, seed/checkpoint/source/cleanup gates and MLX's
+own 25%-of-working-set allocator cap with its PPO MemoryError check.
+
+Expected consequence: concurrent very long games may now drive macOS into swap
+or compression, slowing the run, and in the extreme the OS may terminate a
+process; a terminated worker or coordinator still stops the run through the
+existing failure paths and preserves the last published checkpoint. Validation:
+the module compiles; no test, `--check`, gameplay or training was run by the
+assistant. The user launches personally.

@@ -170,9 +170,11 @@ from the adopted full-D source. Exact results and failed attempts remain in
 
 Metal keeps the original PPO settings, full current-weight recurrent prefixes,
 CPU checkpoint format, 25% MPS memory cap and 4 GiB prefix-constant cache.
-The process retains the 48 GiB RAM reserve, 20% system-free-memory check and
-30 GiB disk reserve. The fresh MLX cycle published checkpoint 1,766; offline
-benchmarks do not publish training checkpoints.
+The process retains the 30 GiB disk reserve. At the user's direction the cycle
+no longer has an owned-process RAM budget or system memory-pressure stop
+(removed 2026-11-18); MLX keeps its own allocator cap during PPO. The fresh
+MLX cycle published checkpoint 1,766; offline benchmarks do not publish
+training checkpoints.
 
 ## Find the implementation and evidence
 
