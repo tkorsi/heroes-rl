@@ -7552,8 +7552,7 @@ minibatch, Adam 3e-4, normalized advantages), ten actors, 100 games per update,
 both seats on the batch-start weights with the learner seat alternating, the
 engine settings and environment, the scenario, `no-artifacts-v1`, and the MLX
 network, kernels and first-minibatch sanity limits. Engine replay logging stays
-on by default because the engine has never been run without it; `--no-replay-log`
-switches it off.
+on; see the correction in the review entry below.
 
 **What actually ran.** Everything below ran in a cloud sandbox on Linux x86-64
 with CPython 3.13 and Torch 2.9.1. No VCMI, no Metal and no MLX kernel ran, and

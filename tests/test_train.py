@@ -1,14 +1,19 @@
 """The whole loop against the scripted engine: play, update, save, resume."""
 from dataclasses import replace
+import fcntl
 import io
 import json
+import os
+import signal
+import time
 
 import pytest
 
 from heroes import checkpoint
+from heroes.actor import Job
 from heroes.config import Config
 from heroes.model.policy import weights_sha256
-from heroes.train import train
+from heroes.train import Pool, train
 from test_checkpoint import write_legacy
 
 
@@ -67,6 +72,62 @@ def test_training_stops_when_every_game_fails(config, monkeypatch):
         train(config, 2, fresh=True, out=io.StringIO())
     # Nothing was learned, so the state is still the initial checkpoint.
     assert json.loads((config.state / "latest.json").read_text())["updates"] == 0
+    failed = [record["number"] for record in _log(config) if record["event"] == "game"]
+
+    # The next run does not reuse the numbers of the failed games.
+    monkeypatch.setenv("FAKE_VCMI", "{}")
+    assert train(config, 2, out=io.StringIO()).progress["games"] == 2
+    numbers = [record["number"] for record in _log(config) if record["event"] == "game"]
+    assert len(set(numbers)) == len(numbers) and min(numbers[len(failed):]) > max(failed)
+
+
+def test_one_state_folder_serves_one_run_at_a_time(config):
+    config.state.mkdir()
+    with (config.state / "lock").open("w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        with pytest.raises(SystemExit, match="Another training run"):
+            train(config, 2, fresh=True, out=io.StringIO())
+    assert not (config.state / "latest.json").exists()
+
+
+def test_an_actor_that_dies_is_replaced(config, monkeypatch):
+    monkeypatch.setenv("FAKE_VCMI", json.dumps({"end": "hang"}))
+    path = checkpoint.save(config.state, checkpoint.fresh(learning_rate=3e-4))
+    pool = Pool(config)
+
+    def wait_until(reached, seconds=30):
+        deadline = time.monotonic() + seconds
+        while time.monotonic() < deadline:
+            value = reached()
+            if value:
+                return value
+        raise AssertionError("the actors did not get there in time")
+
+    def started(number):
+        return wait_until(lambda: (config.state / "games" / f"game-{number:07d}" / "logs" / "process.log").exists()
+                          or time.sleep(0.05))
+
+    try:
+        for number in (1, 2):
+            pool.submit(path, Job(number, 7, number % 2, (1, 2)))
+        index = next(index for index, job in pool.busy.items() if job.number == 1)
+        started(1), started(2)
+        # Killed in the middle of a game: the game comes back as failed.
+        os.kill(pool.processes[index].pid, signal.SIGKILL)
+        _, died, game = wait_until(pool.next)
+        assert (died, game.job.number, game.reason) == (index, 1, "actor_died")
+        assert pool.idle == [index] and list(pool.busy) == [1 - index]
+        # Killed while waiting for a game: its replacement still receives the next one.
+        os.kill(pool.processes[index].pid, signal.SIGKILL)
+        pool.processes[index].join()
+        assert pool.next() is None and pool.idle == [index]
+        pool.submit(path, Job(3, 7, 1, (1, 2)))
+        started(3)
+        assert pool.busy[index].number == 3
+    finally:
+        pool.shutdown()
+    # Actors that were told to stop in the middle of a game removed its folder.
+    assert sorted(folder.name for folder in (config.state / "games").iterdir()) == ["game-0000001"]
 
 
 def test_a_stopped_game_is_trained_on_with_a_bootstrap(config, monkeypatch):

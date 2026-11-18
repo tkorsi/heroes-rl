@@ -9,16 +9,18 @@ from __future__ import annotations
 
 from dataclasses import asdict
 from datetime import datetime, timezone
+import fcntl
 import itertools
 import json
 import multiprocessing
+import multiprocessing.connection
 import os
 import pickle
-import queue
 import secrets
 import shutil
 import signal
 import sys
+import threading
 import time
 import traceback
 
@@ -72,43 +74,52 @@ def _play_job(env, model, job, config, report):
     shutil.rmtree(directory, ignore_errors=True)
     started = time.monotonic()
     try:
-        game = play(env, model, job, directory, guard=config.guard, on_progress=report)
-        if game.trajectory is not None and config.backend == "mlx":
-            compiling = time.monotonic()
-            compile_recipe(model, game.trajectory)
-            game.compile_seconds = time.monotonic() - compiling
-    except Exception:
-        game = Game(job, "failed", "actor_error", None, traceback.format_exc(limit=8), 0, (0, 0),
-                    time.monotonic() - started, None)
-    finally:
-        env.close()
-    if game.status == "failed":
         try:
-            tail = (directory / "logs" / "process.log").read_text(errors="replace")[-1500:]
-            game.detail = f"{game.detail or ''}\n--- end of the engine log ---\n{tail}".strip()
-        except OSError:
-            pass
-    if not config.keep_game_files:
-        shutil.rmtree(directory, ignore_errors=True)
-    return game
+            game = play(env, model, job, directory, guard=config.guard, on_progress=report)
+            if game.trajectory is not None and config.backend == "mlx":
+                compiling = time.monotonic()
+                compile_recipe(model, game.trajectory)
+                game.compile_seconds = time.monotonic() - compiling
+        except Exception:
+            game = Game(job, "failed", "actor_error", None, traceback.format_exc(limit=8), 0, (0, 0),
+                        time.monotonic() - started, None)
+        finally:
+            env.close()
+        if game.status == "failed":
+            try:
+                tail = (directory / "logs" / "process.log").read_text(errors="replace")[-1500:]
+                game.detail = f"{game.detail or ''}\n--- end of the engine log ---\n{tail}".strip()
+            except OSError:
+                pass
+        return game
+    finally:  # also when the actor is told to stop in the middle of the game
+        if not config.keep_game_files:
+            shutil.rmtree(directory, ignore_errors=True)
 
 
-def worker(index, config, inbox, results):
+def _end_with_trainer(trainer):
+    """Stop this actor once the trainer is gone, even while it waits on a silent engine."""
+    while os.getppid() == trainer:
+        time.sleep(1)
+    os.kill(os.getpid(), signal.SIGTERM)
+
+
+def worker(config, pipe):
     """One actor process. It plays the games it is handed, one at a time."""
     torch.set_num_threads(1)
     signal.signal(signal.SIGINT, signal.SIG_IGN)  # the trainer handles Ctrl-C and stops its actors
-    signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
-    parent = os.getppid()
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))  # unwinds through the game, stopping its engine
+    threading.Thread(target=_end_with_trainer, args=(os.getppid(),), daemon=True).start()
     env = Env(config.engine(), config.limits)
     model = loaded = None
+
+    def send(kind, payload):
+        # Plain pickle keeps tensors inside the message instead of in shared memory files.
+        pipe.send_bytes(pickle.dumps((kind, payload), protocol=pickle.HIGHEST_PROTOCOL))
+
     try:
         while True:
-            try:
-                item = inbox.get(timeout=5)
-            except queue.Empty:
-                if os.getppid() != parent:
-                    return  # the trainer is gone
-                continue
+            item = pipe.recv()
             if item is None:
                 return
             path, job = item
@@ -120,39 +131,46 @@ def worker(index, config, inbox, results):
                 now = time.monotonic()
                 if now - last[0] >= 1:
                     last[0] = now
-                    if os.getppid() != parent:
-                        raise SystemExit(0)
-                    results.put(("progress", index, (job.number, day, choices)))
+                    send("progress", (job.number, day, choices))
 
-            game = _play_job(env, model, job, config, report)
-            # Plain pickle keeps tensors inside the message instead of in shared memory files.
-            results.put(("game", index, pickle.dumps(game, protocol=pickle.HIGHEST_PROTOCOL)))
+            send("game", _play_job(env, model, job, config, report))
+    except (EOFError, ConnectionError):
+        pass  # the pipe closed: the trainer is gone
     finally:
         env.close()
 
 
 class Pool:
-    """The actor processes and which game each of them is playing."""
+    """The actor processes and which game each of them is playing.
+
+    Every actor has its own pipe to the trainer. An actor that dies closes its
+    end, which the trainer sees at once; a trainer that dies closes the other
+    end, which stops the actor and its engine.
+    """
 
     def __init__(self, config):
         self.config = config
         self.context = multiprocessing.get_context("spawn")
-        self.results = self.context.Queue()
-        self.inboxes = [self.context.Queue() for _ in range(config.workers)]
-        self.processes = [self._start(index) for index in range(config.workers)]
+        self.pipes, self.processes = [None] * config.workers, [None] * config.workers
+        for index in range(config.workers):
+            self._start(index)
         self.idle = list(range(config.workers))
         self.busy = {}  # worker index -> its job
 
     def _start(self, index):
-        process = self.context.Process(target=worker, args=(index, self.config, self.inboxes[index], self.results),
-                                       name=f"actor-{index}", daemon=True)
+        ours, theirs = self.context.Pipe()
+        process = self.context.Process(target=worker, args=(self.config, theirs), name=f"actor-{index}", daemon=True)
         process.start()
-        return process
+        theirs.close()  # the actor now holds the only copy, so its death ends our stream
+        self.pipes[index], self.processes[index] = ours, process
 
     def submit(self, path, job):
         index = self.idle.pop()
         self.busy[index] = job
-        self.inboxes[index].put((str(path), job))
+        try:
+            self.pipes[index].send((str(path), job))
+        except OSError:
+            pass  # the actor is gone; next() replaces it and reports the game as failed
 
     def next(self):
         """The next message from an actor, or None after a quiet second.
@@ -161,28 +179,38 @@ class Pool:
         ``("game", index, Game)``. An actor that died is replaced, and the game
         it was playing comes back as failed.
         """
-        try:
-            kind, index, payload = self.results.get(timeout=1)
-        except queue.Empty:
-            for index, process in enumerate(self.processes):
-                if not process.is_alive():
-                    self.processes[index] = self._start(index)
-                    self.idle.append(index)
-                    job = self.busy.pop(index, None)
-                    if job is not None:
-                        return "game", index, Game(job, "failed", "actor_died", None,
-                                                   f"The actor process exited with status {process.exitcode}",
-                                                   0, (0, 0), 0.0, None)
+        ready = multiprocessing.connection.wait(self.pipes, timeout=1)
+        if not ready:
             return None
+        index = self.pipes.index(ready[0])
+        try:
+            kind, payload = pickle.loads(ready[0].recv_bytes())
+        except (EOFError, OSError):
+            process = self.processes[index]
+            process.join(timeout=5)
+            if process.is_alive():
+                process.kill()
+                process.join()
+            ready[0].close()
+            self._start(index)
+            job = self.busy.pop(index, None)
+            if job is None:
+                return None  # it was waiting for a game
+            self.idle.append(index)
+            return "game", index, Game(job, "failed", "actor_died", None,
+                                       f"The actor process exited with status {process.exitcode}",
+                                       0, (0, 0), 0.0, None)
         if kind == "game":
-            payload = pickle.loads(payload)
-            self.busy.pop(index, None)
+            del self.busy[index]
             self.idle.append(index)
         return kind, index, payload
 
     def shutdown(self):
-        for inbox in self.inboxes:
-            inbox.put(None)
+        for pipe in self.pipes:
+            try:
+                pipe.send(None)
+            except OSError:
+                pass
         deadline = time.monotonic() + 5
         for process in self.processes:
             process.join(timeout=max(0, deadline - time.monotonic()))
@@ -238,7 +266,15 @@ class Log:
     """Append-only ``log.jsonl``: one record per game and per update."""
 
     def __init__(self, path):
-        path.parent.mkdir(parents=True, exist_ok=True)
+        self.last_game = 0  # the highest game number of earlier runs
+        if path.exists():
+            with path.open() as stream:
+                for line in stream:
+                    if line.startswith('{"event": "game"'):
+                        try:
+                            self.last_game = max(self.last_game, json.loads(line)["number"])
+                        except ValueError:
+                            pass  # a line cut short by a crash
         self.stream = path.open("a")
 
     def write(self, event, **fields):
@@ -286,14 +322,26 @@ def train(config, games, *, fresh=False, out=sys.stderr):
     """Play ``games`` games in batches of ``config.games_per_update`` and update after each batch."""
     config.engine().check()
     update_policy = update_function(config)
+    config.state.mkdir(parents=True, exist_ok=True)
+    with (config.state / "lock").open("w") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            raise SystemExit(f"Another training run is using {config.state}.")
+        return _train(config, games, update_policy, fresh, out)
+
+
+def _train(config, games, update_policy, fresh, out):
     state = restore(config, fresh=fresh)
+    if not config.keep_game_files:
+        shutil.rmtree(config.state / "games", ignore_errors=True)  # left behind by an actor that was killed
     display, log = Display(out), Log(config.state / "log.jsonl")
     display.line(f"Continuing from update {state.updates} ({state.progress['games']} games, "
                  f"{state.progress['decisions']} decisions) in {config.state}")
     log.write("start", games=games, backend=config.backend, workers=config.workers, progress=state.progress,
-              ppo=config.ppo.to_dict(), limits=asdict(config.limits), guard=config.guard,
-              record_replay=config.record_replay)
-    numbers = itertools.count(state.progress["games"] + 1)
+              ppo=config.ppo.to_dict(), limits=asdict(config.limits), guard=config.guard)
+    # Failed and discarded games keep their numbers, so a number never names two games.
+    numbers = itertools.count(max(state.progress["games"], log.last_game) + 1)
     pool = Pool(config)
     try:
         while games > 0:

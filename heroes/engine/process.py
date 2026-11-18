@@ -29,10 +29,6 @@ class Engine:
     interface: str = contract.EXPANDED_ENVIRONMENT
     army_information: str | None = contract.OWN_ARMY_INFORMATION
     equipment_policy: str | None = "no-artifacts-v1"
-    # The engine logs every network packet and observation digest for offline
-    # replay. Training never reads these logs, and they reach gigabytes in long
-    # games, but the engine has only ever been run with them switched on.
-    record_replay: bool = True
 
     def check(self):
         """Fail early, with the path, when the runtime is not where the configuration says."""
@@ -59,7 +55,7 @@ class Engine:
 
     def launch(self, directory, episode, seed, ports, log):
         """Start the game in ``directory``; ``ports`` are the two policy listeners."""
-        directory = Path(directory)
+        directory = Path(directory).resolve()  # the engine runs in its own folder, not ours
         profile, logs, engine = directory / "profile", directory / "logs", directory / "engine"
         for folder in (logs, engine):
             folder.mkdir(parents=True, exist_ok=True)
@@ -81,13 +77,13 @@ class Engine:
             "EXPLORER_RL_PLAYERS": "0,1", "EXPLORER_RL_EPISODE": str(episode),
             "EXPLORER_RL_TIMEOUT": "0",  # the engine waits for each answer without a deadline
             "EXPLORER_RL_PROFILE": "0", "EXPLORER_RL_INTERFACE": self.interface,
-            # The contextual evidence mode also selects the engine's orderly
-            # end-of-game shutdown, which the outcome check relies on.
-            "VCMI_EXPERIMENT_CONTEXTUAL_EVIDENCE": "1",
+            # Evidence mode selects the engine's orderly end-of-game shutdown,
+            # which the outcome check relies on. That shutdown is built on the
+            # replay recorder, so the engine cannot finish a game without it,
+            # although training never reads the gigabytes of logs it writes.
+            "VCMI_EXPERIMENT_CONTEXTUAL_EVIDENCE": "1", "VCMI_EXPERIMENT_REPLAY": "1",
             "EXPLORER_RL_PORT_0": str(ports[0]), "EXPLORER_RL_PORT_1": str(ports[1]),
         })
-        if self.record_replay:
-            environment["VCMI_EXPERIMENT_REPLAY"] = "1"
         if self.army_information is not None:
             environment["EXPLORER_RL_ARMY_INFORMATION"] = self.army_information
         inherited = {key: value for key, value in os.environ.items() if not key.startswith(_OWNED_VARIABLES)}

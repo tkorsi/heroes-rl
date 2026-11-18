@@ -9,13 +9,15 @@ from pathlib import Path
 from .config import Config
 
 
+def _path(text):
+    return Path(text).expanduser().resolve()  # "--state=~/x" reaches us with the tilde unexpanded
+
+
 def _config(arguments):
     config = Config()
     changes = {name: getattr(arguments, name) for name in ("state", "legacy", "vcmi", "game_data", "game_map",
                                                            "workers", "games_per_update", "backend")
                if getattr(arguments, name, None) is not None}
-    if getattr(arguments, "no_replay_log", False):
-        changes["record_replay"] = False
     if getattr(arguments, "keep_game_files", False):
         changes["keep_game_files"] = True
     return replace(config, **changes)
@@ -56,15 +58,13 @@ def main(argv=None):
                                  help="start from a random policy when the state folder is empty")
             command.add_argument("--games-per-update", type=int, help="games per PPO update (default 100)")
             command.add_argument("--workers", type=int, help="games in play at once (default 10)")
-            command.add_argument("--no-replay-log", action="store_true",
-                                 help="do not let the engine write its replay logs")
             command.add_argument("--keep-game-files", action="store_true", help="keep every game's engine folder")
         command.add_argument("--backend", choices=("mlx", "torch"), help="PPO backend (default mlx)")
-        command.add_argument("--state", type=Path, help="folder for checkpoints and the log")
-        command.add_argument("--legacy", type=Path, help="folder of the previous pipeline, imported once")
-        command.add_argument("--vcmi", type=Path, help="path of the patched vcmiclient")
-        command.add_argument("--game-data", type=Path, help="folder holding the original game's Data")
-        command.add_argument("--game-map", type=Path, help="map both seats play")
+        command.add_argument("--state", type=_path, help="folder for checkpoints and the log")
+        command.add_argument("--legacy", type=_path, help="folder of the previous pipeline, imported once")
+        command.add_argument("--vcmi", type=_path, help="path of the patched vcmiclient")
+        command.add_argument("--game-data", type=_path, help="folder holding the original game's Data")
+        command.add_argument("--game-map", type=_path, help="map both seats play")
     arguments = parser.parse_args(argv)
     config = _config(arguments)
     if arguments.command == "train" and arguments.games < 1:

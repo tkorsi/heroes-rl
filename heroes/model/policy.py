@@ -576,22 +576,25 @@ class ContextualActorCritic(nn.Module):
 
         Reuse needs evaluation mode without autograd: a hit is then exactly the
         tensor a recomputation would return. The memo belongs to one version of
-        the weights and starts empty as soon as any parameter was written
-        (an optimizer step, ``load_state_dict``).
+        the weights and starts empty as soon as any parameter was written in
+        place (an optimizer step, ``copy_``), given new storage (``.to``) or
+        loaded. A write through ``parameter.data`` is the one change this
+        cannot see; nothing in the package does that.
         """
         if torch.is_grad_enabled() or self.training:
             return None
         memo = self.__dict__.get("_memo_state")
-        if memo is None:
-            parameters = tuple(self.parameters())
-        else:
-            parameters = memo["parameters"]
-        versions = tuple(parameter._version for parameter in parameters)
+        parameters = tuple(self.parameters()) if memo is None else memo["parameters"]
+        versions = tuple((parameter._version, parameter.data_ptr()) for parameter in parameters)
         if memo is None or memo["versions"] != versions:
             memo = self.__dict__["_memo_state"] = {
                 "parameters": parameters, "versions": versions, "text": {}, "number": {}, "node": {},
                 "observations": {"entries": {}, "bytes": 0, "charged": set()}}
         return memo
+
+    def load_state_dict(self, *arguments, **options):
+        self.__dict__.pop("_memo_state", None)  # ``assign=True`` replaces the parameter objects themselves
+        return super().load_state_dict(*arguments, **options)
 
     def _encode_root(self, tree, cache, final=False):
         """Encode one top-level tree with this frame's cache, as ``_encode_tree`` does.

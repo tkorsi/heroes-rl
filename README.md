@@ -30,7 +30,6 @@ python -m heroes check        # show what a run would start from; plays nothing
 | --- | --- | --- |
 | `--games-per-update N` | games played with the same weights before one update | 100 |
 | `--workers N` | games in play at once, one process each | 10 |
-| `--no-replay-log` | stop the engine writing its replay logs, which training never reads | logs on |
 | `--keep-game-files` | keep each game's engine folder and logs | deleted |
 | `--backend torch` | slow reference update without MLX | `mlx` |
 | `--state DIR` | where checkpoints and the log go | `~/Projects/Heroes-artifacts/training` |
@@ -75,6 +74,7 @@ The state folder holds everything:
 | `latest.json` | which checkpoint is newest; switched last, so a crash never leaves a half state |
 | `log.jsonl` | one line per game and per update: outcome, days, samples, losses, timings |
 | `games/` | engine folders of games in play, deleted as each game ends |
+| `lock` | held by the running trainer, so two runs cannot share one state folder |
 
 ## Where the code is
 
@@ -116,17 +116,21 @@ cannot train silently.
 for every update how long collecting, planning and the GPU steps took. Things
 to try first, one at a time:
 
-- `--no-replay-log`. The engine writes several gigabytes per long game that
-  nothing reads. The engine has not been run without them yet.
 - `--workers`. Ten games at once was chosen for the old pipeline.
 - `--games-per-update`. Fewer games per update means more frequent updates on
   less data.
+
+One known waste needs an engine change first. The engine writes several
+gigabytes of replay logs per long game that nothing reads, but its end-of-game
+shutdown is built on the replay recorder
+([patch 0015](engine/patches/0015-contextual-terminal-barrier.patch)), so the
+logs cannot be switched off from Python.
 
 ## Develop
 
 ```sh
 python -m pip install pytest
-python -m pytest              # about 20 seconds, no engine, no saved games
+python -m pytest              # about 30 seconds, no engine, no saved games
 ```
 
 The tests play scripted games through the real sockets, environment, actor,

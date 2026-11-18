@@ -87,10 +87,10 @@ class Env:
     def reset(self, directory, episode, seed):
         """Start game ``episode`` with engine ``seed`` in the new folder ``directory``."""
         self.close()
-        self.directory = Path(directory)
+        self.directory = Path(directory).expanduser().resolve()
         self.directory.mkdir(parents=True)
         self.events = queue.Queue()
-        self.stopping = threading.Event()
+        self.stopping, self.exited = threading.Event(), threading.Event()
         self.request = self.result = self.failure = self.exit_code = self.limit = None
         sides = []
         for player in (0, 1):
@@ -110,7 +110,7 @@ class Env:
             self.close()
             raise
         for side in self.sides:
-            side.reader = threading.Thread(target=self._read, args=(side, self.events, self.stopping),
+            side.reader = threading.Thread(target=self._read, args=(side, self.events, self.stopping, self.exited),
                                            name=f"engine-{COLORS[side.player]}", daemon=True)
             side.reader.start()
         threading.Thread(target=lambda process=self.process, events=self.events:
@@ -180,18 +180,20 @@ class Env:
 
     # -- engine events ---------------------------------------------------------
     @staticmethod
-    def _read(side, events, stopping):
+    def _read(side, events, stopping, exited):
         """Reader thread: accept the seat's connection and queue its messages."""
         try:
             # Poll while waiting, so an engine that dies at startup cannot block this thread.
             listener = side.listener
             listener.settimeout(0.25)
             while True:
+                # Read before the attempt: a connection made before the engine exited is still accepted.
+                over = stopping.is_set() or exited.is_set()
                 try:
                     connection, _ = listener.accept()
                     break
                 except socket.timeout:
-                    if stopping.is_set():
+                    if over:
                         return
             connection.settimeout(None)
             # Answers are tiny single lines; never let Nagle's algorithm hold them.
@@ -307,6 +309,7 @@ class Env:
             # Only a limit or a failure gets here with the engine still running.
             engine_process.stop(self.process)
         returncode = self.process.wait()
+        self.exited.set()  # a seat that never connected stops waiting for the engine
         deadline = time.monotonic() + READER_DRAIN_SECONDS
         for side in self.sides:
             side.reader.join(timeout=max(0, deadline - time.monotonic()))

@@ -99,3 +99,16 @@ def test_encodings_reused_while_acting_never_outlive_the_weights(play_fake):
     after = values(model)
     assert not torch.equal(before, after)
     assert torch.equal(after, values(untouched.eval()))
+
+    # Weights replaced as whole tensors instead of written in place.
+    torch.manual_seed(7)
+    other = ContextualActorCritic(model.config).eval()
+    expected = values(other)
+    assert not torch.equal(after, expected)
+    model.load_state_dict({name: tensor.clone() for name, tensor in other.state_dict().items()}, assign=True)
+    assert torch.equal(values(model), expected)
+    model.load_state_dict(untouched.state_dict())
+    assert torch.equal(values(model), after)
+    for parameter, replacement in zip(model.parameters(), other.parameters()):
+        parameter.data = replacement.data.clone()
+    assert torch.equal(values(model), expected)

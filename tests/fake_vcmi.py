@@ -10,20 +10,25 @@ The script is the JSON in ``FAKE_VCMI``:
   winner   seat that wins, 0 or 1 (default 0)
   end      "natural" (default), "closure" (the last action is closed by the
            terminal instead of a result), "endless" (never ends), "crash"
-           (exits with an error on day 2) or "hang" (goes silent on day 2)
+           (exits with an error on day 2), "hang" (goes silent on day 2 until
+           the policy side hangs up) or "abort" (fails before connecting)
+
+Like the engine it runs in its own folder, so it finds its profile only when
+the paths it was given are absolute.
 """
 import json
 import os
 from pathlib import Path
 import socket
 import sys
-import time
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from heroes.game import contract as c  # noqa: E402
 from heroes.engine.protocol import RECORD_FIELDS  # noqa: E402
 
 SCRIPT = {"days": 3, "winner": 0, "end": "natural", **json.loads(os.environ.get("FAKE_VCMI", "{}"))}
+CONFIG = (Path(os.environ["VCMI_USER_DATA_DIR"]) / "config" if "VCMI_USER_DATA_DIR" in os.environ
+          else Path(os.environ["XDG_CONFIG_HOME"]) / "vcmi")
 EPISODE = os.environ["EXPLORER_RL_EPISODE"]
 PROFILE = c.profile_for(os.environ["EXPLORER_RL_INTERFACE"])
 ARMIES = os.environ.get("EXPLORER_RL_ARMY_INFORMATION")
@@ -80,6 +85,11 @@ class Seat:
 
 
 def main():
+    if not (CONFIG / "settings.json").is_file() or not Path(sys.argv[sys.argv.index("--logLocation") + 1]).is_dir():
+        sys.exit("Headless game start failed: no profile at " + str(CONFIG))
+    if SCRIPT["end"] == "abort":
+        print("Headless game start failed: scripted", flush=True)
+        os.abort()
     seats = [Seat(0), Seat(1)]
     day = 1
     while True:
@@ -96,7 +106,8 @@ def main():
         if SCRIPT["end"] == "crash" and day == 2:
             sys.exit(3)
         if SCRIPT["end"] == "hang" and day == 2:
-            time.sleep(3600)
+            seats[0].reader.read()  # until the policy side closes the connection
+            sys.exit(4)
         if SCRIPT["end"] != "endless" and day == SCRIPT["days"]:
             break
         day += 1

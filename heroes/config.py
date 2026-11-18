@@ -39,7 +39,6 @@ class Config:
     workers: int = 10  # games in play at once, one process each
     limits: Limits = Limits()
     guard: str | None = guard.VERSION  # repeated no-progress actions the policy may not sample; None for none
-    record_replay: bool = True  # engine-side replay logs; see Engine.record_replay
     keep_game_files: bool = False  # keep every game's engine folder instead of deleting it
 
     # How the policy learns.
@@ -48,4 +47,4 @@ class Config:
     ppo: PPOConfig = PPOConfig()
 
     def engine(self):
-        return Engine(self.vcmi, self.game_data, self.game_map, record_replay=self.record_replay)
+        return Engine(self.vcmi, self.game_data, self.game_map)

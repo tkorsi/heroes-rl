@@ -1,4 +1,6 @@
 """The environment and the actor against the scripted engine."""
+from pathlib import Path
+
 import pytest
 
 from heroes.engine.env import Env, Limits, Request
@@ -43,6 +45,22 @@ def test_the_action_limit_stops_a_game(play_fake):
 def test_a_crashed_engine_is_a_failed_game(play_fake):
     game = play_fake(end="crash")
     assert (game.status, game.reason, game.trajectory) == ("failed", "unclean_exit", None)
+
+
+def test_an_engine_that_dies_before_connecting_reports_its_own_error(play_fake):
+    game = play_fake(end="abort")
+    assert (game.status, game.reason) == ("failed", "engine_error")
+    assert "Headless game start failed" in game.detail and game.seconds < 3
+
+
+def test_a_relative_game_folder_still_reaches_the_engine(fake_engine, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)  # the engine runs somewhere else
+    env = Env(fake_engine())
+    try:
+        assert isinstance(env.reset(Path("state") / "game", 1, 7), Request)
+        assert (tmp_path / "state" / "game" / "logs" / "process.log").is_file()
+    finally:
+        env.close()
 
 
 def test_a_silent_engine_fails_when_an_idle_limit_is_set(play_fake):

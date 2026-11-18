@@ -156,7 +156,7 @@ happens once, when the state folder is empty.
 | --- | --- |
 | [engine/ExplorerRL](../engine/ExplorerRL/) | visible-state adapter, typed actions, socket transport |
 | [engine/patches](../engine/patches/) | changes to pinned upstream VCMI 1.7.5 |
-| [engine/ExperimentReplay](../engine/ExperimentReplay/) | engine-side replay logging and the replay worker; the Python loop no longer uses them |
+| [engine/ExperimentReplay](../engine/ExperimentReplay/) | the engine-side replay recorder and the replay worker. The loop reads none of their output, but the engine's end-of-game shutdown is built on the recorder, so it stays switched on |
 | [engine/NativeSession](../engine/NativeSession/) | an earlier reusable-host experiment; not used |
 | [maps/](../maps/) | the scenario both seats play, `hero-management-v4` |
 
