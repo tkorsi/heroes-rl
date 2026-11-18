@@ -7388,3 +7388,59 @@ checkpoint pair and seed ledger copies remain under
 `run-investigations/2026-11-16-cleanup`. The assistant ran no `--check`,
 gameplay, training, replay or benchmark; the user launches personally. No merge
 or push is performed.
+
+### 2026-11-18 — 1000-game MLX cycle stopped by the owned-process memory guard
+
+User launched `./run-100-games.command 1000 --mlx` at source `a8637ca`
+(run `run-20261118T003841Z-91a203dd`, parent checkpoint 1779, ten planned
+batches of 100 plus one final diagnostic, 1001 consumed training seeds from
+ledger offset 4060, engine base 1980004060, policy base 1982008120). Collection
+used ten actors, CPU policy inference and MLX PPO. The user reported the run as
+failed; this entry records read-only analysis of its private artifacts.
+
+Observed: five complete batches each passed one PPO update and checkpoint
+publication, 1779 -> 1784 (500 admitted games, 3,224,647 learner samples).
+Engine outcomes are unverified training captures, not learner results:
+
+| Batch | Engine Red / Blue / cutoffs | Samples | Collection s | Update s |
+| --- | --- | --- | --- | --- |
+| 000 | 17 / 78 / 5 | 500,788 | 2,319 | 2,135 |
+| 001 | 31 / 66 / 3 | 586,267 | 2,618 | 2,746 |
+| 002 | 21 / 76 / 3 | 636,201 | 2,918 | 3,439 |
+| 003 | 14 / 82 / 4 | 755,229 | 3,292 | 4,474 |
+| 004 | 23 / 72 / 5 | 746,162 | 3,511 | 4,341 |
+
+Batch 005 began collection at 09:29:12Z. About 12 minutes later the supervisor's
+`require_cycle_memory_budget` stopped the run with "Cycle memory budget reached"
+(owned-process resident memory above physical RAM minus the 48 GiB reserve, i.e.
+80 GiB on this 128 GiB Mac). At that point 13 games were captured, 10 running
+games were interrupted and 77 had not started; no batch-005 update or publication
+occurred. Shutdown records `owned_cleanup_verified: true`,
+`protected_inputs_unchanged: true`, process closure verified over 1047 groups,
+and coordinator return code -9 (killed by the supervisor after the guard), so
+`report.json` has no `ended_utc` or final diagnostic. The latest pointer is the
+complete publication chain at checkpoint 1784; the next launch must first run
+the pending diagnostic recovery.
+
+Evidence for the cause, which is inferred rather than measured because the guard
+does not log per-process memory: four of the ten concurrent games (episodes 7, 9,
+10 and 11) had run since batch start and reached days 245–253 with 23k–26k
+learner choices each, far above the batch-004 mean of about 7.5k samples per game;
+each had already written about 5.6 GB of temporary contextual replay. A capture
+worker returns its whole episode from `run_episode`, so its Python history grows
+with game length, while the coordinator held only 13 newly prepared games. The
+guard therefore most likely tripped on several simultaneous very long games, not
+on the PPO update: the 755k-sample update in batch 003 completed under the same
+guard. Samples per batch rose by about 50% over five batches (the previous
+1000-game run peaked at 661k), so recurrence is plausible. This is not evidence
+of learning or regression in either direction.
+
+No guard was changed. Whether to keep ten actors (a recorded decision) or reduce
+concurrency is left to the user. Compact evidence (report, launch, shutdown,
+closure, deadline log, progress files, seed ledger, lineage, latest pointer,
+batch-004 publication, checkpoint 1784 policy/resume with matching SHA256, the
+batch-005 plan/attempts and logs of the interrupted episodes) is preserved under
+`run-investigations/2026-11-18-memory-stop`. The assistant ran no gameplay,
+training, `--check`, replay or benchmark; the user launches personally.
+
+Retention-reviewed run: `run-20261118T003841Z-91a203dd`.
