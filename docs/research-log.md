@@ -7327,3 +7327,64 @@ chain, not only the manually repaired report fields. Record this result and the
 last conservative race hardening in a local amendment, then repeat the read-only
 inspection against its clean final source (`ready-1779-preflight-final.log`).
 No GitHub push, new training campaign, native replay or evaluation game performed.
+
+
+### 2026-11-16 — Correct missing retention review before the next user launch
+
+User reported launching another 100 games from 1779 and requested status. There
+is no new campaign directory, consumed seed reservation or active training
+process. The latest run remains the completed/reconciled 1000-game campaign;
+its shutdown is closure verified with no current errors. Inspection identifies
+a separate prelaunch blocker: cycle_retire requires the latest run's exact
+Retention-reviewed marker, which was intentionally withheld before closure
+reconciliation and inadvertently not added after reconciliation succeeded.
+The previous handoff therefore incorrectly implied full launch readiness:
+`--check` does not exercise this journal/retirement prerequisite.
+
+The 1000-game results, checkpoint identities, timings, diagnostic verification,
+limitations and diagnostic-opponent correction are already recorded above.
+Original full run report/launch, closure evidence, complete checkpoint 1779
+policy/resume and seed ledger are preserved outside run retention under
+`run-investigations/2026-11-16-cleanup`. Rechecked live policy/resume SHA256 and
+completed/verified closure before marking retention reviewed. No rule is removed
+or bypassed; this supplies the documented review after actually completing it.
+Normal next user launch may retire old raw captures while preserving complete
+continuation state. No run artifacts were deleted by this status check.
+
+Retention-reviewed run: `run-20261115T230642Z-da5480b8`.
+
+Commit this documentation-only correction locally so the checkout remains clean,
+then inspect the 100-game continuation without gameplay, updates or seed
+reservation. The user launches personally. No runtime code change, training,
+replay, process restart, merge or push is performed.
+
+### 2026-11-18 — Commit the staged retention review that blocked the next launch
+
+The user's next `./run-100-games.command 100 --mlx` attempt stopped before
+gameplay with "Selected checkout must be clean and committed". Cause: the
+2026-11-16 entry above, which supplies the exact Retention-reviewed marker for
+`run-20261115T230642Z-da5480b8`, was staged but never committed. `cycle_retire`
+reads the working-tree journal, so its marker check (the cause of the earlier
+"Analyze the latest run and record its Retention-reviewed run marker" refusal)
+now passes, but `checkout_identity` in `tools/benchmark_copied_training.py`
+correctly refuses any uncommitted change because every launch binds the clean
+source commit. Both refusals are prelaunch gate results, not game outcomes.
+
+Read-only inspection found no side effects from either refusal: no new run
+directory, seed reservation, retained checkpoint copy or deletion under
+`selfplay-ten-then-check` since 2026-11-16, no game or learner process running.
+Correction: commit the 2026-11-16 entry unchanged together with this note. No
+guard, marker rule or runtime code is changed.
+
+The "Process cleanup deadline exhausted; closure is not verified" message is the
+initial shutdown error of that same 1000-game run. It is already superseded by
+the verified closure recheck recorded above: the run's `shutdown.json` keeps it
+under `initial_errors`, with empty `errors`, `owned_cleanup_verified: true` and
+`protected_inputs_unchanged: true`, which is what the next launch requires.
+
+The next normal cycle launch will copy checkpoint 1779 into `retained/` and then
+delete the reviewed raw run (about 94 GiB); its report, launch, closure evidence,
+checkpoint pair and seed ledger copies remain under
+`run-investigations/2026-11-16-cleanup`. The assistant ran no `--check`,
+gameplay, training, replay or benchmark; the user launches personally. No merge
+or push is performed.
