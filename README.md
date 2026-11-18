@@ -21,10 +21,11 @@ runtime and your Heroes III data. Reading or editing this project never starts i
 ```sh
 cd ~/Projects/Heroes
 ./train.command 1000          # play 1,000 more games, one PPO update per 100
-python -m heroes check        # show what a run would start from; plays nothing
+./train.command check         # show what a run would start from; plays nothing
 ```
 
-`train.command` keeps the Mac awake and passes every other argument on:
+`train.command` uses the training Python, keeps the Mac awake and passes every
+other argument on:
 
 | Option | Meaning | Default |
 | --- | --- | --- |
