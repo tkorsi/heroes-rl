@@ -1,35 +1,26 @@
-"""Versioned restrictions on repeated, visible, free interaction.
+"""The interaction guard: actions the policy may not sample although the game offers them.
 
-This is an explicit policy-support intervention, not native legality or reward
-shaping. Native offers and recorded history remain unchanged. A tracker consumes
-only delivered player history; immutable snapshots can be rederived for PPO and
-independent behavior reconstruction. Historical execution is disabled by default.
+Self-play would otherwise spend its time on free actions that change nothing:
+reopening the same window, shuffling stacks back and forth, walking into the
+same wall. The guard removes those from the policy's choices. It is a
+restriction on what is sampled, not game legality and not reward shaping: the
+engine's offers and the recorded history stay as they are.
+
+A ``Tracker`` follows one seat's frames and, at every decision, returns the
+``GuardSupport`` that says what is currently excluded:
+
+* a navigation step taken twice without anything changing in the visible world
+* any stack management by a hero or town that already did 32 such moves today
+* a swap that would recreate an army layout already seen since the last progress
+* a destination that just failed, the tile a hero stands on, and unrevealed tiles
+* repeating the previous command exactly, and reopening a town right after closing it
 """
 from collections import Counter
-from copy import copy
 from dataclasses import dataclass
 
 from . import contract as c
 
-
-VERSION = "visible-interaction-budget-v1"
-REVEALED_VERSION = "visible-interaction-budget-revealed-v1"
-RECRUIT_ONLY_VERSION = "visible-interaction-budget-recruit-only-v1"
-TOWN_COOLDOWN_VERSION = "visible-interaction-budget-recruit-only-town-cooldown-v1"
-HERO_RELATIVE_VERSION = "visible-interaction-budget-hero-relative-cooldown-v1"
-STACK_MANAGEMENT_VERSION = "visible-interaction-budget-hero-relative-stack-management-v1"
-STACK_CYCLE_VERSION = "visible-interaction-budget-hero-relative-stack-cycle-v1"
-HERO_RELATIVE_VERSIONS = (HERO_RELATIVE_VERSION, STACK_MANAGEMENT_VERSION, STACK_CYCLE_VERSION)
-RECRUIT_ONLY_VERSIONS = (RECRUIT_ONLY_VERSION, TOWN_COOLDOWN_VERSION, HERO_RELATIVE_VERSION)
-SUPPORTED_VERSIONS = (VERSION, REVEALED_VERSION, *RECRUIT_ONLY_VERSIONS, STACK_MANAGEMENT_VERSION, STACK_CYCLE_VERSION)
-# Temporary experiment restriction. Removing it requires a new explicit support
-# selection; historical captures must continue to reconstruct this exact set.
-# Whole-hero garrison changes are separate from moving stacks between slots.
-RECRUIT_ONLY_BLOCKED_KINDS = frozenset({
-    "split_stack", "merge_stacks", "swap_stacks", "transfer_stack",
-    "open_stack", "select_upgrade", "upgrade_stack",
-})
-ACTIVE_VERSION = None
+VERSION = "visible-interaction-budget-hero-relative-stack-cycle-v1"
 NAVIGATION_LIMIT = 2
 MANAGEMENT_LIMIT = 32
 NAVIGATION_KINDS = frozenset({
@@ -41,7 +32,6 @@ MANAGEMENT_KINDS = frozenset({
     "split_stack", "merge_stacks", "swap_stacks", "transfer_stack",
     "swap_garrison", "move_artifact", "assemble_artifact", "disassemble_artifact",
 })
-_DEFAULT = object()
 
 
 def _mandatory(offers):
@@ -182,16 +172,8 @@ def _blocked_swaps(observation, offers, seen):
     return tuple(sorted(result))
 
 
-def _strings(values, name):
-    if type(values) is not tuple or any(type(item) is not str or not item for item in values):
-        raise ValueError(f"Expected immutable nonempty {name} strings")
-    if values != tuple(sorted(set(values))):
-        raise ValueError(f"Expected unique sorted {name}")
-
-
 @dataclass(frozen=True)
 class GuardSupport:
-    version: str
     blocked_navigation: tuple[tuple[str, ...], ...] = ()
     blocked_management_subjects: tuple[str, ...] = ()
     movable_heroes: tuple[str, ...] = ()
@@ -199,47 +181,8 @@ class GuardSupport:
     previous_command: tuple[str, ...] | None = None
     blocked_swaps: tuple[tuple[str, int, str, int], ...] = ()
 
-    def __post_init__(self):
-        if self.version not in SUPPORTED_VERSIONS:
-            raise ValueError("Unsupported interaction guard version")
-        if self.previous_command is not None and (self.version not in HERO_RELATIVE_VERSIONS
-                or type(self.previous_command) is not tuple or len(self.previous_command) < 6
-                or any(type(item) is not str for item in self.previous_command)
-                or not self.previous_command[0] or not self.previous_command[1]):
-            raise ValueError("Malformed previous command in interaction guard")
-        if type(self.blocked_swaps) is not tuple or (self.version != STACK_CYCLE_VERSION and self.blocked_swaps):
-            raise ValueError("Unexpected blocked army swaps")
-        for key in self.blocked_swaps:
-            if (type(key) is not tuple or len(key) != 4
-                    or any(type(key[i]) is not str or not key[i] for i in (0, 2))
-                    or any(type(key[i]) is not int or not 0 <= key[i] < 7 for i in (1, 3))
-                    or (key[0], key[1]) >= (key[2], key[3])):
-                raise ValueError("Malformed blocked army swap")
-        if self.blocked_swaps != tuple(sorted(set(self.blocked_swaps))):
-            raise ValueError("Expected unique sorted blocked army swaps")
-        _strings(self.blocked_management_subjects, "management subjects")
-        _strings(self.movable_heroes, "movable heroes")
-        if type(self.blocked_navigation) is not tuple:
-            raise ValueError("Expected immutable navigation keys")
-        for key in self.blocked_navigation:
-            if (type(key) is not tuple or len(key) < 2 or key[0] not in NAVIGATION_KINDS
-                    or any(type(item) is not str or not item for item in key)):
-                raise ValueError("Malformed semantic navigation key")
-        if self.blocked_navigation != tuple(sorted(set(self.blocked_navigation))):
-            raise ValueError("Expected unique sorted navigation keys")
-        if type(self.blocked_coordinates) is not tuple:
-            raise ValueError("Expected immutable coordinates")
-        for item in self.blocked_coordinates:
-            if (type(item) is not tuple or len(item) != 3 or type(item[0]) is not str or not item[0]
-                    or any(type(value) is not int or value < 0 for value in item[1:])):
-                raise ValueError("Malformed blocked movement coordinate")
-        if self.blocked_coordinates != tuple(sorted(set(self.blocked_coordinates))):
-            raise ValueError("Expected unique sorted blocked coordinates")
-
     def permits(self, action, observation, offers):
         if not offers.permits(action):
-            return False
-        if self.version in RECRUIT_ONLY_VERSIONS and action.kind in RECRUIT_ONLY_BLOCKED_KINDS:
             return False
         if _mandatory(offers) or action.kind in ("close", "back", "close_capability"):
             return True
@@ -250,7 +193,7 @@ class GuardSupport:
         if action.kind == "move_to":
             return self._permits_movement(action.subject, action.x, action.y,
                                           self._revealed_coordinates(action.subject, observation))
-        if action.kind == "swap_stacks" and self.version == STACK_CYCLE_VERSION:
+        if action.kind == "swap_stacks":
             if _swap_key(offers.armies, action.selection, action.destination) in self.blocked_swaps:
                 return False
         if action.kind in MANAGEMENT_KINDS:
@@ -276,10 +219,8 @@ class GuardSupport:
         return None
 
     def _revealed_coordinates(self, subject, observation):
-        if self.version == VERSION:
-            return None
-        # Membership in the current delivered observation is the entire added
-        # rule. Blocked/visitable flags and route feasibility are not consulted.
+        # Membership in the current observation is the whole rule. Blocked and
+        # visitable flags and route feasibility are not consulted.
         level = next((hero.position[2] for hero in observation.heroes if hero.handle == subject), None)
         return frozenset((tile.position[0], tile.position[1]) for tile in observation.tiles
                          if tile.position[2] == level)
@@ -287,58 +228,16 @@ class GuardSupport:
     def _permits_movement(self, subject, x, y, revealed):
         return (subject in self.movable_heroes
                 and (subject, x, y) not in self.blocked_coordinates
-                and (revealed is None or (x, y) in revealed))
+                and (x, y) in revealed)
 
     def movement_coordinates(self, subject, observation, offers):
-        """Current permitted coordinates, in the historical row-major order."""
+        """The coordinates the hero may move to, as row-major indices in ascending order."""
         width, height, _ = offers.size
         revealed = self._revealed_coordinates(subject, observation)
-        indices = (range(width * height) if revealed is None else
-                   sorted(y * width + x for x, y in revealed))
-        return (index for index in indices
+        return (index for index in sorted(y * width + x for x, y in revealed)
                 if offers.permits(c.Action("move_to", subject, index % width, index // width,
                                            schema=offers.schema))
                 and self._permits_movement(subject, index % width, index // width, revealed))
-
-    def to_dict(self):
-        value = {
-            "version": self.version,
-            "blocked_navigation": [list(key) for key in self.blocked_navigation],
-            "blocked_management_subjects": list(self.blocked_management_subjects),
-            "movable_heroes": list(self.movable_heroes),
-            "blocked_coordinates": [list(item) for item in self.blocked_coordinates],
-        }
-        if self.version in HERO_RELATIVE_VERSIONS:
-            value["previous_command"] = (list(self.previous_command) if self.previous_command is not None else None)
-        if self.version == STACK_CYCLE_VERSION:
-            value["blocked_swaps"] = [list(key) for key in self.blocked_swaps]
-        return value
-
-    @classmethod
-    def from_dict(cls, value):
-        names = {"version", "blocked_navigation", "blocked_management_subjects", "movable_heroes", "blocked_coordinates"}
-        if type(value) is not dict:
-            raise ValueError("Malformed interaction guard support")
-        relative = value.get("version") in HERO_RELATIVE_VERSIONS
-        expected = names | ({"previous_command"} if relative else set())
-        if value.get("version") == STACK_CYCLE_VERSION:
-            expected |= {"blocked_swaps"}
-        if set(value) != expected:
-            raise ValueError("Malformed interaction guard support")
-        if any(type(value[name]) is not list for name in names - {"version"}):
-            raise ValueError("Guard support collections must be JSON arrays")
-        if any(type(item) is not list for name in ("blocked_navigation", "blocked_coordinates") for item in value[name]):
-            raise ValueError("Guard support rows must be JSON arrays")
-        swaps = value.get("blocked_swaps", [])
-        if type(swaps) is not list or any(type(key) is not list for key in swaps):
-            raise ValueError("Blocked army swaps must be JSON rows")
-        previous = value.get("previous_command")
-        if previous is not None and type(previous) is not list:
-            raise ValueError("Previous command must be a JSON array or null")
-        return cls(value["version"], tuple(tuple(key) for key in value["blocked_navigation"]),
-                   tuple(value["blocked_management_subjects"]), tuple(value["movable_heroes"]),
-                   tuple(tuple(item) for item in value["blocked_coordinates"]),
-                   tuple(previous) if previous is not None else None, tuple(tuple(key) for key in swaps))
 
 
 def _world(observation):
@@ -351,12 +250,12 @@ def _world(observation):
 
 
 class Tracker:
-    """A per-player, per-episode chronological history reducer, not a model."""
+    """Follows one seat's frames in order. ``Tracker(None)`` guards nothing."""
 
-    def __init__(self, version=_DEFAULT):
-        self.version = ACTIVE_VERSION if version is _DEFAULT else version
-        if self.version is not None and self.version not in SUPPORTED_VERSIONS:
-            raise ValueError("Unsupported interaction guard version")
+    def __init__(self, version=None):
+        if version not in (None, VERSION):
+            raise ValueError(f"Unsupported interaction guard {version!r}; this code implements {VERSION}")
+        self.version = version
         self.day = None
         self.identity = None
         self.last_seq = -1
@@ -373,16 +272,6 @@ class Tracker:
         self.consumed = False
         self.epoch = 0
         self.action_epoch = None
-
-    def copy(self):
-        # Frames/observations are immutable and may contain large visible maps.
-        # Transactional encoders copy only mutable accumulators.
-        result = copy(self)
-        result.navigation = self.navigation.copy()
-        result.management = self.management.copy()
-        result.failed_coordinates = self.failed_coordinates.copy()
-        result.army_layouts = self.army_layouts.copy()
-        return result
 
     def _progress(self):
         self.navigation.clear()
@@ -422,11 +311,9 @@ class Tracker:
             navigation = {key for key, count in self.navigation.items() if count >= NAVIGATION_LIMIT}
             if self.town_reopen_blocked:
                 navigation.update(("open_town", subject) for subject in frame.offers.town_refs)
-            blocked_swaps = ()
-            if self.version == STACK_CYCLE_VERSION:
-                self.army_layouts.add(_army_layout(frame.observation, frame.offers.armies or ()))
-                blocked_swaps = _blocked_swaps(frame.observation, frame.offers, self.army_layouts)
-            return GuardSupport(self.version,
+            self.army_layouts.add(_army_layout(frame.observation, frame.offers.armies or ()))
+            blocked_swaps = _blocked_swaps(frame.observation, frame.offers, self.army_layouts)
+            return GuardSupport(
                 tuple(sorted(navigation)),
                 tuple(sorted(subject for subject, count in self.management.items() if count >= MANAGEMENT_LIMIT)),
                 movable, tuple(sorted(blocked)), self.previous_command, blocked_swaps)
@@ -438,10 +325,9 @@ class Tracker:
             self.consumed = True
             self.action_epoch = self.epoch
             obs, offers = self.decision.observation, self.decision.offers
-            if self.version in HERO_RELATIVE_VERSIONS:
-                self.previous_command = _command_key(self.action, obs, offers)
-                self.previous_move = ((self.action.subject, self.action.x, self.action.y)
-                                      if self.action.kind == "move_to" else None)
+            self.previous_command = _command_key(self.action, obs, offers)
+            self.previous_move = ((self.action.subject, self.action.x, self.action.y)
+                                  if self.action.kind == "move_to" else None)
             key = nav_key(self.action, obs, offers)
             if key is not None:
                 self.navigation[key] += 1
@@ -452,7 +338,7 @@ class Tracker:
             self._progress()
         elif frame.kind == "result" and self.action is not None and self.consumed:
             result = frame.result
-            if self.version in (TOWN_COOLDOWN_VERSION, *HERO_RELATIVE_VERSIONS) and result.accepted:
+            if result.accepted:
                 # Only a resolved player choice advances this cooldown. Changes
                 # in the visible world may reset the separate navigation budget.
                 self.town_reopen_blocked = (self.action.kind == "close" and result.status == "closed"

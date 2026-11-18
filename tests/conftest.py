@@ -32,7 +32,7 @@ def play_fake(fake_engine, tmp_path):
     """Play one scripted game with a fresh random policy; returns the finished ``Game``."""
     from heroes import actor, checkpoint
     from heroes.engine.env import Env, Limits
-    from heroes.game.guard import STACK_CYCLE_VERSION
+    from heroes.game import guard
     model = checkpoint.fresh(learning_rate=3e-4).model.eval()
     count = iter(range(1000))
 
@@ -41,7 +41,7 @@ def play_fake(fake_engine, tmp_path):
         try:
             number = next(count) + 1
             return actor.play(env, model, actor.Job(number, 7, learner, (1, 2)), tmp_path / f"game-{number}",
-                              guard=STACK_CYCLE_VERSION)
+                              guard=guard.VERSION)
         finally:
             env.close()
 

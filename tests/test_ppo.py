@@ -5,6 +5,7 @@ import pytest
 import torch
 
 from heroes.learner.ppo import PPOConfig, Trajectory, gae, prepare, update
+from heroes.model.policy import ContextualActorCritic, encode_history
 
 
 def test_an_advantage_is_the_final_return_minus_the_value():
@@ -74,3 +75,27 @@ def test_the_reference_update_changes_the_weights(play_fake):
     assert report.optimizer_steps == 1  # two windows, two per minibatch
     assert any(not torch.equal(before[name], value) for name, value in model.state_dict().items())
     assert all(torch.isfinite(value).all() for value in model.state_dict().values())
+
+
+def test_encodings_reused_while_acting_never_outlive_the_weights(play_fake):
+    trajectory = play_fake(days=3).trajectory
+    model = play_fake.model
+    inputs = encode_history(trajectory.frames, guard=trajectory.guard)
+
+    def values(policy):
+        state, seen = policy.initial_state(), []
+        with torch.no_grad():
+            for frame in inputs:
+                output = policy.forward_step(frame, state)
+                state = output.state
+                if output.decision is not None:
+                    seen.append(output.decision.value)
+        return torch.stack(seen)
+
+    before = values(model)  # acting fills the model's memo of encodings
+    update(model, _optimizer(model), [trajectory], config=PPOConfig(), generator=torch.Generator().manual_seed(0))
+    untouched = ContextualActorCritic(model.config)
+    untouched.load_state_dict(model.state_dict())
+    after = values(model)
+    assert not torch.equal(before, after)
+    assert torch.equal(after, values(untouched.eval()))

@@ -13,7 +13,6 @@ import time
 import torch
 
 from .engine.env import Request
-from .game import contract
 from .learner.ppo import Trajectory
 from .model.policy import ContextualEncoder
 
@@ -43,9 +42,9 @@ class Game:
 class Seat:
     """One player's policy during a game: encoder, recurrent state and sampling."""
 
-    def __init__(self, model, episode, player, seed, *, schema, guard):
+    def __init__(self, model, seed, *, guard):
         self.model = model
-        self.encoder = ContextualEncoder(str(episode), player, schema, guard_version=guard)
+        self.encoder = ContextualEncoder(guard)
         self.state = model.initial_state()
         self.generator = torch.Generator().manual_seed(seed)
         self.values = {}  # decision frame -> value estimate
@@ -149,8 +148,7 @@ def build_trajectory(frames, seat, *, natural, outcome, guard):
 def compile_recipe(model, trajectory):
     """Replace the trajectory's frames with the compiled recipe the MLX learner reads."""
     from .learner.recipes import compile_history
-    first = trajectory.frames[0]
-    encoder = ContextualEncoder(first.episode, first.player, first.schema, guard_version=trajectory.guard)
+    encoder = ContextualEncoder(trajectory.guard)
     trajectory.recipe = compile_history(model, (encoder.encode(frame) for frame in trajectory.frames),
                                         dict(zip(trajectory.decisions, trajectory.actions)))
     trajectory.frames = None
@@ -160,9 +158,7 @@ def compile_recipe(model, trajectory):
 def play(env, model, job, directory, *, guard, on_progress=None):
     """Play one game to its end and return it with the learner's trajectory."""
     started = time.monotonic()
-    schema = contract.profile_for(env.engine.interface).history_schema
-    seats = [Seat(model, job.number, player, job.policy_seeds[player], schema=schema, guard=guard)
-             for player in (0, 1)]
+    seats = [Seat(model, seed, guard=guard) for seed in job.policy_seeds]
     state = env.reset(directory, job.number, job.engine_seed)
     while isinstance(state, Request):
         seat = seats[state.player]

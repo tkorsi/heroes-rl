@@ -12,7 +12,7 @@ from pathlib import Path
 
 from .engine.env import Limits
 from .engine.process import Engine
-from .game.guard import STACK_CYCLE_VERSION
+from .game import guard
 from .learner.ppo import PPOConfig
 
 REPOSITORY = Path(__file__).resolve().parents[1]
@@ -38,7 +38,7 @@ class Config:
     # How games are played.
     workers: int = 10  # games in play at once, one process each
     limits: Limits = Limits()
-    guard: str = STACK_CYCLE_VERSION  # which repeated no-progress actions the policy may not sample
+    guard: str | None = guard.VERSION  # repeated no-progress actions the policy may not sample; None for none
     record_replay: bool = True  # engine-side replay logs; see Engine.record_replay
     keep_game_files: bool = False  # keep every game's engine folder instead of deleting it
 

@@ -1,16 +1,14 @@
-"""Strict contextual history contract; no engine adapter or learning updates.
+"""The typed game contract: what one player is shown and what they may do.
 
-All observations must already have been filtered by an audited player callback.
-Validation checks shape and chronology, not whether a producer told the truth
-about visibility. Routing handles, revisions and evidence are bookkeeping, never
-numeric neural features. Frozen records preserve every delivered prefix.
+Frozen records describe observations, offers, actions, results and events.
+``PlayerHistory`` is one seat's append-only frame stream and checks every frame
+against the order the engine must follow; a frame that breaks it is refused.
+Validation checks shape and chronology, not whether the engine told the truth
+about visibility. Routing handles and revisions are bookkeeping, never features.
 """
 from __future__ import annotations
 
-from bisect import bisect_right
-from dataclasses import asdict, dataclass, fields, replace
-import hashlib
-import json
+from dataclasses import dataclass, fields, replace
 import marshal
 import re
 
@@ -36,8 +34,6 @@ EXPANDED_SCHEMA = "heroes-player-history-v8"
 EXPANDED_ACTION_SCHEMA = "heroes-context-actions-v8"
 EXPANDED_ENVIRONMENT = "adventure-capabilities-v1"
 OWN_ARMY_INFORMATION = "own-army-details-v1"
-TRAJECTORY_SCHEMA = "heroes-context-trajectory-v1"
-TERMINAL_TRAJECTORY_SCHEMA = "heroes-context-trajectory-v2"
 MAX_INT = 2**63 - 1
 CAPABILITY_PANELS = ("marketplace", "purchases", "artifacts", "spellbook", "visions", "level_up", "spell_target", "world_view")
 CAPABILITY_ACTIONS = ("trade_resource", "buy_artifact", "move_artifact", "assemble_artifact",
@@ -53,14 +49,6 @@ class InterfaceProfile:
     action_schema: str
     protocol: int
     version: int
-
-    @property
-    def history_key(self):
-        return f"history_v{self.version}"
-
-    @property
-    def history_filename(self):
-        return f"history-v{self.version}.jsonl"
 
     @property
     def town_economy(self):
@@ -1977,76 +1965,6 @@ class VisibleEvent:
             raise ValueError("Invalid battle result")
 
 
-@dataclass(frozen=True)
-class Verification:
-    """Trusted finalizer attestation; audit metadata, not a model observation.
-
-    Digests bind both complete prefixes BEFORE their finalized record. A terminal
-    socket message alone cannot construct trustworthy evidence. The caller must
-    independently verify process, engine and stream completion.
-    """
-    episode: str
-    evidence_ref: str
-    engine_outcomes: tuple[str, str]
-    socket_outcomes: tuple[str, str]
-    process_exit_code: int
-    histories_complete: tuple[bool, bool]
-    history_sha256: tuple[str, str]
-
-    def __post_init__(self):
-        _text(self.episode, "episode")
-        _text(self.evidence_ref, "evidence reference")
-        if (type(self.engine_outcomes) is not tuple or self.engine_outcomes not in
-                (("win", "loss"), ("loss", "win")) or self.socket_outcomes != self.engine_outcomes
-                or type(self.socket_outcomes) is not tuple):
-            raise ValueError("Engine/socket results must agree and be complementary")
-        if type(self.process_exit_code) is not int or self.process_exit_code != 0:
-            raise ValueError("Natural finalization requires clean process exit")
-        if type(self.histories_complete) is not tuple or self.histories_complete != (True, True) or any(
-                type(v) is not bool for v in self.histories_complete):
-            raise ValueError("Both player histories must be complete")
-        _tuple(self.history_sha256, str, "history hashes")
-        if len(self.history_sha256) != 2 or any(len(d) != 64 or any(c not in "0123456789abcdef" for c in d)
-                                              for d in self.history_sha256):
-            raise ValueError("Expected two SHA-256 history hashes")
-
-
-@dataclass(frozen=True)
-class CutoffVerification:
-    """Pair finalization of held decision prefixes after bounded continuation.
-
-    Continuation is retained only in raw evidence, outside these learner prefixes.
-    A requested process stop may be expected; shutdown_verified is the trusted
-    finalizer's assertion that this was not a pre-existing crash or stream error.
-    """
-    episode: str
-    evidence_ref: str
-    histories_complete: tuple[bool, bool]
-    failure_free: bool
-    shutdown_verified: bool
-    continuation_limit: int
-    continuation_steps: tuple[int, int]
-    history_sha256: tuple[str, str]
-
-    def __post_init__(self):
-        _text(self.episode, "episode")
-        _text(self.evidence_ref, "evidence reference")
-        if (type(self.histories_complete) is not tuple or self.histories_complete != (True, True)
-                or any(type(v) is not bool for v in self.histories_complete)
-                or self.failure_free is not True or self.shutdown_verified is not True):
-            raise ValueError("Cutoff finalization requires complete, failure-free verified shutdown")
-        _integer(self.continuation_limit)
-        _tuple(self.continuation_steps, int, "continuation steps")
-        if len(self.continuation_steps) != 2:
-            raise ValueError("Continuation counts require both players")
-        for steps in self.continuation_steps:
-            _integer(steps, high=self.continuation_limit)
-        _tuple(self.history_sha256, str, "history hashes")
-        if len(self.history_sha256) != 2 or any(len(d) != 64 or any(c not in "0123456789abcdef" for c in d)
-                                              for d in self.history_sha256):
-            raise ValueError("Expected two SHA-256 history hashes")
-
-
 _PAYLOADS = {
     "view": {"observation"}, "event": {"event"}, "context": {"context", "revision", "decision_seq"},
     "context_invalidated": {"context", "revision", "reason"},
@@ -2054,8 +1972,7 @@ _PAYLOADS = {
     "decision": {"observation", "offers", "revision"}, "submitted": {"action", "decision_seq"},
     "consumed": {"consumer", "decision_seq"}, "issued": {"command_index", "decision_seq"},
     "acknowledged": {"command_index", "accepted", "decision_seq"}, "result": {"result", "decision_seq"},
-    "superseded": {"decision_seq", "reason"}, "terminal": {"outcome"}, "finalized": {"verification"},
-    "cutoff": {"decision_seq", "reason"}, "cutoff_finalized": {"cutoff_verification"}, "failure": {"reason"},
+    "superseded": {"decision_seq", "reason"}, "terminal": {"outcome"},
 }
 
 
@@ -2134,8 +2051,6 @@ class Frame:
     event: VisibleEvent | None = None
     reason: str | None = None
     outcome: str | None = None
-    verification: Verification | None = None
-    cutoff_verification: CutoffVerification | None = None
     command_index: int | None = None
     accepted: bool | None = None
     schema: str = SCHEMA
@@ -2152,8 +2067,7 @@ class Frame:
         if payload != _PAYLOADS[self.kind]:
             raise ValueError("Missing or extraneous frame payload")
         for name, cls in (("observation", Observation), ("context", Context), ("offers", Offers),
-                          ("action", Action), ("result", Result), ("event", VisibleEvent), ("verification", Verification),
-                          ("cutoff_verification", CutoffVerification)):
+                          ("action", Action), ("result", Result), ("event", VisibleEvent)):
             if getattr(self, name) is not None and type(getattr(self, name)) is not cls:
                 raise ValueError(f"Expected typed {name}")
         for name in ("revision", "command_index"):
@@ -2203,41 +2117,6 @@ class Frame:
             raise ValueError("Offers must preserve complete context and all coordinate support")
 
 
-@dataclass(frozen=True)
-class TerminalClosure:
-    """References to a verified episode ending, never a native action result.
-
-    Consumption establishes whose last action was being handled. A terminal
-    closure does not assert issuance, acknowledgement or command success.
-    Full paired-prefix/manifest verification remains the collector's duty.
-    """
-    consumed_seq: int
-    superseded_seq: int
-    terminal_seq: int
-    finalized_seq: int
-
-    def __post_init__(self):
-        previous = -1
-        for value in (self.consumed_seq, self.superseded_seq, self.terminal_seq, self.finalized_seq):
-            _integer(value, low=previous + 1)
-            previous = value
-
-
-@dataclass(frozen=True)
-class Transition:
-    episode: str
-    player: int
-    decision_seq: int
-    action: Action
-    result_seq: int | None
-    successor_seq: int | None
-    reward: int | None
-    eligible: bool
-    bootstrap_allowed: bool
-    boundary: str
-    terminal_closure: TerminalClosure | None = None
-
-
 class PlayerHistory:
     """Append-only one-player stream. It does not allocate or update neural state."""
 
@@ -2280,7 +2159,6 @@ class PlayerHistory:
         self.native_rejected = False
         self.pending_command = None
         self.terminal = None
-        self.boundary = None
 
     @property
     def frames(self):
@@ -2290,19 +2168,6 @@ class PlayerHistory:
     def frame_count(self):
         """len(self.frames), without copying them."""
         return len(self._frames)
-
-    @property
-    def requires_choice(self):
-        return self.context.kind == "dialog" or (self.context.kind == "capability"
-            and self.active_capability is not None and self.active_capability.mandatory)
-
-    def digest(self):
-        digest = hashlib.sha256()
-        tile_cache = {"fragments": {}, "arrays": {}, "names": {}}
-        for frame in self._frames:
-            digest.update(_canonical_frame_with_tile_cache(frame, tile_cache).encode())
-            digest.update(b"\n")
-        return digest.hexdigest()
 
     def emit(self, kind, day=None, **payload):
         frame = Frame(self.episode, self.player, len(self._frames), self.day if day is None else day, kind,
@@ -2316,10 +2181,8 @@ class PlayerHistory:
         if frame.seq != len(self._frames) or frame.day < self.day:
             raise ValueError("Missing, repeated, reordered or decreasing-day frame")
         kind = frame.kind
-        if self.boundary is not None and not (self.boundary == "cutoff_pending" and kind in ("failure", "cutoff_finalized")):
-            raise ValueError("History already finalized or cutoff prefix frozen")
-        if self.terminal is not None and kind not in ("view", "event", "context_invalidated", "finalized", "failure"):
-            raise ValueError("Only final visible observations or finalization may follow terminal")
+        if self.terminal is not None and kind not in ("view", "event", "context_invalidated"):
+            raise ValueError("Only final visible observations may follow terminal")
         if kind in ("view", "decision"):
             if frame.observation.context != self.context:
                 raise ValueError("Window fields need an explicit matching context change")
@@ -2554,26 +2417,6 @@ class PlayerHistory:
             self.pending_capability, self.pending_join = None, False
             self.pending_garrison = None
             self.terminal = frame.outcome
-        elif kind == "finalized":
-            proof = frame.verification
-            if (self.terminal is None or proof.episode != self.episode
-                    or proof.engine_outcomes[self.player] != self.terminal
-                    or proof.history_sha256[self.player] != self.digest()):
-                raise ValueError("Finalization does not bind this complete terminal history")
-            self.boundary = "natural"
-        elif kind == "cutoff":
-            self._match_decision(frame)
-            if self.action is not None or self.requires_choice:
-                raise ValueError("Cutoff requires a real unacted decision outside a mandatory strategic dialog")
-            self.boundary = "cutoff_pending"
-        elif kind == "cutoff_finalized":
-            proof = frame.cutoff_verification
-            if (self.boundary != "cutoff_pending" or proof.episode != self.episode
-                    or proof.history_sha256[self.player] != self.digest()):
-                raise ValueError("Cutoff finalization must bind this held-decision prefix")
-            self.boundary = "cutoff"
-        elif kind == "failure":
-            self.boundary = "failure"
         if kind in ("view", "decision") and self.context.kind == "capability" and self.context.panel == "visions":
             self.inspected_subject = frame.observation.window.capability_panel.inspected_subject
         self._frames.append(frame)
@@ -2903,102 +2746,6 @@ class PlayerHistory:
         if observed.window != expected:
             raise ValueError("Transfer acknowledgement must match the exact displayed two-army effect")
 
-    def _terminal_closure(self):
-        """Derive closure only for the final consumed action, without new frames."""
-        if self.boundary != "natural" or not self._frames or self._frames[-1].kind != "finalized":
-            return None
-        decisions = [f for f in self._frames if f.kind == "decision"]
-        consumed = [f for f in self._frames if f.kind == "consumed"]
-        if not decisions or not consumed or consumed[-1].decision_seq != decisions[-1].seq:
-            return None
-        decision, consumption = decisions[-1], consumed[-1]
-        related = [f for f in self._frames if f.decision_seq == decision.seq]
-        submissions = [f for f in related if f.kind == "submitted"]
-        supersessions = [f for f in related if f.kind == "superseded"]
-        terminals = [f for f in self._frames if f.kind == "terminal"]
-        if (len(submissions) != 1 or len(supersessions) != 1 or len(terminals) != 1
-                or supersessions[0].reason != "terminal" or any(f.kind == "result" for f in related)):
-            return None
-        closure = TerminalClosure(consumption.seq, supersessions[0].seq, terminals[0].seq, self._frames[-1].seq)
-        return decision.seq, submissions[0].action, closure
-
-    def transitions(self, *, schema=TRAJECTORY_SCHEMA):
-        """No targets until boundary finalization; v1 excludes incomplete actions.
-
-        Successors are subsequent decisions in THIS history, never opponent
-        turns. This is environment provenance, not behavior probabilities, value
-        estimates or a PPO rollout. V2 can close the last consumed action at a
-        verified natural terminal without inventing an ordinary result. A failed
-        record has no usable targets. History encodings are unchanged by either
-        trajectory interpretation.
-        """
-        if schema not in (TRAJECTORY_SCHEMA, TERMINAL_TRAJECTORY_SCHEMA):
-            raise ValueError("Unsupported contextual trajectory schema")
-        completed = []
-        actions = {}
-        consumed = {f.decision_seq for f in self._frames if f.kind == "consumed"}
-        withdrawn = {f.decision_seq for f in self._frames if f.kind == "superseded" and f.decision_seq not in consumed}
-        decisions = [f.seq for f in self._frames if f.kind == "decision" and f.seq not in withdrawn]
-        for frame in self._frames:
-            if frame.kind == "submitted":
-                actions[frame.decision_seq] = frame.action
-            elif frame.kind == "result":
-                completed.append((frame.decision_seq, actions[frame.decision_seq], frame.seq, None))
-        closure = self._terminal_closure() if schema == TERMINAL_TRAJECTORY_SCHEMA else None
-        if closure is not None:
-            decision, action, evidence = closure
-            completed.append((decision, action, None, evidence))
-        eligible = self.boundary in ("natural", "cutoff")
-        transitions = []
-        for index, (decision, action, result, closure) in enumerate(completed):
-            # Chronology makes decisions strictly ordered; locate the same
-            # first later decision without rescanning the complete prefix.
-            successor_index = bisect_right(decisions, result) if result is not None else len(decisions)
-            successor = decisions[successor_index] if successor_index < len(decisions) else None
-            terminal_owner = (self.boundary == "natural" and index == len(completed) - 1
-                              and not any(seq > decision for seq in consumed))
-            if terminal_owner:
-                successor = None
-            valid = eligible and (successor is not None or terminal_owner)
-            reward = (1 if self.terminal == "win" else -1) if valid and terminal_owner else 0 if valid else None
-            transitions.append(Transition(self.episode, self.player, decision, action, result, successor,
-                                          reward, valid, valid and successor is not None,
-                                          self.boundary or "pending", closure))
-        return tuple(transitions)
-
-
-def finalize_natural(histories, *, engine_outcomes, socket_outcomes, process_exit_code, evidence_ref,
-                     histories_complete=(True, True)):
-    """Finalize both seats after external evidence checks; never infer from exit alone."""
-    if (type(histories) is not tuple or len(histories) != 2 or any(type(h) is not PlayerHistory for h in histories)
-            or tuple(h.player for h in histories) != (0, 1) or histories[0].episode != histories[1].episode
-            or histories[0].schema != histories[1].schema):
-        raise ValueError("Finalization requires both separate player histories in seat order")
-    if any(h.boundary is not None or h.terminal != socket_outcomes[h.player] for h in histories):
-        raise ValueError("Both unfinalized terminal streams must agree with evidence")
-    proof = Verification(histories[0].episode, evidence_ref, engine_outcomes, socket_outcomes, process_exit_code,
-                         histories_complete, tuple(h.digest() for h in histories))
-    for history in histories:
-        history.emit("finalized", verification=proof)
-    return proof
-
-
-def finalize_cutoff(histories, *, evidence_ref, histories_complete, failure_free, shutdown_verified,
-                    continuation_limit, continuation_steps):
-    """Commit both provisional cutoff prefixes only after external final checks."""
-    if (type(histories) is not tuple or len(histories) != 2 or any(type(h) is not PlayerHistory for h in histories)
-            or tuple(h.player for h in histories) != (0, 1) or histories[0].episode != histories[1].episode
-            or histories[0].schema != histories[1].schema
-            or any(h.boundary != "cutoff_pending" for h in histories)):
-        raise ValueError("Both players need provisional own-decision cutoffs")
-    proof = CutoffVerification(histories[0].episode, evidence_ref, histories_complete, failure_free,
-                              shutdown_verified, continuation_limit, continuation_steps,
-                              tuple(h.digest() for h in histories))
-    for history in histories:
-        history.emit("cutoff_finalized", cutoff_verification=proof)
-    return proof
-
-
 def _record(raw, cls):
     if type(raw) is not dict or not _field_set(cls).issuperset(raw):
         raise ValueError(f"Unknown fields in {cls.__name__}")
@@ -3297,7 +3044,7 @@ def _field_set(cls):
 _WIRE_LEAVES = frozenset((str, int, bool, float, type(None)))
 
 
-def _wire(value, *, _tile_placeholder=None):
+def _wire(value):
     """Detached canonical JSON, omitting additive fields from their older schema."""
     kind = type(value)
     if kind in _WIRE_LEAVES:
@@ -3318,10 +3065,7 @@ def _wire(value, *, _tile_placeholder=None):
         data = {}
         for name in _field_names(kind):
             item = getattr(value, name)
-            if kind is Observation and name == "tiles" and _tile_placeholder is not None:
-                data[name] = _tile_placeholder
-            else:
-                data[name] = item if type(item) in _WIRE_LEAVES else _wire(item)
+            data[name] = item if type(item) in _WIRE_LEAVES else _wire(item)
         if kind is Context and value.panel is None and value.kind not in ("exchange", "dialog"):
             del data["panel"], data["selection"]
         elif kind is Action and value.schema == ACTION_SCHEMA:
@@ -3362,14 +3106,14 @@ def encode_action(action):
     return _wire(action)
 
 
-def encode_observation(observation, *, schema=SCHEMA, _tile_placeholder=None):
+def encode_observation(observation, *, schema=SCHEMA):
     if type(observation) is not Observation:
         raise ValueError("Expected typed contextual observation")
     profile = profile_for(schema)
     if schema != profile.history_schema:
         raise ValueError("Observation encoding requires its enclosing history schema")
     _validate_observation(observation, profile)
-    data = _wire(observation, _tile_placeholder=_tile_placeholder)
+    data = _wire(observation)
     if profile.dialogs and data["window"] is not None:
         data["window"]["dialog_panel"] = _wire(observation.window.dialog_panel)
     if profile.capabilities and data["window"] is not None:
@@ -3391,82 +3135,6 @@ def encode_frame(frame):
     if frame.observation is not None:
         data["observation"] = encode_observation(frame.observation, schema=frame.schema)
     return data
-
-
-def canonical_frame(frame):
-    """Canonical JSON text of one frame, encoded at most once per frame object.
-
-    Frames are frozen trees of tuples, strings, integers and frozen records, so
-    the text cannot change after the first encoding. The cache is per object
-    and is never a dataclass field: equality, replace() and decoding ignore it.
-    It costs memory while the frame lives, so owners that finish with a history
-    drop it with release_canonical.
-    """
-    if type(frame) is not Frame:
-        raise ValueError("Expected typed contextual frame")
-    text = frame.__dict__.get("_canonical_json")
-    if text is None:
-        text = json.dumps(encode_frame(frame), sort_keys=True, separators=(",", ":"), allow_nan=False)
-        object.__setattr__(frame, "_canonical_json", text)
-    return text
-
-
-def _canonical_frame_with_tile_cache(frame, cache):
-    """Exact standard JSON with bounded, digest-local immutable tile fragments."""
-    if type(frame) is not Frame:
-        raise ValueError("Expected typed contextual frame")
-    text = frame.__dict__.get("_canonical_json")
-    if text is not None:
-        return text
-    if frame.observation is None:
-        return canonical_frame(frame)
-    observation = frame.observation
-    # The existing schema validator and all wire omission rules still run.
-    data = encode_observation(observation, schema=frame.schema, _tile_placeholder=[])
-    arrays = cache["arrays"]
-    entry = arrays.get(id(observation.tiles))
-    if entry is not None and entry[0] is observation.tiles:
-        tiles_text = entry[1]
-    else:
-        fragments = cache["fragments"]
-        items = []
-        for tile in observation.tiles:
-            fragment = fragments.get(tile)
-            if fragment is None:
-                fragment = json.dumps(_wire(tile), sort_keys=True, separators=(",", ":"), allow_nan=False)
-                if len(fragments) >= 4096:
-                    fragments.clear()
-                fragments[tile] = fragment
-            items.append(fragment)
-        tiles_text = "[" + ",".join(items) + "]"
-        if len(arrays) >= 64:
-            arrays.clear()
-        # Retain the source tuple so identities cannot be recycled during use.
-        arrays[id(observation.tiles)] = (observation.tiles, tiles_text)
-    names = cache["names"]
-    for name in (*data, *_field_names(Frame)):
-        if name not in names:
-            names[name] = json.dumps(name, separators=(",", ":"), allow_nan=False)
-    pieces = []
-    for name in sorted(data):
-        value = tiles_text if name == "tiles" else json.dumps(
-            data[name], sort_keys=True, separators=(",", ":"), allow_nan=False)
-        pieces.append(names[name] + ":" + value)
-    observation_text = "{" + ",".join(pieces) + "}"
-    pieces = []
-    for name in sorted(_field_names(Frame)):
-        value = observation_text if name == "observation" else json.dumps(
-            _wire(getattr(frame, name)), sort_keys=True, separators=(",", ":"), allow_nan=False)
-        pieces.append(names[name] + ":" + value)
-    text = "{" + ",".join(pieces) + "}"
-    object.__setattr__(frame, "_canonical_json", text)
-    return text
-
-
-def release_canonical(frames):
-    """Drop cached canonical text; a later canonical_frame re-encodes exactly."""
-    for frame in frames:
-        frame.__dict__.pop("_canonical_json", None)
 
 
 def decode_frame(raw, *, observation=None):
@@ -3524,12 +3192,6 @@ def decode_frame(raw, *, observation=None):
             data["offers"] = Offers(**offer)
         except TypeError as exc:
             raise ValueError("Incomplete offers") from exc
-    if data.get("verification") is not None:
-        data["verification"] = _decode_simple(data["verification"], Verification,
-                                              ("engine_outcomes", "socket_outcomes", "histories_complete", "history_sha256"))
-    if data.get("cutoff_verification") is not None:
-        data["cutoff_verification"] = _decode_simple(data["cutoff_verification"], CutoffVerification,
-                                                     ("histories_complete", "continuation_steps", "history_sha256"))
     try:
         return Frame(**data)
     except TypeError as exc:

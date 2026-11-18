@@ -15,7 +15,7 @@ from pathlib import Path
 
 import torch
 
-from .model.policy import ContextualActorCritic, ModelConfig, EXPANDED_MODEL_SCHEMA, weights_sha256
+from .model.policy import ContextualActorCritic, ModelConfig, weights_sha256
 
 FORMAT = "heroes-checkpoint-v1"
 LEGACY_FORMAT = "heroes-context-checkpoint-v1"
@@ -44,7 +44,7 @@ def _state(model, learning_rate):
 def fresh(*, learning_rate, seed=0):
     """A randomly initialized policy that has never been trained."""
     torch.manual_seed(seed)
-    model, optimizer = _state(ContextualActorCritic(ModelConfig(schema=EXPANDED_MODEL_SCHEMA)), learning_rate)
+    model, optimizer = _state(ContextualActorCritic(ModelConfig()), learning_rate)
     return State(model, optimizer, torch.Generator().manual_seed(seed),
                  {"updates": 0, "games": 0, "decisions": 0, "optimizer_steps": 0}, "random initialization")
 

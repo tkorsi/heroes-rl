@@ -164,7 +164,7 @@ def update(model, optimizer, trajectories, *, config, generator, progress=None):
     from ..model.policy import encode_history
     started = time.perf_counter()
     batch = prepare(trajectories, config)
-    inputs = [encode_history(item.frames, guard_version=item.guard) for item in trajectories]
+    inputs = [encode_history(item.frames, guard=item.guard) for item in trajectories]
     totals, count_seen, steps = [0.0] * 4, 0, 0
     for _ in range(config.epochs):
         order = torch.randperm(len(batch.windows), generator=generator).tolist()
