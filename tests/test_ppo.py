@@ -27,7 +27,7 @@ def test_loss_windows_cover_every_decision_once():
         (1, (0, 1), 0, 5), (1, (2, 3), 6, 14), (1, (4,), 15, 20)]
     assert (batch.offsets, batch.samples) == ([0, 5], 10)
     assert batch.advantages == pytest.approx([0.9] * 10)
-    assert batch.schedule(PPOConfig(windows_per_minibatch=4), torch.Generator().manual_seed(0))[1] == 2
+    assert batch.planned_steps(PPOConfig(windows_per_minibatch=4)) == 2
 
 
 def test_advantages_are_normalized_over_the_whole_batch():
@@ -115,60 +115,31 @@ def test_encodings_reused_while_acting_never_outlive_the_weights(play_fake):
     assert torch.equal(values(model), expected)
 
 
-def _game(decisions):
-    return Trajectory(decisions=tuple(range(0, 2 * decisions, 2)), log_probs=(0.0,) * decisions,
-                      values=(0.0,) * decisions, reward=1, bootstrap=0.0)
+def test_grouped_minibatches_use_every_window_once_and_few_games(play_fake):
+    def game(decisions):
+        return Trajectory(decisions=tuple(range(0, 2 * decisions, 2)), log_probs=(0.0,) * decisions,
+                          values=(0.0,) * decisions, reward=1, bootstrap=0.0)
 
-
-def test_a_round_is_one_step_unless_windows_share_a_replay():
     plain = PPOConfig(decisions_per_window=2, windows_per_minibatch=4)
-    batch = prepare([_game(40), _game(14), _game(6)], plain)  # 20, 7 and 3 windows
-    # Without sharing, the schedule is the plain shuffle it always was, one step per round.
+    batch = prepare([game(40), game(14), game(6)], plain)  # 20, 7 and 3 windows
+    # Ungrouped, the schedule is the plain shuffle it always was.
     expected = torch.randperm(30, generator=torch.Generator().manual_seed(5)).tolist()
-    rounds = batch.rounds(plain, torch.Generator().manual_seed(5))
-    assert rounds == [[expected[left:left + 4]] for left in range(0, 30, 4)]
-    epochs, steps = batch.schedule(replace(plain, epochs=2), torch.Generator().manual_seed(5))
-    assert epochs[0] == rounds and epochs[1] != rounds and steps == 16
+    steps = batch.minibatches(plain, torch.Generator().manual_seed(5))
+    assert steps == [expected[left:left + 4] for left in range(0, 30, 4)] and len(steps) == batch.planned_steps(plain)
 
-    shared = PPOConfig(decisions_per_window=2, windows_per_minibatch=2, windows_per_replay=4)
-    rounds = batch.rounds(shared, torch.Generator().manual_seed(5))
-    assert sorted(index for round_ in rounds for step in round_ for index in step) == list(range(30))
-    assert len(rounds) == 4  # 5 + 2 + 1 groups, two per round
-    for round_ in rounds:
-        games = {batch.windows[index].rollout_index for step in round_ for index in step}
-        assert len(games) <= 2 and sum(len(step) for step in round_) <= 8  # two groups: at most two games to replay
-        assert all(len(step) == 2 for step in round_[:-1]) and 1 <= len(round_[-1]) <= 2 and len(round_) <= 4
-    assert sum(len(round_) == 4 for round_ in rounds) >= 2  # a full round makes windows_per_replay steps
-    # The steps keep their size and nearly their number: 15 without sharing, one more for each odd round.
-    assert 15 <= batch.schedule(shared, torch.Generator().manual_seed(5))[1] <= 17
-    assert rounds != batch.rounds(shared, torch.Generator().manual_seed(6))
-    for bad in (dict(windows_per_replay=0), dict(windows_per_replay=2.0), dict(windows_per_minibatch=0)):
+    grouped = replace(plain, windows_per_game=2)
+    steps = batch.minibatches(grouped, torch.Generator().manual_seed(5))
+    assert sorted(index for step in steps for index in step) == list(range(30))
+    assert len(steps) == batch.planned_steps(grouped) == 8  # 10 + 4 + 2 groups, two per step
+    games = [[batch.windows[index].rollout_index for index in step] for step in steps]
+    assert all(len(set(step)) <= 2 for step in games)  # two groups, so at most two games to replay
+    assert sum(len(step) == 4 for step in steps) >= 6  # only the games' odd last windows make a step smaller
+    assert steps != batch.minibatches(grouped, torch.Generator().manual_seed(6))
+    for bad in (dict(windows_per_game=3), dict(windows_per_game=0), dict(windows_per_game=8)):
         with pytest.raises(ValueError):
             replace(plain, **bad)
 
-
-def test_a_round_replays_each_of_its_games_once(play_fake, monkeypatch):
-    from heroes.learner import ppo
-    trajectories = [play_fake(learner=0, days=12).trajectory, play_fake(learner=1, days=5).trajectory]
-    model = play_fake.model
-    replays = []
-    original = ppo._states_before
-    monkeypatch.setattr(ppo, "_states_before", lambda model, frames, starts: replays.append(len(starts)) or original(
-        model, frames, starts))
-    reports = {}
-    for size in (1, 3):
-        config = PPOConfig(decisions_per_window=2, windows_per_replay=size)
-        rounds = prepare(trajectories, config).rounds(config, torch.Generator().manual_seed(0))
-        optimizer = _optimizer(model)
-        optimizer.param_groups[0]["lr"] = 0.0
-        replays.clear()
-        reports[size] = update(model, optimizer, trajectories, generator=torch.Generator().manual_seed(0), config=config)
-        assert reports[size].optimizer_steps == sum(len(round_) for round_ in rounds)
-        if size == 1:
-            assert len(replays) <= 2 * len(rounds) and max(replays) <= 2
-        else:
-            assert len(replays) <= 2 * len(rounds) < reports[size].optimizer_steps and max(replays) == 3
-    assert (reports[1].samples, reports[1].optimizer_steps) == (17, 5)  # 6 and 3 windows
-    # While the weights stand still, a state from the start of a round is the state a replay at the step gives.
-    assert reports[3].value_loss == pytest.approx(reports[1].value_loss, rel=1e-6)
-    assert reports[3].policy_loss == pytest.approx(reports[1].policy_loss, rel=1e-6, abs=1e-9)
+    trajectories = [play_fake(learner=0, days=9).trajectory, play_fake(learner=1, days=5).trajectory]
+    report = update(play_fake.model, _optimizer(play_fake.model), trajectories, generator=torch.Generator().manual_seed(0),
+                    config=PPOConfig(decisions_per_window=2, windows_per_minibatch=4, windows_per_game=2))
+    assert (report.samples, report.optimizer_steps) == (14, 3)  # 5 and 3 windows: 3 and 2 groups

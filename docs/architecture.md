@@ -129,31 +129,28 @@ already computed. That memo is dropped as soon as any weight changes.
 undiscounted GAE with λ = 1, advantages normalized over the batch, and
 **loss windows** of 16 consecutive trained decisions. A minibatch is two
 windows. For each window the update recomputes the recurrent state from the
-first frame of the game up to the window, without gradients, then
-differentiates through the window. Hidden states from play are never reused.
+first frame of the game up to the window with the current weights and without
+gradients, then differentiates through the window. Hidden states from play are
+never reused.
 
 That replay is what an update spends most of its time on, and it grows with the
-square of the length of a game. An update is therefore a sequence of **rounds**
-(`Batch.rounds` in `ppo.py`; both backends follow it). A round replays each of
-its games once, with the weights it starts from, takes the state before each of
-its windows from that replay and then makes its optimizer steps.
+square of the length of a game. Two settings change how often it happens;
+`Batch.minibatches` and `Batch.kept` in `ppo.py` hold their rules, and both
+backends follow them.
 
-- With `windows_per_replay` 1, the default, a round is one step: every state is
-  computed with the very weights the step differentiates.
-- With `windows_per_replay` N, each game's windows are shuffled and cut into
-  groups of N, the groups of all games are shuffled, and a round takes two of
-  them (`windows_per_minibatch`), shuffles their windows together and makes N
-  steps of two windows. One replay of a game, to the latest of its windows in
-  the round, serves N steps. The steps keep their size, their number and the
-  learning rate. What changes: a window starts from a state computed with
-  weights that are up to N - 1 steps old, and consecutive steps of a round draw
-  on the same two games.
-
-The recurrent state carries the whole game and follows every change of the
-weights, so states cannot be reused for long: reused over 64 optimizer steps or
-more they changed the gradient too much, and a short replay before the window
-did not repair it (journal, 2026-11-19). A round keeps them for a few steps
-only.
+- `windows_per_game` above 1 shuffles each game's windows, cuts them into
+  groups of that size and builds a minibatch from whole groups. One replay of a
+  game, to the latest of its windows in the step, then serves the whole group.
+  Every state is still computed with the current weights. What changes is the
+  shape of the optimization: larger minibatches from as few games as before,
+  and fewer steps.
+- `state_refresh_steps` above 1 replays a game once to its last window, keeps
+  the state before each of its windows and reuses them for that many optimizer
+  steps. A window then starts from a state that is up to that many steps old.
+  Measured on real games this changes the gradient too much, because the
+  recurrent state carries the whole game and follows every change of the
+  weights; a short replay before the window does not repair it. It is kept as a
+  switch for experiments and for the measurement scripts, off.
 
 The plan of a minibatch depends on no weight, and an epoch's schedule is known
 when it starts, so a helper thread builds the next plans while the GPU runs the
@@ -167,8 +164,8 @@ current step.
 | epochs | 1 |
 | optimizer | Adam, 3e-4 |
 | entropy bonus | none |
-| windows per minibatch | 2 |
-| windows per replay | 1 |
+| windows per minibatch, per game | 2, 1 |
+| state refresh | every step (`state_refresh_steps` 1) |
 
 `ppo.update` is the plain autograd reference, correct and slow. Production uses
 [`heroes/learner/mlx/`](../heroes/learner/mlx/): each actor compiles its game

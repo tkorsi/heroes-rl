@@ -2,15 +2,15 @@
 
 Scripted games (no VCMI, random weights, temporary folders):
 
-    python tools/perf/bench_update.py --synthetic 2000,500,500 --windows-per-replay 1,8
+    python tools/perf/bench_update.py --synthetic 2000,500,500 --windows-per-minibatch 2,16 --windows-per-game 1,8
 
 Real games collected by ``collect_games.py``, with the checkpoint that played them:
 
     python tools/perf/bench_update.py --batch STATE/batch --checkpoint STATE/checkpoints/update-NNNNNN.pt \
-        --windows-per-replay 1,8 --steps 300
+        --windows-per-minibatch 2,16 --windows-per-game 1,8 --steps 300
 
-Every value of ``--windows-per-replay`` runs the update from the same weights,
-shuffle seed and games; nothing is saved. ``--steps`` stops each run after that many
+Every setting runs the update from the same weights, shuffle seed and games;
+nothing is saved. ``--steps`` stops each run after that many
 optimizer steps. One JSON line per run goes to stdout and to ``--out``.
 """
 from __future__ import annotations
@@ -35,7 +35,7 @@ from heroes import actor, checkpoint  # noqa: E402
 from heroes.engine.env import Env, Limits  # noqa: E402
 from heroes.engine.process import Engine  # noqa: E402
 from heroes.game import guard  # noqa: E402
-from heroes.learner.ppo import PPOConfig  # noqa: E402
+from heroes.learner.ppo import PPOConfig, prepare  # noqa: E402
 
 
 class _Enough(Exception):
@@ -104,13 +104,14 @@ def run(weights, trajectories, config, steps, profile=None):
     for parameter in model.parameters():
         parameter.requires_grad_(True)
     optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate)
-    stamps, planned = [], 0
+    batch = prepare(trajectories, config)
+    planned = batch.planned_steps(config)
+    limit = planned if steps is None else min(steps, planned)
+    stamps = []
 
     def progress(step, total):
-        nonlocal planned
-        planned = total
         stamps.append(time.perf_counter())
-        if steps is not None and steps <= step < total:
+        if step >= limit and limit < planned:
             raise _Enough
 
     profiler = None
@@ -136,10 +137,10 @@ def run(weights, trajectories, config, steps, profile=None):
         pstats.Stats(profiler, stream=sys.stderr).sort_stats("cumulative").print_stats(35)
     warm = max(1, len(stamps) // 5)  # the first fifth carries plan building and kernel compilation
     result = {
-        "windows_per_minibatch": config.windows_per_minibatch, "windows_per_replay": config.windows_per_replay,
+        "windows_per_minibatch": config.windows_per_minibatch, "windows_per_game": config.windows_per_game,
         "decisions_per_window": config.decisions_per_window,
-        "games": len(trajectories), "samples": sum(len(item.decisions) for item in trajectories),
-        "planned_steps": planned, "steps_run": len(stamps),
+        "games": len(trajectories), "samples": batch.samples, "planned_steps": planned,
+        "steps_run": len(stamps),
         "seconds_to_last_step": round(stamps[-1] - started, 3),
         "seconds_total": round(finished - started, 3),
         "first_step_seconds": round(stamps[0] - started, 3),
@@ -163,9 +164,9 @@ def main():
     parser.add_argument("--cache", type=Path, help="folder that keeps scripted games between runs")
     parser.add_argument("--batch", type=Path, help="folder of game-*.pkl files from collect_games.py")
     parser.add_argument("--checkpoint", type=Path, help="the checkpoint that played --batch")
-    parser.add_argument("--windows-per-replay", default="1", help="comma-separated values to time")
-    parser.add_argument("--windows-per-minibatch", default="2",
-                        help="one value for every run, or comma-separated values paired in order with --windows-per-replay")
+    parser.add_argument("--windows-per-minibatch", default="2", help="comma-separated values to time")
+    parser.add_argument("--windows-per-game", default="1",
+                        help="comma-separated values, paired in order with --windows-per-minibatch")
     parser.add_argument("--decisions-per-window", type=int, default=16)
     parser.add_argument("--steps", type=int, help="stop each run after this many optimizer steps")
     parser.add_argument("--repeat", type=int, default=1)
@@ -200,12 +201,12 @@ def main():
     frames = sum(item.recipe.frame_count for item in trajectories)
     print(f"# {source}: {sum(sizes)} samples, {frames} frames, game sizes {sizes}", file=sys.stderr, flush=True)
     for _ in range(arguments.repeat):
-        shared = [int(item) for item in arguments.windows_per_replay.split(",")]
-        sizes = [int(item) for item in arguments.windows_per_minibatch.split(",")]
-        if len(sizes) == 1:
-            sizes *= len(shared)
-        for windows, per_replay in zip(sizes, shared, strict=True):
-            config = replace(PPOConfig(), windows_per_minibatch=windows, windows_per_replay=per_replay,
+        sizes_per_step = [int(item) for item in arguments.windows_per_minibatch.split(",")]
+        sizes_per_game = [int(item) for item in arguments.windows_per_game.split(",")]
+        if len(sizes_per_game) == 1:
+            sizes_per_game *= len(sizes_per_step)
+        for windows, per_game in zip(sizes_per_step, sizes_per_game, strict=True):
+            config = replace(PPOConfig(), windows_per_minibatch=windows, windows_per_game=per_game,
                              decisions_per_window=arguments.decisions_per_window)
             result = {"source": source, "frames": frames, "profiled": arguments.profile is not None,
                       "plan_cache_gib": arguments.plan_cache_gib,

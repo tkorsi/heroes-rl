@@ -5,9 +5,8 @@ optimizer state are copied into MLX, every optimizer step runs there, and the
 result is copied back only after the whole update finished and is finite.
 Weight-independent plans are cached, and the plan of a minibatch is built on a
 helper thread while the GPU runs the steps before it. The recurrent state
-before a loss window comes from a replay of its game with the weights its
-round started from (``heroes.learner.ppo``): the current weights unless
-``windows_per_replay`` lets the steps of a round share their replays.
+before a loss window is recomputed with the current weights at every step, by
+one replay of each game the minibatch draws on.
 """
 from __future__ import annotations
 
@@ -98,9 +97,9 @@ def update(model, optimizer, trajectories, *, config, generator, progress=None):
 
     batch = prepare(rollouts, config)
     targets, advantages, offsets, windows, offset = batch.targets, batch.advantages, batch.offsets, batch.windows, batch.samples
-    shuffle = torch.Generator(device="cpu")
-    shuffle.set_state(generator.get_state())
-    epochs, planned_steps = batch.schedule(config, shuffle)
+    planned_steps = batch.planned_steps(config)
+    schedule = torch.Generator(device="cpu")
+    schedule.set_state(generator.get_state())
     references = [{"path": str(index), "history_index": index} for index in range(len(histories))]
     history_jobs = [[i for i, frame in enumerate(history.frames) if frame["root"] >= 0]
                     for history in histories]
@@ -144,46 +143,43 @@ def update(model, optimizer, trajectories, *, config, generator, progress=None):
         return step, time.perf_counter() - build_started
 
     backend = None
-    states = None
+    prepared_prefixes = None
     weighted = [0.0] * 4
     count_seen = completed = 0
     planner = ThreadPoolExecutor(max_workers=1, thread_name_prefix="ppo-plans")
     try:
         backend = MLXBackend(manifest, array_loader=lambda value: value, plan_loader=load_history)
         prepared = time.perf_counter()
-        for rounds in epochs:
-            minibatches = [[windows[index] for index in selected] for round_ in rounds for selected in round_]
+        for _ in range(config.epochs):
+            minibatches = [[windows[index] for index in selected] for selected in batch.minibatches(config, schedule)]
             # The schedule of an epoch is known, so the plans of the next minibatches are
             # built while the GPU is busy with this one. They hold nothing that depends on
             # the weights, and they are consumed in order.
             ahead = deque(planner.submit(assemble, selected) for selected in minibatches[:PLANS_AHEAD])
-            number = 0
-            for round_ in rounds:
+            for number, selected in enumerate(minibatches):
+                if number + PLANS_AHEAD < len(minibatches):
+                    ahead.append(planner.submit(assemble, minibatches[number + PLANS_AHEAD]))
                 plan_started = time.perf_counter()
                 boundaries = {}
-                for window in (windows[index] for selected in round_ for index in selected):
-                    boundaries.setdefault(window.rollout_index, set()).add(window.start_seq)
-                prefixes = [prefix(index, sorted(stops)) for index, stops in boundaries.items()]
+                for window in selected:
+                    boundaries.setdefault(window.rollout_index, []).append(window.start_seq)
+                prefixes = [prefix(index, sorted(set(stops))) for index, stops in boundaries.items()]
                 plan_seconds += time.perf_counter() - plan_started
-                # One replay of each game of the round, with the weights the round starts from.
-                # It runs on the GPU while the CPU does the rest. Its states are dropped with the round.
-                states = backend.prefix_states(prefixes)
-                for _ in round_:
-                    if number + PLANS_AHEAD < len(minibatches):
-                        ahead.append(planner.submit(assemble, minibatches[number + PLANS_AHEAD]))
-                    step, seconds = ahead.popleft().result()
-                    plan_seconds += seconds
-                    metrics, count = backend.update(step, states)
-                    for index, value in enumerate(metrics):
-                        weighted[index] += value * count
-                    count_seen += count
-                    completed += 1
-                    number += 1
-                    if progress is not None:
-                        progress(completed, planned_steps)
-                    del step
-                states.clear()
-                states = None
+                # A replay runs on the GPU while the CPU does the rest. Its states are used once and dropped.
+                prepared_prefixes = backend.prefix_states(prefixes, synchronize=False)
+                step, seconds = ahead.popleft().result()
+                plan_seconds += seconds
+                step["prefixes"] = prefixes
+                metrics, count = backend.update(step, prefixes=prepared_prefixes)
+                for index, value in enumerate(metrics):
+                    weighted[index] += value * count
+                count_seen += count
+                completed += 1
+                if progress is not None:
+                    progress(completed, planned_steps)
+                del step
+                prepared_prefixes.clear()
+                prepared_prefixes = None
         backend.mx.synchronize()
         updated = time.perf_counter()
         _require(completed == planned_steps and count_seen == offset * config.epochs,
@@ -210,13 +206,13 @@ def update(model, optimizer, trajectories, *, config, generator, progress=None):
         optimizer.state.clear()
         optimizer.state.update(restored_adam)
         optimizer.zero_grad(set_to_none=True)
-        generator.set_state(shuffle.get_state())
+        generator.set_state(schedule.get_state())
         restored = time.perf_counter()
         validation_seconds = backend.state_validation_seconds
     finally:
         planner.shutdown(wait=True, cancel_futures=True)
-        if states is not None:
-            states.clear()
+        if prepared_prefixes is not None:
+            prepared_prefixes.clear()
         for history in histories:
             history.plans.pop((0, history.frame_count, ()), None)
         if backend is not None:

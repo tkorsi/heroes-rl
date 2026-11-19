@@ -23,33 +23,12 @@ def scripted(monkeypatch, tmp_path):
 def test_the_update_benchmark_reports_each_run(scripted):
     import bench_update
     from heroes.learner.ppo import PPOConfig
-    config = PPOConfig(decisions_per_window=2, windows_per_minibatch=2, windows_per_replay=4)
+    config = PPOConfig(decisions_per_window=2, windows_per_minibatch=4, windows_per_game=2)
     whole = bench_update.run(*scripted, config, None)
-    # Ten and two windows: three groups and one, so two rounds, of four and two steps or of three each.
-    assert whole["steps_run"] == whole["planned_steps"] == 6
-    assert whole["samples"] == 23 and whole["windows_per_replay"] == 4 and "value_loss" in whole
+    # Ten and two windows: five groups and one, two per step.
+    assert whole["steps_run"] == whole["planned_steps"] == 3 and whole["samples"] == 23 and "value_loss" in whole
     cut = bench_update.run(*scripted, config, 2)
     assert cut["steps_run"] == 2 and "value_loss" not in cut  # stopped early: no report, nothing copied back
-
-
-def test_the_fidelity_probe_compares_shared_states_with_replayed_ones(scripted):
-    import state_fidelity
-    from heroes.learner.ppo import PPOConfig
-    # With a vanishing learning rate the weights stand still, so a state from the start of a round is exact.
-    still = PPOConfig(decisions_per_window=2, windows_per_minibatch=2, windows_per_replay=4, learning_rate=1e-12)
-    records, ran, planned, report = state_fidelity.probe(*scripted, still, None, 1)
-    assert ran == planned == report.optimizer_steps == 6
-    # Two rounds, of four and two steps or of three each: all but each round's first step are compared.
-    assert len(records) == ran - 2 and {1, 2} <= {row[1] for row in records} <= {1, 2, 3}
-    summary = state_fidelity.summarize(records)
-    assert summary["state_error_max"] < 1e-5 and summary["gradient_cosine_min"] > 0.9999
-    assert summary["largest_state_age_steps"] in (2, 3)
-    # At a large learning rate the weights move within a round, and its later states drift measurably.
-    records, _, _, _ = state_fidelity.probe(*scripted, replace(still, learning_rate=3e-2), None, 1)
-    assert state_fidelity.summarize(records)["state_error_max"] > 1e-5
-    # Without sharing every step is the first of its round, and there is nothing to compare.
-    records, ran, _, _ = state_fidelity.probe(*scripted, replace(still, windows_per_replay=1), None, 1)
-    assert records == [] and ran == 6
 
 
 def test_update_quality_judges_updates_on_games_they_did_not_see(scripted, tmp_path, monkeypatch, capsys):
@@ -71,15 +50,15 @@ def test_update_quality_judges_updates_on_games_they_did_not_see(scripted, tmp_p
                 pickle.dump(game, stream)
     small = update_quality.PPOConfig(decisions_per_window=2)
     monkeypatch.setattr(update_quality, "PPOConfig", lambda: small)
-    monkeypatch.setattr(update_quality, "JUDGE", replace(small, windows_per_replay=4, normalize_advantages=False))
+    monkeypatch.setattr(update_quality, "JUDGE", replace(small, windows_per_minibatch=4, windows_per_game=2, normalize_advantages=False))
     monkeypatch.setattr(sys, "argv", ["update_quality.py", "--batch", str(tmp_path / "batch"), "--holdout",
                                       str(tmp_path / "holdout"), "--checkpoint", str(path), "--work", str(tmp_path / "work"),
-                                      "--settings", "2:1,2:4,4:4:1e-3", "--seeds", "0,1"])
+                                      "--settings", "2:1,4:2,4:2:1e-3", "--seeds", "0,1"])
     update_quality.main()
     lines = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
     updates = [line for line in lines if line["part"] == "update"]
-    names = ["minibatch2-replay1-seed0", "minibatch2-replay1-seed1", "minibatch2-replay4-seed0",
-             "minibatch2-replay4-seed1", "minibatch4-replay4-rate1e-3-seed0", "minibatch4-replay4-rate1e-3-seed1"]
+    names = ["minibatch2-game1-seed0", "minibatch2-game1-seed1", "minibatch4-game2-seed0",
+             "minibatch4-game2-seed1", "minibatch4-game2-rate1e-3-seed0", "minibatch4-game2-rate1e-3-seed1"]
     assert [line["name"] for line in updates] == names
     assert all(line["samples"] == 23 for line in updates) and updates[0]["optimizer_steps"] == 6
     judged = {line["name"]: line for line in lines if line["part"] == "judged"}
@@ -104,8 +83,6 @@ def test_update_quality_judges_updates_on_games_they_did_not_see(scripted, tmp_p
     monkeypatch.setattr(update_quality, "judge", None)
     update_quality.main()
     assert len(capsys.readouterr().out.splitlines()) == len(lines) - len(updates)
-
-
 def test_the_game_profiler_splits_a_game_into_its_parts(fake_engine, tmp_path):
     import profile_game
     from heroes import checkpoint

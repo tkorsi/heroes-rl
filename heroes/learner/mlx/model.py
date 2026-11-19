@@ -264,11 +264,7 @@ class MLXBackend(MLXModel):
             parameters["gru." + key] for key in ("weight_ih", "weight_hh", "bias_ih", "bias_hh")
         ])[0]
 
-    def prefix_states(self, prefixes):
-        """The state before each requested frame, from one replay per game with the current weights.
-
-        The replays are started and not waited for; the first step that uses a state does that.
-        """
+    def prefix_states(self, prefixes, *, synchronize=True):
         mx = self.mx
         parameters = {key: mx.stop_gradient(value) for key, value in self.p.items()}
         result = {}
@@ -278,7 +274,10 @@ class MLXBackend(MLXModel):
                 index = entry["state_index"]
                 value = initial if index < 0 else states[index:index + 1]
                 result[(spec["history"], entry["stop"])] = mx.stop_gradient(value)
-        mx.async_eval(list(result.values()))
+        if synchronize:
+            mx.eval(list(result.values()))
+        else:
+            mx.async_eval(list(result.values()))
         return result
 
     def forward(self, p, step, plan, prefixes):
@@ -313,9 +312,13 @@ class MLXBackend(MLXModel):
     def _moments(self):
         return [value for state in self.adam.values() for key, value in state.items() if key != "step"]
 
-    def update(self, step, prefixes):
-        """One optimizer step. ``prefixes`` holds the state before each window of the minibatch."""
+    def update(self, step, *, prefixes=None):
         mx = self.mx
+        if prefixes is None:
+            prefixes = self.prefix_states(step["prefixes"])
+        elif set(prefixes) != {(spec["history"], entry["stop"])
+                              for spec in step["prefixes"] for entry in spec["states"]}:
+            raise ValueError("Prepared prefixes differ from this minibatch's boundaries")
         plan = self._prepare_plan(step["plan"])
         targets = tuple(self._array(step[key]) for key in ("old_log_probs", "old_values", "advantages", "returns"))
         # Only the parameter tree is transformed. Metadata, NumPy-backed step

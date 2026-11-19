@@ -103,23 +103,26 @@ def test_check_reports_the_start_and_writes_nothing(config, capsys):
     with pytest.raises(SystemExit) as refused:
         main(["train", "2", "--workers", "0", *paths])
     assert refused.value.code == 2 and not config.state.exists()
-    for bad in (["--windows-per-replay", "0"], ["--windows-per-minibatch", "0"]):
+    for bad in (["--learning-rate", "0"], ["--windows-per-minibatch", "4", "--windows-per-game", "3"]):
         with pytest.raises(SystemExit) as refused:
             main(["train", "2", *bad, *paths])
         assert refused.value.code == 2 and not config.state.exists()
 
 
-def test_the_replay_sharing_setting_reaches_the_update_and_the_log(config):
-    main(["train", "2", "--fresh", "--games-per-update", "2", "--workers", "2",
-          "--windows-per-minibatch", "4", "--windows-per-replay", "2",
+def test_the_minibatch_settings_reach_the_update_and_the_log(config):
+    main(["train", "2", "--fresh", "--games-per-update", "2", "--workers", "2", "--learning-rate", "8.5e-4",
+          "--windows-per-minibatch", "4", "--windows-per-game", "2",
           "--state", str(config.state), "--legacy", str(config.legacy), "--vcmi", str(config.vcmi),
           "--game-data", str(config.game_data), "--backend", "torch"])
     records = _log(config)
-    assert records[0]["event"] == "start"
-    assert (records[0]["ppo"]["windows_per_minibatch"], records[0]["ppo"]["windows_per_replay"]) == (4, 2)
+    assert records[0]["event"] == "start" and records[0]["ppo"]["learning_rate"] == 8.5e-4
+    assert (records[0]["ppo"]["windows_per_minibatch"], records[0]["ppo"]["windows_per_game"]) == (4, 2)
     update = next(record for record in records if record["event"] == "update")
-    # Two three-decision games are one window each: one round of one step.
-    assert (update["samples"], update["optimizer_steps"]) == (6, 1)
+    assert (update["samples"], update["optimizer_steps"]) == (6, 1)  # two games of one window each
+    # The rate is the one the optimizer steps with, also after the checkpoint is read back.
+    from heroes.train import restore
+    faster = replace(config, ppo=replace(config.ppo, learning_rate=8.5e-4))
+    assert [restore(item).optimizer.param_groups[0]["lr"] for item in (config, faster)] == [3e-4, 8.5e-4]
 
 
 def test_a_game_number_is_never_handed_out_twice(tmp_path):

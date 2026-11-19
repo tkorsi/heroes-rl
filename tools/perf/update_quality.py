@@ -2,9 +2,9 @@
 
     python tools/perf/update_quality.py --batch STATE/batch --holdout OTHER/batch \
         --checkpoint STATE/checkpoints/update-NNNNNN.pt --work STATE/quality \
-        --settings 2:1,2:8,16:8:8.5e-4 --seeds 0,1
+        --settings 2:1,16:8,16:8:8.5e-4 --seeds 0,1
 
-A setting is ``windows per minibatch : windows per replay [: learning rate]``.
+A setting is ``windows per minibatch : windows per game [: learning rate]``.
 Every run starts from the checkpoint as training would, with its Adam state,
 and makes one whole update on ``--batch``. Its weights are kept in ``--work``
 as ``weights-<name>.pt`` and its verdict as ``verdict-<name>.json``, so an
@@ -48,8 +48,8 @@ import torch  # noqa: E402
 from heroes import checkpoint  # noqa: E402
 from heroes.learner.ppo import PPOConfig  # noqa: E402
 
-# Judging takes no optimizer step, so every state is exact however many windows share a replay.
-JUDGE = PPOConfig(windows_per_replay=64, normalize_advantages=False)
+# Judging takes no optimizer step, so the minibatches only decide how many windows share a replay.
+JUDGE = PPOConfig(windows_per_minibatch=64, windows_per_game=32, normalize_advantages=False)
 MEASURES = ("gain", "kl", "clip_fraction", "value_loss")
 
 
@@ -145,10 +145,10 @@ def main():
     parser.add_argument("--holdout", type=Path, help="folder of game-*.pkl files no update sees")
     parser.add_argument("--checkpoint", type=Path, required=True, help="the checkpoint that played both")
     parser.add_argument("--work", type=Path, required=True, help="folder that keeps each update's weights and verdict")
-    parser.add_argument("--settings", default="", help="comma-separated minibatch:replay[:learning rate], one update "
+    parser.add_argument("--settings", default="", help="comma-separated minibatch:per game[:learning rate], one update "
                         "per setting and seed; empty to judge only what --work already holds")
     parser.add_argument("--seeds", default="0", help="comma-separated shuffle seeds")
-    parser.add_argument("--reference", default="minibatch2-replay1-seed0", help="the update the others are compared with")
+    parser.add_argument("--reference", default="minibatch2-game1-seed0", help="the update the others are compared with")
     parser.add_argument("--out", type=Path, help="append the JSON lines to this file")
     arguments = parser.parse_args()
     torch.set_num_threads(1)
@@ -164,8 +164,8 @@ def main():
 
     trajectories = games(arguments.batch)
     for setting in (item.split(":") for item in arguments.settings.split(",") if item):
-        config = replace(PPOConfig(), windows_per_minibatch=int(setting[0]), windows_per_replay=int(setting[1]))
-        label = f"minibatch{setting[0]}-replay{setting[1]}"
+        config = replace(PPOConfig(), windows_per_minibatch=int(setting[0]), windows_per_game=int(setting[1]))
+        label = f"minibatch{setting[0]}-game{setting[1]}"
         if len(setting) > 2:
             config, label = replace(config, learning_rate=float(setting[2])), f"{label}-rate{setting[2]}"
         for seed in (int(item) for item in arguments.seeds.split(",")):
