@@ -8560,11 +8560,11 @@ runtime and the Python code are the new ones.
 
 **Ten actors** (`bench_play.py --seconds 130 --warmup 20 --seed 7`, decisions
 per second of both seats of all games, windows taken in turns): base 663 and
-637; new (`52a9f5c`, the same play path as `2a0e5e4`) 1,058 and 999, then 1,066
-and 1,120 in the actor-count runs. Means 650 and 1,061: 1.63 times. The
-ten-game batch to day 60 took 206.1 s before and 132.9 s after; an actor spent
-12.64 ms per decision before and 7.98 ms after, play and compile together:
-1.58 times.
+637; new (`52a9f5c`, the same play path as `2a0e5e4`) 1,058 and 999: 1.58
+times. Two later ten-actor windows of the new code, in the actor-count runs,
+gave 1,066 and 1,120. The ten-game batch to day 60 took 206.1 s before and
+132.9 s after; an actor spent 12.64 ms per decision before and 7.98 ms after,
+play and compile together: 1.58 times.
 
 **Actor count** (criterion d), new code, the same windows:
 
@@ -8585,14 +8585,16 @@ encoding, a flushed write), 18% encoding and sending messages to the policy,
 and 41% `captureContextual`, which builds the player's whole observation as a
 `JsonNode` and compares it with the last one. `CClient::handlePack` runs it for
 both players after every applied pack, and the plugin runs it again before
-every result and every decision. In the new engine that capture is 85% of what
-is left, about 1.4 ms of CPU per decision. The earlier profile's "the engine
-sends every observation twice" was the smaller half of its cost.
+every result and every decision. A second sample, of the new engine, shows
+that capture as 86% of what is left. The earlier entry's "the engine sends
+every observation twice" named the smaller half of the engine's cost.
 
-**What a decision costs now** (seed 4, new): 6.7 ms of wall time, about 5.5 ms
-of CPU: policy forward 1.9 ms, engine about 1.75 ms (1.4 of it the captures),
-decoding 0.8, sampling 0.5, parsing 0.35, encoding frames 0.2; compiling the
-recipe adds 0.8 ms per decision of the game.
+**What a decision costs now** (seed 4, new): 6.7 ms of wall time. In Python:
+policy forward 1.9 ms, decoding 0.8, sampling 0.5, encoding frames 0.2, and
+0.8 ms per decision of the game to compile the recipe afterwards. The engine's
+CPU is not measured per decision; with 14 actors playing, `ps` showed the
+engines at 30% of a core each and the actors at 50%, which puts the engine at
+a little over 2 ms per decision, nearly all of it the captures.
 
 **Hit rate of the whole-observation memo, measured before removing it**
 (profile of seed 4 at `c52493f`+`9c1970d`): of 22,015 views looked up by
@@ -8622,9 +8624,8 @@ games in 1 h 54 min on ten actors under a similar load. At 1.6 times that is
 about 1 h 10 min, and about 1 h with 14 actors; neither was run. A 1,000-game
 cycle of ten such batches would spend about 10 hours playing instead of 19.
 The target of one hour for the whole cycle is 10 to 20 times further away, and
-no exact change found here closes it: the engine capture is at most a quarter
-of a decision's CPU and the rest of Python's share is spread over many small
-parts.
+no exact change found here closes it: the engine capture is about a third of a
+decision's CPU and Python's share is spread over many small parts.
 
 **Not changed, proposed to the user.** (1) Fewer decisions per game day: 43%
 of decisions are stack moves and another 41% open or close a window; the
@@ -8638,7 +8639,8 @@ nothing changed: exact, but a restructuring of the plugin's observation code.
 
 **Limitations.** One evening on a busy machine; no full batch of 100 games and
 no training run was made with the new code; the longest games measured ran to
-day 60 (the windows run to 365 but last 150 s); the new runtime has played
-about 120 games in these measurements and no game of 365 days. `vcmireplay`
+day 60 (the windows run to 365 but last 150 s); the new runtime has started a
+few hundred games in these measurements, most of them stopped after 150 s, and
+has played no game of 365 days. `vcmireplay`
 was not run against the changed recorder: with the ledger off there is nothing
 to replay, and `--keep-game-files` restores it.

@@ -203,12 +203,13 @@ games of another run, so every figure is lower than on a free machine:
   a game keeps about 0.8 of a core busy and the Mac has 16. 14 is the default.
   An actor holds its game's frames until the game ends, up to about 3.5 GB for
   a game of 365 days.
-- **What is left.** A decision costs about 5.5 ms of CPU: 1.8 ms for the
-  policy's tree encoding, 1.4 ms for the engine, which rebuilds each player's
-  whole observation after every network packet, about seven times per decision,
-  to see whether it changed, 0.8 ms to decode and check a view, 0.5 ms to
-  sample. The engine part needs the plugin to build its observation in a form
-  that is cheap to compare; nothing in Python can remove it.
+- **What is left.** A decision costs about 6 ms of CPU. About 2 ms are the
+  engine's: after every applied network packet, and again before every result
+  and decision, it rebuilds each player's whole observation to see whether it
+  changed. That needs the plugin to build its observation in a form that is
+  cheap to compare; nothing in Python can remove it. The policy's forward pass
+  takes 1.9 ms, decoding and checking a view 0.8 ms, sampling 0.5 ms, and
+  compiling the recipe after the game another 0.8 ms per decision.
 - **Game length is the larger lever, and it is not code.** A seat answers about
   100 decisions per game day, most of them stack moves within the guard's daily
   budget of 32 per hero and town, and a game averages 32,000 decisions. The 13%
