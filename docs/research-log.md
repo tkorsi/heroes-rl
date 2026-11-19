@@ -8461,3 +8461,48 @@ charger, battery full:
 The grouped update is 4.0 times faster on 12 games and 4.6 times at production
 size. The figures of the entry above were taken beside the user's update and
 are 1.4 to 1.6 times these.
+
+**Training runs beside the user's run: one update, and two lost batches.** The
+user asked for training games in both modes. Two runs of `980dff6` were started
+at 18:34 UTC from copies of his checkpoint 1,789 in state folders of their own
+(`arm-exact` with the defaults, `arm-flag` with `--windows-per-minibatch 16
+--windows-per-game 8 --learning-rate 8.5e-4`), 4 actors and 10 games per update
+each, while his run was collecting batch 1,790 with 10 actors.
+
+- *The default run made one update.* Ten games, all ended naturally (red 2,
+  blue 8), 159,436 learner decisions, collected in 2,526 s at 51 decisions per
+  second per game beside 14 other actors. The update: 4,985 steps in 1,977 s,
+  policy loss -0.0100, value loss 0.478, KL 0.111, clipped share 0.160. It was
+  then stopped so that it would not collect beside the user's update.
+- *The fast run made none.* A guard written for these runs stopped it twice
+  when memory ran short: at 19:16, with 9 of 10 games played, when the kernel
+  reported memory pressure level 2, and at 21:00, 2.5 minutes into its update
+  on a second batch (10 games, 288,040 decisions, 5 of them stopped at day
+  366), when swap grew beside the user's update of 1.77 million decisions. A
+  stopped trainer discards its batch, so both batches are lost. Nothing aborted
+  in those 2.5 minutes, which is all that is known about the first-minibatch
+  check with 256 decisions per step in a real run.
+- *Cost to the user's run.* About 3.7 GB went to swap between 19:18 and 21:00
+  with these runs beside his, 0.3 GB of it during the fast run's update; very
+  little was read back. His batch 1,790 took 1 h 54 min to collect (first job
+  17:31, last game 19:25) at 63 decisions per second per game with these jobs
+  beside it.
+- *A mistake in the guard.* Its first stop signal never arrived: a process
+  started in the background of a non-interactive shell ignores SIGINT. The run
+  was ended with SIGTERM five minutes later, and later runs were started
+  through a wrapper that restores the default handler.
+
+**An observation outside the question: the update from checkpoint 1,789 moves
+the policy about 20 times further.** The default update above reports a mean KL
+of 0.111 and 16% clipped decisions over 4,985 steps. The same code from
+checkpoint 1,787 on 12 games reported 0.0047 and 3% over 4,233 steps, and the
+user's 10-game updates 1,786 and 1,787 reported 0.0028 and 0.0045. Between
+them lie his two 100-game updates, 1,788 and 1,789, of about 43,000 and 53,465
+steps, which themselves reported 0.064 and 0.116. Everything measured in this
+entry about the learning rate was measured from checkpoint 1,787. Whether the
+fast setting behaves like the default from 1,789 as well is not known yet; a
+comparison of both on one batch of games from 1,789 is prepared and runs after
+the user's update 1,790. Why the update moves so much further from 1,789 was
+not investigated. One candidate is Adam's state after a long update, in which
+most decisions end up clipped and the gradients shrink; another is a sharper
+policy.
