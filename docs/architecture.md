@@ -133,6 +133,14 @@ first frame of the game up to the window with the current weights and without
 gradients, then differentiates through the window. Hidden states from play are
 never reused.
 
+That replay is what an update spends most of its time on, and it grows with the
+square of the length of a game. With `state_refresh_steps` above 1 a game is
+replayed once to its last window, the state before each of its windows is kept,
+and these states are reused for that many optimizer steps before the game is
+replayed again. A window then starts from a state that is up to that many steps
+old; the window itself always uses the current weights. Games that appear in a
+minibatch too rarely to profit (`Batch.kept`) are still replayed at each use.
+
 | Setting | Value |
 | --- | --- |
 | clip ratio, value clip | 0.2, 0.2 |
@@ -141,6 +149,7 @@ never reused.
 | epochs | 1 |
 | optimizer | Adam, 3e-4 |
 | entropy bonus | none |
+| state refresh | every step (`state_refresh_steps` 1) |
 
 `ppo.update` is the plain autograd reference, correct and slow. Production uses
 [`heroes/learner/mlx/`](../heroes/learner/mlx/): each actor compiles its game

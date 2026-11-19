@@ -64,7 +64,9 @@ newest checkpoint
 3. **Update.** After 100 usable games, one PPO epoch over all of them. The
    update recomputes the recurrent state from the start of each game with the
    current weights; nothing stored during play is reused except the action
-   taken, its probability and the value estimate.
+   taken, its probability and the value estimate. `state_refresh_steps` in
+   [`heroes/config.py`](heroes/config.py) can trade some of that exactness for
+   speed; see [Making it faster](#making-it-faster).
 4. **Save.** One file per update, then back to step 2.
 
 The state folder holds everything:
@@ -117,9 +119,25 @@ cannot train silently.
 for every update how long collecting, planning and the GPU steps took. Things
 to try first, one at a time:
 
+- **The charger.** Ten games need more power than a 65 W charger supplies.
+  Once the battery is empty the Mac slows to what the charger gives: in the
+  run of 2026-11-19 games fell from about 100 to about 34 decisions per second
+  each. `pmset -g batt` must not show the charge falling while on AC.
 - `--workers`. Ten games at once was chosen for the old pipeline.
 - `--games-per-update`. Fewer games per update means more frequent updates on
   less data.
+- `state_refresh_steps` in `PPOConfig`. The update replays each sampled game
+  from its first frame at every optimizer step, so its time grows with the
+  square of the length of a game: 4 h 39 min for 100 games in update 1,788,
+  against 1 h 50 min of play. A value above 1 replays a game once, keeps the
+  state before each of its windows and reuses them for that many steps. The
+  windows then start from states up to that many steps old. The default of 1
+  keeps the exact update; the effect of other values on speed and on the
+  gradient has not been measured yet.
+
+[`tools/perf/`](tools/perf/README.md) has the scripts that measure these: where
+one game's time goes, the update on a fixed batch of real games, and what
+reused states cost in accuracy.
 
 One known waste needs an engine change first. The engine writes several
 gigabytes of replay logs per long game that nothing reads, but its end-of-game
