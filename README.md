@@ -97,15 +97,22 @@ The state folder holds everything:
 
 ## Status
 
-The last checkpoint of the previous pipeline is update **1,784** (9,822 games,
-12.9 million decisions). This pipeline continues from it.
+The last checkpoint of the previous pipeline is update **1,785** (9,922 games,
+13.7 million decisions). This pipeline continues from it.
 
-The refactored pipeline was verified without the engine: three captured games
-replay through the moved policy bit for bit, the MLX update receives
-byte-identical inputs for them, checkpoint 1,784 imports with identical weights
-and optimizer state, and the loop runs end to end against a scripted engine.
-It has **not yet played a real game on the Mac**. Start with a small run into a
-scratch folder before pointing it at the real state:
+The refactored pipeline was first verified without the engine: three captured
+games replay through the moved policy bit for bit, the MLX update receives
+byte-identical inputs for them, the previous pipeline's checkpoints import with
+identical weights and optimizer state, and the loop runs end to end against a
+scripted engine.
+
+On 2026-11-18 it ran on the Mac for the first time: two runs of ten games and
+one PPO update each, into a scratch folder. All 20 games ended naturally, both
+updates were saved, and the second run resumed from the first. A game stopped
+at a limit, a failed game and an interrupted run have not been seen with the
+real engine yet, and nothing has run in the real state folder.
+
+To try a change without touching the real state, use a scratch folder:
 
 ```sh
 ./train.command 10 --games-per-update 10 --state ~/Projects/Heroes-artifacts/training-trial
@@ -120,17 +127,30 @@ cannot train silently.
 `log.jsonl` records, for every game, its wall time and recipe compile time, and
 for every update how long collecting, planning and the GPU steps took.
 [`tools/perf/`](tools/perf/README.md) has scripts that measure the parts on real
-games. What they showed on 2026-11-19 is in the
-[journal](docs/research-log.md); in short:
+games.
+
+The two runs of 2026-11-18, ten games per update:
+
+| | Learner decisions | Collecting | PPO update |
+| --- | --- | --- | --- |
+| Run 1 | 105,875 | 9 min 49 s | 10 min 52 s |
+| Run 2 | 172,718 | 16 min 44 s | 28 min 12 s |
+
+The first update of 100 games, on 2026-11-19, took 4 h 39 min for 1,372,976
+learner decisions that took 1 h 50 min to collect, on a Mac that was short of
+power for most of it. What these numbers and the measurements of 2026-11-19 in
+the [journal](docs/research-log.md) say:
 
 - **The charger.** Ten games need more power than a 65 W charger supplies.
   Once the battery is empty the Mac slows to what the charger gives: games fell
   from about 100 to about 34 decisions per second each, for the rest of the
   night. `pmset -g batt` must not show the charge falling while on AC.
-- **The update is most of a cycle, and nearly all of it is replay.** Update
-  1,788 took 4 h 39 min for 100 games that took 1 h 50 min to play. Every
-  optimizer step replays the two games its windows come from, from their first
-  frame, about 600 replayed decisions for each one that is trained on.
+- **The update is most of a cycle, and nearly all of it is replay.** Every
+  optimizer step recomputes the recurrent state of the two games its windows
+  come from, from their first frame with the current weights: about 600
+  replayed decisions for each one that is trained on. This part of a game's
+  cost grows with the square of its length. Run 2 above held one game with
+  63,390 learner decisions and needed 9.8 ms per decision, run 1 needed 6.2 ms.
 - **The replay cannot be skipped.** `--state-refresh-steps` keeps the states
   before a game's windows for some optimizer steps instead of replaying. On 12
   real games that made the update 6.5 to 8 times faster, and it changed the
@@ -149,6 +169,11 @@ games. What they showed on 2026-11-19 is in the
   fewer optimizer steps on minibatches 8 or 16 times larger, each still drawn
   from two games. Whether the policy learns as well per game played is a
   question for training runs, so the defaults are unchanged.
+- **Ten games on ten actors take as long as the longest game.** With 100 games
+  per update the actors stay busy and this evens out.
+- A game plays at about 105 decisions per second of both seats together when
+  the Mac has the power it needs, and its recipe compiles at about 1.6 ms per
+  learner decision.
 - `--workers`. Ten games at once was chosen for the old pipeline.
 - `--games-per-update`. Fewer games per update means more frequent updates on
   less data.
