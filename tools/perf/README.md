@@ -66,6 +66,8 @@ $P tools/perf/bench_update.py --batch $S/batch --checkpoint $C --steps 300 --out
 $P tools/perf/bench_update.py --batch $S/batch --checkpoint $C --windows-per-minibatch 16,32 --windows-per-game 8,16 --out $S/results/update.jsonl
 # a batch of production size: every game used 8 times
 $P tools/perf/bench_update.py --batch $S/batch --checkpoint $C --copies 8 --steps 100 --out $S/results/update.jsonl
+# the same with a 16 GiB GPU plan cache instead of the 4 GiB training uses (this run only)
+$P tools/perf/bench_update.py --batch $S/batch --checkpoint $C --copies 8 --steps 100 --plan-cache-gib 16 --out $S/results/update.jsonl
 # where the Python side of the update spends its time
 $P tools/perf/bench_update.py --batch $S/batch --checkpoint $C --copies 8 --steps 70 --profile $S/results/update.prof
 # reused window states (measured to be inaccurate; see the journal)

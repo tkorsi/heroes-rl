@@ -8212,3 +8212,113 @@ first frame is not an implementation luxury. Its cost can be shared, as with
 **Limitations.** As above: one batch, one checkpoint, 32-sample gradients, a
 shared GPU. The cosine criteria are the assistant's choice; a training run could
 still show that learning tolerates some of this, and none was made.
+
+### 2026-11-19 — Sharing the replay: grouped minibatches, and two small costs in the default update
+
+**Question.** The two entries above leave the exact replay as it is. Can its
+cost be shared between windows instead, and is anything in the default update
+wasted outright?
+
+**Corrections to the entry "Measured on real games".** The 12 collected games
+ran at 94 to 136 decisions per second each (100.9 over all of them), not "94 to
+165"; 165.7 was the single short game of the profile. These games ran on the
+same Mac, charger and code as the user's batch 1,789, which ran at 34: the
+difference is that the battery was charging while they ran. This supports the
+reading of the first entry that the user's run was short of power, without
+being a test of it.
+
+**Change: `windows_per_game`.** `Batch.minibatches` now builds the schedule of
+an epoch for both backends. With the default of 1 it is the same shuffle as
+before, consuming the generator in the same way (checked by a test against
+`torch.randperm`). With a larger value each game's windows are shuffled and cut
+into groups of that size, the groups of all games are shuffled, and a minibatch
+takes `windows_per_minibatch / windows_per_game` whole groups. A step then
+replays each of its games once, to the latest of that game's windows in the
+step, and all states are still computed with the current weights. What changes
+is the optimization: an update makes fewer steps on larger minibatches. With 16
+and 8 a minibatch holds 256 decisions from two games where it held 32 from two
+games before.
+
+**Hypothesis and criterion, stated before the timing.** Sharing one replay among
+g windows should cut the replay work per sample by about (g + 1) / 2, since a
+replay to the latest of g windows covers g / (g + 1) of a game on average where
+one window needs half. The criterion was a whole update at least four times
+faster than the default on the 12-game batch for g = 8.
+
+**What ran.** Same batch, weights, shuffle seed and conditions as the entries
+above (the user's update on the same GPU throughout, battery 49% to 56% and
+charging). `tools/perf/bench_update.py` at `ed004f4` for the first table and at
+`3ebcf3e` for the second.
+
+| Windows per minibatch / per game | Optimizer steps | Seconds per step | Whole update | Policy loss | Value loss | KL | Clip fraction |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 2 / 1 (default) | 4,233 | 0.369 and 0.364 (150 steps each) | 1,826 and 1,786 s, projected | 0.0016 | 0.280 | 0.0047 | 0.031 |
+| 16 / 1 | 530 | 1.12 (30 steps) | 774 s, projected | | | | |
+| 16 / 8 | 532 | 0.678 | 371 s, measured | 0.0027 | 0.288 | 0.0045 | 0.022 |
+| 32 / 16 | 268 | 0.781 | 221 s, measured | 0.0026 | 0.290 | 0.0045 | 0.019 |
+
+The losses of the default are those of the exact update in the fidelity run.
+The criterion is met: 4.9 times faster with eight windows per game and 8.2
+times with sixteen. Larger minibatches without grouping gain much less, and
+part of that only because 12 games collide often; with 100 games they would
+not.
+
+*A batch of production size.* No 100-game batch was collected. `--copies 8`
+uses each of the 12 games eight times: 96 games, 1,082,984 samples, 8.3 million
+frames, the same length distribution. The copies share their CPU plans but
+each has its own plan on the GPU, 9.1 GiB together against a cache of 4 GiB.
+Only the first 80 to 120 steps of each setting were run.
+
+| Setting | Seconds per step | Whole update, projected |
+| --- | --- | --- |
+| default, before the byte-count change below | 0.540, 0.556, 0.490 | 5.6 to 6.3 h |
+| default, after it | 0.488, 0.472, 0.439, 0.439 | 5.0 to 5.6 h |
+| 16 windows per minibatch, 8 per game | 0.748 | 64 min (4,256 steps) |
+| 32 windows per minibatch, 16 per game | 0.898 | 36 min (2,140 steps) |
+
+These are short runs on a shared GPU, taken at different minutes; the spread of
+the default alone is 25%. They support "several times faster at production
+size", not a precise factor.
+
+**Two costs found in the default update, and one that was not there.**
+
+- *Counting a plan's bytes.* A cProfile of the default update on the
+  production-size batch showed `MLXBackend.plan` spending 18.5 of 68.7 s in the
+  recursion that counts the bytes of a plan entering the GPU cache: 40.9
+  million calls for 84 cache misses, because it walked the planner's integer
+  sequences, half a million Python ints for a long game, each worth zero.
+  `plan_bytes` skips them; a test checks it against the plain walk. Alternating
+  runs gave 0.556 and 0.490 s per step before and 0.488 and 0.472 after. The
+  profiler inflates such code about fivefold, so the real saving is near 40 ms
+  per miss, around 8% of a step at this size and nothing while all plans fit
+  the cache, as they did for ten games.
+- *Plan building beside the GPU, and the finite check.* Described two entries
+  above. On the default update of the 12-game batch the step time is unchanged
+  within the noise (0.369 and 0.364 s after, 0.360 and 0.386 before): there the
+  plan was already built while the replay ran. It matters when a step is short,
+  as with grouped minibatches or reused states.
+- *The size of the GPU plan cache.* Raising it from 4 to 16 GiB, for the
+  benchmark only (`--plan-cache-gib`), gave 0.425 and 0.411 s per step against
+  0.439 and 0.439. A miss costs little once the byte count is fixed: converting
+  the largest game's 267 MiB plan took 4 ms on the CPU and 10 ms to the GPU.
+  The cache stays at 4 GiB.
+
+**What was not done.** No training run used any of these settings, so nothing
+is known about how grouped minibatches learn. Fewer, larger steps at the same
+learning rate move the policy differently; in these single updates the mean KL
+was the same (0.0045 against 0.0047) and fewer samples were clipped. The defaults
+are unchanged. The assistant's benchmarks shared the GPU with the user's update
+of batch 1,789 for about an hour and forty minutes in total and will have
+slowed it by some part of that.
+
+**Tests.** 45 pass (32 before the branch): the schedule and its step count, both
+backends on grouped minibatches against each other, the byte count, the
+command-line checks, and the measurement scripts on scripted games.
+
+**Limitations.** As in the entries above. The production-size batch is a
+multiple of 12 games, not 100 different ones. Timings are from a shared GPU.
+
+**Evidence.** Private, not in Git:
+`~/Projects/Heroes-artifacts/perf-opt-mq0j5t/results/*.jsonl` (one JSON line per
+run), `logs/`, the batch in `batch/` and the two profiles
+`results/game-seed4.prof` and `results/update-copies8.prof`.
