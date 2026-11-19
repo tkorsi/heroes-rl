@@ -134,12 +134,27 @@ gradients, then differentiates through the window. Hidden states from play are
 never reused.
 
 That replay is what an update spends most of its time on, and it grows with the
-square of the length of a game. With `state_refresh_steps` above 1 a game is
-replayed once to its last window, the state before each of its windows is kept,
-and these states are reused for that many optimizer steps before the game is
-replayed again. A window then starts from a state that is up to that many steps
-old; the window itself always uses the current weights. Games that appear in a
-minibatch too rarely to profit (`Batch.kept`) are still replayed at each use.
+square of the length of a game. Two settings change how often it happens;
+`Batch.minibatches` and `Batch.kept` in `ppo.py` hold their rules, and both
+backends follow them.
+
+- `windows_per_game` above 1 shuffles each game's windows, cuts them into
+  groups of that size and builds a minibatch from whole groups. One replay of a
+  game, to the latest of its windows in the step, then serves the whole group.
+  Every state is still computed with the current weights. What changes is the
+  shape of the optimization: larger minibatches from as few games as before,
+  and fewer steps.
+- `state_refresh_steps` above 1 replays a game once to its last window, keeps
+  the state before each of its windows and reuses them for that many optimizer
+  steps. A window then starts from a state that is up to that many steps old.
+  Measured on real games this changes the gradient too much, because the
+  recurrent state carries the whole game and follows every change of the
+  weights; a short replay before the window does not repair it. It is kept as a
+  switch for experiments and for the measurement scripts, off.
+
+The plan of a minibatch depends on no weight, and an epoch's schedule is known
+when it starts, so a helper thread builds the next plans while the GPU runs the
+current step.
 
 | Setting | Value |
 | --- | --- |
@@ -149,6 +164,7 @@ minibatch too rarely to profit (`Batch.kept`) are still replayed at each use.
 | epochs | 1 |
 | optimizer | Adam, 3e-4 |
 | entropy bonus | none |
+| windows per minibatch, per game | 2, 1 |
 | state refresh | every step (`state_refresh_steps` 1) |
 
 `ppo.update` is the plain autograd reference, correct and slow. Production uses

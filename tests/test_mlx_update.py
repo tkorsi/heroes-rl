@@ -102,3 +102,22 @@ def test_grouped_minibatches_follow_the_reference(play_fake):
     _, report = _run(mlx_update, play_fake.model, [compiled for _, compiled in pairs], config)
     assert (report.samples, report.optimizer_steps) == (expected.samples, expected.optimizer_steps) == (23, 4)
     assert _metrics(report) == pytest.approx(_metrics(expected), rel=2e-2, abs=2e-4)
+
+
+def test_a_plans_gpu_bytes_count_every_array_and_no_cpu_sequence(play_fake):
+    import numpy as np
+    from heroes.learner.mlx.model import plan_bytes
+    from heroes.learner.mlx.plans import _prefix_plan
+    from heroes.learner.mlx.update import _host
+    _, compiled = _pair(play_fake, days=12, map=20)
+    host = _host(_prefix_plan(compiled.recipe))
+    assert isinstance(host["jobs"], tuple) and host["maps"]["delta"] is not None  # CPU sequences are present
+
+    def every_array(value):  # the plain walk, integer sequences included
+        if isinstance(value, np.ndarray):
+            return value.size * 4
+        if isinstance(value, dict):
+            return sum(every_array(item) for item in value.values())
+        return sum(every_array(item) for item in value) if isinstance(value, (list, tuple)) else 0
+
+    assert plan_bytes(host) == every_array(host) > 0

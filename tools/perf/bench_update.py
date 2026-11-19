@@ -176,12 +176,17 @@ def main():
     parser.add_argument("--out", type=Path, help="append the JSON lines to this file")
     parser.add_argument("--profile", type=Path, help="run under cProfile and write the statistics here; "
                         "timings of such a run are not comparable")
+    parser.add_argument("--plan-cache-gib", type=float,
+                        help="for this run only, let the GPU keep this many GiB of whole-game plans (4 in training)")
     arguments = parser.parse_args()
     if (arguments.synthetic is None) == (arguments.batch is None):
         parser.error("give either --synthetic or --batch")
     if arguments.batch is not None and arguments.checkpoint is None:
         parser.error("--batch needs --checkpoint")
     torch.set_num_threads(1)
+    if arguments.plan_cache_gib is not None:
+        from heroes.learner.mlx import model as mlx_model
+        mlx_model.PREFIX_CONSTANT_CACHE_BYTES = int(arguments.plan_cache_gib * 1024**3)
     if arguments.synthetic is not None:
         weights, trajectories = synthetic([int(item) for item in arguments.synthetic.split(",")],
                                           arguments.map, arguments.cache)
@@ -205,6 +210,7 @@ def main():
                 config = replace(PPOConfig(), state_refresh_steps=refresh, windows_per_minibatch=windows,
                                  windows_per_game=per_game, decisions_per_window=arguments.decisions_per_window)
                 result = {"source": source, "frames": frames, "profiled": arguments.profile is not None,
+                          "plan_cache_gib": arguments.plan_cache_gib,
                           **run(weights, trajectories, config, arguments.steps, arguments.profile)}
                 line = json.dumps(result)
                 print(line, flush=True)

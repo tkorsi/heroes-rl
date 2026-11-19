@@ -33,7 +33,9 @@ other argument on:
 | `--workers N` | games in play at once, one process each | 10 |
 | `--keep-game-files` | keep each game's engine folder and logs, in `kept-games/` | deleted |
 | `--backend torch` | slow reference update without MLX | `mlx` |
-| `--state-refresh-steps N` | optimizer steps a replayed game's window states are reused; see [Making it faster](#making-it-faster) | 1 |
+| `--windows-per-minibatch N` | loss windows of 16 decisions per optimizer step | 2 |
+| `--windows-per-game N` | windows of a minibatch that come from the same game and share one replay of it; see [Making it faster](#making-it-faster) | 1 |
+| `--state-refresh-steps N` | optimizer steps a replayed game's window states are reused; measured to be inaccurate, see the same section | 1 |
 | `--state DIR` | where checkpoints and the log go | `~/Projects/Heroes-artifacts/training` |
 | `--fresh` | start from a random policy when the state folder is empty | off |
 
@@ -65,9 +67,8 @@ newest checkpoint
 3. **Update.** After 100 usable games, one PPO epoch over all of them. The
    update recomputes the recurrent state from the start of each game with the
    current weights; nothing stored during play is reused except the action
-   taken, its probability and the value estimate. `state_refresh_steps` in
-   [`heroes/config.py`](heroes/config.py) can trade some of that exactness for
-   speed; see [Making it faster](#making-it-faster).
+   taken, its probability and the value estimate. This replay is most of an
+   update's time; see [Making it faster](#making-it-faster).
 4. **Save.** One file per update, then back to step 2.
 
 The state folder holds everything:
@@ -117,34 +118,52 @@ cannot train silently.
 ## Making it faster
 
 `log.jsonl` records, for every game, its wall time and recipe compile time, and
-for every update how long collecting, planning and the GPU steps took. Things
-to try first, one at a time:
+for every update how long collecting, planning and the GPU steps took.
+[`tools/perf/`](tools/perf/README.md) has scripts that measure the parts on real
+games. What they showed on 2026-11-19 is in the
+[journal](docs/research-log.md); in short:
 
 - **The charger.** Ten games need more power than a 65 W charger supplies.
-  Once the battery is empty the Mac slows to what the charger gives: in the
-  run of 2026-11-19 games fell from about 100 to about 34 decisions per second
-  each. `pmset -g batt` must not show the charge falling while on AC.
+  Once the battery is empty the Mac slows to what the charger gives: games fell
+  from about 100 to about 34 decisions per second each, for the rest of the
+  night. `pmset -g batt` must not show the charge falling while on AC.
+- **The update is most of a cycle, and nearly all of it is replay.** Update
+  1,788 took 4 h 39 min for 100 games that took 1 h 50 min to play. Every
+  optimizer step replays the two games its windows come from, from their first
+  frame, about 600 replayed decisions for each one that is trained on.
+- **The replay cannot be skipped.** `--state-refresh-steps` keeps the states
+  before a game's windows for some optimizer steps instead of replaying. On 12
+  real games that made the update 6.5 to 8 times faster, and it changed the
+  gradient too much: with a refresh every 64 steps one minibatch in twenty had
+  a cosine below 0.51 with the exact gradient, and never refreshing gave a
+  median of 0.38. Replaying only the last 8,000 or 32,000 frames before a
+  window did not help either. The policy's memory spans the whole game. The
+  setting stays at 1 and is not recommended.
+- **The replay can be shared.** `--windows-per-minibatch 16 --windows-per-game 8`
+  takes eight windows of a game per step, so one replay serves all eight, still
+  with the current weights. Measured on 12 real games with the GPU shared, a
+  whole update took 371 s, and 221 s with 32 and 16, against about 1,800 s by
+  default. On a batch of production size (those games eight times, 1.08 million
+  samples) the first 80 to 100 steps project to 64 and 36 minutes against 5.5
+  to 6.3 hours. This is not a free change: an update then makes 8 or 16 times
+  fewer optimizer steps on minibatches 8 or 16 times larger, each still drawn
+  from two games. Whether the policy learns as well per game played is a
+  question for training runs, so the defaults are unchanged.
 - `--workers`. Ten games at once was chosen for the old pipeline.
 - `--games-per-update`. Fewer games per update means more frequent updates on
   less data.
-- `--state-refresh-steps` (`state_refresh_steps` in `PPOConfig`). The update replays each sampled game
-  from its first frame at every optimizer step, so its time grows with the
-  square of the length of a game: 4 h 39 min for 100 games in update 1,788,
-  against 1 h 50 min of play. A value above 1 replays a game once, keeps the
-  state before each of its windows and reuses them for that many steps. The
-  windows then start from states up to that many steps old. The default of 1
-  keeps the exact update; the effect of other values on speed and on the
-  gradient has not been measured yet.
 
-[`tools/perf/`](tools/perf/README.md) has the scripts that measure these: where
-one game's time goes, the update on a fixed batch of real games, and what
-reused states cost in accuracy.
+About half of a game's wall time is spent waiting for the engine. It sends
+every observation twice, as a view and again inside the decision that follows,
+and writes about 130 KB of replay log per decision that nothing reads, several
+gigabytes per long game. Its end-of-game shutdown is built on the replay
+recorder ([patch 0015](engine/patches/0015-contextual-terminal-barrier.patch)),
+so neither can be switched off from Python; both need an engine change.
 
-One known waste needs an engine change first. The engine writes several
-gigabytes of replay logs per long game that nothing reads, but its end-of-game
-shutdown is built on the replay recorder
-([patch 0015](engine/patches/0015-contextual-terminal-barrier.patch)), so the
-logs cannot be switched off from Python.
+A seat answers about 100 decisions per game day, most of them stack moves
+within the guard's daily budget, and the quarter of games that reach day 200
+hold 60% of all decisions. Shorter games would cut play and update time alike.
+That is a question of the guard and the action space, not of code speed.
 
 ## Develop
 

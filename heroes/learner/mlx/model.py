@@ -15,6 +15,31 @@ INITIAL_LOG_PROBABILITY_LIMIT = 0.02
 INITIAL_VALUE_LIMIT = 0.002
 
 
+def plan_bytes(host):
+    """The bytes a host plan takes on the GPU: four for every element of every array.
+
+    ``_convert`` creates an FP32 or int32 array for every occurrence, including
+    uint8 and bool inputs and repeated host-array aliases. The planner's integer
+    sequences stay on the CPU and hold no array. A long game has hundreds of
+    thousands of them, and walking them at every miss of the plan cache cost
+    more than converting the plan, so they are skipped.
+    """
+    import numpy as np
+    from .plans import _CPU_PLAN_METADATA_KEYS
+
+    def size(value):
+        if isinstance(value, np.ndarray):
+            return value.size * 4
+        if isinstance(value, dict):
+            return sum(size(x) for key, x in value.items()
+                       if not (key in _CPU_PLAN_METADATA_KEYS and isinstance(x, (list, tuple))))
+        if isinstance(value, (list, tuple)):
+            return sum(size(x) for x in value)
+        return 0
+
+    return size(host)
+
+
 class MLXModel:
     """Parameter-agnostic neural operations; no Adam or checkpoint construction."""
 
@@ -216,17 +241,7 @@ class MLXBackend(MLXModel):
             self.plan_cache.move_to_end(key)
             return self.plan_cache[key][0]
         host = self._load_plan(reference)
-        def size(value):
-            if isinstance(value, self.np.ndarray):
-                # _convert creates an FP32/int32 array for every occurrence,
-                # including uint8/bool inputs and repeated host-array aliases.
-                return value.size * 4
-            if isinstance(value, dict):
-                return sum(size(x) for x in value.values())
-            if isinstance(value, (list, tuple)):
-                return sum(size(x) for x in value)
-            return 0
-        count = size(host)
+        count = plan_bytes(host)
         while self.plan_cache and self.plan_cache_bytes + count > PREFIX_CONSTANT_CACHE_BYTES:
             _, (_, removed) = self.plan_cache.popitem(last=False)
             self.plan_cache_bytes -= removed
