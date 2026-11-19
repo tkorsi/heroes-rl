@@ -154,9 +154,7 @@ def update(model, optimizer, trajectories, *, config, generator, progress=None):
         backend = MLXBackend(manifest, array_loader=lambda value: value, plan_loader=load_history)
         prepared = time.perf_counter()
         for _ in range(config.epochs):
-            order = torch.randperm(len(windows), generator=schedule).tolist()
-            minibatches = [[windows[index] for index in order[left:left + config.windows_per_minibatch]]
-                           for left in range(0, len(order), config.windows_per_minibatch)]
+            minibatches = [[windows[index] for index in selected] for selected in batch.minibatches(config, schedule)]
             # The schedule of an epoch is known, so the plans of the next minibatches are
             # built while the GPU is busy with this one. They hold nothing that depends on
             # the weights, and they are consumed in order.

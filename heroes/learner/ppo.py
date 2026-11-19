@@ -33,6 +33,10 @@ class PPOConfig:
     windows_per_minibatch: int = 2
     normalize_advantages: bool = True
     learning_rate: float = 3e-4
+    # Windows of a minibatch that come from the same game and so share one replay
+    # of it. 1 draws every window from all games alike; it must divide
+    # windows_per_minibatch.
+    windows_per_game: int = 1
     # Optimizer steps for which the states before a game's windows are reused
     # once the game was replayed. 1 replays the game at every step it is used.
     state_refresh_steps: int = 1
@@ -41,9 +45,10 @@ class PPOConfig:
         if not (0 <= self.gae_lambda <= 1 and 0 < self.clip_ratio < 1 and self.value_coefficient >= 0
                 and self.max_grad_norm > 0 and self.learning_rate > 0
                 and (self.value_clip is None or self.value_clip > 0)
-                and type(self.state_refresh_steps) is int
+                and type(self.state_refresh_steps) is int and type(self.windows_per_game) is int
                 and min(self.epochs, self.decisions_per_window, self.windows_per_minibatch,
-                        self.state_refresh_steps) >= 1):
+                        self.state_refresh_steps, self.windows_per_game) >= 1
+                and self.windows_per_minibatch % self.windows_per_game == 0):
             raise ValueError("Invalid PPO configuration")
 
     def to_dict(self):
@@ -118,7 +123,34 @@ class Batch:
     starts: list = field(default_factory=list)  # per trajectory, the first frame of each of its windows, ascending
 
     def planned_steps(self, config):
-        return config.epochs * math.ceil(len(self.windows) / config.windows_per_minibatch)
+        groups = sum(math.ceil(len(starts) / config.windows_per_game) for starts in self.starts)
+        return config.epochs * math.ceil(groups * config.windows_per_game / config.windows_per_minibatch)
+
+    def minibatches(self, config, generator):
+        """One epoch: for every optimizer step, the indices of its windows in ``windows``.
+
+        Every window is used once. With ``windows_per_game`` 1 the windows of
+        all games are shuffled together. Otherwise each game's windows are
+        shuffled and cut into groups of that size, the groups of all games are
+        shuffled, and a minibatch takes whole groups. Its windows then come
+        from few games, and one replay of a game serves all its windows in the
+        step. A game's last group may be smaller.
+        """
+        size = config.windows_per_game
+        if size == 1:
+            order = torch.randperm(len(self.windows), generator=generator).tolist()
+            return [order[left:left + config.windows_per_minibatch]
+                    for left in range(0, len(order), config.windows_per_minibatch)]
+        groups, first = [], 0
+        for starts in self.starts:  # ``windows`` lists the games one after another
+            order = torch.randperm(len(starts), generator=generator).tolist()
+            groups.extend([first + index for index in order[left:left + size]]
+                          for left in range(0, len(order), size))
+            first += len(starts)
+        order = torch.randperm(len(groups), generator=generator).tolist()
+        count = config.windows_per_minibatch // size
+        return [[window for group in order[left:left + count] for window in groups[group]]
+                for left in range(0, len(order), count)]
 
     def kept(self, config):
         """Trajectories whose window states are kept for ``state_refresh_steps`` optimizer steps.
@@ -208,10 +240,9 @@ def update(model, optimizer, trajectories, *, config, generator, progress=None):
     kept, saved = batch.kept(config), {}  # trajectory -> (step its states were computed at, the states)
     totals, count_seen, steps, replays = [0.0] * 4, 0, 0, 0
     for _ in range(config.epochs):
-        order = torch.randperm(len(batch.windows), generator=generator).tolist()
-        for left in range(0, len(order), config.windows_per_minibatch):
+        for selected in batch.minibatches(config, generator):
             new_logs, new_values, old_logs, old_values, advantages, returns = [], [], [], [], [], []
-            for window in (batch.windows[index] for index in order[left:left + config.windows_per_minibatch]):
+            for window in (batch.windows[index] for index in selected):
                 item, frames = trajectories[window.rollout_index], inputs[window.rollout_index]
                 if window.rollout_index in kept:
                     if (window.rollout_index not in saved

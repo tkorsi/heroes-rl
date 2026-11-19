@@ -19,8 +19,10 @@ def _config(arguments):
                if getattr(arguments, name, None) is not None}
     if getattr(arguments, "keep_game_files", False):
         changes["keep_game_files"] = True
-    if getattr(arguments, "state_refresh_steps", None) is not None:
-        changes["ppo"] = replace(config.ppo, state_refresh_steps=arguments.state_refresh_steps)
+    ppo = {name: getattr(arguments, name) for name in ("windows_per_minibatch", "windows_per_game", "state_refresh_steps")
+           if getattr(arguments, name, None) is not None}
+    if ppo:
+        changes["ppo"] = replace(config.ppo, **ppo)
     return replace(config, **changes)
 
 
@@ -52,9 +54,14 @@ def main(argv=None):
             command.add_argument("--games-per-update", type=int, help="games per PPO update (default 100)")
             command.add_argument("--workers", type=int, help="games in play at once (default 10)")
             command.add_argument("--keep-game-files", action="store_true", help="keep every game's engine folder")
+            command.add_argument("--windows-per-minibatch", type=int,
+                                 help="loss windows of 16 decisions per optimizer step (default 2)")
+            command.add_argument("--windows-per-game", type=int,
+                                 help="windows of a minibatch drawn from the same game, sharing one replay of it "
+                                      "(default 1; must divide --windows-per-minibatch)")
             command.add_argument("--state-refresh-steps", type=int,
                                  help="optimizer steps a replayed game's window states are reused (default 1: "
-                                      "replay at every step)")
+                                      "replay at every step; larger values were measured to be inaccurate)")
         command.add_argument("--backend", choices=("mlx", "torch"), help="PPO backend (default mlx)")
         command.add_argument("--state", type=_path, help="folder for checkpoints and the log")
         command.add_argument("--legacy", type=_path, help="folder of the previous pipeline, imported once")
@@ -62,9 +69,11 @@ def main(argv=None):
         command.add_argument("--game-data", type=_path, help="folder holding the original game's Data")
         command.add_argument("--game-map", type=_path, help="map both seats play")
     arguments = parser.parse_args(argv)
-    if getattr(arguments, "state_refresh_steps", None) is not None and arguments.state_refresh_steps < 1:
-        parser.error("--state-refresh-steps must be at least 1")
-    config = _config(arguments)
+    try:
+        config = _config(arguments)
+    except ValueError:
+        parser.error("--windows-per-minibatch, --windows-per-game and --state-refresh-steps must be at least 1, "
+                     "and --windows-per-game must divide --windows-per-minibatch")
     if arguments.command == "train" and arguments.games < 1:
         parser.error("games must be positive")
     if config.workers < 1 or config.games_per_update < 1:

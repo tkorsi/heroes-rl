@@ -91,3 +91,14 @@ def test_a_changing_map_takes_the_sparse_prefix_path(play_fake):
     _, report = _run(mlx_update, play_fake.model, [compiled], config)
     assert report.game_replays == expected.game_replays == 2
     assert _metrics(report) == pytest.approx(_metrics(expected), rel=2e-2, abs=2e-4)
+
+
+def test_grouped_minibatches_follow_the_reference(play_fake):
+    from heroes.learner.mlx.update import update as mlx_update
+    pairs = [_pair(play_fake, learner=0, days=17, winner=0, map=20), _pair(play_fake, learner=1, days=6, winner=1)]
+    # Four windows of one game per step share a single replay of that game.
+    config = PPOConfig(decisions_per_window=2, windows_per_minibatch=4, windows_per_game=4)
+    _, expected = _run(reference_update, play_fake.model, [typed for typed, _ in pairs], config)
+    _, report = _run(mlx_update, play_fake.model, [compiled for _, compiled in pairs], config)
+    assert (report.samples, report.optimizer_steps) == (expected.samples, expected.optimizer_steps) == (23, 4)
+    assert _metrics(report) == pytest.approx(_metrics(expected), rel=2e-2, abs=2e-4)

@@ -138,7 +138,7 @@ def run(weights, trajectories, config, steps, profile=None):
     warm = max(1, len(stamps) // 5)  # the first fifth carries plan building and kernel compilation
     result = {
         "state_refresh_steps": config.state_refresh_steps,
-        "windows_per_minibatch": config.windows_per_minibatch,
+        "windows_per_minibatch": config.windows_per_minibatch, "windows_per_game": config.windows_per_game,
         "decisions_per_window": config.decisions_per_window,
         "games": len(trajectories), "samples": batch.samples, "planned_steps": planned,
         "steps_run": len(stamps), "kept_games": len(batch.kept(config)),
@@ -165,6 +165,8 @@ def main():
     parser.add_argument("--checkpoint", type=Path, help="the checkpoint that played --batch")
     parser.add_argument("--refresh", default="1", help="comma-separated values of state_refresh_steps to time")
     parser.add_argument("--windows-per-minibatch", default="2", help="comma-separated values to time")
+    parser.add_argument("--windows-per-game", default="1",
+                        help="comma-separated values, paired in order with --windows-per-minibatch")
     parser.add_argument("--decisions-per-window", type=int, default=16)
     parser.add_argument("--steps", type=int, help="stop each run after this many optimizer steps")
     parser.add_argument("--repeat", type=int, default=1)
@@ -194,10 +196,14 @@ def main():
     frames = sum(item.recipe.frame_count for item in trajectories)
     print(f"# {source}: {sum(sizes)} samples, {frames} frames, game sizes {sizes}", file=sys.stderr, flush=True)
     for _ in range(arguments.repeat):
-        for windows in (int(item) for item in arguments.windows_per_minibatch.split(",")):
+        sizes_per_step = [int(item) for item in arguments.windows_per_minibatch.split(",")]
+        sizes_per_game = [int(item) for item in arguments.windows_per_game.split(",")]
+        if len(sizes_per_game) == 1:
+            sizes_per_game *= len(sizes_per_step)
+        for windows, per_game in zip(sizes_per_step, sizes_per_game, strict=True):
             for refresh in (int(item) for item in arguments.refresh.split(",")):
                 config = replace(PPOConfig(), state_refresh_steps=refresh, windows_per_minibatch=windows,
-                                 decisions_per_window=arguments.decisions_per_window)
+                                 windows_per_game=per_game, decisions_per_window=arguments.decisions_per_window)
                 result = {"source": source, "frames": frames, "profiled": arguments.profile is not None,
                           **run(weights, trajectories, config, arguments.steps, arguments.profile)}
                 line = json.dumps(result)
