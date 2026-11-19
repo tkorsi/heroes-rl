@@ -86,7 +86,9 @@ def measure(config, *, games=None, seconds=None, warmup=30.0, seed=1):
         total = answered()
     finally:
         pool.shutdown()
-    report = {"workers": config.workers, "vcmi": str(config.vcmi), "max_days": config.limits.max_days, "seed": seed}
+    report = {"workers": config.workers, "vcmi": str(config.vcmi), "max_days": config.limits.max_days, "seed": seed,
+              "failures": [f"game {game.job.number} {game.reason}: {(game.detail or '')[-600:]}"
+                           for game in finished if game.status == "failed"]}
     if seconds is not None:
         elapsed = ended - window[0]
         report.update(mode="window", window_seconds=round(elapsed, 1), warmup_seconds=warmup,
