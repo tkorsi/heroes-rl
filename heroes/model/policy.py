@@ -15,7 +15,6 @@ from dataclasses import asdict, dataclass, fields, is_dataclass
 import hashlib
 import json
 from math import copysign, log1p, sqrt
-from operator import attrgetter
 
 import torch
 from torch import Tensor, nn
@@ -77,15 +76,14 @@ def weights_sha256(model):
 #
 # Every frame is encoded with its own tree cache (a dict from tree to tensor).
 # While the weights stay as they are and autograd is off, the model also keeps a
-# memo across frames: leaves, internal nodes and whole observations. A hit is the
-# tensor the same computation returned before, so acting is unchanged, only faster.
+# memo across frames: leaves, internal nodes, the map encoded last and the
+# observation encoded last. A hit is the tensor the same computation returned
+# before, so acting is unchanged, only faster.
 
 # Key of the per-frame cache entry that holds the memo; no tree equals it.
 _LEAF_MEMO = object()
 _LEAF_MEMO_LIMIT = 65536
 _NODE_MEMO_LIMIT = 16384  # internal-node entries keep their (larger) trees alive
-_OBSERVATION_MEMO_BYTES = 64 << 20  # observation entries hold map cells and tree caches, so bound their bytes
-_OBSERVATION_CACHED_TREE_BYTES = 256  # charged per tree of an entry's cache: its dict slot and what only it keeps alive
 # Key of the per-frame cache entry that is False once the cache may hold a tree
 # equal to, but not identical with, a later one (see _encode_root).
 _EXACT_CACHE = object()
@@ -129,77 +127,6 @@ def _exact_tree(tree):
         else:
             return False
     return True
-
-
-# Tokens of _record_key; no int, str or None equals them.
-_TRUE, _FALSE, _TUPLE = object(), object(), object()
-_RECORD_FIELDS = {}
-
-
-def _record_fields(kind):
-    """A getter of every field of a contract record class as a tuple, or None for any other type."""
-    getter = _RECORD_FIELDS.get(kind)
-    if getter is None and kind not in _RECORD_FIELDS:
-        if isinstance(kind, type) and is_dataclass(kind) and kind.__module__ == c.__name__:
-            names = tuple(field.name for field in fields(kind))
-            getter = attrgetter(*names) if len(names) > 1 else lambda item, names=names: tuple(getattr(item, name) for name in names)
-        _RECORD_FIELDS[kind] = getter
-    return getter
-
-
-def _record_key(value):
-    """An exact, injective key of a value of contract records, tuples, int, str, bool and None, or None.
-
-    The key lists every record's class and field values, every tuple's length
-    and elements, and each bool as its own token, so 1 and True stay distinct.
-    Equal keys therefore mean values of identical types and contents, which
-    every encoding reads identically. Anything else (floats, other types) has
-    no key and is never memoized.
-    """
-    out, stack = [], [value]
-    append, extend, pop = out.append, stack.extend, stack.pop
-    while stack:
-        item = pop()
-        kind = type(item)
-        if kind is int or kind is str or item is None:
-            append(item)
-        elif kind is tuple:
-            append(_TUPLE); append(len(item)); extend(item)
-        elif kind is bool:
-            append(_TRUE if item else _FALSE)
-        elif (kind is c.Tile and type(item.position) is tuple and len(item.position) == 3
-              and all(type(v) is int for v in item.position)
-              and type(item.terrain) is int and type(item.road) is int
-              and type(item.blocked) is bool and type(item.visitable) is bool):
-            # The same tokens as the generic LIFO traversal, without pushing
-            # and popping each cell field separately for every observation.
-            out.extend((kind, _TRUE if item.visitable else _FALSE,
-                    _TRUE if item.blocked else _FALSE, item.road, item.terrain,
-                    _TUPLE, 3, item.position[2], item.position[1], item.position[0]))
-        else:
-            getter = _record_fields(kind)
-            if getter is None:
-                return None
-            append(kind); extend(getter(item))
-    return tuple(out)
-
-
-def _observation_entry_bytes(key, entry):
-    """A rough estimate of the memory one observation memo entry adds, without walking it.
-
-    The map cells are the entry's own; a slot of its record key and of its cache
-    dict are charged a fixed amount each, for what they reference beyond the
-    trees and tensors that the node memo and earlier entries already hold. The
-    estimate only bounds the memo: clearing it sooner or later changes how much
-    is recomputed, never a value.
-    """
-    return entry[2].element_size() * entry[2].numel() + 16 * len(key) + _OBSERVATION_CACHED_TREE_BYTES * len(entry[3])
-
-
-def _has_army_operation(armies, kind):
-    """bool(c.army_operation_choices(armies, kind)), stopping at the first choice."""
-    return any(c.army_operation_maximum(armies, kind, source.ref, destination.ref) > 0
-               for first in armies for source in first.slots for second in armies for destination in second.slots)
 
 
 def _node(tag, *children):
@@ -477,6 +404,13 @@ class StepOutput:
     decision: PolicyValue | None
 
 
+def map_key(observation):
+    """Everything the map features of an observation are computed from."""
+    return (observation.size, observation.tiles, tuple(hero.position for hero in observation.heroes),
+            tuple(town.position for town in observation.towns),
+            tuple((obj.position, obj.kind, obj.subtype, obj.owner) for obj in observation.objects))
+
+
 def observation_semantics(observation):
     """The visible semantic tree shared by Python and native tensor execution."""
     own = _node("observation", _node("size", _semantic(observation.size)),
@@ -570,7 +504,7 @@ class ContextualActorCritic(nn.Module):
         if memo is None or memo["versions"] != versions:
             memo = self.__dict__["_memo_state"] = {
                 "parameters": parameters, "versions": versions, "text": {}, "number": {}, "node": {},
-                "observations": {"entries": {}, "bytes": 0, "last": None}}
+                "map": None, "observation": None}
         return memo
 
     def load_state_dict(self, *arguments, **options):
@@ -650,7 +584,8 @@ class ContextualActorCritic(nn.Module):
         cache[tree] = result
         return result
 
-    def _encode_observation(self, observation, cache):
+    def _encode_map(self, observation):
+        """Global and per-cell features of the visible map: a function of ``map_key(observation)``."""
         width, height, _ = observation.size
         if width > self.config.max_map_side or height > self.config.max_map_side:
             raise ValueError("Map exceeds declared model configuration")
@@ -674,8 +609,21 @@ class ContextualActorCritic(nn.Module):
             object_grid = object_grid.index_add(0, indices, self.object_encoder(self._float(attributes)))
         grid = torch.cat((self.terrain(self._long(terrain)), self.road(self._long(road)), object_grid, self._float(flags)), -1)
         cells = self.map_cnn(grid.reshape(height, width, 33).permute(2, 0, 1).unsqueeze(0))
-        global_map = self.map_global(cells)[0]
-        return global_map, self._encode_root(observation_semantics(observation), cache), cells[0].permute(1, 2, 0).reshape(-1, 16)
+        return self.map_global(cells)[0], cells[0].permute(1, 2, 0).reshape(-1, 16)
+
+    def _encode_observation(self, observation, cache):
+        memo = cache.get(_LEAF_MEMO)
+        if memo is None or torch.is_grad_enabled():
+            global_map, cells = self._encode_map(observation)
+        else:
+            # Most decisions are taken inside a window while the map stays as it is.
+            key, last = map_key(observation), memo["map"]
+            if last is not None and last[0] == key:
+                global_map, cells = last[1]
+            else:
+                global_map, cells = self._encode_map(observation)
+                memo["map"] = (key, (global_map, cells))
+        return global_map, self._encode_root(observation_semantics(observation), cache), cells
 
     def _check_step(self, frame, state):
         if type(frame) is not ContextualInput:
@@ -700,43 +648,25 @@ class ContextualActorCritic(nn.Module):
         return torch.cat((self._encode_root(frame.semantics, cache, final), map_features, own)), cells
 
     def _observation_features(self, observation, cache):
-        """``_encode_observation``, reused for an observation with identical contents.
+        """``_encode_observation``, reused for the observation that was encoded last.
 
-        Only with the memo and a cache that holds nothing else yet, so the
-        encoding and the tree cache entries it adds depend on the observation
-        alone. A hit returns the stored tensors and adds exactly the stored
-        cache entries, as the computation would. The observation encoded last
-        is recognised by identity, which is how a decision meets the view it
-        shares its observation with; any other is looked up by ``_record_key``.
+        A decision carries the very observation of the view before it. Only with
+        the memo and a cache that holds nothing else yet, so the encoding and
+        the tree cache entries it adds depend on the observation alone: a hit
+        returns the stored tensors and adds exactly the stored cache entries,
+        as the computation would.
         """
         memo = cache.get(_LEAF_MEMO)
-        store = memo["observations"] if memo is not None and len(cache) == 1 and not torch.is_grad_enabled() else None
-        if store is None:
+        if memo is None or len(cache) != 1 or torch.is_grad_enabled():
             return self._encode_observation(observation, cache)
-        last = store["last"]
+        last = memo["observation"]
         if last is not None and last[0] is observation:
             global_map, own, cells, added = last[1]
             cache.update(added)
             return global_map, own, cells
-        key = _record_key(observation)
-        if key is None:
-            return self._encode_observation(observation, cache)
-        entries = store["entries"]
-        hit = entries.get(key)
-        if hit is not None:
-            store["last"] = (observation, hit)
-            global_map, own, cells, added = hit
-            cache.update(added)
-            return global_map, own, cells
         global_map, own, cells = self._encode_observation(observation, cache)
-        entry = (global_map, own, cells, {k: v for k, v in cache.items() if k is not _LEAF_MEMO})
-        size = _observation_entry_bytes(key, entry)
-        if store["bytes"] + size > _OBSERVATION_MEMO_BYTES:
-            entries.clear()  # bounded memory; a miss only recomputes
-            store["bytes"] = 0
-        store["bytes"] += size
-        entries[key] = entry
-        store["last"] = (observation, entry)
+        added = {tree: tensor for tree, tensor in cache.items() if tree is not _LEAF_MEMO}
+        memo["observation"] = (observation, (global_map, own, cells, added))
         return global_map, own, cells
 
     def forward_step(self, frame, state):
@@ -835,7 +765,7 @@ class ContextualDistribution:
             return ("back",) + (("upgrade_stack",) if offers.stack_panel.affordable else ())
         if offers.armies:
             kinds = ("close",) + (("open_panel",) if offers.panel and offers.panel.controls else ())
-            kinds += tuple(kind for kind in ("split_stack", "merge_stacks", "swap_stacks") if _has_army_operation(offers.armies, kind))
+            kinds += tuple(kind for kind in ("split_stack", "merge_stacks", "swap_stacks") if c.has_army_operation(offers.armies, kind))
             kinds += (("open_stack",) if any(slot.count for army in offers.armies for slot in army.slots) else ())
             if context.kind == "town" and any(army.role in ("garrison_hero", "visiting_hero") for army in offers.armies):
                 kinds += ("swap_garrison",)

@@ -8,7 +8,7 @@ replaced, so there is exactly one definition of the action space.
 from __future__ import annotations
 
 from math import copysign, log1p
-from ..model.policy import ConditionalProbability, ContextualDistribution, _text, observation_semantics
+from ..model.policy import ConditionalProbability, ContextualDistribution, _text, map_key, observation_semantics
 from .plan import History
 
 
@@ -88,9 +88,7 @@ class _RecipeDistribution(ContextualDistribution):
 
 
 def _map_recipe(model, observation, arena, cache=None):
-    key = (observation.size, observation.tiles, tuple(hero.position for hero in observation.heroes),
-           tuple(town.position for town in observation.towns),
-           tuple((obj.position, obj.kind, obj.subtype, obj.owner) for obj in observation.objects))
+    key = map_key(observation)
     if cache is not None and key in cache:
         return {**cache[key], 'own': arena.add(observation_semantics(observation))}
     width, height, _ = observation.size
