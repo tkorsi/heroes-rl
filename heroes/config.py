@@ -36,7 +36,7 @@ class Config:
     legacy: Path = field(default_factory=lambda: _artifacts() / "selfplay-ten-then-check")  # imported once
 
     # How games are played.
-    workers: int = 10  # games in play at once, one process each
+    workers: int = 14  # games in play at once, one process each; 16 cores carry no more
     limits: Limits = Limits()
     guard: str | None = guard.VERSION  # repeated no-progress actions the policy may not sample; None for none
     keep_game_files: bool = False  # keep every game's engine folder instead of deleting it

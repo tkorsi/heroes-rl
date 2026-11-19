@@ -8513,3 +8513,132 @@ higher than ten actors' by more than the spread between repeated windows.
 guard's daily budget of 32 stack moves per hero and town (a seat answers about
 100 decisions per game day), the day limit, playing the next batch during the
 update. Those are measured and proposed, not shipped.
+
+### 2026-11-19 — Faster game play, measured: the same games 1.6 times faster; what is left
+
+All times are local (EET, UTC+2), 22:55 on 2026-11-19 to 00:16 on 2026-11-20.
+Mac on the 140 W charger, battery at 100% throughout. The Mac was not free: the
+user's run was in the PPO update of batch 1790 (one busy core and the GPU), the
+update thread's comparison runs played two games at a time and later collected
+games with `collect_games.py`, a browser process took up to three cores for
+minutes, and a game ran under Wine. Every rate below is therefore lower than on
+a free machine; versions were compared in turns under the same conditions.
+Checkpoint 1789 (`weights_sha256` 74da41d9…), copied into
+`~/Projects/Heroes-artifacts/play-speed-r3u8uh`; nothing was trained or saved.
+"Base" is `8ad4fcc` with the runtime `local-v8-sleep-resume-v1`; "new" is
+`2a0e5e4` with `local-v8-play-switches-v1`, built from this branch's engine
+sources and frozen with `tools/freeze_runtime.py` (its `config` and `Mods` are
+identical to the old runtime's). Results are in `results/` of that folder,
+measurements ran from copies of the source tree (`git archive`).
+
+**Exactness (criteria a and b): met.**
+
+| Game | Version | Digest |
+| --- | --- | --- |
+| seed 4, to day 60, 14,208 decisions | base, twice | `fec36b049734ab94` |
+| | new code, old runtime | `fec36b049734ab94` |
+| | new code, new runtime, four times | `fec36b049734ab94` |
+| | new runtime with the ledger forced on / the repeated observation forced on | `fec36b049734ab94` |
+| seed 9, to day 60, 11,658 decisions | base / new | `f154a6e38260d5a5` both |
+| ten games on ten actors, `bench_play.py --games 10 --max-days 60 --seed 3`, 91,868 decisions | base / new | all ten digests equal, game by game |
+
+**One game alone** (`profile_game.py --max-days 60`, seconds):
+
+| Seed 4 | Play | Waiting for the engine | Forward | Decoding | Sampling | Compile | Engine folder |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| base | 149.7 | 76.6 | 43.8 | 15.7 | 8.3 | 17.1 | 2.24 GB |
+| new code, old runtime | 135.4 | 72.1 | 33.9 | 16.1 | 7.3 | 16.3 | 2.24 GB |
+| new runtime, observation still repeated | 117.3 | 53.9 | 34.5 | 16.1 | | 16.0 | 5.0 MB |
+| new runtime, ledger still written | 112.9 | 61.0 | 26.7 | 12.1 | | 12.5 | 1.38 GB |
+| new | 95.7 | 44.3 | 27.5 | 11.8 | 7.6 | 11.9 | 5.0 MB |
+
+Seed 9: 114.7 s and 12.5 s to compile before, 72.4 s and 8.8 s after. Play and
+compile together are 1.55 and 1.57 times faster. The first base run of seed 4
+(147.4 s) had an 8-second `sample` of its engine attached and is not in the
+table. The two "still" rows used wrapper scripts that set one switch back; the
+runtime and the Python code are the new ones.
+
+**Ten actors** (`bench_play.py --seconds 130 --warmup 20 --seed 7`, decisions
+per second of both seats of all games, windows taken in turns): base 663 and
+637; new (`52a9f5c`, the same play path as `2a0e5e4`) 1,058 and 999, then 1,066
+and 1,120 in the actor-count runs. Means 650 and 1,061: 1.63 times. The
+ten-game batch to day 60 took 206.1 s before and 132.9 s after; an actor spent
+12.64 ms per decision before and 7.98 ms after, play and compile together:
+1.58 times.
+
+**Actor count** (criterion d), new code, the same windows:
+
+| Actors | 8 | 10 | 12 | 14 | 16 |
+| --- | --- | --- | --- | --- | --- |
+| decisions per second | 819 | 1,058, 999, 1,066, 1,120 | 1,052 | 1,185, 1,255, 1,208 | 1,150 |
+
+Every 14-actor window is above every 10-actor window, by 15% in the means;
+the spread among the ten-actor windows is 12%. The 12-actor window coincided
+with the browser's burst (load average 96 at its start) and the 16-actor
+window was taken once, so the shape beyond 14 is not established; with 14
+actors `top` showed no idle CPU. The default becomes 14. On a free machine the
+best count may be higher or lower and should be measured again.
+
+**Where the time went, from an 8-second `sample` of the base engine**: of the
+engine's busy time 34% was the replay recorder (a copy of every message, its
+encoding, a flushed write), 18% encoding and sending messages to the policy,
+and 41% `captureContextual`, which builds the player's whole observation as a
+`JsonNode` and compares it with the last one. `CClient::handlePack` runs it for
+both players after every applied pack, and the plugin runs it again before
+every result and every decision. In the new engine that capture is 85% of what
+is left, about 1.4 ms of CPU per decision. The earlier profile's "the engine
+sends every observation twice" was the smaller half of its cost.
+
+**What a decision costs now** (seed 4, new): 6.7 ms of wall time, about 5.5 ms
+of CPU: policy forward 1.9 ms, engine about 1.75 ms (1.4 of it the captures),
+decoding 0.8, sampling 0.5, parsing 0.35, encoding frames 0.2; compiling the
+recipe adds 0.8 ms per decision of the game.
+
+**Hit rate of the whole-observation memo, measured before removing it**
+(profile of seed 4 at `c52493f`+`9c1970d`): of 22,015 views looked up by
+`_record_key`, 3,839 hit (17%); the key cost 14.6 s under the profiler and the
+hits saved about 8 s. It is removed. The observation encoded last is kept and
+recognised by identity, which serves all 14,208 decisions, and the map
+features are kept under the recipe compiler's map key.
+
+**A failed attempt, recorded.** The first actor-count run (23:07) reported two
+failed games among nine. They were mine: I edited `heroes/learner/recipes.py`
+in the tree the benchmark was running from, and an actor imports the recipe
+compiler when its first game ends, so two actors imported a file that no longer
+matched their loaded policy module. The same seeded games ran without a
+failure three times afterwards, from the committed code and from copies. Its
+rates are discarded; the perf guide now says to measure from a copy.
+
+**What the learner chose** (the ten-game batch, 46,632 learner decisions, 435
+of them `end_turn`, so 107 decisions per seat and day): `swap_stacks` 30.4%,
+`split_stack` 8.2%, `merge_stacks` 4.8%; `open_capability` and
+`close_capability` 8.2% each, `close` 7.4%, `open_hero` 6.6%, `back` 5.5%,
+`open_stack` 5.3%; `move_to` 4.2%; `end_turn` 0.9%; recruiting, building,
+hiring and upgrading together 0.5%. The games stop at day 60, so this is the
+early game only.
+
+**What this means for a cycle.** The user's update 1790 collected its 100
+games in 1 h 54 min on ten actors under a similar load. At 1.6 times that is
+about 1 h 10 min, and about 1 h with 14 actors; neither was run. A 1,000-game
+cycle of ten such batches would spend about 10 hours playing instead of 19.
+The target of one hour for the whole cycle is 10 to 20 times further away, and
+no exact change found here closes it: the engine capture is at most a quarter
+of a decision's CPU and the rest of Python's share is spread over many small
+parts.
+
+**Not changed, proposed to the user.** (1) Fewer decisions per game day: 43%
+of decisions are stack moves and another 41% open or close a window; the
+guard's budget is 32 stack moves per hero and town per day. A smaller budget
+is a new guard version and changes what the policy can do. (2) Playing the
+next batch while the update runs: the update needs the GPU and one core, the
+actors the other cores; a cycle would take the longer of the two instead of
+their sum, with games one update behind. (3) A day limit saves little (entry
+above). (4) Rebuilding the engine's capture so that it is cheap to see that
+nothing changed: exact, but a restructuring of the plugin's observation code.
+
+**Limitations.** One evening on a busy machine; no full batch of 100 games and
+no training run was made with the new code; the longest games measured ran to
+day 60 (the windows run to 365 but last 150 s); the new runtime has played
+about 120 games in these measurements and no game of 365 days. `vcmireplay`
+was not run against the changed recorder: with the ledger off there is nothing
+to replay, and `--keep-game-files` restores it.

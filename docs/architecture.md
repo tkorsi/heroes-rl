@@ -5,7 +5,7 @@ game from the engine to a weight update and names the code at each step.
 
 ```text
 heroes/train.py          restore → [ collect 100 games → update → save ] …
-   └ Pool                ten actor processes (heroes/train.py: worker)
+   └ Pool                14 actor processes (heroes/train.py: worker)
        └ actor.play      one game, both seats, the learner's trajectory
            ├ engine/     vcmiclient process, two sockets, typed frames
            ├ model/      frames → GRU state → action distribution, value
@@ -92,7 +92,7 @@ with the frames:
 - A truncated game ends at the last action whose following decision the policy
   saw. That decision's value stands in for the rest of the game.
 
-## Ten games at once
+## Many games at once
 
 [`heroes/train.py`](../heroes/train.py) keeps `--workers` actor processes, each
 with its own pipe to the trainer. An actor loads the newest checkpoint, plays
