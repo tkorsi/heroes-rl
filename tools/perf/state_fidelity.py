@@ -139,6 +139,7 @@ def main():
     parser.add_argument("--checkpoint", type=Path, help="the checkpoint that played --batch")
     parser.add_argument("--windows-per-replay", default="8", help="comma-separated values to measure, one update each")
     parser.add_argument("--windows-per-minibatch", type=int, default=2)
+    parser.add_argument("--learning-rate", type=float, default=PPOConfig().learning_rate)
     parser.add_argument("--steps", type=int, help="stop after this many optimizer steps")
     parser.add_argument("--every", type=int, default=10, help="compare in every N-th round")
     parser.add_argument("--out", type=Path)
@@ -163,10 +164,12 @@ def main():
                 stream.write(line + "\n")
 
     for shared in (int(item) for item in arguments.windows_per_replay.split(",")):
-        config = replace(PPOConfig(), windows_per_minibatch=arguments.windows_per_minibatch, windows_per_replay=shared)
+        config = replace(PPOConfig(), windows_per_minibatch=arguments.windows_per_minibatch, windows_per_replay=shared,
+                         learning_rate=arguments.learning_rate)
         records, ran, planned, report = probe(weights, trajectories, config, arguments.steps, arguments.every)
         common = {"source": source, "games": len(trajectories), "windows_per_minibatch": config.windows_per_minibatch,
-                  "windows_per_replay": shared, "steps_run": ran, "planned_steps": planned}
+                  "windows_per_replay": shared, "learning_rate": config.learning_rate, "steps_run": ran,
+                  "planned_steps": planned}
         if report is not None:
             write({**common, "part": "the update itself", "samples": report.samples,
                    "policy_loss": report.policy_loss, "value_loss": report.value_loss,

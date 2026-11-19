@@ -69,30 +69,41 @@ def test_update_quality_judges_updates_on_games_they_did_not_see(scripted, tmp_p
             game = Game(Job(number, 7, 0, (1, 2)), "completed", "", None, None, 1, (1, 1), 1.0, trajectory)
             with (tmp_path / folder / f"game-{number:07d}.pkl").open("wb") as stream:
                 pickle.dump(game, stream)
-    monkeypatch.setattr(update_quality, "PPOConfig", lambda: update_quality.JUDGE.__class__(decisions_per_window=2))
-    monkeypatch.setattr(update_quality, "JUDGE", update_quality.JUDGE.__class__(decisions_per_window=2, windows_per_replay=4))
+    small = update_quality.PPOConfig(decisions_per_window=2)
+    monkeypatch.setattr(update_quality, "PPOConfig", lambda: small)
+    monkeypatch.setattr(update_quality, "JUDGE", replace(small, windows_per_replay=4, normalize_advantages=False))
     monkeypatch.setattr(sys, "argv", ["update_quality.py", "--batch", str(tmp_path / "batch"), "--holdout",
                                       str(tmp_path / "holdout"), "--checkpoint", str(path), "--work", str(tmp_path / "work"),
-                                      "--windows-per-replay", "1,4", "--seeds", "0,1"])
+                                      "--settings", "2:1,2:4,4:4:1e-3", "--seeds", "0,1"])
     update_quality.main()
     lines = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
     updates = [line for line in lines if line["part"] == "update"]
-    assert [line["name"] for line in updates] == ["minibatch2-replay1-seed0", "minibatch2-replay1-seed1",
-                                                  "minibatch2-replay4-seed0", "minibatch2-replay4-seed1"]
+    names = ["minibatch2-replay1-seed0", "minibatch2-replay1-seed1", "minibatch2-replay4-seed0",
+             "minibatch2-replay4-seed1", "minibatch4-replay4-rate1e-3-seed0", "minibatch4-replay4-rate1e-3-seed1"]
+    assert [line["name"] for line in updates] == names
     assert all(line["samples"] == 23 for line in updates) and updates[0]["optimizer_steps"] == 6
     judged = {line["name"]: line for line in lines if line["part"] == "judged"}
-    assert set(judged) == {"checkpoint"} | {line["name"] for line in updates}
+    assert set(judged) == {"checkpoint", *names}
     # Judged without a step, the checkpoint agrees with the play that recorded it.
-    assert judged["checkpoint"]["trained_on"]["approximate_kl"] == pytest.approx(0, abs=1e-6)
+    assert judged["checkpoint"]["trained_on"]["kl"] == pytest.approx(0, abs=1e-6)
+    assert judged["checkpoint"]["trained_on"]["gain"] == pytest.approx(0, abs=1e-4)
     assert judged["checkpoint"]["held_out"]["clip_fraction"] == 0
     assert all(line["held_out"]["value_loss"] > 0 for line in judged.values())
+    # The scripted games offer one legal action, so only the value can change.
+    assert judged[names[0]]["trained_on"]["value_loss"] != judged["checkpoint"]["trained_on"]["value_loss"]
+    compared = {line["name"]: line for line in lines if line["part"].startswith("against ")}
+    assert set(compared) == set(names[1:])
+    low, high = compared[names[1]]["trained_on"]["value_loss"][1:]
+    assert low <= compared[names[1]]["trained_on"]["value_loss"][0] <= high
     changes = lines[-1]
     assert changes["part"] == "changes" and all(length > 0 for length in changes["length"].values())
-    assert changes["cosine"]["minibatch2-replay1-seed0"]["minibatch2-replay1-seed0"] == pytest.approx(1)
-    # A second call finds every update's weights and trains nothing again.
-    assert torch.load(tmp_path / "work" / "weights-minibatch2-replay4-seed1.pt", weights_only=True).keys() == weights.keys()
+    assert changes["cosine"][names[0]][names[0]] == pytest.approx(1)
+    # A second call finds every update's weights and verdict and repeats nothing.
+    assert torch.load(tmp_path / "work" / f"weights-{names[3]}.pt", weights_only=True).keys() == weights.keys()
+    monkeypatch.setattr(update_quality, "train", None)
+    monkeypatch.setattr(update_quality, "judge", None)
     update_quality.main()
-    assert not [line for line in capsys.readouterr().out.splitlines() if json.loads(line)["part"] == "update"]
+    assert len(capsys.readouterr().out.splitlines()) == len(lines) - len(updates)
 
 
 def test_the_game_profiler_splits_a_game_into_its_parts(fake_engine, tmp_path):
