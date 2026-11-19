@@ -100,3 +100,21 @@ def test_the_game_profiler_splits_a_game_into_its_parts(fake_engine, tmp_path):
     # The wrappers are taken off again.
     from heroes.engine.env import Env
     assert Env._wait.__name__ == "_wait"
+
+
+def test_the_play_benchmark_reports_games_and_a_window(fake_engine, tmp_path):
+    import bench_play
+    from heroes import checkpoint
+    from heroes.config import Config
+    engine = fake_engine(days=4, map=8)
+    config = Config(vcmi=engine.binary, game_data=engine.data, game_map=engine.game_map, state=tmp_path / "state",
+                    workers=2)
+    checkpoint.save(config.state, checkpoint.fresh(learning_rate=3e-4))
+    report = bench_play.measure(config, games=3)
+    assert (report["games"], report["decisions"], report["samples"]) == (3, 24, 12)
+    assert report["statuses"] == ["completed:natural_terminal"] * 3 and all(report["digests"])
+    # The same seeded games on another number of actors are the same games.
+    again = bench_play.measure(replace(config, workers=1), games=3)
+    assert again["digests"] == report["digests"] and again["choices"] == report["choices"]
+    window = bench_play.measure(config, seconds=1.5, warmup=0.5)
+    assert window["mode"] == "window" and window["decisions"] > 0 and window["games_failed"] == 0

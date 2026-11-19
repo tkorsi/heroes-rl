@@ -8461,3 +8461,55 @@ charger, battery full:
 The grouped update is 4.0 times faster on 12 games and 4.6 times at production
 size. The figures of the entry above were taken beside the user's update and
 are 1.4 to 1.6 times these.
+
+### 2026-11-19 — Faster game play: plan and acceptance criteria (play-speed branch)
+
+**Question.** With the grouped update of the entry above, playing 100 games is
+the larger half of a cycle: update 1790 of the user's run collected its 100
+games in 1 h 54 min on ten actors (3.47 million decisions of both seats, 63.6
+per second and game while two other runs shared the Mac; the two short runs of
+2026-11-18 reached 103 and 106). How much faster can the same games be played,
+and what would a further factor cost in training terms?
+
+**What the earlier profile of one game says** (`5028350`, seed 4, 90 days,
+14,801 decisions, 136 s): 51% of the play time waits for the engine, 28% is
+the policy's forward pass, 11% decoding, 6% sampling; compiling the recipe
+adds another 12%. Reading the engine source for this entry: every decision
+record repeats the observation that the view record before it already
+delivered, about 55 KB of JSON; the replay recorder copies and encodes every
+message a second time for `contextual-replay.jsonl` and flushes each record,
+about 130 KB per decision (5.9 GB after eight minutes of one game of the
+update thread's run, about 450 GB per 100 games), and nothing reads that file.
+On the Python side each of the two copies is parsed, decoded, validated and
+keyed for the policy's memo separately.
+
+**Changes under test, all meant to be exact** (the same game from the same
+seeds, bit for bit in everything the learner reads):
+
+1. Engine switch `VCMI_EXPERIMENT_LEDGER=0`: the recorder keeps its
+   transaction order and terminal barrier and writes nothing.
+2. Engine switch `EXPLORER_RL_DECISION_OBSERVATION=0`: a decision record
+   carries no observation; Python gives the decision frame the observation of
+   the seat's latest view, the same object.
+3. Python: the policy recognises that shared observation by identity instead
+   of by a key over all its contents, sizes a memo entry without walking it,
+   the recipe compiler reuses the shared observation's map recipe and trees,
+   and engine messages are parsed without a Python call per JSON object.
+4. More actors than ten.
+
+**Acceptance criteria, stated before any game ran.** (a) For each of 1 to 3,
+the digest of `tools/perf/profile_game.py` for a seeded game is identical
+before and after, on the old runtime and on the new one; a different digest
+rejects the change. (b) `tools/perf/bench_play.py --games` gives identical
+digests for every game of a ten-actor batch. (c) Speed is reported as
+decisions per second of both seats over a window in which every actor is busy,
+old and new alternating under the same load, with the charger and the other
+runs on the Mac noted; games per hour follow from the mean length of the games
+of the user's run (32,458 decisions over updates 1788 to 1790) and are labelled
+as derived. (d) A higher actor count is recommended only if its window rate is
+higher than ten actors' by more than the spread between repeated windows.
+
+**Not part of this change.** Anything that alters what is trained on: the
+guard's daily budget of 32 stack moves per hero and town (a seat answers about
+100 decisions per game day), the day limit, playing the next batch during the
+update. Those are measured and proposed, not shipped.
