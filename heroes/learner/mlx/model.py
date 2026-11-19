@@ -236,29 +236,49 @@ class MLXBackend(MLXModel):
             self.plan_cache_bytes += count
         return plan
 
+    def _replay(self, parameters, spec):
+        """The initial state and, for a nonempty prefix, the state after each of its frames."""
+        mx = self.mx
+        count = spec["frame_limit"]
+        initial = mx.zeros((1, 64), dtype=mx.float32)
+        if not count:
+            return initial, None
+        plan = self.plan(self.manifest["history_plans"][spec["history"]])
+        vectors, _, _ = self.encode(parameters, plan, count)
+        return initial, self.optimized.gru_prefix(vectors[None, :count], initial, *[
+            parameters["gru." + key] for key in ("weight_ih", "weight_hh", "bias_ih", "bias_hh")
+        ])[0]
+
     def prefix_states(self, prefixes, *, synchronize=True):
         mx = self.mx
         parameters = {key: mx.stop_gradient(value) for key, value in self.p.items()}
         result = {}
         for spec in prefixes:
-            history, count = spec["history"], spec["frame_limit"]
-            initial = mx.zeros((1, 64), dtype=mx.float32)
-            states = None
-            if count:
-                plan = self.plan(self.manifest["history_plans"][history])
-                vectors, _, _ = self.encode(parameters, plan, count)
-                states = self.optimized.gru_prefix(vectors[None, :count], initial, *[
-                    parameters["gru." + key] for key in ("weight_ih", "weight_hh", "bias_ih", "bias_hh")
-                ])[0]
+            initial, states = self._replay(parameters, spec)
             for entry in spec["states"]:
                 index = entry["state_index"]
                 value = initial if index < 0 else states[index:index + 1]
-                result[(history, entry["stop"])] = mx.stop_gradient(value)
+                result[(spec["history"], entry["stop"])] = mx.stop_gradient(value)
         if synchronize:
             mx.eval(list(result.values()))
         else:
             mx.async_eval(list(result.values()))
         return result
+
+    def prefix_table(self, spec):
+        """One replay of a game: a ``(len(spec["states"]), 64)`` array, one row per requested state.
+
+        Only this small table outlives the call; it is what a game's windows
+        start from until the game is replayed again.
+        """
+        mx = self.mx
+        parameters = {key: mx.stop_gradient(value) for key, value in self.p.items()}
+        initial, states = self._replay(parameters, spec)
+        rows = mx.array([entry["state_index"] + 1 for entry in spec["states"]], dtype=mx.int32)
+        table = initial if states is None else mx.concatenate((initial, states), axis=0)
+        table = mx.stop_gradient(table[rows])
+        mx.async_eval(table)
+        return table
 
     def forward(self, p, step, plan, prefixes):
         mx = self.mx

@@ -8,6 +8,9 @@ ending their turns on a one-tile map until the script says who wins.
 The script is the JSON in ``FAKE_VCMI``:
   days     full days to play before the game ends (default 3)
   winner   seat that wins, 0 or 1 (default 0)
+  map      side of a square map whose objects and resources change from day
+           to day, so every decision shows a different observation (default:
+           the same one-tile view every day)
   end      "natural" (default), "closure" (the last action is closed by the
            terminal instead of a result), "endless" (never ends), "crash"
            (exits with an error on day 2), "hang" (goes silent on day 2 until
@@ -34,6 +37,22 @@ PROFILE = c.profile_for(os.environ["EXPLORER_RL_INTERFACE"])
 ARMIES = os.environ.get("EXPLORER_RL_ARMY_INFORMATION")
 OBSERVATION = c.Observation((2, 2, 1), (c.Tile((0, 0, 0), 1, 0, False, False),), (), (0,) * 7, (), (),
                             army_information=ARMIES, own_armies=() if ARMIES else None)
+SIDE = SCRIPT.get("map")
+TILES = SIDE and tuple(c.Tile((x, y, 0), 1 + (x * 7 + y * 3) % 5, int((x + 2 * y) % 5 == 0), (x * y) % 11 == 3, False)
+                       for y in range(SIDE) for x in range(SIDE))
+
+
+def observation(day, player):
+    """What the seat sees on ``day``: the fixed view, or a full map with wandering objects."""
+    if not SIDE:
+        return OBSERVATION
+    objects = tuple(c.ObjectView(f"object-{index}", ((index * 5 + day * (index % 3) + player) % SIDE,
+                                                      (index * 11 + (day * (index % 4)) // 2) % SIDE, 0),
+                                 10 + index % 7, index % 4, ("self", "opponent", "neutral")[index % 3])
+                    for index in range(14))
+    resources = (1000 * day % 20011, day % 17, day % 13, (day + player) % 11, day % 7, day % 5, day % 3)
+    return c.Observation((SIDE, SIDE, 1), TILES, objects, resources, (), (),
+                         army_information=ARMIES, own_armies=() if ARMIES else None)
 
 
 class Seat:
@@ -70,8 +89,9 @@ class Seat:
 
     def decide(self, day):
         """Offer a decision and wait for the policy's answer."""
-        offers = c.Offers.from_observation(OBSERVATION, schema=PROFILE.action_schema)
-        decision = self.history.emit("decision", day=day, observation=OBSERVATION, offers=offers,
+        seen = observation(day, self.player)
+        offers = c.Offers.from_observation(seen, schema=PROFILE.action_schema)
+        decision = self.history.emit("decision", day=day, observation=seen, offers=offers,
                                      revision=self.history.revision + 1)
         self.batch.append({"kind": "decision", "day": day, "decision_id": decision.seq, "revision": decision.revision,
                            "observation": c.encode_frame(decision)["observation"]})

@@ -385,6 +385,7 @@ def _train(config, games, update_policy, fresh, out):
                       value_loss=report.value_loss, approximate_kl=report.approximate_kl,
                       clip_fraction=report.clip_fraction, collect_seconds=round(collected - started, 1),
                       update_seconds=round(updated - collected, 1), update_timings=report.timings_seconds,
+                      game_replays=report.game_replays,
                       checkpoint=saved.name, progress=state.progress)
             display.line(f"update {update} saved  {report.samples} samples  {report.optimizer_steps} steps  "
                          f"policy loss {report.policy_loss:+.4f}  value loss {report.value_loss:.4f}  "

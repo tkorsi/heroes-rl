@@ -3,8 +3,10 @@
 The torch model and its Adam optimizer stay the source of truth: weights and
 optimizer state are copied into MLX, every optimizer step runs there, and the
 result is copied back only after the whole update finished and is finite.
-Only weight-independent plans are cached; every recurrent prefix is recomputed
-with the current weights.
+Weight-independent plans are cached. The recurrent state before a loss window
+is recomputed with the current weights at every step, or, for the games
+``Batch.kept`` names, taken from the game's last replay, which is at most
+``state_refresh_steps`` optimizer steps old.
 """
 from __future__ import annotations
 
@@ -111,8 +113,16 @@ def update(model, optimizer, trajectories, *, config, generator, progress=None):
         plan_seconds += time.perf_counter() - plan_started
         return result
 
+    def prefix(index, stops):
+        """What to replay of game ``index`` for the states before the frames ``stops`` (ascending)."""
+        jobs = history_jobs[index]
+        return {"history": index, "frame_limit": bisect_left(jobs, stops[-1]),
+                "states": [{"stop": stop, "state_index": bisect_left(jobs, stop) - 1} for stop in stops]}
+
     backend = None
     prepared_prefixes = None
+    kept, saved = batch.kept(config), {}  # game -> (step of its last replay, the states before its windows)
+    replays = 0
     weighted = [0.0] * 4
     count_seen = completed = 0
     try:
@@ -126,16 +136,22 @@ def update(model, optimizer, trajectories, *, config, generator, progress=None):
                 boundaries = {}
                 for window in selected:
                     boundaries.setdefault(window.rollout_index, []).append(window.start_seq)
-                prefixes = []
-                for index, stops in boundaries.items():
-                    jobs = history_jobs[index]
-                    prefixes.append({"history": index, "frame_limit": bisect_left(jobs, max(stops)),
-                                     "states": [{"stop": stop, "state_index": bisect_left(jobs, stop) - 1}
-                                                for stop in sorted(set(stops))]})
+                prefixes = [prefix(index, sorted(set(stops))) for index, stops in boundaries.items()]
                 plan_seconds += time.perf_counter() - plan_started
                 # The prefix graph runs on the GPU while the CPU builds this
                 # minibatch's loss-window plan. It is used once and then dropped.
-                prepared_prefixes = backend.prefix_states(prefixes, synchronize=False)
+                prepared_prefixes = backend.prefix_states(
+                    [spec for spec in prefixes if spec["history"] not in kept], synchronize=False)
+                for spec in prefixes:
+                    index = spec["history"]
+                    if index not in kept:
+                        continue
+                    if index not in saved or completed - saved[index][0] >= config.state_refresh_steps:
+                        saved[index] = (completed, backend.prefix_table(prefix(index, batch.starts[index])))
+                        replays += 1
+                    for entry in spec["states"]:
+                        row = bisect_left(batch.starts[index], entry["stop"])
+                        prepared_prefixes[(index, entry["stop"])] = saved[index][1][row:row + 1]
                 plan_started = time.perf_counter()
                 joined, sequences = _joined_plan(histories, selected, rollouts)
                 old_logs, old_values, batch_advantages, returns = [], [], [], []
@@ -191,6 +207,7 @@ def update(model, optimizer, trajectories, *, config, generator, progress=None):
         restored = time.perf_counter()
         validation_seconds = backend.state_validation_seconds
     finally:
+        saved.clear()
         if prepared_prefixes is not None:
             prepared_prefixes.clear()
         for history in histories:
@@ -210,4 +227,4 @@ def update(model, optimizer, trajectories, *, config, generator, progress=None):
         "plan_build": plan_seconds, "cpu_restore": restored - updated,
         "state_validation": validation_seconds, "cleanup": finished - restored,
         "full_update": finished - started,
-    })
+    }, game_replays=replays)
