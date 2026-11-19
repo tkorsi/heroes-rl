@@ -47,4 +47,4 @@ class Config:
     ppo: PPOConfig = PPOConfig()
 
     def engine(self):
-        return Engine(self.vcmi, self.game_data, self.game_map)
+        return Engine(self.vcmi, self.game_data, self.game_map, replay_ledger=self.keep_game_files)

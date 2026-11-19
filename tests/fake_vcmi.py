@@ -15,6 +15,12 @@ The script is the JSON in ``FAKE_VCMI``:
            terminal instead of a result), "endless" (never ends), "crash"
            (exits with an error on day 2), "hang" (goes silent on day 2 until
            the policy side hangs up) or "abort" (fails before connecting)
+  repeat   true for an engine that ignores EXPLORER_RL_DECISION_OBSERVATION=0
+           and sends the observation again in every decision (default false)
+
+Like the engine it sends a view whenever what the seat sees has changed, and
+then the decision; told EXPLORER_RL_DECISION_OBSERVATION=0, the decision
+carries no second copy of that observation.
 
 Like the engine it runs in its own folder, so it finds its profile only when
 the paths it was given are absolute.
@@ -38,6 +44,7 @@ ARMIES = os.environ.get("EXPLORER_RL_ARMY_INFORMATION")
 OBSERVATION = c.Observation((2, 2, 1), (c.Tile((0, 0, 0), 1, 0, False, False),), (), (0,) * 7, (), (),
                             army_information=ARMIES, own_armies=() if ARMIES else None)
 SIDE = SCRIPT.get("map")
+REPEAT = SCRIPT.get("repeat", False) or os.environ.get("EXPLORER_RL_DECISION_OBSERVATION") != "0"
 TILES = SIDE and tuple(c.Tile((x, y, 0), 1 + (x * 7 + y * 3) % 5, int((x + 2 * y) % 5 == 0), (x * y) % 11 == 3, False)
                        for y in range(SIDE) for x in range(SIDE))
 
@@ -67,6 +74,7 @@ class Seat:
             ready["army_information"] = ARMIES
         self.send("ready", **ready)
         self.batch = []
+        self.seen = None  # (observation, day) of the last view sent
 
     def send(self, kind, **fields):
         message = {"protocol_version": PROFILE.protocol, "type": kind, "episode": EPISODE, "player": self.player, **fields}
@@ -90,11 +98,16 @@ class Seat:
     def decide(self, day):
         """Offer a decision and wait for the policy's answer."""
         seen = observation(day, self.player)
+        if self.seen != (seen, day):
+            self.emit("view", day=day, observation=seen)
+            self.seen = seen, day
         offers = c.Offers.from_observation(seen, schema=PROFILE.action_schema)
         decision = self.history.emit("decision", day=day, observation=seen, offers=offers,
                                      revision=self.history.revision + 1)
-        self.batch.append({"kind": "decision", "day": day, "decision_id": decision.seq, "revision": decision.revision,
-                           "observation": c.encode_frame(decision)["observation"]})
+        record = {"kind": "decision", "day": day, "decision_id": decision.seq, "revision": decision.revision}
+        if REPEAT:
+            record["observation"] = c.encode_frame(decision)["observation"]
+        self.batch.append(record)
         self.flush()
         answer = json.loads(self.reader.readline())
         assert answer["type"] == "context_action" and answer["decision_id"] == decision.seq, answer

@@ -5,6 +5,12 @@ newline-delimited JSON: ``ready`` once, then batches of records. The producer
 turns every record into a validated ``contract.Frame``, assigns the frame
 sequence numbers and derives the legal actions from the observation itself;
 the engine sends no action mask.
+
+A decision is always about the observation of the seat's latest ``view``
+record. An engine started with ``EXPLORER_RL_DECISION_OBSERVATION=0`` therefore
+sends the decision without it, and the decision frame gets the view's
+observation, the same object. An engine that still repeats the observation is
+read as before; the frames are equal either way.
 """
 from __future__ import annotations
 
@@ -28,24 +34,11 @@ RECORD_FIELDS = {
 }
 
 
-def unique_object(pairs):
-    # dict() keeps first insertion order and drops nothing unless a key repeats;
-    # only then does the loop name the first repeated key, as it always did.
-    result = dict(pairs)
-    if len(result) == len(pairs):
-        return result
-    result = {}
-    for key, value in pairs:
-        if key in result:
-            raise ValueError(f"Duplicate JSON field: {key}")
-        result[key] = value
-    return result
-
-
 def loads(data):
+    """One engine message. The engine writes every object from a map, so no key repeats."""
     def invalid(value):
         raise ValueError(f"Nonfinite JSON number: {value}")
-    return json.loads(data, object_pairs_hook=unique_object, parse_constant=invalid)
+    return json.loads(data, parse_constant=invalid)
 
 
 def exact(raw, fields, name):
@@ -82,6 +75,7 @@ class Producer:
         self.terminal = None  # this seat's "win" or "loss" once the engine sent it
         self.decision_ids = {}  # engine decision id -> frame sequence number
         self.current_id = None
+        self.view = None  # the observation of the latest view record
 
     def ingest(self, message):
         if type(message) is not dict or message.get("protocol_version") != self.profile.protocol or type(message.get("protocol_version")) is not int:
@@ -112,7 +106,10 @@ class Producer:
             if type(record) is not dict or record.get("kind") not in RECORD_FIELDS:
                 raise ValueError("Unsupported contextual record kind")
             record_kind = record["kind"]
-            exact(record, {"kind", "day"} | RECORD_FIELDS[record_kind], record_kind)
+            fields = RECORD_FIELDS[record_kind]
+            if record_kind == "decision" and "observation" not in record:
+                fields = fields - {"observation"}  # it is the one of the latest view
+            exact(record, {"kind", "day"} | fields, record_kind)
             raw = dict(record)
             if "decision_id" in raw:
                 native_id = raw.pop("decision_id")
@@ -131,13 +128,20 @@ class Producer:
                 if declared_army_information(raw["observation"], self.profile.environment) != self.army_information:
                     raise ValueError("Observation army information differs from the negotiated extension")
             if record_kind == "decision":
-                observation = contract.decode_observation(raw["observation"], schema=self.profile.history_schema)
+                if "observation" in raw:
+                    observation = contract.decode_observation(raw["observation"], schema=self.profile.history_schema)
+                elif self.view is None:
+                    raise ValueError("A decision without an observation needs an earlier view")
+                else:
+                    observation = self.view
                 raw["offers"] = contract.encode_offers(contract.Offers.from_observation(observation, schema=self.profile.action_schema))
-            # The decision's observation is decoded once, from this same raw dict and schema.
+            # The decision's observation is decoded once: here, or when its view arrived.
             frame = contract.decode_frame(raw, observation=observation)
             self.history.append(frame)
             appended.append(frame)
-            if record_kind == "decision":
+            if record_kind == "view":
+                self.view = frame.observation
+            elif record_kind == "decision":
                 self.decision_ids[native_id] = frame.seq
                 self.current_id = native_id
             elif record_kind in ("result", "superseded"):

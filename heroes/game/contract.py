@@ -3138,20 +3138,19 @@ def encode_frame(frame):
 
 
 def decode_frame(raw, *, observation=None):
-    """The typed frame of raw. ``observation``, when given, must be
-    decode_observation(raw["observation"], schema=raw["schema"]) of this very
-    raw, already computed by the caller; it is used instead of decoding again."""
+    """The typed frame of raw. ``observation``, when given, is the frame's
+    observation, already decoded by the caller: from this raw's own, or from
+    the earlier view that a decision without one refers to."""
     data = _record(raw, Frame)
     if not {"schema", "episode", "player", "seq", "day", "kind"} <= data.keys():
         raise ValueError("History JSON requires explicit schema and base fields")
     profile = profile_for(data["schema"])
     if data["schema"] != profile.history_schema:
         raise ValueError("Expected a history schema")
-    if data.get("observation") is not None:
-        data["observation"] = (observation if observation is not None
-                               else decode_observation(data["observation"], schema=profile.history_schema))
-    elif observation is not None:
-        raise ValueError("A decoded observation requires the raw observation it decodes")
+    if observation is not None:
+        data["observation"] = observation
+    elif data.get("observation") is not None:
+        data["observation"] = decode_observation(data["observation"], schema=profile.history_schema)
     if data.get("context") is not None:
         data["context"] = _decode_context(data["context"], profile)
     if data.get("action") is not None and profile == WINDOWS_PROFILE:
