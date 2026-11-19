@@ -151,24 +151,27 @@ the [journal](docs/research-log.md) say:
   replayed decisions for each one that is trained on. This part of a game's
   cost grows with the square of its length. Run 2 above held one game with
   63,390 learner decisions and needed 9.8 ms per decision, run 1 needed 6.2 ms.
-- **The replay cannot be skipped.** `--state-refresh-steps` keeps the states
-  before a game's windows for some optimizer steps instead of replaying. On 12
-  real games that made the update 6 to 7.7 times faster, and it changed the
-  gradient too much: with a refresh every 64 steps one minibatch in twenty had
-  a cosine below 0.51 with the exact gradient, and never refreshing gave a
-  median of 0.38. Replaying only the last 8,000 or 32,000 frames before a
-  window did not help either. The policy's memory spans the whole game. The
-  setting stays at 1 and is not recommended.
-- **The replay can be shared.** `--windows-per-minibatch 16 --windows-per-game 8`
-  takes eight windows of a game per step, so one replay serves all eight, still
-  with the current weights. Measured on 12 real games with the GPU shared, a
-  whole update took 371 s, and 221 s with 32 and 16, against about 1,570 s by
-  default. On a batch of production size (those games eight times, 1.08 million
-  samples) the rates of the first 80 to 120 steps project to 53 and 32 minutes
-  against 4.1 to 4.6 hours. This is not a free change: an update then makes 8 or 16 times
-  fewer optimizer steps on minibatches 8 or 16 times larger, each still drawn
-  from two games. Whether the policy learns as well per game played is a
-  question for training runs, so the defaults are unchanged.
+- **The replay cannot be skipped.** Keeping the states before a game's windows
+  from one optimizer step to the next was built twice and removed twice. Kept
+  for many steps, they changed the gradient beyond use, and replaying only the
+  last 8,000 or 32,000 frames before a window did not help: the policy's memory
+  spans the whole game. Kept for only 8 small steps, each gradient stayed close
+  to the exact one, and a whole update still moved the policy 2.5 to 5 times
+  further than the exact update, because a state from before earlier steps
+  hides how far the policy has already moved on that game.
+- **The replay can be shared.** `--windows-per-minibatch 16 --windows-per-game 8
+  --learning-rate 8.5e-4` takes eight windows of a game per step, so one replay
+  serves all eight, still with the current weights: every step is an exact PPO
+  step on 256 decisions instead of 32. On 12 real games with the GPU otherwise
+  free a whole update took 248 s against about 990 s by default, and on a batch
+  of production size (those games eight times, 1.08 million decisions) the
+  rates of the first 120 steps project to 38 minutes against 2.9 hours. The
+  learning rate belongs to the setting: 8 times fewer steps at 3e-4 change the
+  weights less than half as far as the default update, and at 8.5e-4 as far.
+  Judged on 12 games no update saw, the update then moved the policy no further
+  than the default and fitted the value at least as well. Which setting wins
+  more games per game played is a question for long training runs, so the
+  defaults are unchanged.
 - **Ten games on ten actors take as long as the longest game.** With 100 games
   per update the actors stay busy and this evens out.
 - A game plays at about 105 decisions per second of both seats together when
