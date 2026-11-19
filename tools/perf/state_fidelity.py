@@ -12,13 +12,19 @@ the script keeps the window states that setting would have used, and at every
 - the log-probabilities and values the loss sees (largest absolute difference),
 - the gradient (cosine with the exact gradient, and relative norm error).
 
-Nothing is saved. One JSON line per refresh value and per fifth of the run goes
-to stdout and to ``--out``. ``--synthetic`` runs on scripted games instead.
+``--burn-in`` adds a second question for each refresh value: how good is a
+state that starts from the reused one some frames before the window and
+replays only those frames with the current weights? ``--from-zeros`` asks the
+same for a replay that starts from the initial state instead, with no kept
+states at all. Both tell how far back the recurrent state really remembers.
+
+Nothing is saved. One JSON line per variant and per fifth of the run goes to
+stdout and to ``--out``. ``--synthetic`` runs on scripted games instead.
 """
 from __future__ import annotations
 
 import argparse
-from bisect import bisect_left
+from bisect import bisect_left, bisect_right
 from dataclasses import replace
 import json
 from pathlib import Path
@@ -33,7 +39,7 @@ from bench_update import _Enough, collected, synthetic  # noqa: E402
 from heroes.learner.ppo import PPOConfig, prepare  # noqa: E402
 
 
-def probe(weights, trajectories, config, refreshes, steps, every):
+def probe(weights, trajectories, config, refreshes, steps, every, burn=(), zeros=()):
     from heroes.learner.mlx import update as update_module
     from heroes.learner.mlx.model import MLXBackend
     from heroes.model.policy import ContextualActorCritic, ModelConfig
@@ -43,6 +49,8 @@ def probe(weights, trajectories, config, refreshes, steps, every):
     kept = {refresh: batch.kept(replace(config, state_refresh_steps=refresh)) for refresh in refreshes}
     saved = {refresh: {} for refresh in refreshes}  # game -> (step, table)
     records = {refresh: [] for refresh in refreshes}
+    records.update({(refresh, frames): [] for refresh in refreshes for frames in burn})
+    records.update({("zeros", frames): [] for frames in zeros})
     counter = {"step": 0}
     original = MLXBackend.update
 
@@ -72,14 +80,8 @@ def probe(weights, trajectories, config, refreshes, steps, every):
 
             exact_values, exact_gradient = evaluate(prefixes)
             exact_states = mx.concatenate([prefixes[key] for key in sorted(prefixes)], axis=0)
-            for refresh in refreshes:
-                reused = {}
-                for history, stop in prefixes:
-                    if history in kept[refresh]:
-                        row = bisect_left(batch.starts[history], stop)
-                        reused[(history, stop)] = saved[refresh][history][1][row:row + 1]
-                    else:
-                        reused[(history, stop)] = prefixes[(history, stop)]
+
+            def compare(label, reused, age):
                 values, gradient = evaluate(reused)
                 states = mx.concatenate([reused[key] for key in sorted(reused)], axis=0)
                 norm = mx.sqrt(mx.sum(exact_gradient ** 2))
@@ -91,9 +93,64 @@ def probe(weights, trajectories, config, refreshes, steps, every):
                     mx.abs(values[0] - exact_values[0]),
                 ]
                 mx.eval(numbers)
-                age = max((number - saved[refresh][history][0] for history, _ in prefixes
-                           if history in kept[refresh]), default=0)
-                records[refresh].append((number, age, *(float(item.item()) for item in numbers)))
+                records[label].append((number, age, *(float(item.item()) for item in numbers)))
+
+            def age_of(refresh):
+                return max((number - saved[refresh][history][0] for history, _ in prefixes
+                            if history in kept[refresh]), default=0)
+
+            for refresh in refreshes:
+                reused = {}
+                for history, stop in prefixes:
+                    if history in kept[refresh]:
+                        row = bisect_left(batch.starts[history], stop)
+                        reused[(history, stop)] = saved[refresh][history][1][row:row + 1]
+                    else:
+                        reused[(history, stop)] = prefixes[(history, stop)]
+                compare(refresh, reused, age_of(refresh))
+            if burn or zeros:
+                # The frames before each window, encoded with the current weights. A replay
+                # of the last of them from another starting state is what a burn-in computes.
+                parameters = {key: mx.stop_gradient(value) for key, value in self.p.items()}
+                recurrent = [parameters["gru." + key] for key in ("weight_ih", "weight_hh", "bias_ih", "bias_hh")]
+                encoded = {}
+                for history, stop in prefixes:
+                    count = bisect_left(jobs[history], stop)
+                    if count:
+                        whole_plan = self.plan(self.manifest["history_plans"][history])
+                        encoded[(history, stop)] = (count, self.encode(parameters, whole_plan, count)[0])
+
+                def replayed(key, begin, start):
+                    count, vectors = encoded[key]
+                    if begin >= count:
+                        return start
+                    return mx.stop_gradient(
+                        self.optimized.gru_prefix(vectors[None, begin:count], start, *recurrent)[0][-1:])
+
+                for refresh in refreshes:
+                    for frames in burn:
+                        reused = {}
+                        for key in prefixes:
+                            history, stop = key
+                            if key not in encoded or history not in kept[refresh]:
+                                reused[key] = prefixes[key]
+                                continue
+                            count = encoded[key][0]
+                            # The last window start that leaves at least ``frames`` encoded frames to replay.
+                            target = jobs[history][count - frames] if count > frames else 0
+                            row = max(0, bisect_right(batch.starts[history], target) - 1)
+                            begin = bisect_left(jobs[history], batch.starts[history][row])
+                            reused[key] = replayed(key, begin, saved[refresh][history][1][row:row + 1])
+                        compare((refresh, frames), reused, age_of(refresh))
+                for frames in zeros:
+                    reused = {}
+                    for key in prefixes:
+                        if key not in encoded:
+                            reused[key] = prefixes[key]
+                            continue
+                        count = encoded[key][0]
+                        reused[key] = replayed(key, max(0, count - frames), mx.zeros((1, 64), dtype=mx.float32))
+                    compare(("zeros", frames), reused, 0)
         counter["step"] += 1
         return original(self, step, prefixes=prefixes)
 
@@ -152,6 +209,8 @@ def main():
     parser.add_argument("--refresh", default="64,256,1024,1000000000")
     parser.add_argument("--steps", type=int, help="stop after this many optimizer steps")
     parser.add_argument("--every", type=int, default=20, help="compare at every N-th step")
+    parser.add_argument("--burn-in", default="", help="comma-separated numbers of frames to replay from a reused state")
+    parser.add_argument("--from-zeros", default="", help="comma-separated numbers of frames to replay from the initial state")
     parser.add_argument("--out", type=Path)
     arguments = parser.parse_args()
     if (arguments.synthetic is None) == (arguments.batch is None):
@@ -165,35 +224,38 @@ def main():
         weights, trajectories = collected(arguments.batch, arguments.checkpoint)
         source = f"{len(trajectories)} games from {arguments.batch}"
     refreshes = [int(item) for item in arguments.refresh.split(",")]
+    burn = [int(item) for item in arguments.burn_in.split(",") if item]
+    zeros = [int(item) for item in arguments.from_zeros.split(",") if item]
     batch, kept, records, ran, report = probe(weights, trajectories, PPOConfig(), refreshes, arguments.steps,
-                                              arguments.every)
-    if report is not None:
-        # The exact update the probes rode on, for comparison with updates that reuse states.
-        line = json.dumps({"source": source, "samples": batch.samples, "state_refresh_steps": 1, "part": "exact update",
-                           "optimizer_steps": report.optimizer_steps, "policy_loss": report.policy_loss,
-                           "value_loss": report.value_loss, "approximate_kl": report.approximate_kl,
-                           "clip_fraction": report.clip_fraction})
+                                              arguments.every, burn, zeros)
+
+    def write(line):
         print(line, flush=True)
         if arguments.out is not None:
             arguments.out.parent.mkdir(parents=True, exist_ok=True)
             with arguments.out.open("a") as stream:
                 stream.write(line + "\n")
-    for refresh in refreshes:
-        rows = records[refresh]
+
+    if report is not None:
+        # The exact update the probes rode on, for comparison with updates that reuse states.
+        write(json.dumps({"source": source, "samples": batch.samples, "state_refresh_steps": 1, "part": "exact update",
+                          "optimizer_steps": report.optimizer_steps, "policy_loss": report.policy_loss,
+                          "value_loss": report.value_loss, "approximate_kl": report.approximate_kl,
+                          "clip_fraction": report.clip_fraction}))
+    for label, rows in records.items():
+        if type(label) is int:
+            variant = {"state_refresh_steps": label, "kept_games": len(kept[label])}
+        elif label[0] == "zeros":
+            variant = {"start": "initial state", "replayed_frames": label[1]}
+        else:
+            variant = {"state_refresh_steps": label[0], "kept_games": len(kept[label[0]]), "replayed_frames": label[1]}
         parts = [("all", rows)] + [(f"fifth {part + 1}", [row for row in rows if row[0] * 5 // max(1, ran) == part])
                                    for part in range(5)]
         for name, chosen in parts:
-            if not chosen:
-                continue
-            line = json.dumps({"source": source, "samples": batch.samples, "steps_run": ran,
-                               "planned_steps": batch.planned_steps(PPOConfig()), "state_refresh_steps": refresh,
-                               "kept_games": len(kept[refresh]), "games": len(trajectories), "part": name,
-                               **summarize(chosen)})
-            print(line, flush=True)
-            if arguments.out is not None:
-                arguments.out.parent.mkdir(parents=True, exist_ok=True)
-                with arguments.out.open("a") as stream:
-                    stream.write(line + "\n")
+            if chosen:
+                write(json.dumps({"source": source, "samples": batch.samples, "steps_run": ran,
+                                  "planned_steps": batch.planned_steps(PPOConfig()), **variant,
+                                  "games": len(trajectories), "part": name, **summarize(chosen)}))
 
 
 if __name__ == "__main__":

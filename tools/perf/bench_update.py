@@ -168,6 +168,9 @@ def main():
     parser.add_argument("--decisions-per-window", type=int, default=16)
     parser.add_argument("--steps", type=int, help="stop each run after this many optimizer steps")
     parser.add_argument("--repeat", type=int, default=1)
+    parser.add_argument("--copies", type=int, default=1,
+                        help="use every game this many times, to time a batch of production size from a few games; "
+                             "the copies share their CPU plans but each has its own plan on the GPU")
     parser.add_argument("--out", type=Path, help="append the JSON lines to this file")
     parser.add_argument("--profile", type=Path, help="run under cProfile and write the statistics here; "
                         "timings of such a run are not comparable")
@@ -184,6 +187,9 @@ def main():
     else:
         weights, trajectories = collected(arguments.batch, arguments.checkpoint)
         source = f"{len(trajectories)} games from {arguments.batch}"
+    if arguments.copies > 1:
+        trajectories = trajectories * arguments.copies
+        source += f", each used {arguments.copies} times"
     sizes = sorted(len(item.decisions) for item in trajectories)
     frames = sum(item.recipe.frame_count for item in trajectories)
     print(f"# {source}: {sum(sizes)} samples, {frames} frames, game sizes {sizes}", file=sys.stderr, flush=True)

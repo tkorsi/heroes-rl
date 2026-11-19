@@ -45,8 +45,15 @@ def test_the_fidelity_probe_compares_reused_states_with_replayed_ones(scripted):
     assert summary["largest_state_age_steps"] >= 3
     # At the usual learning rate the weights move, and states reused for the whole update drift measurably.
     moving = replace(still, learning_rate=3e-2)
-    _, _, records, _, _ = state_fidelity.probe(*scripted, moving, [10**9], None, 1)
-    assert state_fidelity.summarize(records[10**9])["state_error_max"] > 1e-5
+    _, _, records, _, _ = state_fidelity.probe(*scripted, moving, [10**9], None, 1, burn=[12, 10**6], zeros=[10**6, 6])
+    drift = state_fidelity.summarize(records[10**9])["state_error_max"]
+    assert drift > 1e-5
+    # Replaying everything before a window, from the kept initial state or from zeros, is the exact replay.
+    assert state_fidelity.summarize(records[(10**9, 10**6)])["state_error_max"] < 1e-5
+    assert state_fidelity.summarize(records[("zeros", 10**6)])["state_error_max"] < 1e-5
+    # Replaying only the last frames is something in between.
+    assert len(records[(10**9, 12)]) == len(records[("zeros", 6)]) == 6
+    assert state_fidelity.summarize(records[("zeros", 6)])["state_error_max"] > 1e-5
 
 
 def test_the_game_profiler_splits_a_game_into_its_parts(fake_engine, tmp_path):

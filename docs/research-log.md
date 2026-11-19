@@ -7874,3 +7874,146 @@ update on such a batch or on scripted games for several settings;
 `state_fidelity.py` measures criterion 2; `profile_game.py` plays one real game
 in-process and splits its wall time into engine wait, decoding, encoding, the
 forward pass, sampling and recipe compilation.
+
+### 2026-11-19 — Measured on real games: state reuse is fast but inaccurate; where play time goes
+
+**Correction to the entry above.** It says the permission check refused every
+launch, so only tests ran. Later the same day the user's own message reached the
+assistant's session directly and the same launches were accepted. Everything
+below ran after that, by the assistant, under the user's explicit permission in
+the project thread ("you can run different parts of the project, or you can run
+the whole learning loop"). The acceptance criteria of the entry above were
+written before any of these runs and are judged here.
+
+**Conditions of every measurement in this entry.** Clone `~/Projects/Heroes-opt`,
+branch `claude/project-thread-mq0j5t`. Own state folder
+`~/Projects/Heroes-artifacts/perf-opt-mq0j5t` with a copy of checkpoint 1,787
+(SHA-256 `a70e7095…`, equal to the file in `training-trial`). M4 Max on the same
+65 W charger, battery between 16% and 30% and charging, so not power-limited at
+the time. The user's run was in its PPO update of batch 1,789 throughout: its
+ten actors were idle, **its update shared the GPU with every update timing
+below**, and at times two of the assistant's own GPU jobs ran together. Absolute
+update times are therefore upper bounds; comparisons were run back to back or
+alternating. Nothing was written to `training-trial`, and no checkpoint was
+written anywhere.
+
+**A fixed batch of real games.** `tools/perf/collect_games.py`, three actors,
+seed 1: 12 games in 1,532 s, eleven finished naturally and one stopped at day
+366. 135,373 learner samples, 1,033,919 learner frames (7.6 frames per trained
+decision), games of 263 to 28,070 samples, 4,233 optimizer steps at the default
+settings. The games ran at 94 to 165 decisions per second each.
+
+**The update on that batch (hypothesis 1: confirmed).**
+`tools/perf/bench_update.py`, same weights, games and shuffle seed for every run.
+
+| `state_refresh_steps` | Run | Seconds per step | Whole update | Whole-game replays |
+| --- | --- | --- | --- | --- |
+| 1 (exact, the default) | 300 steps, twice | 0.360, 0.386 | 1,691 s and 1,785 s, projected | none |
+| 1,024 | 300 steps, twice | 0.040, 0.044 | | |
+| 256 | whole update | | 262 s | 185 |
+| 1,024 | whole update | | 225 s | 55 |
+| never refreshed | whole update | | 214 s | 12 |
+
+The exact update was not run to its end for timing; its total is the 300-step
+rate times 4,233 steps. With states reused the update is 6.5 to 8 times faster
+and the time per step no longer depends on the length of the games. On scripted
+games of 20,000, 5,000 and 5,000 decisions (180,003 frames) the same comparison
+gave 0.162 and 0.182 s per step against 0.039 and 0.032. With states reused, 37
+to 39 s of the 214 to 262 s is CPU plan building and 18 s the finite check.
+
+**Accuracy of reused states (hypothesis 2: rejected for every value tested).**
+`tools/perf/state_fidelity.py` ran the exact update over all 4,233 steps and, at
+every 25th step (170 minibatches), compared what each setting would have used
+for the same minibatch at the same weights.
+
+| Refresh every | State error, median / p95 | Log-probability difference, median / p95 | Value difference, median / p95 | Gradient cosine, median / 5th percentile / lowest |
+| --- | --- | --- | --- | --- |
+| 64 steps | 0.063 / 0.244 | 0.009 / 0.112 | 0.047 / 0.452 | 0.998 / 0.514 / −0.104 |
+| 256 steps | 0.132 / 0.365 | 0.022 / 0.179 | 0.089 / 0.455 | 0.990 / 0.320 / −0.104 |
+| 1,024 steps | 0.213 / 0.501 | 0.034 / 0.280 | 0.151 / 0.647 | 0.951 / 0.004 / −0.862 |
+| never | 0.417 / 0.683 | 0.066 / 0.445 | 0.449 / 1.299 | 0.381 / −0.275 / −0.956 |
+
+State error is the relative L2 distance of the windows' starting states from
+the exact ones; the differences are the largest over the minibatch's decisions.
+The criteria were a cosine of at least 0.99 at the median and 0.95 at the 5th
+percentile, and a log-probability difference of at most 0.02 at the 95th
+percentile. Only the median cosine at 64 and 256 steps passes. The state before
+a window moves by 6% within at most 63 optimizer steps and by 42% over an
+update, far more than the weights themselves: this recurrent state depends on
+the weights through the whole game before it. In the first fifth of the update
+the error at a given age is larger than later (median 0.34 for ages up to 825
+steps, against 0.19 to 0.21 for ages up to 1,023 later).
+
+The exact update's own losses on this batch were policy loss 0.00155, value
+loss 0.2803, KL 0.0047 and clip fraction 0.031. The updates that reused states
+reported 0.0018 to 0.0020, 0.284, 0.0054 to 0.0055 and 0.033 to 0.037 (256 and
+1,024 steps) and 0.0013, 0.2797, 0.0041, 0.026 (never). These averages look
+close and hide the per-minibatch differences above; a state that is never
+refreshed even reports a smaller KL, because it does not see the weights move.
+
+**Decision by the criteria set beforehand.** `state_refresh_steps` stays at 1
+and no other value is recommended. What "stored-state" recurrent PPO does for
+the whole update, never refreshing, would here give gradients that mostly point
+elsewhere (median cosine 0.38). The setting remains in the code, off, because
+the measurement tools and the follow-up below build on it.
+
+**Where a game's time goes.** `tools/perf/profile_game.py`, one game in-process
+with the same checkpoint, both seats.
+
+| Game | Decisions | Play | Engine wait | Policy forward | Decoding | Sampling | Encoding | Other | Compile after |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| seed 1, ended naturally on day 12 | 1,483 | 9.0 s | 47.5% | 28.9% | 10.9% | 8.0% | 2.7% | 1.8% | 0.4 s |
+| seed 4, stopped after day 90 | 14,801 | 136.1 s | 50.5% | 28.2% | 11.4% | 5.8% | 2.3% | 1.6% | 16.4 s |
+
+Four later plain runs of the seed-4 game took 119 to 124 s (120 to 124
+decisions per second) with identical digests, so a seeded game replays exactly.
+"Engine wait" is the time the actor's main thread waits for the next message.
+It includes the JSON parsing of that message, which runs in the reader thread.
+The engine folder of the seed-4 game held 1.95 GB when it ended, 132 KB per
+decision, almost all of it replay logs nothing reads. Under cProfile, which
+inflates Python-heavy code, the largest items of the 205 s of play were the
+observation features of the policy (69 s: its memo key 21 s, the map and tree
+encoding of new observations 29 s, the memo's size accounting 16 s), decoding
+and validating observations (27 s), the action walk (25 s, play and compile
+together) and JSON parsing (21 s, of which 13 s the per-object duplicate-key
+hook). In a 30-day game 12,779 observations arrived for 5,098 decisions, and
+two in five repeated the observation before them exactly: the engine sends what
+a seat sees as a view and again inside the decision that follows.
+
+**A play-side change that was tried and dropped.** Reusing the decoded
+observation when a decision repeats the preceding view, with shortcuts by object
+identity in the policy memo, the guard and the recipe compiler. The same seeded
+game gave the same digest and took 123.5 s against 120.8 and 123.8 s before:
+the type-exact comparison of the raw observations costs what the reuse saves.
+A first version compared marshal bytes of the whole observation and caught only
+17.5% of the repeats, because those bytes depend on which strings the rest of
+the message shares. The change is not in the branch.
+
+**Changes kept.** In the MLX update, the plan of a minibatch is now built on a
+helper thread while the GPU runs earlier steps, and the finite check covers the
+arrays a step wrote and is evaluated with the step. Both leave the arithmetic
+unchanged. One alternating measurement with states reused (400 steps, twice
+each, three GPU jobs running) gave 0.127 and 0.125 s per step before and 0.115
+and 0.118 after. That is a first indication under heavy contention, not a clean
+number, and the effect on the default exact update is unmeasured.
+
+**Observations that are not changes.**
+
+- *Game length.* In the user's batches 1,788 and 1,789 a seat answers about 100
+  decisions per game day (median 96.5), the mean game lasts 151 days, and the 27%
+  of games that reach day 200 hold 60% of all decisions. With the guard's budget
+  of 32 stack moves per hero or town and day, most of a long game is stack
+  management. This multiplies both play and update time and is a question of
+  the guard and the action space, not of code speed.
+- *The engine.* About half of a game's wall time is spent waiting for the
+  engine. Reading `engine/ExplorerRL` suggests where: the observation is rebuilt
+  and serialized several times per decision, sent once as a view and again in the
+  decision, and copied into the replay ledger, at 132 KB per decision. Removing
+  that needs an engine change and a rebuild; it was read, not measured.
+- *Minibatch size.* An update is 4,233 optimizer steps of 32 samples here and
+  42,930 for 100 games. Each step replays two games whatever it does with them.
+
+**Limitations.** One batch of 12 games from one checkpoint. Gradient cosines are
+per minibatch of 32 samples, a noisy quantity; they show that reused states
+change what a step does, not how learning would differ. The GPU was shared in
+every timing. Nothing here measured learning.
