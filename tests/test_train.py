@@ -103,23 +103,23 @@ def test_check_reports_the_start_and_writes_nothing(config, capsys):
     with pytest.raises(SystemExit) as refused:
         main(["train", "2", "--workers", "0", *paths])
     assert refused.value.code == 2 and not config.state.exists()
-    for bad in (["--state-refresh-steps", "0"], ["--windows-per-minibatch", "4", "--windows-per-game", "3"]):
+    for bad in (["--windows-per-replay", "0"], ["--windows-per-minibatch", "0"]):
         with pytest.raises(SystemExit) as refused:
             main(["train", "2", *bad, *paths])
         assert refused.value.code == 2 and not config.state.exists()
 
 
-def test_the_state_refresh_setting_reaches_the_update_and_the_log(config):
-    main(["train", "2", "--fresh", "--games-per-update", "2", "--workers", "2", "--state-refresh-steps", "1000",
-          "--windows-per-minibatch", "4", "--windows-per-game", "2",
+def test_the_replay_sharing_setting_reaches_the_update_and_the_log(config):
+    main(["train", "2", "--fresh", "--games-per-update", "2", "--workers", "2",
+          "--windows-per-minibatch", "4", "--windows-per-replay", "2",
           "--state", str(config.state), "--legacy", str(config.legacy), "--vcmi", str(config.vcmi),
           "--game-data", str(config.game_data), "--backend", "torch"])
     records = _log(config)
-    assert records[0]["event"] == "start" and records[0]["ppo"]["state_refresh_steps"] == 1000
-    assert (records[0]["ppo"]["windows_per_minibatch"], records[0]["ppo"]["windows_per_game"]) == (4, 2)
+    assert records[0]["event"] == "start"
+    assert (records[0]["ppo"]["windows_per_minibatch"], records[0]["ppo"]["windows_per_replay"]) == (4, 2)
     update = next(record for record in records if record["event"] == "update")
-    # Two three-decision games are one window each: nothing is worth keeping, nothing is replayed whole.
-    assert update["game_replays"] == 0 and update["samples"] == 6
+    # Two three-decision games are one window each: one round of one step.
+    assert (update["samples"], update["optimizer_steps"]) == (6, 1)
 
 
 def test_a_game_number_is_never_handed_out_twice(tmp_path):

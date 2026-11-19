@@ -264,7 +264,11 @@ class MLXBackend(MLXModel):
             parameters["gru." + key] for key in ("weight_ih", "weight_hh", "bias_ih", "bias_hh")
         ])[0]
 
-    def prefix_states(self, prefixes, *, synchronize=True):
+    def prefix_states(self, prefixes):
+        """The state before each requested frame, from one replay per game with the current weights.
+
+        The replays are started and not waited for; the first step that uses a state does that.
+        """
         mx = self.mx
         parameters = {key: mx.stop_gradient(value) for key, value in self.p.items()}
         result = {}
@@ -274,26 +278,8 @@ class MLXBackend(MLXModel):
                 index = entry["state_index"]
                 value = initial if index < 0 else states[index:index + 1]
                 result[(spec["history"], entry["stop"])] = mx.stop_gradient(value)
-        if synchronize:
-            mx.eval(list(result.values()))
-        else:
-            mx.async_eval(list(result.values()))
+        mx.async_eval(list(result.values()))
         return result
-
-    def prefix_table(self, spec):
-        """One replay of a game: a ``(len(spec["states"]), 64)`` array, one row per requested state.
-
-        Only this small table outlives the call; it is what a game's windows
-        start from until the game is replayed again.
-        """
-        mx = self.mx
-        parameters = {key: mx.stop_gradient(value) for key, value in self.p.items()}
-        initial, states = self._replay(parameters, spec)
-        rows = mx.array([entry["state_index"] + 1 for entry in spec["states"]], dtype=mx.int32)
-        table = initial if states is None else mx.concatenate((initial, states), axis=0)
-        table = mx.stop_gradient(table[rows])
-        mx.async_eval(table)
-        return table
 
     def forward(self, p, step, plan, prefixes):
         mx = self.mx
@@ -327,13 +313,9 @@ class MLXBackend(MLXModel):
     def _moments(self):
         return [value for state in self.adam.values() for key, value in state.items() if key != "step"]
 
-    def update(self, step, *, prefixes=None):
+    def update(self, step, prefixes):
+        """One optimizer step. ``prefixes`` holds the state before each window of the minibatch."""
         mx = self.mx
-        if prefixes is None:
-            prefixes = self.prefix_states(step["prefixes"])
-        elif set(prefixes) != {(spec["history"], entry["stop"])
-                              for spec in step["prefixes"] for entry in spec["states"]}:
-            raise ValueError("Prepared prefixes differ from this minibatch's boundaries")
         plan = self._prepare_plan(step["plan"])
         targets = tuple(self._array(step[key]) for key in ("old_log_probs", "old_values", "advantages", "returns"))
         # Only the parameter tree is transformed. Metadata, NumPy-backed step
