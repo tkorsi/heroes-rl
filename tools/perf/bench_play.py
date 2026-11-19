@@ -21,6 +21,7 @@ a batch. Games are stopped at the end of the window.
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 from dataclasses import replace
 import json
 from pathlib import Path
@@ -108,6 +109,9 @@ def measure(config, *, games=None, seconds=None, warmup=30.0, seed=1):
                   compile_seconds=round(sum(game.compile_seconds for game in finished), 1),
                   statuses=[f"{game.status}:{game.reason}" for game in finished],
                   days=[game.day for game in finished], choices=[list(game.choices) for game in finished],
+                  # What the learner seats chose, by kind of action, most frequent first.
+                  action_kinds=dict(Counter(action.kind for game in finished if game.trajectory is not None
+                                            for action in game.trajectory.actions).most_common()),
                   game_seconds=[round(game.seconds, 1) for game in finished],
                   digests=[digest(game.trajectory)[:16] if game.trajectory is not None else None for game in finished])
     return report

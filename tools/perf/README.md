@@ -42,6 +42,28 @@ $P tools/perf/profile_game.py $S --max-days 60 --out $S/results/profile-game.jso
 $P tools/perf/profile_game.py $S --max-days 60 --profile $S/results/game.prof   # per function; slows Python
 ```
 
+## How fast several actors play
+
+Two measurements of the play phase alone, with the actor pool of training.
+
+```sh
+# the same seeded games on ten actors, to their end at day 60: one digest per game, time per decision
+$P tools/perf/bench_play.py $S --workers 10 --games 10 --max-days 60 --out $S/results/play.jsonl
+# every actor busy for 130 s after a 20 s warm-up: decisions per second of all games together
+$P tools/perf/bench_play.py $S --workers 10 --seconds 130 --warmup 20 --out $S/results/play.jsonl
+```
+
+The first is how a change to the play path is shown to be exact on more than
+one game: game `n` of a seed is the same game in every run, whatever the number
+of actors, so every digest must stay as it was. The second is the rate a
+training run collects at while no actor is idle. It depends on everything else
+the Mac is doing, so compare versions alternating, and compare actor counts in
+one sitting. `--vcmi` selects another engine build; `HEROES_VCMI` does the same.
+
+Never edit the source tree a measurement is running from: an actor imports the
+recipe compiler when its first game ends, and a file changed meanwhile fails
+that game. Measure from a copy (`git archive HEAD | tar -x -C SOMEWHERE`).
+
 ## A fixed batch of real games
 
 Plays games with the folder's checkpoint and keeps each finished game, compiled

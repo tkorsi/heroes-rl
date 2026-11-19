@@ -48,6 +48,14 @@ heroes and towns, resources and the open window. **Offers** say which actions
 are legal now. An **action** is typed: `move_to` a tile, `open_town`,
 `recruit` a count, `choose_dialog`, `end_turn` and so on.
 
+The engine sends an observation once, in a `view`, whenever what the player
+sees has changed. A decision is always about the observation of the player's
+latest view, so the launcher tells the engine not to repeat it
+(`EXPLORER_RL_DECISION_OBSERVATION=0`) and the decision frame gets the view's
+observation, the same Python object. The policy and the recipe compiler
+recognise it by identity and do its work once. An engine that still repeats the
+observation is read as before and gives equal frames.
+
 ## One game
 
 [`heroes/engine/process.py`](../heroes/engine/process.py) starts a fresh
@@ -120,8 +128,10 @@ window or swapping stacks back and forth. It restricts what is sampled; it is
 not a reward and not a game rule. See the
 [restriction register](temporary-restrictions.md).
 
-While acting, the model reuses encodings of trees and observations it has
-already computed. That memo is dropped as soon as any weight changes.
+While acting, the model reuses encodings it has already computed: of trees,
+of the map it encoded last (most decisions are taken in a window while the map
+stays as it is) and of the observation it encoded last. That memo is dropped as
+soon as any weight changes.
 
 ## The update
 
@@ -197,7 +207,7 @@ happens once, when the state folder is empty.
 | --- | --- |
 | [engine/ExplorerRL](../engine/ExplorerRL/) | visible-state adapter, typed actions, socket transport |
 | [engine/patches](../engine/patches/) | changes to pinned upstream VCMI 1.7.5 |
-| [engine/ExperimentReplay](../engine/ExperimentReplay/) | the engine-side replay recorder and the replay worker. The loop reads none of their output, but the engine's end-of-game shutdown is built on the recorder, so it stays switched on |
+| [engine/ExperimentReplay](../engine/ExperimentReplay/) | the engine-side replay recorder and the replay worker. The engine's end-of-game shutdown is built on the recorder, so it stays switched on, but with `VCMI_EXPERIMENT_LEDGER=0` it writes no ledger; training reads none of it. `--keep-game-files` turns the ledger back on |
 | [engine/NativeSession](../engine/NativeSession/) | an earlier reusable-host experiment; not used |
 | [maps/](../maps/) | the scenario both seats play, `hero-management-v4` |
 
@@ -217,9 +227,19 @@ cmake --build vcmi/build --parallel 2 \
   --target vcmiclient vcmiserver ExplorerRL Nullkiller BattleAI vcmireplay
 ```
 
-The Python side expects the built client at `HEROES_VCMI`, by default
-`~/Projects/Heroes-artifacts/runtime/local-v8-sleep-resume-v1/bin/vcmiclient`,
+A build finds its library through the path of the build folder. To use it for
+training, copy it into a runtime folder that stands on its own:
+
+```sh
+python3 tools/freeze_runtime.py ~/Projects/Heroes-artifacts/runtime/local-v8-play-switches-v1
+```
+
+The Python side expects the client at `HEROES_VCMI`, by default
+`~/Projects/Heroes-artifacts/runtime/local-v8-play-switches-v1/bin/vcmiclient`,
 and the original game's `Data` folder under `~/Projects/Heroes-artifacts/game-data`.
+That runtime is the engine of `local-v8-sleep-resume-v1` plus the two switches
+above. Both are off unless the launcher sets them, and an older runtime ignores
+them: it plays the same games, slower, and writes its ledger.
 Python dependencies are pinned in [dependencies/](../dependencies/):
 Torch 2.9.1, NumPy 2.3.5 and MLX 0.31.1 on CPython 3.13.
 

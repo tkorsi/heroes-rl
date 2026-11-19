@@ -23,7 +23,7 @@ def _artifacts():
 
 
 def _vcmi():
-    return Path(os.environ.get("HEROES_VCMI", _artifacts() / "runtime/local-v8-sleep-resume-v1/bin/vcmiclient")).expanduser()
+    return Path(os.environ.get("HEROES_VCMI", _artifacts() / "runtime/local-v8-play-switches-v1/bin/vcmiclient")).expanduser()
 
 
 @dataclass(frozen=True)
