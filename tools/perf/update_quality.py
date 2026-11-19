@@ -6,8 +6,10 @@
 
 Every run starts from the checkpoint as training would, with its Adam state,
 and makes one whole update on ``--batch``. Its weights are kept in ``--work``
-as ``weights-<name>.pt``, so an interrupted comparison continues where it
-stopped, and a weights file put there by other means is judged like the rest.
+as ``weights-<name>.pt`` and its verdict as ``judged-<name>.json``, so an
+interrupted comparison continues where it stopped, a later call adds settings
+without repeating the earlier ones, and a weights file put there by other means
+is judged like the rest.
 
 Each set of weights, and the checkpoint's own, is then judged without taking a
 step: the PPO losses over all of ``--batch`` and over ``--holdout``, games
@@ -131,10 +133,13 @@ def main():
         sets[item.stem.removeprefix("weights-")] = torch.load(item, map_location="cpu", weights_only=True)
     held = games(arguments.holdout) if arguments.holdout is not None else None
     for name, weights in sets.items():
-        record = {"part": "judged", "name": name, "trained_on": judge(arguments.checkpoint, weights, trajectories)}
-        if held is not None:
-            record["held_out"] = judge(arguments.checkpoint, weights, held)
-        write(record)
+        kept = arguments.work / f"judged-{name}.json"  # judged once, like the update itself
+        if not kept.exists():
+            record = {"trained_on": judge(arguments.checkpoint, weights, trajectories)}
+            if held is not None:
+                record["held_out"] = judge(arguments.checkpoint, weights, held)
+            kept.write_text(json.dumps(record))
+        write({"part": "judged", "name": name, **json.loads(kept.read_text())})
     changes = {name: change(weights, base) for name, weights in sets.items() if name != "checkpoint"}
     names = list(changes)
     write({"part": "changes", "length": {name: float(changes[name].norm()) for name in names},
