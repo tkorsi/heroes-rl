@@ -7727,3 +7727,150 @@ spawning and `caffeinate` on macOS were judged by reading. How the real engine
 reacts to a closed policy socket or to SIGTERM was read from the C++ side and
 from the previous pipeline's production use, not run. The review cannot replace
 the first real run, which remains open.
+
+### 2026-11-19 — Where a training cycle spends its time; reusable window states (optimization branch)
+
+**Goal (user request).** Find and test ways to make training faster without
+disturbing the user's own 1,000-game run. Work in a separate clone
+(`~/Projects/Heroes-opt`, branch `claude/project-thread-mq0j5t`, from
+`e46fe66`); nothing in `~/Projects/Heroes` or in the run's state folder
+`training-trial` was written. The user authorized assistant execution in the
+project thread. The permission check of the assistant's session nevertheless
+refused every launch of a real game and every timing run, so **only tests
+ran**; see "What actually ran".
+
+**Observed in the user's run (read-only, from `training-trial/log.jsonl`).**
+The run continues checkpoint 1,787 with the defaults: ten actors, 100 games per
+update, windows of 16 decisions, two windows per minibatch, one epoch.
+
+| Update | Games | Samples | Optimizer steps | Collect | Update | Per step | KL | Clip fraction |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1,786 | 10 | 105,875 | 3,311 | 589 s | 652 s | 197 ms | 0.0028 | 0.023 |
+| 1,787 | 10 | 172,718 | 5,400 | 1,004 s | 1,692 s | 313 ms | 0.0045 | 0.030 |
+| 1,788 | 100 | 1,372,976 | 42,930 | 6,605 s | 16,756 s | 390 ms | 0.0642 | 0.105 |
+
+The PPO update is 53%, 63% and 72% of these cycles. Of update 1,788's 16,756 s,
+772 s is CPU plan building and 103 s is the finite check of weights and Adam
+state. Batch 1,789 (100 games, 1,710,118 samples, 18 stopped at the day limit)
+took 3 h 17 min to collect and its update was still running at the time of
+writing.
+
+*Why the update is slow.* Each optimizer step takes two windows and replays
+both games from their first frame to the window with the current weights. The
+replay length is the sample-weighted mean game length halved: about 10,200
+decisions per window in update 1,786, 17,100 in 1,787 and 11,900 in 1,788,
+against 16 decisions that are differentiated. A straight line through the first
+two updates gives about 26 ms per step that does not depend on game length and
+about 8.4 µs per replayed decision. That is a two-point estimate from whole
+updates, not a measurement of the parts, and update 1,788 is slower than it
+predicts (see the power finding below).
+
+*The policy moves much further in a 100-game update.* The mean approximate KL
+between the updated and the behaviour policy is 0.064 with 10.5% of the samples
+clipped, against 0.003 to 0.005 and 2 to 3% in the 10-game updates. A 100-game
+batch is one epoch of 42,930 Adam steps at 3e-4 on minibatches of 32 samples.
+This is an observation about learning dynamics, not a speed measurement, and
+nothing was changed because of it.
+
+**The Mac was power-limited for most of the run.** `system_profiler
+SPPowerDataType` reports a 65 W charger. `pmset -g log` shows the battery at
+77% at 00:28, at 28% at 02:05 and at 8% at 02:18:40, all but the first "Using
+AC", and still at 7% at 11:53. The display turned off at 02:18:51. The run
+started at 01:52:37 local time. In `log.jsonl` the rate of answered decisions
+per second of game time, both seats together, is:
+
+| Games | Decisions per second and game |
+| --- | --- |
+| updates 1,786 and 1,787 (ten games each, the evening before) | 103.5 and 106.4 |
+| batch 1,788, the first 50 games to finish (up to minute 27.3) | 98.7 and 94.3 per quarter |
+| batch 1,788, the last 50 games (minute 27.6 to 109.6) | 44.8 and 32.8 per quarter |
+| batch 1,789, all 100 games | 34.0 (33.2 to 34.9 per quarter) |
+| games under 2,000 decisions: updates 1,786 to 1,788 / batch 1,789 | about 120 / 42.3 (median) |
+
+The rate fell by about a factor of three within a minute of the battery
+reaching 8% and stayed there for nine hours while the charge held at 7%, which
+it can only do if the machine draws no more than the charger supplies. Short
+games slowed as much as long ones, so the cause is not game length. CPU plan
+building per optimizer step also doubled, from 9.6 ms and 8.9 ms in updates
+1,786 and 1,787 to 18.0 ms in 1,788. The supported reading is that a 65 W
+supply cannot carry ten games, that the battery covered the difference until it
+was empty, and that macOS then limited performance to the charger. The display
+turning off in the same minute is a confound these logs cannot separate, and no
+intervention (a stronger charger, a display kept on) was tried. The user was
+told. **Timings of this run after 02:18 are not a baseline for code changes.**
+
+**Change: reusable window states.** `PPOConfig.state_refresh_steps` (default 1,
+the behaviour so far). With a value above 1 the update replays a game once to
+its last window, keeps the recurrent state before each of its windows, and
+reuses these states for that many optimizer steps before it replays the game
+again. A window can then start from a state computed with weights that are at
+most that many steps old; the window itself is always computed and
+differentiated with the current weights. Hidden states recorded during play are
+still never used. A game expected in a minibatch less than once per refresh
+interval (`refresh × windows per minibatch × its windows < all windows`), or
+with a single window, is not kept: it is replayed up to the window at each use
+with the current weights, as before, because replaying it to the end would cost
+more than it saves. The rule is `Batch.kept` in `heroes/learner/ppo.py`; the
+torch reference and the MLX update share it. `PPOReport.game_replays` and the
+update record in `log.jsonl` count the whole-game replays.
+
+This is a change of what is computed, not only of how fast, as soon as the
+setting is above 1: the states are stale by up to that many optimizer steps.
+Stored-state recurrent PPO as commonly implemented uses states from the rollout
+for the whole update; this setting is between that and the exact replay.
+
+**Hypotheses and acceptance criteria, set before any measurement.**
+
+1. *Speed.* On a fixed batch of real games, MLX update time per optimizer step
+   with `state_refresh_steps` of 1,024 no longer grows with game length, and
+   the whole update of a ten-game batch like 1,787 is at least five times
+   faster than with 1. Measured with `tools/perf/bench_update.py`, both settings
+   on the same games, weights and shuffle seed, interleaved, on a Mac that is
+   not power-limited and whose GPU is not shared with another update.
+2. *Fidelity per step.* For the same minibatch and the same weights, taken along
+   an exact update: the gradient computed from reused states has a cosine of at
+   least 0.99 at the median and 0.95 at the 5th percentile with the exact
+   gradient, and the log-probabilities differ by at most 0.02 at the 95th
+   percentile (0.02 is the existing first-minibatch limit between play and
+   update). Measured with `tools/perf/state_fidelity.py` for 64, 256, 1,024 and
+   "never refresh", by fifths of the update, because staleness grows with the
+   distance the weights have moved.
+3. *A setting that fails 2 is not recommended as a default.* If only small
+   values pass, the default stays 1 and the report says what the speed-up of
+   the passing value is.
+
+None of this can show that learning is unaffected; only training runs can.
+
+**What actually ran.** `python -m pytest` on the Mac, against
+`tests/fake_vcmi.py` with random weights in temporary folders: 41 tests pass
+(32 before this branch). Nine are new:
+
+- The MLX update is run in tests for the first time, on scripted games, and
+  agrees with the torch reference in policy loss, value loss, KL and clip
+  fraction within 2% (or 2e-4 absolute) after a five-step update; the same with
+  kept states refreshed every third step, and on a scripted 20×20 map whose
+  objects move every day, which takes the sparse prefix CNN.
+- With a learning rate of zero the losses with states kept for the whole update
+  equal those with a replay at every step (MLX: within 1e-5 relative; torch:
+  exactly), and the replay counts are as the rule predicts.
+- The scripts in `tools/perf` run end to end on tiny scripted games, and the
+  fidelity probe reports zero error while the weights stand still and a nonzero
+  one when they move.
+
+No real game was played, no saved game was read, no benchmark was timed and no
+checkpoint was written. The commands that could not run are in
+`tools/perf/README.md`.
+
+**Limitations.** The scripted games offer one legal action, so in these tests
+the gradient reaches the weights through the value head only; the policy heads'
+log-probabilities are constant. Agreement of the MLX update with the reference
+on real games still rests on its first-minibatch check. The acceptance criteria
+above are unmeasured. The two-point cost model is an estimate. The power
+finding is an inference from two logs that agree in time.
+
+**Tools added (`tools/perf/`).** `collect_games.py` plays real games into a
+state folder of its own and keeps each `Game`; `bench_update.py` times the MLX
+update on such a batch or on scripted games for several settings;
+`state_fidelity.py` measures criterion 2; `profile_game.py` plays one real game
+in-process and splits its wall time into engine wait, decoding, encoding, the
+forward pass, sampling and recipe compilation.
