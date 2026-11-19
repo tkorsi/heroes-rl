@@ -46,3 +46,22 @@ def test_the_fidelity_probe_compares_reused_states_with_replayed_ones(scripted):
     moving = replace(still, learning_rate=3e-2)
     _, _, records, _ = state_fidelity.probe(*scripted, moving, [10**9], None, 1)
     assert state_fidelity.summarize(records[10**9])["state_error_max"] > 1e-5
+
+
+def test_the_game_profiler_splits_a_game_into_its_parts(fake_engine, tmp_path):
+    import profile_game
+    from heroes import checkpoint
+    from heroes.config import Config
+    engine = fake_engine(days=5, map=20)
+    config = Config(vcmi=engine.binary, game_data=engine.data, game_map=engine.game_map, state=tmp_path / "state")
+    checkpoint.save(config.state, checkpoint.fresh(learning_rate=3e-4))
+    report = profile_game.measure(config, seed=1, profile=tmp_path / "game.prof")
+    assert (report["status"], report["choices"], report["samples"]) == ("completed", [5, 5], 5)
+    assert report["parts_calls"]["policy forward"] == report["parts_calls"]["encoding frames"] >= 30
+    assert report["parts_calls"]["sampling the action"] == 10
+    assert 0 <= sum(report["parts_seconds"].values()) <= report["play_seconds"] and (tmp_path / "game.prof").is_file()
+    assert 0 <= report["compile_encoding_seconds"] <= report["compile_seconds"]
+    assert not (config.state / "profile-games" / "game-900001").exists()  # the engine folder is removed
+    # The wrappers are taken off again.
+    from heroes.engine.env import Env
+    assert Env._wait.__name__ == "_wait"

@@ -91,8 +91,12 @@ def collected(batch, path):
     return checkpoint.load_model(path).state_dict(), trajectories
 
 
-def run(weights, trajectories, config, steps):
-    """One update from ``weights``; returns its timings and metrics. The weights are not kept."""
+def run(weights, trajectories, config, steps, profile=None):
+    """One update from ``weights``; returns its timings and metrics. The weights are not kept.
+
+    With ``profile`` the update runs under cProfile, which slows its Python
+    side, and the statistics are written to that file.
+    """
     from heroes.learner.mlx.update import update
     from heroes.model.policy import ContextualActorCritic, ModelConfig
     model = ContextualActorCritic(ModelConfig())
@@ -110,13 +114,27 @@ def run(weights, trajectories, config, steps):
         if step >= limit and limit < planned:
             raise _Enough
 
+    profiler = None
+    if profile is not None:
+        import cProfile
+        profiler = cProfile.Profile()
     started, report = time.perf_counter(), None
     try:
+        if profiler is not None:
+            profiler.enable()
         report = update(model, optimizer, trajectories, config=config,
                         generator=torch.Generator().manual_seed(0), progress=progress)
     except _Enough:
         pass
+    finally:
+        if profiler is not None:
+            profiler.disable()
     finished = time.perf_counter()
+    if profiler is not None:
+        import pstats
+        profile.parent.mkdir(parents=True, exist_ok=True)
+        profiler.dump_stats(profile)
+        pstats.Stats(profiler, stream=sys.stderr).sort_stats("cumulative").print_stats(35)
     warm = max(1, len(stamps) // 5)  # the first fifth carries plan building and kernel compilation
     result = {
         "state_refresh_steps": config.state_refresh_steps,
@@ -151,6 +169,8 @@ def main():
     parser.add_argument("--steps", type=int, help="stop each run after this many optimizer steps")
     parser.add_argument("--repeat", type=int, default=1)
     parser.add_argument("--out", type=Path, help="append the JSON lines to this file")
+    parser.add_argument("--profile", type=Path, help="run under cProfile and write the statistics here; "
+                        "timings of such a run are not comparable")
     arguments = parser.parse_args()
     if (arguments.synthetic is None) == (arguments.batch is None):
         parser.error("give either --synthetic or --batch")
@@ -172,7 +192,8 @@ def main():
             for refresh in (int(item) for item in arguments.refresh.split(",")):
                 config = replace(PPOConfig(), state_refresh_steps=refresh, windows_per_minibatch=windows,
                                  decisions_per_window=arguments.decisions_per_window)
-                result = {"source": source, "frames": frames, **run(weights, trajectories, config, arguments.steps)}
+                result = {"source": source, "frames": frames, "profiled": arguments.profile is not None,
+                          **run(weights, trajectories, config, arguments.steps, arguments.profile)}
                 line = json.dumps(result)
                 print(line, flush=True)
                 if arguments.out is not None:
