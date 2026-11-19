@@ -8401,7 +8401,7 @@ above that kept states for far longer.
 At the default learning rate of 3e-4 the grouped update of the entry above
 changed the weights by 1.99 and 2.00 (two seeds), the default by 4.57 and 4.38.
 The cosine between the weight changes of two exact updates that differ only in
-the shuffle is 0.54, and between any two updates measured here 0.36 to 0.69:
+the shuffle is 0.54, and between any two updates measured here 0.36 to 0.76:
 most of an update's change of the weights is noise of the minibatches, and for
 Adam in that regime the distance grows with the learning rate times the square
 root of the number of steps. Eight times fewer steps then travel the square
@@ -8433,8 +8433,8 @@ grouped update is a correct but smaller update: about 0.44 times the weight
 change and half the clipped share.
 
 **What these runs cannot show.** The first-order gain estimate is within noise
-of zero for every update, the exact one included (between -0.006 and +0.0005
-on the trained games), so a single update on 12 games does not show any of them
+of zero for the exact and the grouped updates alike (between -0.006 and
++0.0005 on the trained games), so a single update on 12 games does not show any of them
 improving the policy, only how far each moves it and how well it fits the
 value. Which setting wins more games is a question for training runs of many
 updates.
@@ -8447,7 +8447,7 @@ updates.
 removed. The defaults are unchanged, so a run without options is the update
 of PR 32.
 
-**Clean timings.** `bench_update.py` at `5028350`, 18:55 to 19:06 local time,
+**Clean timings.** `bench_update.py` at `5028350`, 17:55 to 18:06 UTC,
 the user's run collecting games on the CPU and nothing else on the GPU, 140 W
 charger, battery full:
 
