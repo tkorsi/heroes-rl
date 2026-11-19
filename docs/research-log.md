@@ -8331,3 +8331,133 @@ multiple of 12 games, not 100 different ones. Timings are from a shared GPU.
 `~/Projects/Heroes-artifacts/perf-opt-mq0j5t/results/*.jsonl` (one JSON line per
 run), `logs/`, the batch in `batch/` and the two profiles
 `results/game-seed4.prof` and `results/update-copies8.prof`.
+
+### 2026-11-19 — A correct fast update: reused states fail even for 8 steps; the grouped update needs its learning rate
+
+**Question.** The user asked for the fast mode of the entry above
+(`--windows-per-minibatch 16 --windows-per-game 8`) to be a correct PPO update,
+checked against the exact default on real games, and for an estimate of a
+1,000-game cycle. His concern was that the larger minibatches lose information.
+He authorized assistant-launched benchmarks and training games for this task.
+
+**What the flag changes, and what it does not.** Every state in a grouped
+minibatch is computed with the current weights, so each step is an exact PPO
+step and nothing inside a minibatch is lost: all 256 decisions enter the loss.
+What changes is the optimization. An update makes 8 times fewer Adam steps, each
+on 8 times more decisions, at the same learning rate.
+
+**First design, withdrawn: small steps on a shared replay.** To keep the
+optimization of the default, `windows_per_replay` (commits `010acc3` to
+`97b6a0e` on `claude/project-thread-aclj7d`, removed again in `980dff6`) made
+an update a sequence of rounds: a round replayed each of its games once with
+the weights it started from and then made 8 optimizer steps of the default
+size, so a state was at most 7 steps old.
+
+*Per step it looked good.* `tools/perf/state_fidelity.py` (in those commits)
+compared each step with the exact one on the 12-game batch of the entries
+above, checkpoint 1,787. With 8 steps per replay the state before a window
+differed by 1.4% in the median and 6.3% at the 95th percentile, the
+log-probabilities by at most 0.037 for 95% of decisions, and the gradient had a
+cosine of 0.9999 in the median and 0.978 at the 5th percentile with the exact
+gradient, with single outliers down to 0.001. With 16 steps the 5th percentile
+of the cosine fell to 0.57.
+
+*Whole updates did not.* A new script, `tools/perf/update_quality.py`, makes one
+whole update per setting from the same checkpoint with its Adam state on the
+same 12 games (135,373 decisions), then judges every set of weights with
+forward passes only, on those games and on 12 games no update saw (150,188
+decisions, played by the same checkpoint with another seed). It reports the
+mean of (ratio - 1) - log ratio as KL, the share of decisions whose ratio left
+the clip range, half the mean squared error of the value against the game's
+result, the first-order estimate of the policy's gain, and the length of the
+update's change of all weights with the cosines between such changes. No
+numeric criterion was fixed before these runs. Every figure is read against two
+runs of the exact update that differ only in the shuffle seed.
+
+| Update | Steps | KL, trained / held out | Clipped, trained / held out | Value loss, trained / held out | Weight change |
+| --- | --- | --- | --- | --- | --- |
+| checkpoint, no update | | | | 0.396 / 0.464 | |
+| exact default, seed 0 | 4,233 | 0.0067 / 0.0104 | 0.037 / 0.047 | 0.080 / 0.341 | 4.57 |
+| exact default, seed 1 | 4,233 | 0.0144 / 0.0151 | | 0.077 / 0.266 | 4.38 |
+| 8 small steps per replay | 4,233 | 0.0358 / 0.0209 | | 0.069 / 0.267 | 4.78 |
+| 4 small steps per replay | 4,233 | 0.0078 / 0.0094 | | 0.054 / 0.244 | 4.67 |
+| the 8-step order, but exact states | 4,233 | 0.0052 / 0.0076 | | 0.111 / 0.236 | 4.51 |
+
+With 8 steps per replay the policy ended 2.5 to 5 times further from the one
+that played the trained games than after either exact update, with no more
+change of the weights. The same order of steps with states replayed at every
+step behaved like the exact update, so the cause is the age of the states and
+not the order in which a round visits its games. A state computed before the
+earlier steps of a round still describes the policy as it was; the ratios the
+clip sees are then too close to 1, and the clip stops the policy later than it
+should on exactly the games the round keeps stepping on. A per-step gradient
+cosine of 0.98 did not show this, because the error has the same sign step
+after step. Four steps per replay stayed inside the spread of the exact
+update on one run, at 1.5 to 2 times the cost of the grouped update below. The
+mode is withdrawn, and with it `state_refresh_steps`, the switch of the entries
+above that kept states for far longer.
+
+**Why the grouped update moved less, and the learning rate that goes with it.**
+At the default learning rate of 3e-4 the grouped update of the entry above
+changed the weights by 1.99 and 2.00 (two seeds), the default by 4.57 and 4.38.
+The cosine between the weight changes of two exact updates that differ only in
+the shuffle is 0.54, and between any two updates measured here 0.36 to 0.69:
+most of an update's change of the weights is noise of the minibatches, and for
+Adam in that regime the distance grows with the learning rate times the square
+root of the number of steps. Eight times fewer steps then travel the square
+root of 8 times less far, 4.57 / 2.83 = 1.6 predicted and 2.0 measured, and
+keeping the distance takes 3e-4 x 2.83 = 8.5e-4. This is the known square-root
+scaling rule for Adam; here it was checked, not assumed.
+
+**Hypothesis for the confirmation, stated before it ran.** The grouped update
+at 8.5e-4 changes the weights as far as the exact default and moves the policy
+no further. Measured with the code of `5028350` while the user's run was
+collecting games, so the GPU was otherwise free:
+
+| Update | Steps | KL, trained / held out | Clipped, trained / held out | Value loss, trained / held out | Weight change | Seconds |
+| --- | --- | --- | --- | --- | --- | --- |
+| exact default, seed 0 | 4,233 | 0.0067 / 0.0104 | 0.037 / 0.047 | 0.080 / 0.341 | 4.57 | 986 to 997, projected from 300 steps |
+| exact default, seed 1 | 4,233 | 0.0144 / 0.0151 | | 0.077 / 0.266 | 4.38 | |
+| 16 / 8 at 3e-4, seed 0 | 532 | 0.0033 / 0.0064 | 0.018 / 0.025 | 0.082 / 0.236 | 1.99 | 248 |
+| 16 / 8 at 3e-4, seed 1 | 532 | 0.0037 / 0.0031 | 0.017 / 0.013 | 0.078 / 0.249 | 2.00 | 252 |
+| 16 / 8 at 8.5e-4, seed 0 | 532 | 0.0050 / 0.0070 | 0.037 / 0.045 | 0.061 / 0.232 | 4.14 | 250 |
+| 16 / 8 at 8.5e-4, seed 1 | 532 | 0.0065 / 0.0066 | 0.035 / 0.032 | 0.067 / 0.277 | 4.89 | 248 |
+
+The hypothesis holds on these games: the weight change (4.14 and 4.89) brackets
+the default's, the clipped share is the same, the KL is at or below the lower
+of the two exact runs, and the value error on held-out games is at least as
+low. Against the exact update of seed 0, resampling the games gives 90%
+intervals that include zero for every measure except the held-out value loss
+of seed 0, which is lower (-0.109, interval -0.192 to -0.013). At 3e-4 the
+grouped update is a correct but smaller update: about 0.44 times the weight
+change and half the clipped share.
+
+**What these runs cannot show.** The first-order gain estimate is within noise
+of zero for every update, the exact one included (between -0.006 and +0.0005
+on the trained games), so a single update on 12 games does not show any of them
+improving the policy, only how far each moves it and how well it fits the
+value. Which setting wins more games is a question for training runs of many
+updates.
+
+**Change.** `980dff6`: the update is the exact one of the entry above, with
+`--windows-per-game` and a new `--learning-rate` on the command line (default
+3e-4; the help names 8.5e-4 for 16 windows). `state_refresh_steps`,
+`Batch.kept`, `MLXBackend.prefix_table`, the `game_replays` report field,
+`--refresh` in `bench_update.py` and `tools/perf/state_fidelity.py` are
+removed. The defaults are unchanged, so a run without options is the update
+of PR 32.
+
+**Clean timings.** `bench_update.py` at `5028350`, 18:55 to 19:06 local time,
+the user's run collecting games on the CPU and nothing else on the GPU, 140 W
+charger, battery full:
+
+| Batch | Setting | Steps | Seconds per step | Whole update |
+| --- | --- | --- | --- | --- |
+| 12 games, 135,373 decisions | default | 4,233 | 0.230 and 0.232 (300 steps each) | 986 and 997 s, projected |
+| 12 games | 16 / 8 | 532 | 0.448 | 248 s, measured |
+| the 12 games 8 times, 1,082,984 decisions | default | 33,864 | 0.310 (120 steps) | 2.9 h, projected |
+| the same | 16 / 8 | 4,256 | 0.538 (120 steps) | 38 min, projected |
+
+The grouped update is 4.0 times faster on 12 games and 4.6 times at production
+size. The figures of the entry above were taken beside the user's update and
+are 1.4 to 1.6 times these.

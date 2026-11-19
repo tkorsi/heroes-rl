@@ -70,32 +70,37 @@ $P tools/perf/bench_update.py --batch $S/batch --checkpoint $C --copies 8 --step
 $P tools/perf/bench_update.py --batch $S/batch --checkpoint $C --copies 8 --steps 100 --plan-cache-gib 16 --out $S/results/update.jsonl
 # where the Python side of the update spends its time
 $P tools/perf/bench_update.py --batch $S/batch --checkpoint $C --copies 8 --steps 70 --profile $S/results/update.prof
-# reused window states (measured to be inaccurate; see the journal)
-$P tools/perf/bench_update.py --batch $S/batch --checkpoint $C --refresh 1,1024 --repeat 2 --steps 300 --out $S/results/update.jsonl
 ```
 
 Scripted games need neither VCMI nor a checkpoint and show how the time grows
 with the length of a game:
 
 ```sh
-$P tools/perf/bench_update.py --synthetic 20000,5000,5000 --cache $S/synthetic --refresh 1,1024 --steps 200
+$P tools/perf/bench_update.py --synthetic 20000,5000,5000 --cache $S/synthetic --steps 200
 ```
 
-## What reusing states costs in accuracy
+## What whole updates learn from the same games
 
-Runs the exact update and, beside it, compares the states, log-probabilities,
-values and gradient each `--refresh` value would have given for the same
-minibatch and weights. Reported for the whole run and by fifths, because
-staleness grows as the weights move.
+Timing says nothing about whether a faster setting is as good an update. This
+script makes one whole update per setting and shuffle seed, each from the same
+checkpoint with its Adam state on the same batch, and then judges every set of
+weights without taking a step, on the batch and on games no update saw: how far
+the policy moved (`kl`, `clip_fraction`), the first-order estimate of how much
+better it became (`gain`), the value error, each with an interval against a
+reference update, and the lengths of the weight changes and the cosines between
+them. Two seeds of one setting show how far apart chance alone puts two updates;
+read every difference against that.
 
 ```sh
-$P tools/perf/state_fidelity.py --batch $S/batch --checkpoint $C --refresh 64,256,1024,1000000000 --every 20 --out $S/results/fidelity.jsonl
+# games no update sees: a second folder with the same checkpoint, another seed
+H=~/Projects/Heroes-artifacts/perf-opt-holdout
+mkdir -p $H/checkpoints && cp $S/latest.json $H/ && cp $C $H/checkpoints/
+$P tools/perf/collect_games.py $H 12 --workers 3 --seed 2
+# the default twice, and 16 windows per step with and without its learning rate
+$P tools/perf/update_quality.py --batch $S/batch --holdout $H/batch --checkpoint $C --work $S/quality \
+    --settings 2:1,16:8,16:8:8.5e-4 --seeds 0,1 --out $S/results/quality.jsonl
 ```
 
-`--burn-in` and `--from-zeros` ask how far back the recurrent state remembers:
-how good is a state that replays only the last frames before a window with the
-current weights, starting from a reused state or from the initial one?
-
-```sh
-$P tools/perf/state_fidelity.py --batch $S/batch --checkpoint $C --refresh 1024,1000000000 --burn-in 512,2048,8192 --from-zeros 2048,8192,32768 --steps 2200 --every 20 --out $S/results/fidelity.jsonl
-```
+Weights and verdicts stay in `--work`, so an interrupted comparison continues
+and a later call adds settings without repeating the earlier ones. A default
+update of 12 games takes about 17 minutes on a free GPU.

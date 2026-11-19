@@ -134,23 +134,26 @@ gradients, then differentiates through the window. Hidden states from play are
 never reused.
 
 That replay is what an update spends most of its time on, and it grows with the
-square of the length of a game. Two settings change how often it happens;
-`Batch.minibatches` and `Batch.kept` in `ppo.py` hold their rules, and both
-backends follow them.
+square of the length of a game. One setting changes how often it happens;
+`Batch.minibatches` in `ppo.py` holds its rule, and both backends follow it.
 
-- `windows_per_game` above 1 shuffles each game's windows, cuts them into
-  groups of that size and builds a minibatch from whole groups. One replay of a
-  game, to the latest of its windows in the step, then serves the whole group.
-  Every state is still computed with the current weights. What changes is the
-  shape of the optimization: larger minibatches from as few games as before,
-  and fewer steps.
-- `state_refresh_steps` above 1 replays a game once to its last window, keeps
-  the state before each of its windows and reuses them for that many optimizer
-  steps. A window then starts from a state that is up to that many steps old.
-  Measured on real games this changes the gradient too much, because the
-  recurrent state carries the whole game and follows every change of the
-  weights; a short replay before the window does not repair it. It is kept as a
-  switch for experiments and for the measurement scripts, off.
+`windows_per_game` above 1 shuffles each game's windows, cuts them into groups
+of that size and builds a minibatch from whole groups. One replay of a game, to
+the latest of its windows in the step, then serves the whole group. Every state
+is still computed with the current weights, so this is the same update on
+larger minibatches from as few games as before, in fewer steps. Fewer steps at
+the same learning rate move the weights less: Adam's steps on this problem are
+mostly noise, and the distance grows with the learning rate times the square
+root of the number of steps. `learning_rate` is therefore set with it: 8 times
+fewer steps take the square root of 8 times the rate, 8.5e-4 with 16 windows.
+
+A state is never kept from one optimizer step to the next. Two ways of doing
+that were built and measured on real games, and both are gone: keeping states
+for many steps changed the gradient beyond use, and keeping them for only 8
+small steps kept each gradient close but let the policy drift 3 to 5 times
+further in a whole update, because a state computed before earlier steps hides
+how far the policy has already moved on that game. The journal entries of
+2026-11-19 have the numbers.
 
 The plan of a minibatch depends on no weight, and an epoch's schedule is known
 when it starts, so a helper thread builds the next plans while the GPU runs the
@@ -165,7 +168,7 @@ current step.
 | optimizer | Adam, 3e-4 |
 | entropy bonus | none |
 | windows per minibatch, per game | 2, 1 |
-| state refresh | every step (`state_refresh_steps` 1) |
+| recurrent state before a window | replayed with the current weights at every step |
 
 `ppo.update` is the plain autograd reference, correct and slow. Production uses
 [`heroes/learner/mlx/`](../heroes/learner/mlx/): each actor compiles its game

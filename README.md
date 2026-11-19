@@ -35,7 +35,7 @@ other argument on:
 | `--backend torch` | slow reference update without MLX | `mlx` |
 | `--windows-per-minibatch N` | loss windows of 16 decisions per optimizer step | 2 |
 | `--windows-per-game N` | windows of a minibatch that come from the same game and share one replay of it; see [Making it faster](#making-it-faster) | 1 |
-| `--state-refresh-steps N` | optimizer steps a replayed game's window states are reused; measured to be inaccurate, see the same section | 1 |
+| `--learning-rate X` | Adam step size; 8.5e-4 goes with 16 windows per step, see the same section | 3e-4 |
 | `--state DIR` | where checkpoints and the log go | `~/Projects/Heroes-artifacts/training` |
 | `--fresh` | start from a random policy when the state folder is empty | off |
 
