@@ -33,6 +33,7 @@ other argument on:
 | `--workers N` | games in play at once, one process each | 10 |
 | `--keep-game-files` | keep each game's engine folder and logs, in `kept-games/` | deleted |
 | `--backend torch` | slow reference update without MLX | `mlx` |
+| `--state-refresh-steps N` | optimizer steps a replayed game's window states are reused; see [Making it faster](#making-it-faster) | 1 |
 | `--state DIR` | where checkpoints and the log go | `~/Projects/Heroes-artifacts/training` |
 | `--fresh` | start from a random policy when the state folder is empty | off |
 
@@ -126,7 +127,7 @@ to try first, one at a time:
 - `--workers`. Ten games at once was chosen for the old pipeline.
 - `--games-per-update`. Fewer games per update means more frequent updates on
   less data.
-- `state_refresh_steps` in `PPOConfig`. The update replays each sampled game
+- `--state-refresh-steps` (`state_refresh_steps` in `PPOConfig`). The update replays each sampled game
   from its first frame at every optimizer step, so its time grows with the
   square of the length of a game: 4 h 39 min for 100 games in update 1,788,
   against 1 h 50 min of play. A value above 1 replays a game once, keeps the

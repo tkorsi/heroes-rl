@@ -19,6 +19,8 @@ def _config(arguments):
                if getattr(arguments, name, None) is not None}
     if getattr(arguments, "keep_game_files", False):
         changes["keep_game_files"] = True
+    if getattr(arguments, "state_refresh_steps", None) is not None:
+        changes["ppo"] = replace(config.ppo, state_refresh_steps=arguments.state_refresh_steps)
     return replace(config, **changes)
 
 
@@ -50,6 +52,9 @@ def main(argv=None):
             command.add_argument("--games-per-update", type=int, help="games per PPO update (default 100)")
             command.add_argument("--workers", type=int, help="games in play at once (default 10)")
             command.add_argument("--keep-game-files", action="store_true", help="keep every game's engine folder")
+            command.add_argument("--state-refresh-steps", type=int,
+                                 help="optimizer steps a replayed game's window states are reused (default 1: "
+                                      "replay at every step)")
         command.add_argument("--backend", choices=("mlx", "torch"), help="PPO backend (default mlx)")
         command.add_argument("--state", type=_path, help="folder for checkpoints and the log")
         command.add_argument("--legacy", type=_path, help="folder of the previous pipeline, imported once")
@@ -57,6 +62,8 @@ def main(argv=None):
         command.add_argument("--game-data", type=_path, help="folder holding the original game's Data")
         command.add_argument("--game-map", type=_path, help="map both seats play")
     arguments = parser.parse_args(argv)
+    if getattr(arguments, "state_refresh_steps", None) is not None and arguments.state_refresh_steps < 1:
+        parser.error("--state-refresh-steps must be at least 1")
     config = _config(arguments)
     if arguments.command == "train" and arguments.games < 1:
         parser.error("games must be positive")

@@ -103,6 +103,20 @@ def test_check_reports_the_start_and_writes_nothing(config, capsys):
     with pytest.raises(SystemExit) as refused:
         main(["train", "2", "--workers", "0", *paths])
     assert refused.value.code == 2 and not config.state.exists()
+    with pytest.raises(SystemExit) as refused:
+        main(["train", "2", "--state-refresh-steps", "0", *paths])
+    assert refused.value.code == 2 and not config.state.exists()
+
+
+def test_the_state_refresh_setting_reaches_the_update_and_the_log(config):
+    main(["train", "2", "--fresh", "--games-per-update", "2", "--workers", "2", "--state-refresh-steps", "1000",
+          "--state", str(config.state), "--legacy", str(config.legacy), "--vcmi", str(config.vcmi),
+          "--game-data", str(config.game_data), "--backend", "torch"])
+    records = _log(config)
+    assert records[0]["event"] == "start" and records[0]["ppo"]["state_refresh_steps"] == 1000
+    update = next(record for record in records if record["event"] == "update")
+    # Two three-decision games are one window each: nothing is worth keeping, nothing is replayed whole.
+    assert update["game_replays"] == 0 and update["samples"] == 6
 
 
 def test_a_game_number_is_never_handed_out_twice(tmp_path):
