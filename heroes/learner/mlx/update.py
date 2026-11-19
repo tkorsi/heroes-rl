@@ -3,16 +3,21 @@
 The torch model and its Adam optimizer stay the source of truth: weights and
 optimizer state are copied into MLX, every optimizer step runs there, and the
 result is copied back only after the whole update finished and is finite.
-Weight-independent plans are cached. The recurrent state before a loss window
-is recomputed with the current weights at every step, or, for the games
-``Batch.kept`` names, taken from the game's last replay, which is at most
-``state_refresh_steps`` optimizer steps old.
+Weight-independent plans are cached, and the plan of a minibatch is built on a
+helper thread while the GPU runs the steps before it. The recurrent state
+before a loss window is recomputed with the current weights at every step, or,
+for the games ``Batch.kept`` names, taken from the game's last replay, which is
+at most ``state_refresh_steps`` optimizer steps old.
 """
 from __future__ import annotations
 
 from bisect import bisect_left
+from collections import deque
+from concurrent.futures import ThreadPoolExecutor
 import gc
 import time
+
+PLANS_AHEAD = 2  # minibatch plans a helper thread builds while the GPU runs earlier steps
 
 
 def _require(condition, message):
@@ -119,54 +124,68 @@ def update(model, optimizer, trajectories, *, config, generator, progress=None):
         return {"history": index, "frame_limit": bisect_left(jobs, stops[-1]),
                 "states": [{"stop": stop, "state_index": bisect_left(jobs, stop) - 1} for stop in stops]}
 
+    names = list(parameters)
+
+    def assemble(selected):
+        """The part of a minibatch that no weight enters: its plan and its targets, and the seconds this took."""
+        build_started = time.perf_counter()
+        joined, sequences = _joined_plan(histories, selected, rollouts)
+        old_logs, old_values, batch_advantages, returns = [], [], [], []
+        for window in selected:
+            for index in window.sample_indices:
+                old_logs.append(rollouts[window.rollout_index].log_probs[index])
+                old_values.append(rollouts[window.rollout_index].values[index])
+                batch_advantages.append(advantages[offsets[window.rollout_index] + index])
+                returns.append(targets[window.rollout_index].returns[index])
+        step = {"plan": _host(joined), "sequences": sequences, "active_parameters": _active_parameters(joined, names)}
+        step.update({key: np.asarray(value, dtype=np.float32) for key, value in
+                     (("old_log_probs", old_logs), ("old_values", old_values),
+                      ("advantages", batch_advantages), ("returns", returns))})
+        return step, time.perf_counter() - build_started
+
     backend = None
     prepared_prefixes = None
-    kept, saved = batch.kept(config), {}  # game -> (step of its last replay, the states before its windows)
+    kept, tables = batch.kept(config), {}  # game -> (step of its last replay, the states before its windows)
     replays = 0
     weighted = [0.0] * 4
     count_seen = completed = 0
+    planner = ThreadPoolExecutor(max_workers=1, thread_name_prefix="ppo-plans")
     try:
         backend = MLXBackend(manifest, array_loader=lambda value: value, plan_loader=load_history)
         prepared = time.perf_counter()
         for _ in range(config.epochs):
             order = torch.randperm(len(windows), generator=schedule).tolist()
-            for left in range(0, len(order), config.windows_per_minibatch):
+            minibatches = [[windows[index] for index in order[left:left + config.windows_per_minibatch]]
+                           for left in range(0, len(order), config.windows_per_minibatch)]
+            # The schedule of an epoch is known, so the plans of the next minibatches are
+            # built while the GPU is busy with this one. They hold nothing that depends on
+            # the weights, and they are consumed in order.
+            ahead = deque(planner.submit(assemble, selected) for selected in minibatches[:PLANS_AHEAD])
+            for number, selected in enumerate(minibatches):
+                if number + PLANS_AHEAD < len(minibatches):
+                    ahead.append(planner.submit(assemble, minibatches[number + PLANS_AHEAD]))
                 plan_started = time.perf_counter()
-                selected = [windows[index] for index in order[left:left + config.windows_per_minibatch]]
                 boundaries = {}
                 for window in selected:
                     boundaries.setdefault(window.rollout_index, []).append(window.start_seq)
                 prefixes = [prefix(index, sorted(set(stops))) for index, stops in boundaries.items()]
                 plan_seconds += time.perf_counter() - plan_started
-                # The prefix graph runs on the GPU while the CPU builds this
-                # minibatch's loss-window plan. It is used once and then dropped.
+                # A replay runs on the GPU while the CPU does the rest. Its states are used once and dropped.
                 prepared_prefixes = backend.prefix_states(
                     [spec for spec in prefixes if spec["history"] not in kept], synchronize=False)
                 for spec in prefixes:
                     index = spec["history"]
                     if index not in kept:
                         continue
-                    if index not in saved or completed - saved[index][0] >= config.state_refresh_steps:
-                        saved[index] = (completed, backend.prefix_table(prefix(index, batch.starts[index])))
+                    if index not in tables or completed - tables[index][0] >= config.state_refresh_steps:
+                        tables[index] = (completed, backend.prefix_table(prefix(index, batch.starts[index])))
                         replays += 1
                     for entry in spec["states"]:
                         row = bisect_left(batch.starts[index], entry["stop"])
-                        prepared_prefixes[(index, entry["stop"])] = saved[index][1][row:row + 1]
-                plan_started = time.perf_counter()
-                joined, sequences = _joined_plan(histories, selected, rollouts)
-                old_logs, old_values, batch_advantages, returns = [], [], [], []
-                for window in selected:
-                    for index in window.sample_indices:
-                        old_logs.append(rollouts[window.rollout_index].log_probs[index])
-                        old_values.append(rollouts[window.rollout_index].values[index])
-                        batch_advantages.append(advantages[offsets[window.rollout_index] + index])
-                        returns.append(targets[window.rollout_index].returns[index])
-                step = {"plan": _host(joined), "sequences": sequences, "prefixes": prefixes,
-                        "active_parameters": _active_parameters(joined, list(parameters))}
-                step.update({key: np.asarray(value, dtype=np.float32) for key, value in
-                             (("old_log_probs", old_logs), ("old_values", old_values),
-                              ("advantages", batch_advantages), ("returns", returns))})
-                plan_seconds += time.perf_counter() - plan_started
+                        prepared_prefixes[(index, entry["stop"])] = tables[index][1][row:row + 1]
+                step, seconds = ahead.popleft().result()
+                plan_seconds += seconds
+                step["prefixes"] = prefixes
                 metrics, count = backend.update(step, prefixes=prepared_prefixes)
                 for index, value in enumerate(metrics):
                     weighted[index] += value * count
@@ -174,7 +193,7 @@ def update(model, optimizer, trajectories, *, config, generator, progress=None):
                 completed += 1
                 if progress is not None:
                     progress(completed, planned_steps)
-                del step, joined
+                del step
                 prepared_prefixes.clear()
                 prepared_prefixes = None
         backend.mx.synchronize()
@@ -207,7 +226,8 @@ def update(model, optimizer, trajectories, *, config, generator, progress=None):
         restored = time.perf_counter()
         validation_seconds = backend.state_validation_seconds
     finally:
-        saved.clear()
+        planner.shutdown(wait=True, cancel_futures=True)
+        tables.clear()
         if prepared_prefixes is not None:
             prepared_prefixes.clear()
         for history in histories:

@@ -37,14 +37,15 @@ def test_the_fidelity_probe_compares_reused_states_with_replayed_ones(scripted):
     from heroes.learner.ppo import PPOConfig
     # With a vanishing learning rate the weights stand still, so a reused state is the replayed one.
     still = PPOConfig(decisions_per_window=2, windows_per_minibatch=2, learning_rate=1e-12)
-    batch, kept, records, ran = state_fidelity.probe(*scripted, still, [2, 10**9], None, 1)
+    batch, kept, records, ran, report = state_fidelity.probe(*scripted, still, [2, 10**9], None, 1)
     assert ran == 6 and kept[2] == {0} and len(records[2]) == len(records[10**9]) == 6
+    assert report.optimizer_steps == 6 and report.game_replays == 0  # the update itself replays at every step
     summary = state_fidelity.summarize(records[10**9])
     assert summary["state_error_max"] < 1e-5 and summary["gradient_cosine_min"] > 0.9999
     assert summary["largest_state_age_steps"] >= 3
     # At the usual learning rate the weights move, and states reused for the whole update drift measurably.
     moving = replace(still, learning_rate=3e-2)
-    _, _, records, _ = state_fidelity.probe(*scripted, moving, [10**9], None, 1)
+    _, _, records, _, _ = state_fidelity.probe(*scripted, moving, [10**9], None, 1)
     assert state_fidelity.summarize(records[10**9])["state_error_max"] > 1e-5
 
 

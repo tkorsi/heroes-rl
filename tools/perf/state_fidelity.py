@@ -110,16 +110,17 @@ def probe(weights, trajectories, config, refreshes, steps, every):
             raise _Enough
 
     MLXBackend.update = probed
+    report = None
     try:
-        update_module.update(model, optimizer, trajectories, config=config,
-                             generator=torch.Generator().manual_seed(0), progress=progress)
+        report = update_module.update(model, optimizer, trajectories, config=config,
+                                      generator=torch.Generator().manual_seed(0), progress=progress)
     except _Enough:
         pass
     finally:
         MLXBackend.update = original
         for tables in saved.values():
             tables.clear()
-    return batch, kept, records, counter["step"]
+    return batch, kept, records, counter["step"], report
 
 
 def summarize(rows):
@@ -164,7 +165,19 @@ def main():
         weights, trajectories = collected(arguments.batch, arguments.checkpoint)
         source = f"{len(trajectories)} games from {arguments.batch}"
     refreshes = [int(item) for item in arguments.refresh.split(",")]
-    batch, kept, records, ran = probe(weights, trajectories, PPOConfig(), refreshes, arguments.steps, arguments.every)
+    batch, kept, records, ran, report = probe(weights, trajectories, PPOConfig(), refreshes, arguments.steps,
+                                              arguments.every)
+    if report is not None:
+        # The exact update the probes rode on, for comparison with updates that reuse states.
+        line = json.dumps({"source": source, "samples": batch.samples, "state_refresh_steps": 1, "part": "exact update",
+                           "optimizer_steps": report.optimizer_steps, "policy_loss": report.policy_loss,
+                           "value_loss": report.value_loss, "approximate_kl": report.approximate_kl,
+                           "clip_fraction": report.clip_fraction})
+        print(line, flush=True)
+        if arguments.out is not None:
+            arguments.out.parent.mkdir(parents=True, exist_ok=True)
+            with arguments.out.open("a") as stream:
+                stream.write(line + "\n")
     for refresh in refreshes:
         rows = records[refresh]
         parts = [("all", rows)] + [(f"fifth {part + 1}", [row for row in rows if row[0] * 5 // max(1, ran) == part])

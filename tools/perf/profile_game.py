@@ -54,6 +54,50 @@ class Clock:
         setattr(owner, name, timed)
 
 
+def digest(trajectory):
+    """A SHA-256 over everything the learner reads of a compiled trajectory.
+
+    Two games with the same digest took the same actions with the same
+    probabilities and values and compiled into the same recipe, including which
+    frames share one map. It is how a change to the play path is shown to be exact.
+    """
+    import hashlib
+    sha = hashlib.sha256()
+
+    def feed(value):
+        if isinstance(value, torch.Tensor):
+            sha.update(str((value.dtype, tuple(value.shape))).encode())
+            sha.update(value.detach().contiguous().numpy().tobytes())
+        elif isinstance(value, dict):
+            for key in sorted(value):
+                sha.update(repr(key).encode())
+                feed(value[key])
+        elif isinstance(value, (list, tuple)):
+            sha.update(f"[{len(value)}".encode())
+            for item in value:
+                feed(item)
+        elif isinstance(value, float):
+            sha.update(value.hex().encode())
+        else:
+            sha.update(repr(value).encode())
+
+    feed((trajectory.decisions, trajectory.log_probs, trajectory.values, trajectory.reward, trajectory.bootstrap,
+          trajectory.actions, trajectory.guard))
+    recipe = trajectory.recipe
+    if recipe is not None:
+        feed(recipe.nodes)
+        shared = {}  # the tensors of a map, by identity: frames that share them share one map in the plan
+        for frame in recipe.frames:
+            feed((frame["root"], frame["conditionals"]))
+            if frame["map"] is None:
+                feed(None)
+            else:
+                feed(frame["map"])
+                feed(shared.setdefault(tuple(id(frame["map"][name]) for name in (
+                    "terrain", "road", "flags", "object_attributes", "object_indices")), len(shared)))
+    return sha.hexdigest()
+
+
 def measure(config, seed=1, profile=None):
     """Play one game with ``config`` and return the report; ``profile`` adds a cProfile file."""
     config.engine().check()
@@ -110,6 +154,7 @@ def measure(config, seed=1, profile=None):
         "play_seconds": round(play_seconds, 2), "decisions_per_second": round(decisions / play_seconds, 1),
         "milliseconds_per_decision": round(1000 * play_seconds / max(1, decisions), 3),
         "compile_seconds": round(compiled - played, 2),
+        "digest": digest(game.trajectory) if game.trajectory is not None else None,
         "engine_folder_bytes": size, "profiled": profiler is not None,
         # The parts of the play time. Compiling the recipe encodes the learner's frames once more.
         "parts_seconds": {label: round(value, 2)

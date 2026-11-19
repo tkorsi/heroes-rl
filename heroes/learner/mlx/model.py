@@ -366,9 +366,14 @@ class MLXBackend(MLXModel):
         # Parameters outside active_parameters preserve their weights, moments
         # and counters, matching torch.optim.Adam's grad=None behavior.
         self.p = updated
-        mx.eval(self.p, self._moments())
+        # Only what this step wrote can have become nonfinite; everything else was
+        # checked when it was written. The check is evaluated with the step itself.
+        written = [value for name in active
+                   for value in (updated[name], self.adam[name]["exp_avg"], self.adam[name]["exp_avg_sq"])]
+        state_is_finite = mx.all(mx.stack([mx.all(mx.isfinite(value)) for value in written]))
+        mx.eval(self.p, self._moments(), state_is_finite)
         validation_started = time.perf_counter()
-        state_is_finite = self.finite(list(self.p.values()) + self._moments())
+        state_is_finite = bool(state_is_finite.item())
         self.state_validation_seconds += time.perf_counter() - validation_started
         if not state_is_finite:
             raise FloatingPointError("Nonfinite MLX model or Adam state after update")
