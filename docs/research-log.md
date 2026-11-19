@@ -8252,16 +8252,25 @@ charging). `tools/perf/bench_update.py` at `ed004f4` for the first table and at
 
 | Windows per minibatch / per game | Optimizer steps | Seconds per step | Whole update | Policy loss | Value loss | KL | Clip fraction |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 2 / 1 (default) | 4,233 | 0.369 and 0.364 (150 steps each) | 1,826 and 1,786 s, projected | 0.0016 | 0.280 | 0.0047 | 0.031 |
-| 16 / 1 | 530 | 1.12 (30 steps) | 774 s, projected | | | | |
+| 2 / 1 (default) | 4,233 | 0.369 and 0.364 (150 steps each) | about 1,560 to 1,580 s, projected | 0.0016 | 0.280 | 0.0047 | 0.031 |
+| 16 / 1 | 530 | 1.12 (30 steps) | about 600 s, projected | | | | |
 | 16 / 8 | 532 | 0.678 | 371 s, measured | 0.0027 | 0.288 | 0.0045 | 0.022 |
 | 32 / 16 | 268 | 0.781 | 221 s, measured | 0.0026 | 0.290 | 0.0045 | 0.019 |
 
-The losses of the default are those of the exact update in the fidelity run.
-The criterion is met: 4.9 times faster with eight windows per game and 8.2
-times with sixteen. Larger minibatches without grouping gain much less, and
-part of that only because 12 games collide often; with 100 games they would
-not.
+Projected totals are the steady rate per step times the steps, plus about 15 s
+for building each game's plan once. The losses of the default are those of the
+exact update in the fidelity run. The criterion is met, narrowly: 4.2 times
+faster with eight windows per game, and 7 times with sixteen. Larger
+minibatches without grouping gain less, and part of that only because 12 games
+collide often; with 100 games they would not.
+
+**Correction to the projections in the entry "Measured on real games".** Its
+"1,691 s and 1,785 s, projected" for the exact update scaled a 300-step run up
+with its one-time start-up costs, as the benchmark script then did. The steady
+rates of those runs, 0.360 and 0.386 s per step, give about 1,540 to 1,650 s for
+the 4,233 steps. Reused states were therefore 6 to 7.7 times faster, not 6.5 to
+8. The script now projects from the steady rate. The conclusions of that entry
+do not change.
 
 *A batch of production size.* No 100-game batch was collected. `--copies 8`
 uses each of the 12 games eight times: 96 games, 1,082,984 samples, 8.3 million
@@ -8269,16 +8278,16 @@ frames, the same length distribution. The copies share their CPU plans but
 each has its own plan on the GPU, 9.1 GiB together against a cache of 4 GiB.
 Only the first 80 to 120 steps of each setting were run.
 
-| Setting | Seconds per step | Whole update, projected |
+| Setting | Seconds per step | Whole update, projected from that rate |
 | --- | --- | --- |
-| default, before the byte-count change below | 0.540, 0.556, 0.490 | 5.6 to 6.3 h |
-| default, after it | 0.488, 0.472, 0.439, 0.439 | 5.0 to 5.6 h |
-| 16 windows per minibatch, 8 per game | 0.748 | 64 min (4,256 steps) |
-| 32 windows per minibatch, 16 per game | 0.898 | 36 min (2,140 steps) |
+| default, before the byte-count change below | 0.540, 0.556, 0.490 | 4.6 to 5.2 h (33,864 steps) |
+| default, after it | 0.488, 0.472, 0.439, 0.439 | 4.1 to 4.6 h |
+| 16 windows per minibatch, 8 per game | 0.748 | 53 min (4,256 steps) |
+| 32 windows per minibatch, 16 per game | 0.898 | 32 min (2,140 steps) |
 
 These are short runs on a shared GPU, taken at different minutes; the spread of
 the default alone is 25%. They support "several times faster at production
-size", not a precise factor.
+size", about five and eight times, not a precise factor.
 
 **Two costs found in the default update, and one that was not there.**
 

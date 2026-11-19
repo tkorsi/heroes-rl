@@ -153,7 +153,7 @@ the [journal](docs/research-log.md) say:
   63,390 learner decisions and needed 9.8 ms per decision, run 1 needed 6.2 ms.
 - **The replay cannot be skipped.** `--state-refresh-steps` keeps the states
   before a game's windows for some optimizer steps instead of replaying. On 12
-  real games that made the update 6.5 to 8 times faster, and it changed the
+  real games that made the update 6 to 7.7 times faster, and it changed the
   gradient too much: with a refresh every 64 steps one minibatch in twenty had
   a cosine below 0.51 with the exact gradient, and never refreshing gave a
   median of 0.38. Replaying only the last 8,000 or 32,000 frames before a
@@ -162,10 +162,10 @@ the [journal](docs/research-log.md) say:
 - **The replay can be shared.** `--windows-per-minibatch 16 --windows-per-game 8`
   takes eight windows of a game per step, so one replay serves all eight, still
   with the current weights. Measured on 12 real games with the GPU shared, a
-  whole update took 371 s, and 221 s with 32 and 16, against about 1,800 s by
+  whole update took 371 s, and 221 s with 32 and 16, against about 1,570 s by
   default. On a batch of production size (those games eight times, 1.08 million
-  samples) the first 80 to 100 steps project to 64 and 36 minutes against 5.5
-  to 6.3 hours. This is not a free change: an update then makes 8 or 16 times
+  samples) the rates of the first 80 to 120 steps project to 53 and 32 minutes
+  against 4.1 to 4.6 hours. This is not a free change: an update then makes 8 or 16 times
   fewer optimizer steps on minibatches 8 or 16 times larger, each still drawn
   from two games. Whether the policy learns as well per game played is a
   question for training runs, so the defaults are unchanged.

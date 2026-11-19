@@ -146,7 +146,10 @@ def run(weights, trajectories, config, steps, profile=None):
         "seconds_total": round(finished - started, 3),
         "first_step_seconds": round(stamps[0] - started, 3),
         "steady_seconds_per_step": round((stamps[-1] - stamps[warm - 1]) / max(1, len(stamps) - warm), 5),
-        "projected_full_update_seconds": round((stamps[-1] - started) / len(stamps) * planned, 1),
+        # What ran, plus the steps that did not at the steady rate. Scaling the whole
+        # run up would multiply its one-time costs (first plans, kernels) as well.
+        "projected_full_update_seconds": round(
+            stamps[-1] - started + (stamps[-1] - stamps[warm - 1]) / max(1, len(stamps) - warm) * (planned - len(stamps)), 1),
     }
     if report is not None:
         result.update(policy_loss=report.policy_loss, value_loss=report.value_loss,
