@@ -71,7 +71,7 @@ def test_states_shared_in_a_round_are_the_states_a_replay_gives(play_fake):
 
 def test_shared_replays_follow_the_reference(play_fake):
     from heroes.learner.mlx.update import update as mlx_update
-    pairs = [_pair(play_fake, learner=0, days=17, winner=0, map=20), _pair(play_fake, learner=1, days=6, winner=1)]
+    pairs = [_pair(play_fake, learner=0, days=17, winner=0, map=20), _pair(play_fake, learner=1, days=6, winner=1, map=20)]
     # Four windows of a game share one replay, which takes the sparse prefix CNN on the changing map;
     # the steps still hold two windows each and start from the states of the round's first weights.
     config = PPOConfig(decisions_per_window=2, windows_per_minibatch=2, windows_per_replay=4)

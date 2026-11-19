@@ -25,8 +25,8 @@ def test_the_update_benchmark_reports_each_run(scripted):
     from heroes.learner.ppo import PPOConfig
     config = PPOConfig(decisions_per_window=2, windows_per_minibatch=2, windows_per_replay=4)
     whole = bench_update.run(*scripted, config, None)
-    # Ten and two windows: three groups and one, so two rounds of at most four steps.
-    assert whole["steps_run"] == whole["planned_steps"] and 6 <= whole["steps_run"] <= 7
+    # Ten and two windows: three groups and one, so two rounds, of four and two steps or of three each.
+    assert whole["steps_run"] == whole["planned_steps"] == 6
     assert whole["samples"] == 23 and whole["windows_per_replay"] == 4 and "value_loss" in whole
     cut = bench_update.run(*scripted, config, 2)
     assert cut["steps_run"] == 2 and "value_loss" not in cut  # stopped early: no report, nothing copied back
@@ -38,11 +38,12 @@ def test_the_fidelity_probe_compares_shared_states_with_replayed_ones(scripted):
     # With a vanishing learning rate the weights stand still, so a state from the start of a round is exact.
     still = PPOConfig(decisions_per_window=2, windows_per_minibatch=2, windows_per_replay=4, learning_rate=1e-12)
     records, ran, planned, report = state_fidelity.probe(*scripted, still, None, 1)
-    assert ran == planned == report.optimizer_steps and 6 <= ran <= 7
-    assert len(records) == ran - 2 and {row[1] for row in records} == {1, 2, 3}  # all but each round's first step
+    assert ran == planned == report.optimizer_steps == 6
+    # Two rounds, of four and two steps or of three each: all but each round's first step are compared.
+    assert len(records) == ran - 2 and {1, 2} <= {row[1] for row in records} <= {1, 2, 3}
     summary = state_fidelity.summarize(records)
     assert summary["state_error_max"] < 1e-5 and summary["gradient_cosine_min"] > 0.9999
-    assert summary["largest_state_age_steps"] == 3
+    assert summary["largest_state_age_steps"] in (2, 3)
     # At a large learning rate the weights move within a round, and its later states drift measurably.
     records, _, _, _ = state_fidelity.probe(*scripted, replace(still, learning_rate=3e-2), None, 1)
     assert state_fidelity.summarize(records)["state_error_max"] > 1e-5
