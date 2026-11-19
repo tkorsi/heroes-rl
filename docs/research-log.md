@@ -8017,3 +8017,51 @@ number, and the effect on the default exact update is unmeasured.
 per minibatch of 32 samples, a noisy quantity; they show that reused states
 change what a step does, not how learning would differ. The GPU was shared in
 every timing. Nothing here measured learning.
+
+### 2026-11-19 — A short replay does not rescue reused states: the policy remembers the whole game
+
+**Question.** The entry above found that a window's starting state drifts too
+far when it is reused across optimizer steps. Is the drift in what the state
+remembers of the recent frames only? Then replaying a few thousand frames before
+the window with the current weights, from a reused state or even from the
+initial state, would be accurate and still cheap ("burn-in").
+
+**Criteria, as before.** Gradient cosine with the exact gradient at least 0.99
+at the median and 0.95 at the 5th percentile; log-probability difference at most
+0.02 at the 95th percentile.
+
+**What ran.** `tools/perf/state_fidelity.py --refresh 1024,1000000000 --burn-in
+512,2048,8192 --from-zeros 2048,8192,32768 --steps 2200 --every 20`, the script
+as committed in `ed004f4` with the learner code of `3908015`, on the same 12
+real games, weights and conditions as the entry above: the first 2,200 steps of
+the exact update, 110 minibatches compared. The
+frames before each window were encoded with the current weights, and the
+recurrent network was run over the last of them from the other starting state.
+A window has 7.6 frames per trained decision, so 8,192 frames are about 1,070
+decisions and 32,768 about 4,300. A test on scripted games checks that replaying
+all frames reproduces the exact state.
+
+| Starting state | Frames replayed | State error, median / p95 | Log-probability difference, median / p95 | Gradient cosine, median / 5th percentile |
+| --- | --- | --- | --- | --- |
+| reused, refreshed every 1,024 steps | none | 0.263 / 0.532 | 0.045 / 0.301 | 0.953 / −0.165 |
+| | 512 | 0.148 / 0.425 | 0.039 / 0.291 | 0.960 / −0.129 |
+| | 2,048 | 0.130 / 0.320 | 0.033 / 0.251 | 0.960 / −0.167 |
+| | 8,192 | 0.092 / 0.284 | 0.022 / 0.217 | 0.982 / −0.304 |
+| reused, never refreshed | none | 0.374 / 0.647 | 0.071 / 0.402 | 0.409 / −0.484 |
+| | 8,192 | 0.146 / 0.351 | 0.031 / 0.364 | 0.811 / −0.487 |
+| the initial state | 2,048 | 0.420 / 0.594 | 0.093 / 0.731 | 0.264 / −0.616 |
+| | 8,192 | 0.329 / 0.560 | 0.067 / 0.420 | 0.325 / −0.640 |
+| | 32,768 | 0.212 / 0.426 | 0.051 / 0.399 | 0.488 / −0.631 |
+
+**What the evidence supports.** No variant meets the criteria. A state rebuilt
+from the last 32,768 frames alone is still 21% away from the exact one at the
+median, so the recurrent state at a decision carries information from more than
+4,000 of the learner's decisions back, in practice from the whole game. That
+is why it follows the weights so closely, and why neither a stale state nor a
+truncated replay stands in for it. For this policy the exact replay from the
+first frame is not an implementation luxury. Its cost can be shared, as with
+`windows_per_game`, but not skipped.
+
+**Limitations.** As above: one batch, one checkpoint, 32-sample gradients, a
+shared GPU. The cosine criteria are the assistant's choice; a training run could
+still show that learning tolerates some of this, and none was made.
