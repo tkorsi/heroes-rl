@@ -122,13 +122,22 @@ def compile_history(model, inputs, actions):
     frames) and the conditionals of each decision in ``actions`` {seq: Action}."""
     nodes, frames, shared, map_cache = [], [], {}, {}
     pending = set(actions)
+    last = None  # the observation compiled last, its map recipe and the arena's trees after it
     for seq, frame in enumerate(inputs):
         arena = _Arena(nodes, shared)
         if frame.semantics is None:
             frames.append({"root": -1, "map": None, "conditionals": None})
             continue
         # Map first, then the frame, then its conditionals: node order is part of the recipe.
-        map_recipe = None if frame.observation is None else _map_recipe(model, frame.observation, arena, map_cache)
+        if frame.observation is None:
+            map_recipe = None
+        elif last is not None and last[0] is frame.observation:
+            # A decision shares the observation of the view before it. Compiling it
+            # again would add no node and leave the arena with exactly these trees.
+            map_recipe, arena.ids = dict(last[1]), dict(last[2])
+        else:
+            map_recipe = _map_recipe(model, frame.observation, arena, map_cache)
+            last = (frame.observation, map_recipe, dict(arena.ids))
         root = arena.add(frame.semantics)
         conditionals = None
         if seq in actions:
