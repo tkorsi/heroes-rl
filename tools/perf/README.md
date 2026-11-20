@@ -81,6 +81,21 @@ A guard with other budgets samples from another support, so these are other
 games: compare their counts (the report lists decisions, days and the learner
 seats' actions by kind), not their digests.
 
+One difference between two runs of the same code is not a change of play. When
+a game ends naturally, the engine's network thread ends it while the AI thread
+of the player who moved last may still be reporting that move or asking for
+the next decision. The terminal then comes before the move's result, after it,
+or after the next decision, which it withdraws. Training reads the same
+samples in all three cases, since the last action owns the reward either way,
+but a digest covers the seat's whole history and so has three values for that
+seat of that game. On the 14 games of seed 3 to day 60 no seat showed this in
+seven two-seat runs with the standard guard; with stack moves 4 and windows 6
+one seat of one game did, in ten runs with the digests 7, 2 and 1 times. It
+looks like this: one seat of one naturally finished game differs, while the
+statuses, the days, the sample count and the learner seats' actions by kind
+are the same. A difference in a game stopped at the day limit, in a sample
+count, or in more than that one seat is something else.
+
 ## A fixed batch of real games
 
 Plays games with the folder's checkpoint and keeps each finished game, compiled

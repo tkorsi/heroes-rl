@@ -9274,3 +9274,85 @@ new digests: the user's 100-game baseline run on main was in progress and a
 14-actor benchmark beside it would have spoiled its timing. A full 100-game
 cycle including the PPO update has still not been measured with this branch;
 the 26 minutes of the entry above are collection only.
+
+### 2026-11-21 — Review of PR 36, continued: either seat admits a game; the two-seat benchmark on real games; one racy ending
+
+**A fourth review finding**, posted after the entry above and seen only when
+the user asked the thread to continue. With `--both-seats` the learner seat's
+trajectory was built first, and a learner without one made the whole game
+`failed` / `unusable_trajectory` before the other seat was looked at. He
+showed it with the scripted engine and `Limits(max_days=1)`: the same game,
+weights and seeds were kept with red as designated learner (one trajectory,
+red's) and thrown away with blue. Real: the opponent's trajectory was treated
+as an extra, not as an equal.
+
+Fixed in `35ba545`. `actor.play` builds each seat's trajectory on its own;
+`Game.trajectory` stays the designated learner's and `Game.other` the
+opponent's, and either may be missing. The game is `failed` only when neither
+exists, and the collector asks whether a game has any trajectory. The game's
+`detail` names the seat that gave none (`blue: this seat completed no
+action`). With one seat the rule is as before. `bench_play.py --both-seats`
+counts such a game, lists `red` then `blue` in `seat_digests` whoever the
+learner was, and exits 1 only when a game has no trajectory at all.
+
+Tests, 90 scripted (89 before): the reviewer's case in both assignments, both
+`truncated`, the same red trajectory by digest after compiling, as the
+learner's in one game and as the opponent's in the other; one seat still fails
+with blue as learner; the training loop over two such games admits both with 0
+failed; the benchmark's report and exit status for the same games with one seat
+and with both, and with both seats crashing.
+
+**The two-seat benchmark on real games**, which the entry above left open.
+2026-11-21 01:14 to 01:43 local, 140 W, battery full, no training run on the
+Mac (the user's baseline cycle had ended at 01:02). Tree `src-35ba545`,
+runtime `local-v8-tile-changes-v1`, the 14 games of seed 3 to day 60, queues
+`measure-8.sh` and `measure-9.sh`, reports `results/seats2.jsonl` and
+`seats3.jsonl`.
+
+- Standard guard, 14 actors, one seat and both seats in turns: 70.3 s and
+  66.3 s against 82.1 s and 83.2 s; one actor's time per decision 4.32 and
+  3.99 ms against 4.52 and 4.54 ms; compilation 53 s and 52 s against 115 s and
+  114 s; samples 61,734 against 132,911. The learner seats' digests are those
+  of the one-seat runs and of the runs of 2026-11-20.
+- All 28 seat digests are equal in seven two-seat runs with the standard
+  guard, one of them on 7 actors; every game has both colours and the 28
+  digests are distinct.
+- With stack moves 4 and windows 6, ten two-seat runs: 27 of the 28 seat
+  digests are equal in all ten. The blue seat of game 9, a natural ending on
+  day 8 in which blue is the designated learner, has three digests: 7, 2 and 1
+  times. Its game answers 161 and 210 decisions in eight runs and 161 and 211
+  in two. The samples (61,204), statuses, days and the learner seats' actions
+  by kind (30,452 actions) are the same in all ten runs. The one-seat run of
+  2026-11-20 with this guard had the third of these digests for that game.
+
+**Why that seat differs, from the code.** `ExplorerRL::gameOver` runs on the
+network thread: it sets `terminal` and then writes the terminal under
+`sendMutex`. The AI thread of the player who moved last reports the move's
+result and then asks the next decision through `buildAndSend`, which takes the
+same mutex and builds nothing once `terminal` is set. So the terminal comes
+before the result, after it, or after the next decision, which it withdraws:
+three ends of one history, as the comment in `buildAndSend` says the design
+allows. `actor.learner_samples` gives the same samples for all three: the last
+action owns the reward with a result or closed by the terminal, and a decision
+withdrawn before its answer was used is no sample. The digest covers every
+frame of the seat, so it has three values. This is the engine's behaviour from
+before this branch; it shows here because this game's last move returns close
+to the end of the game, not because of the budgets or the second seat. Not
+confirmed by looking at the three histories: a script that would have printed
+the last frames of this game was not run. `tools/perf/README.md` now says how
+to tell this difference from a change of play.
+
+**The user's baseline cycle, read from his log** (`training-trial/log.jsonl`,
+update 1792 on main `c1c96ce`, 14 actors, `--windows-per-minibatch 16
+--windows-per-game 8 --learning-rate 8.5e-4`, started 18:50 local on
+2026-11-20, beside the last minutes of this branch's benchmarks and four runs
+of its scripted tests): 100 games collected in 6,273 s, 6,901,403 decisions of
+both seats, 1,100 per second; the update took 16,005 s for 3,467,583 samples
+and 13,574 steps, 4,452 s of it building plans. 51 of the 100 games ran to
+day 365; the batches of updates 1788 to 1791 had 4, 18, 15 and 24. A game had
+65,700 decisions on average against 28,000 to 38,600 in those batches, and a
+seat answered 136 decisions per game day against 101 to 120. The cycle was
+6 h 11 min and the update 72% of it. This branch changes the collection only:
+at about 2,100 decisions per second the same decisions are about 55 minutes
+instead of 105, which would make the cycle about 5 h 20 min. Derived, not
+played.
