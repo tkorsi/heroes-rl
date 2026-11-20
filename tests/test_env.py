@@ -37,6 +37,33 @@ def test_a_game_past_the_day_limit_is_stopped_and_bootstrapped(play_fake):
     assert blue.status == "truncated" and len(blue.trajectory.decisions) == 3
 
 
+def test_a_stopped_game_can_be_given_a_result_of_its_own(play_fake):
+    from heroes.learner.ppo import PPOConfig, prepare
+    stopped = dict(learner=0, limits=Limits(max_days=4), end="endless")
+    estimated = play_fake(**stopped).trajectory
+    lost = play_fake(**stopped, stopped_reward=-1)
+    assert (lost.status, lost.reason, lost.outcomes) == ("truncated", "game_day_limit", None)
+    assert (lost.trajectory.reward, lost.trajectory.bootstrap) == (-1, 0.0)
+    drawn = play_fake(**stopped, stopped_reward=0).trajectory
+    assert (drawn.reward, drawn.bootstrap) == (0, 0.0)
+    # The same actions are trained on, whatever the stop is worth; only what they are scored with differs.
+    assert len(estimated.decisions) == 4 and (estimated.reward, estimated.bootstrap != 0) == (0, True)
+    for trajectory in (lost.trajectory, drawn):
+        assert (trajectory.decisions, trajectory.actions) == (estimated.decisions, estimated.actions)
+        assert (trajectory.log_probs, trajectory.values) == (estimated.log_probs, estimated.values)
+    # Every action of the lost game has the return -1, and of the drawn one 0: nothing is estimated.
+    for trajectory, result in ((lost.trajectory, -1), (drawn, 0)):
+        returns = prepare([trajectory], PPOConfig(normalize_advantages=False)).targets[0].returns
+        assert returns == pytest.approx((result,) * 4, abs=1e-6)
+    assert prepare([estimated], PPOConfig(normalize_advantages=False)).targets[0].returns == pytest.approx(
+        (estimated.bootstrap,) * 4, abs=1e-6)
+    # Both seats lose a stopped game, and a finished game keeps its result.
+    both = play_fake(**stopped, stopped_reward=-1, both_seats=True)
+    assert [trajectory.reward for trajectory in both.trajectories] == [-1, -1]
+    won = play_fake(learner=0, days=3, winner=0, stopped_reward=-1).trajectory
+    assert (won.reward, won.bootstrap) == (1, 0.0)
+
+
 def test_the_action_limit_stops_a_game(play_fake):
     game = play_fake(limits=Limits(max_actions=2), end="endless")
     assert (game.status, game.reason) == ("truncated", "agent_action_limit")

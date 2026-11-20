@@ -43,6 +43,9 @@ class Config:
 
     # What a game is trained on.
     both_seats: bool = False  # train on the opponent seat's experience too: two trajectories per game
+    # What a game stopped at a limit is worth to a seat: -1 a loss for both, 0 a draw.
+    # None scores it with the policy's own value estimate at the stop.
+    stopped_game_reward: int | None = None
     play_during_update: bool = False  # collect the next batch while the update runs, one update behind; torch backend only
 
     # How the policy learns.

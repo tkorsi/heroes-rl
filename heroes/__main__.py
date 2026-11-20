@@ -20,6 +20,8 @@ def _config(arguments):
     for name in ("keep_game_files", "both_seats", "play_during_update"):
         if getattr(arguments, name, False):
             changes[name] = True
+    if getattr(arguments, "stopped_game_reward", None) is not None:
+        changes["stopped_game_reward"] = arguments.stopped_game_reward
     budgets = {name: getattr(arguments, name, None) for name in ("stack_moves", "windows", "decisions")}
     if any(value is not None for value in budgets.values()):
         from .game import guard
@@ -64,6 +66,9 @@ def main(argv=None):
             command.add_argument("--play-during-update", action="store_true",
                                  help="play the next batch while the update runs; its first games use the weights "
                                       "from before that update (with --backend torch only)")
+            command.add_argument("--stopped-game-reward", type=int, choices=(-1, 0),
+                                 help="what a game stopped at the day limit is worth to a seat: -1 a loss for both "
+                                      "seats, 0 a draw (default: scored with the policy's own value estimate)")
             command.add_argument("--stack-moves", type=int,
                                  help="stack rearrangements a hero or town may do per game day (default 32)")
             command.add_argument("--windows", type=int,

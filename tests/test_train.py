@@ -250,16 +250,39 @@ def test_a_failing_next_batch_does_not_cost_the_update_that_was_running(config, 
 def test_the_training_changes_are_settings_of_a_run(config):
     from heroes.game import guard
     main(["train", "2", "--fresh", "--games-per-update", "2", "--workers", "2", "--both-seats", "--play-during-update",
-          "--stack-moves", "8", "--windows", "6", "--decisions", "40",
+          "--stack-moves", "8", "--windows", "6", "--decisions", "40", "--stopped-game-reward", "-1",
           "--state", str(config.state), "--legacy", str(config.legacy), "--vcmi", str(config.vcmi),
           "--game-data", str(config.game_data), "--backend", "torch"])
     records = _log(config)
     assert records[0]["guard"] == guard.VERSION + "+stack-moves-8+windows-6+decisions-40"
     assert records[0]["limits"]["max_days"] == 365 and records[0]["both_seats"] is True
+    assert records[0]["stopped_game_reward"] == -1
     assert [record["samples"] for record in records if record["event"] == "game"] == [6, 6]
     with pytest.raises(SystemExit) as refused:
         main(["train", "2", "--decisions", "0", "--state", str(config.state.with_name("unused"))])
     assert refused.value.code == 2
+    with pytest.raises(SystemExit) as refused:  # a stopped game is lost or drawn, never won
+        main(["train", "2", "--stopped-game-reward", "1", "--state", str(config.state.with_name("unused"))])
+    assert refused.value.code == 2 and not config.state.with_name("unused").exists()
+
+
+def test_stopped_games_that_both_seats_lost_are_trained_on(config, fake_engine):
+    from heroes.engine.env import Limits
+    fake_engine(days=5)
+    lost = replace(config, stopped_game_reward=-1, both_seats=True, limits=Limits(max_days=2))
+    state = train(lost, 2, fresh=True, out=io.StringIO())
+    records = _log(config)
+    assert records[0]["stopped_game_reward"] == -1
+    update = next(record for record in records if record["event"] == "update")
+    assert (update["games"], update["truncated"], update["failed"]) == (2, 2, 0)
+    # Red finished two actions before its decision of day 3 stopped the game, blue one that a decision followed.
+    assert update["samples"] == 6 and state.progress["updates"] == 1
+    # The targets are -1 for every action, so the value error is the distance of the estimates from -1.
+    assert update["value_loss"] > 0.3
+    with pytest.raises(SystemExit, match="worth -1"):
+        train(replace(config, state=config.state.with_name("refused"), stopped_game_reward=1), 2, fresh=True,
+              out=io.StringIO())
+    assert not config.state.with_name("refused").exists()
 
 
 def test_a_game_number_is_never_handed_out_twice(tmp_path):

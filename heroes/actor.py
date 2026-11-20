@@ -5,6 +5,11 @@ state, its own view of the game and its own random generator; one of the two is
 the learner whose experience is trained on, the other is its opponent. With
 ``both_seats`` the opponent's experience is trained on as well: the same game
 then gives two trajectories, one that ends in a win and one that ends in a loss.
+
+A game stopped at a limit has no winner. Its actions are scored with the
+policy's own estimate of what would have followed, unless ``stopped_reward``
+says what such a game is worth to a seat: -1 makes it a game both seats lost,
+0 a draw.
 """
 from __future__ import annotations
 
@@ -127,12 +132,18 @@ def learner_samples(frames, *, natural):
     return samples
 
 
-def build_trajectory(frames, seat, *, natural, outcome, guard):
-    """Join the seat's resolved actions with what its policy recorded while playing."""
+def build_trajectory(frames, seat, *, natural, outcome, guard, stopped_reward=None):
+    """Join the seat's resolved actions with what its policy recorded while playing.
+
+    ``stopped_reward`` is what a game stopped at a limit is worth to the seat.
+    None scores it with the value of the decision after the last action.
+    """
     samples = learner_samples(frames, natural=natural)
     if not natural:
         # A stopped game ends at the last action whose following decision the
         # policy saw; that decision's value stands in for the rest of the game.
+        # With a fixed reward the same actions are trained on, so the two ways
+        # of scoring a stopped game differ in nothing else.
         while samples and samples[-1][1] not in seat.values:
             samples.pop()
     if not samples:
@@ -143,12 +154,17 @@ def build_trajectory(frames, seat, *, natural, outcome, guard):
     decisions = tuple(decision for decision, _ in samples)
     if any(decision not in seat.choices for decision in decisions):
         raise Unusable("an action in the history was not sampled by this policy")
+    if natural:
+        reward, bootstrap = (1 if outcome == "win" else -1), 0.0
+    elif stopped_reward is None:
+        reward, bootstrap = 0, seat.values[samples[-1][1]]
+    else:
+        reward, bootstrap = stopped_reward, 0.0
     return Trajectory(
         decisions=decisions,
         log_probs=tuple(seat.choices[decision][1] for decision in decisions),
         values=tuple(seat.values[decision] for decision in decisions),
-        reward=(1 if outcome == "win" else -1) if natural else 0,
-        bootstrap=0.0 if natural else seat.values[samples[-1][1]],
+        reward=reward, bootstrap=bootstrap,
         actions=tuple(seat.choices[decision][0] for decision in decisions),
         frames=tuple(frames), guard=guard)
 
@@ -163,7 +179,7 @@ def compile_recipe(model, trajectory):
     return trajectory
 
 
-def play(env, model, job, directory, *, guard, on_progress=None, both_seats=False):
+def play(env, model, job, directory, *, guard, on_progress=None, both_seats=False, stopped_reward=None):
     """Play one game to its end and return it with the learner's trajectory.
 
     A game whose learner seat gives no trajectory is a failed game. With
@@ -191,7 +207,8 @@ def play(env, model, job, directory, *, guard, on_progress=None, both_seats=Fals
             try:
                 built[seat] = build_trajectory(
                     env.frames(seat), seats[seat], natural=status == "completed",
-                    outcome=state.outcomes[seat] if state.outcomes else None, guard=guard)
+                    outcome=state.outcomes[seat] if state.outcomes else None, guard=guard,
+                    stopped_reward=stopped_reward)
             except Unusable as error:
                 unusable.append(f"{COLORS[seat]}: {error}" if both_seats else str(error))
         if not built:

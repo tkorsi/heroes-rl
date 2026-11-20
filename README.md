@@ -262,6 +262,7 @@ training run yet; what is known is what they do to a batch of games.
 | `--windows N` | windows a hero or town may open per game day; no daily budget without the flag | 6: 74 decisions per seat and day |
 | `--decisions N` | decisions a seat may take per game day before it can only close windows and end its turn | 40: 33 decisions per seat and day, but half the moves and a sixth of the recruiting |
 | `--play-during-update` | the actors start on the next batch while the update runs, with the weights from before it; with `--backend torch` only | not measured: it needs a training run |
+| `--stopped-game-reward -1` | a game stopped at the day limit is a game both seats lost: every action of it gets the return -1 instead of the policy's own estimate at the stop. `0` makes it a draw | not measured: what it does is to what the policy learns, which only training runs show |
 
 - **The two targeted budgets together are the useful ones.** A seat answers
   about 100 decisions per game day and the learner seats' actions are 47%
@@ -293,6 +294,18 @@ training run yet; what is known is what they do to a batch of games.
   those weights. If the next batch fails while an update runs, that update is
   finished and saved before the failure is reported. Tested with the scripted
   engine only.
+- **A result for stopped games.** Rewards are undiscounted and a game stopped
+  at day 365 is scored with the policy's own value estimate at the stop, so
+  nothing in what is trained on makes a shorter game better than a longer
+  one, and the side that would have lost does better by reaching the limit.
+  In the batch of update 1792 the stopped games held 73% of the samples. The
+  policy reads the day in every frame, so the limit can be a real end of the
+  game: with `--stopped-game-reward -1` both seats lose a game that reaches
+  it, nobody gains by dragging one out, and the side ahead has to finish.
+  With `0`, a draw, the side behind would still rather reach the limit than
+  lose. The setting gives no reason to win on day 50 instead of day 300; a
+  cost per game day would, and is not built. The same actions are trained on
+  either way; only their returns differ.
 - A day limit below 365 was measured (on 14 whole games, 180 keeps 64% of the
   decisions and 9 of the 12 natural endings) and not made a setting: with
   enough training, games become shorter by themselves.

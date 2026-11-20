@@ -36,12 +36,12 @@ def play_fake(fake_engine, tmp_path):
     model = checkpoint.fresh(learning_rate=3e-4).model.eval()
     count = iter(range(1000))
 
-    def run(learner=0, limits=Limits(), **script):
+    def run(learner=0, limits=Limits(), both_seats=False, stopped_reward=None, **script):
         env = Env(fake_engine(**script), limits)
         try:
             number = next(count) + 1
             return actor.play(env, model, actor.Job(number, 7, learner, (1, 2)), tmp_path / f"game-{number}",
-                              guard=guard.VERSION)
+                              guard=guard.VERSION, both_seats=both_seats, stopped_reward=stopped_reward)
         finally:
             env.close()
 

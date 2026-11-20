@@ -9375,3 +9375,69 @@ cycle costs and were reported to the user; neither was investigated.
 - Blue wins most decided games in every batch: 73 to 23, 60 to 22, 63 to 22,
   48 to 28 and 31 to 18. Both seats play with the same weights, so this is the
   map, the turn order or the policy's play of the two seats.
+
+### 2026-11-21 — A result for games stopped at the day limit: the setting, and what would count as an effect
+
+Written before any run. The user asked how a price on reaching the day limit
+would be done, after the entry above showed him that the stopped games held
+73% of the samples of his last batch.
+
+**What is so today, from the code.** `build_trajectory` gives a stopped game
+the reward 0 and, as bootstrap, the value the policy estimated at the seat's
+next decision. `prepare` computes undiscounted returns with lambda 1, so every
+action of such a game has that one estimate as its return, and its advantage
+is the estimate at the stop minus the estimate at the action. No result enters,
+and a win on day 30 is worth what a win on day 360 is. For the side that
+would have lost, a game that reaches the limit is worth its own estimate
+instead of -1. Every frame the policy reads carries the game day, so the limit
+is something it can see coming.
+
+**The setting.** `--stopped-game-reward -1` (`Config.stopped_game_reward`):
+`build_trajectory` gives a stopped game the reward -1 and no bootstrap; with 0
+it is a draw. The trained actions are the same as without the setting (the
+same last action, the one whose following decision the policy saw), so the two
+ways differ only in the returns. Nothing in play changes. Off by default. On a
+local branch, not pushed, while the user decides where it goes.
+
+Why -1 and not 0: payoffs that stay zero-sum give the two sides opposite
+wishes about time, so whatever makes the leader hurry makes the other side
+stall; with a draw the side behind still prefers the limit to a loss. A game
+that both lose takes that away and leaves the leader a reason to finish. It
+gives no reason to finish early; a cost per game day paid by both seats would,
+and needs each decision's day carried into the update. Not built.
+
+**Tests**, 93 scripted (90 before): a stopped game scored three ways has the
+same decisions, actions, probabilities and values, and returns of -1, 0 or the
+estimate for every action; both seats lose it; a finished game keeps its
+result; the MLX update follows the reference on a batch with such a game; the
+training loop logs the setting and trains on two stopped games; the values 1
+and anything else are refused before a state folder exists.
+
+**Hypothesis.** With -1 the share of games that reach day 365 falls from
+update to update; without it, it does not.
+
+**The comparison that would show it**, for the user to launch: two runs from
+checkpoint 1792, each in a scratch folder started from that checkpoint, with
+`--games-per-update 50 --both-seats --stack-moves 4 --windows 6
+--windows-per-minibatch 16 --windows-per-game 8 --learning-rate 8.5e-4`, six
+updates each, the second with `--stopped-game-reward -1`. Those settings are
+not his usual ones: with the usual ones an update cycle takes about six hours
+at the present length of the games, and with these about one by the estimate
+of the entry above, which has not been played. Both runs share them, so the
+comparison is of the one flag. Read per update from `log.jsonl`: the games
+stopped at day 365 out of 50, the mean days of a game, its decisions, the
+decided games by colour, the value loss and the approximate KL.
+
+**What counts.** The first batch of both runs is played by the same weights
+and cannot differ. An effect is claimed if, over updates 4 to 6 (150 games a
+run), the share of stopped games with the flag is lower than without it by
+more than 12 points, twice the standard error of that difference for shares
+near one half, and is lower than in the same run's updates 1 to 3. Anything
+else is "no effect shown in six updates", not "no effect". One run per arm
+cannot separate the flag from the chance of a run.
+
+**Limitations known beforehand.** Games are seeded from the system's random
+source, so the two runs play different games. The clipped value loss pulls
+an estimate at most 0.2 away from what it was during play in one update, so
+six updates may be too few for it to reach -1 at late days. The budgets and the second seat may change the trend by
+themselves, which is what the run without the flag is for.

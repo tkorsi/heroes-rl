@@ -57,13 +57,14 @@ class Trajectory:
     Rewards are undiscounted and terminal only: every action scores zero except
     the last one of a naturally finished game, which scores +1 or -1. A game
     stopped at a limit instead bootstraps from the value of the learner's next
-    decision.
+    decision, or, when the run says what a stopped game is worth, ends with
+    that reward: -1 for a game both seats lost, 0 for a draw.
     """
     decisions: tuple[int, ...]  # frame index of each trained decision, ascending
     log_probs: tuple[float, ...]  # behaviour log-probability of the action taken there
     values: tuple[float, ...]  # behaviour value estimate there
-    reward: float  # +1 or -1 after the last action of a natural game, else 0
-    bootstrap: float  # value after the last action: 0 for a natural game
+    reward: float  # +1 or -1 after the last action of a natural game; what a stopped game is worth, else 0
+    bootstrap: float  # value after the last action: 0 for a natural game and for a stopped one with its own reward
     actions: tuple = ()  # the actions taken, aligned with ``decisions``
     frames: tuple | None = None  # the seat's typed frames (torch reference backend)
     guard: str | None = None  # interaction-guard version the behaviour policy used

@@ -91,7 +91,7 @@ def _play_job(env, model, job, config, report):
     try:
         try:
             game = play(env, model, job, directory, guard=config.guard, on_progress=report,
-                        both_seats=config.both_seats)
+                        both_seats=config.both_seats, stopped_reward=config.stopped_game_reward)
             if config.backend == "mlx":
                 compiling = time.monotonic()
                 for trajectory in game.trajectories:
@@ -375,6 +375,9 @@ def collect(pool, config, path, target, numbers, update, display, log, batch=Non
 
 def train(config, games, *, fresh=False, out=sys.stderr):
     """Play ``games`` games in batches of ``config.games_per_update`` and update after each batch."""
+    if config.stopped_game_reward not in (None, -1, 0):
+        raise SystemExit("A game stopped at a limit is worth -1 (both seats lost) or 0 (a draw) to a seat, "
+                         f"not {config.stopped_game_reward!r}.")
     if config.play_during_update and config.backend == "mlx":
         # Before its first step the MLX update compares what it computes for a
         # minibatch with what was recorded while playing, and stops if they
@@ -402,7 +405,7 @@ def _train(config, games, update_policy, fresh, out):
                  f"{state.progress['decisions']} decisions) in {config.state}")
     log.write("start", games=games, backend=config.backend, workers=config.workers, progress=state.progress,
               ppo=config.ppo.to_dict(), limits=asdict(config.limits), guard=config.guard,
-              both_seats=config.both_seats)
+              both_seats=config.both_seats, stopped_game_reward=config.stopped_game_reward)
     # Failed and discarded games keep their numbers, so a number never names two games.
     numbers = itertools.count(max(state.progress["games"], log.last_game) + 1)
     pool, saved_update = Pool(config), state.updates
