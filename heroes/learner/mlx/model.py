@@ -15,6 +15,31 @@ INITIAL_LOG_PROBABILITY_LIMIT = 0.02
 INITIAL_VALUE_LIMIT = 0.002
 
 
+def plan_bytes(host):
+    """The bytes a host plan takes on the GPU: four for every element of every array.
+
+    ``_convert`` creates an FP32 or int32 array for every occurrence, including
+    uint8 and bool inputs and repeated host-array aliases. The planner's integer
+    sequences stay on the CPU and hold no array. A long game has hundreds of
+    thousands of them, and walking them at every miss of the plan cache cost
+    more than converting the plan, so they are skipped.
+    """
+    import numpy as np
+    from .plans import _CPU_PLAN_METADATA_KEYS
+
+    def size(value):
+        if isinstance(value, np.ndarray):
+            return value.size * 4
+        if isinstance(value, dict):
+            return sum(size(x) for key, x in value.items()
+                       if not (key in _CPU_PLAN_METADATA_KEYS and isinstance(x, (list, tuple))))
+        if isinstance(value, (list, tuple)):
+            return sum(size(x) for x in value)
+        return 0
+
+    return size(host)
+
+
 class MLXModel:
     """Parameter-agnostic neural operations; no Adam or checkpoint construction."""
 
@@ -216,17 +241,7 @@ class MLXBackend(MLXModel):
             self.plan_cache.move_to_end(key)
             return self.plan_cache[key][0]
         host = self._load_plan(reference)
-        def size(value):
-            if isinstance(value, self.np.ndarray):
-                # _convert creates an FP32/int32 array for every occurrence,
-                # including uint8/bool inputs and repeated host-array aliases.
-                return value.size * 4
-            if isinstance(value, dict):
-                return sum(size(x) for x in value.values())
-            if isinstance(value, (list, tuple)):
-                return sum(size(x) for x in value)
-            return 0
-        count = size(host)
+        count = plan_bytes(host)
         while self.plan_cache and self.plan_cache_bytes + count > PREFIX_CONSTANT_CACHE_BYTES:
             _, (_, removed) = self.plan_cache.popitem(last=False)
             self.plan_cache_bytes -= removed
@@ -236,24 +251,29 @@ class MLXBackend(MLXModel):
             self.plan_cache_bytes += count
         return plan
 
+    def _replay(self, parameters, spec):
+        """The initial state and, for a nonempty prefix, the state after each of its frames."""
+        mx = self.mx
+        count = spec["frame_limit"]
+        initial = mx.zeros((1, 64), dtype=mx.float32)
+        if not count:
+            return initial, None
+        plan = self.plan(self.manifest["history_plans"][spec["history"]])
+        vectors, _, _ = self.encode(parameters, plan, count)
+        return initial, self.optimized.gru_prefix(vectors[None, :count], initial, *[
+            parameters["gru." + key] for key in ("weight_ih", "weight_hh", "bias_ih", "bias_hh")
+        ])[0]
+
     def prefix_states(self, prefixes, *, synchronize=True):
         mx = self.mx
         parameters = {key: mx.stop_gradient(value) for key, value in self.p.items()}
         result = {}
         for spec in prefixes:
-            history, count = spec["history"], spec["frame_limit"]
-            initial = mx.zeros((1, 64), dtype=mx.float32)
-            states = None
-            if count:
-                plan = self.plan(self.manifest["history_plans"][history])
-                vectors, _, _ = self.encode(parameters, plan, count)
-                states = self.optimized.gru_prefix(vectors[None, :count], initial, *[
-                    parameters["gru." + key] for key in ("weight_ih", "weight_hh", "bias_ih", "bias_hh")
-                ])[0]
+            initial, states = self._replay(parameters, spec)
             for entry in spec["states"]:
                 index = entry["state_index"]
                 value = initial if index < 0 else states[index:index + 1]
-                result[(history, entry["stop"])] = mx.stop_gradient(value)
+                result[(spec["history"], entry["stop"])] = mx.stop_gradient(value)
         if synchronize:
             mx.eval(list(result.values()))
         else:
@@ -346,9 +366,14 @@ class MLXBackend(MLXModel):
         # Parameters outside active_parameters preserve their weights, moments
         # and counters, matching torch.optim.Adam's grad=None behavior.
         self.p = updated
-        mx.eval(self.p, self._moments())
+        # Only what this step wrote can have become nonfinite; everything else was
+        # checked when it was written. The check is evaluated with the step itself.
+        written = [value for name in active
+                   for value in (updated[name], self.adam[name]["exp_avg"], self.adam[name]["exp_avg_sq"])]
+        state_is_finite = mx.all(mx.stack([mx.all(mx.isfinite(value)) for value in written]))
+        mx.eval(self.p, self._moments(), state_is_finite)
         validation_started = time.perf_counter()
-        state_is_finite = self.finite(list(self.p.values()) + self._moments())
+        state_is_finite = bool(state_is_finite.item())
         self.state_validation_seconds += time.perf_counter() - validation_started
         if not state_is_finite:
             raise FloatingPointError("Nonfinite MLX model or Adam state after update")

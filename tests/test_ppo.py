@@ -1,4 +1,5 @@
 """Targets, loss windows and the reference update."""
+from dataclasses import replace
 import math
 
 import pytest
@@ -112,3 +113,33 @@ def test_encodings_reused_while_acting_never_outlive_the_weights(play_fake):
     for parameter, replacement in zip(model.parameters(), other.parameters()):
         parameter.data = replacement.data.clone()
     assert torch.equal(values(model), expected)
+
+
+def test_grouped_minibatches_use_every_window_once_and_few_games(play_fake):
+    def game(decisions):
+        return Trajectory(decisions=tuple(range(0, 2 * decisions, 2)), log_probs=(0.0,) * decisions,
+                          values=(0.0,) * decisions, reward=1, bootstrap=0.0)
+
+    plain = PPOConfig(decisions_per_window=2, windows_per_minibatch=4)
+    batch = prepare([game(40), game(14), game(6)], plain)  # 20, 7 and 3 windows
+    # Ungrouped, the schedule is the plain shuffle it always was.
+    expected = torch.randperm(30, generator=torch.Generator().manual_seed(5)).tolist()
+    steps = batch.minibatches(plain, torch.Generator().manual_seed(5))
+    assert steps == [expected[left:left + 4] for left in range(0, 30, 4)] and len(steps) == batch.planned_steps(plain)
+
+    grouped = replace(plain, windows_per_game=2)
+    steps = batch.minibatches(grouped, torch.Generator().manual_seed(5))
+    assert sorted(index for step in steps for index in step) == list(range(30))
+    assert len(steps) == batch.planned_steps(grouped) == 8  # 10 + 4 + 2 groups, two per step
+    games = [[batch.windows[index].rollout_index for index in step] for step in steps]
+    assert all(len(set(step)) <= 2 for step in games)  # two groups, so at most two games to replay
+    assert sum(len(step) == 4 for step in steps) >= 6  # only the games' odd last windows make a step smaller
+    assert steps != batch.minibatches(grouped, torch.Generator().manual_seed(6))
+    for bad in (dict(windows_per_game=3), dict(windows_per_game=0), dict(windows_per_game=8)):
+        with pytest.raises(ValueError):
+            replace(plain, **bad)
+
+    trajectories = [play_fake(learner=0, days=9).trajectory, play_fake(learner=1, days=5).trajectory]
+    report = update(play_fake.model, _optimizer(play_fake.model), trajectories, generator=torch.Generator().manual_seed(0),
+                    config=PPOConfig(decisions_per_window=2, windows_per_minibatch=4, windows_per_game=2))
+    assert (report.samples, report.optimizer_steps) == (14, 3)  # 5 and 3 windows: 3 and 2 groups

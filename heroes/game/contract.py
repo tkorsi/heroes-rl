@@ -535,6 +535,10 @@ def army_operation_maximum(armies, kind, source_ref, destination_ref):
     destination_army, destination = army_slot(armies, destination_ref)
     if source is None or destination is None or source_ref == destination_ref:
         return 0
+    return _operation_maximum(kind, source_army, source, destination_army, destination)
+
+
+def _operation_maximum(kind, source_army, source, destination_army, destination):
     if kind == "split_stack" and source_army.role == "joining_neutral":
         return 0
     crossing = source_army.subject != destination_army.subject
@@ -565,10 +569,32 @@ def army_operation_maximum(armies, kind, source_ref, destination_ref):
     return maximum
 
 
+def _operation_maxima(armies, kind):
+    """``(source ref, destination ref, army_operation_maximum of the pair)`` for every pair of displayed slots.
+
+    ``army_slot`` is looked up once per reference here instead of twice per pair.
+    """
+    found = {}  # what army_slot returns for a reference: the first slot that carries it
+    for army in armies:
+        for slot in army.slots:
+            found.setdefault(slot.ref, (army, slot))
+    for first in armies:
+        for source in first.slots:
+            source_ref, origin = source.ref, found[source.ref]
+            for second in armies:
+                for destination in second.slots:
+                    destination_ref = destination.ref
+                    yield (source_ref, destination_ref, 0 if source_ref == destination_ref else
+                           _operation_maximum(kind, *origin, *found[destination_ref]))
+
+
 def army_operation_choices(armies, kind):
-    return tuple((source.ref, destination.ref, maximum)
-                 for first in armies for source in first.slots for second in armies for destination in second.slots
-                 if (maximum := army_operation_maximum(armies, kind, source.ref, destination.ref)) > 0)
+    return tuple(item for item in _operation_maxima(armies, kind) if item[2] > 0)
+
+
+def has_army_operation(armies, kind):
+    """bool(army_operation_choices(armies, kind)), stopping at the first choice."""
+    return any(maximum > 0 for _, _, maximum in _operation_maxima(armies, kind))
 
 
 def _replace_window_slots(window, changes):
@@ -3138,20 +3164,19 @@ def encode_frame(frame):
 
 
 def decode_frame(raw, *, observation=None):
-    """The typed frame of raw. ``observation``, when given, must be
-    decode_observation(raw["observation"], schema=raw["schema"]) of this very
-    raw, already computed by the caller; it is used instead of decoding again."""
+    """The typed frame of raw. ``observation``, when given, is the frame's
+    observation, already decoded by the caller: from this raw's own, or from
+    the earlier view that a decision without one refers to."""
     data = _record(raw, Frame)
     if not {"schema", "episode", "player", "seq", "day", "kind"} <= data.keys():
         raise ValueError("History JSON requires explicit schema and base fields")
     profile = profile_for(data["schema"])
     if data["schema"] != profile.history_schema:
         raise ValueError("Expected a history schema")
-    if data.get("observation") is not None:
-        data["observation"] = (observation if observation is not None
-                               else decode_observation(data["observation"], schema=profile.history_schema))
-    elif observation is not None:
-        raise ValueError("A decoded observation requires the raw observation it decodes")
+    if observation is not None:
+        data["observation"] = observation
+    elif data.get("observation") is not None:
+        data["observation"] = decode_observation(data["observation"], schema=profile.history_schema)
     if data.get("context") is not None:
         data["context"] = _decode_context(data["context"], profile)
     if data.get("action") is not None and profile == WINDOWS_PROFILE:

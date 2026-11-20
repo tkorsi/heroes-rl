@@ -1,10 +1,14 @@
 """Recurrent PPO: trajectories, targets, loss windows and a torch reference update.
 
-A trajectory is one game seen from the learner's seat. Every minibatch rebuilds
-the recurrent state with the current weights from the start of the game up to
-the loss window, and only the window itself is differentiated; stored hidden
-states are never reused. The MLX backend in ``heroes.learner.mlx`` runs the same
-update on Apple GPUs. ``update`` below is the slow, plain-autograd reference.
+A trajectory is one game seen from the learner's seat. A loss window starts
+from the recurrent state the learner's own weights give for everything before
+it, and only the window itself is differentiated; hidden states stored during
+play are never reused, and neither is a state computed with earlier weights:
+at every optimizer step the state is rebuilt from the start of the game with
+the current weights, which costs time quadratic in the length of a game.
+``windows_per_game`` lets the windows a minibatch takes from one game share
+that replay. The MLX backend in ``heroes.learner.mlx`` runs the same update on
+Apple GPUs. ``update`` below is the slow, plain-autograd reference.
 """
 from __future__ import annotations
 
@@ -27,12 +31,19 @@ class PPOConfig:
     windows_per_minibatch: int = 2
     normalize_advantages: bool = True
     learning_rate: float = 3e-4
+    # Windows of a minibatch that come from the same game and so share one replay
+    # of it. 1 draws every window from all games alike; it must divide
+    # windows_per_minibatch.
+    windows_per_game: int = 1
 
     def __post_init__(self):
         if not (0 <= self.gae_lambda <= 1 and 0 < self.clip_ratio < 1 and self.value_coefficient >= 0
                 and self.max_grad_norm > 0 and self.learning_rate > 0
                 and (self.value_clip is None or self.value_clip > 0)
-                and min(self.epochs, self.decisions_per_window, self.windows_per_minibatch) >= 1):
+                and type(self.windows_per_game) is int
+                and min(self.epochs, self.decisions_per_window, self.windows_per_minibatch,
+                        self.windows_per_game) >= 1
+                and self.windows_per_minibatch % self.windows_per_game == 0):
             raise ValueError("Invalid PPO configuration")
 
     def to_dict(self):
@@ -104,9 +115,37 @@ class Batch:
     offsets: list  # first flat index of each trajectory
     windows: list
     samples: int
+    starts: list = field(default_factory=list)  # per trajectory, the first frame of each of its windows, ascending
 
     def planned_steps(self, config):
-        return config.epochs * math.ceil(len(self.windows) / config.windows_per_minibatch)
+        groups = sum(math.ceil(len(starts) / config.windows_per_game) for starts in self.starts)
+        return config.epochs * math.ceil(groups * config.windows_per_game / config.windows_per_minibatch)
+
+    def minibatches(self, config, generator):
+        """One epoch: for every optimizer step, the indices of its windows in ``windows``.
+
+        Every window is used once. With ``windows_per_game`` 1 the windows of
+        all games are shuffled together. Otherwise each game's windows are
+        shuffled and cut into groups of that size, the groups of all games are
+        shuffled, and a minibatch takes whole groups. Its windows then come
+        from few games, and one replay of a game serves all its windows in the
+        step. A game's last group may be smaller.
+        """
+        size = config.windows_per_game
+        if size == 1:
+            order = torch.randperm(len(self.windows), generator=generator).tolist()
+            return [order[left:left + config.windows_per_minibatch]
+                    for left in range(0, len(order), config.windows_per_minibatch)]
+        groups, first = [], 0
+        for starts in self.starts:  # ``windows`` lists the games one after another
+            order = torch.randperm(len(starts), generator=generator).tolist()
+            groups.extend([first + index for index in order[left:left + size]]
+                          for left in range(0, len(order), size))
+            first += len(starts)
+        order = torch.randperm(len(groups), generator=generator).tolist()
+        count = config.windows_per_minibatch // size
+        return [[window for group in order[left:left + count] for window in groups[group]]
+                for left in range(0, len(order), count)]
 
 
 def prepare(trajectories, config):
@@ -118,16 +157,18 @@ def prepare(trajectories, config):
         mean = sum(advantages) / len(advantages)
         scale = math.sqrt(sum((value - mean) ** 2 for value in advantages) / len(advantages)) + 1e-8
         advantages = [(value - mean) / scale for value in advantages]
-    offsets, offset, windows = [], 0, []
+    offsets, offset, windows, starts = [], 0, [], []
     for index, item in enumerate(trajectories):
         offsets.append(offset)
         offset += len(item.decisions)
+        starts.append([])
         for start in range(0, len(item.decisions), config.decisions_per_window):
             indices = tuple(range(start, min(start + config.decisions_per_window, len(item.decisions))))
             # The window's graph includes every frame since the preceding trained decision.
             begin = 0 if start == 0 else item.decisions[start - 1] + 1
             windows.append(LossWindow(index, indices, begin, item.decisions[indices[-1]]))
-    return Batch(targets, advantages, offsets, windows, offset)
+            starts[-1].append(begin)
+    return Batch(targets, advantages, offsets, windows, offset, starts)
 
 
 def clipped_losses(log_probs, values, old_log_probs, old_values, advantages, returns, config):
@@ -158,24 +199,37 @@ class PPOReport:
     timings_seconds: dict = field(default_factory=dict)
 
 
+def _states_before(model, frames, starts):
+    """One pass over a game without gradients: the state before each frame in ``starts`` (ascending)."""
+    states, state, seq = {}, model.initial_state(), 0
+    with torch.no_grad():
+        for start in starts:
+            while seq < start:
+                state = model.forward_step(frames[seq], state).state
+                seq += 1
+            states[start] = state
+    return states
+
+
 def update(model, optimizer, trajectories, *, config, generator, progress=None):
-    """Reference update in plain torch autograd. Correct but slow: every window
-    replays its whole prefix frame by frame. Production training uses MLX."""
+    """Reference update in plain torch autograd. Correct but slow: it replays
+    games frame by frame. Production training uses MLX."""
     from ..model.policy import encode_history
     started = time.perf_counter()
     batch = prepare(trajectories, config)
     inputs = [encode_history(item.frames, guard=item.guard) for item in trajectories]
     totals, count_seen, steps = [0.0] * 4, 0, 0
     for _ in range(config.epochs):
-        order = torch.randperm(len(batch.windows), generator=generator).tolist()
-        for left in range(0, len(order), config.windows_per_minibatch):
+        for selected in batch.minibatches(config, generator):
             new_logs, new_values, old_logs, old_values, advantages, returns = [], [], [], [], [], []
-            for window in (batch.windows[index] for index in order[left:left + config.windows_per_minibatch]):
+            # One replay of each game of the minibatch, with the current weights.
+            stops = {}
+            for window in (batch.windows[index] for index in selected):
+                stops.setdefault(window.rollout_index, set()).add(window.start_seq)
+            states = {index: _states_before(model, inputs[index], sorted(starts)) for index, starts in stops.items()}
+            for window in (batch.windows[index] for index in selected):
                 item, frames = trajectories[window.rollout_index], inputs[window.rollout_index]
-                state = model.initial_state()
-                with torch.no_grad():
-                    for seq in range(window.start_seq):
-                        state = model.forward_step(frames[seq], state).state
+                state = states[window.rollout_index][window.start_seq]
                 wanted = {item.decisions[index]: index for index in window.sample_indices}
                 for seq in range(window.start_seq, window.end_seq + 1):
                     output = model.forward_step(frames[seq], state)

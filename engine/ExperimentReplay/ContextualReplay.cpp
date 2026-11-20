@@ -104,6 +104,22 @@ bool automaticAllowed(const CPack & pack, const std::string & operation)
 	if(operation == "packet") return dynamic_cast<const MakeAction *>(&pack) != nullptr;
 	return false;
 }
+
+/// An engine told EXPLORER_RL_DECISION_OBSERVATION=0 sends each decision
+/// without the copy of the observation that the same player's latest view
+/// record delivered; older engines and unset ones send the copy. The setting
+/// holds for a whole game, so the first recorded decision shows which form the
+/// capture has. This only selects what the adapter regenerates: every record,
+/// each later decision included, is still compared whole with its recording.
+bool decisionsRepeatObservation(const std::vector<JsonNode> & tape)
+{
+	for(const auto & item : tape)
+		if(item["kind"].String() == "message")
+			for(const auto & record : item["message"]["records"].Vector())
+				if(record["kind"].String() == "decision")
+					return record.Struct().count("observation") != 0;
+	return true; // no decision was recorded, so none is regenerated before the tape ends
+}
 }
 
 void ContextualReplay::configureControllers(const JsonNode & header)
@@ -186,6 +202,11 @@ JsonNode ContextualReplay::run(const std::vector<JsonNode> & tape, bool prefix)
 	setenv("VCMI_EXPERIMENT_CONTEXTUAL_EVIDENCE", "1", 1);
 	setenv("EXPLORER_RL_EPISODE", header["episode"].String().c_str(), 1);
 	setenv("EXPLORER_RL_INTERFACE", header["interface"].String().c_str(), 1);
+	// The capture selects the form of its decisions, never the caller's
+	// environment: set both ways, so a compact capture verifies from a shell
+	// without the variable and an older one from a shell that still has it.
+	const bool repeatedObservation = decisionsRepeatObservation(tape);
+	setenv("EXPLORER_RL_DECISION_OBSERVATION", repeatedObservation ? "1" : "0", 1);
 	unsetenv("VCMI_EXPERIMENT_REPLAY");
 	setExperimentEvidenceHooks(evidence);
 	{
@@ -230,6 +251,7 @@ JsonNode ContextualReplay::run(const std::vector<JsonNode> & tape, bool prefix)
 		evidence->check();
 		for(const auto & [color, interface] : interfaces) interface->finish();
 		auto result = evidence->summary(packets.size());
+		result["decisions_repeat_observation"].Bool() = repeatedObservation;
 		if(learner >= 0) result["request_accounting"] = accounting;
 		GAME.reset();
 		setExperimentEvidenceHooks(nullptr);
