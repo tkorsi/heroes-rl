@@ -2,7 +2,9 @@
 
 Both seats are played by the same weights. Each seat has its own recurrent
 state, its own view of the game and its own random generator; one of the two is
-the learner whose experience is trained on, the other is its opponent.
+the learner whose experience is trained on, the other is its opponent. With
+``both_seats`` the opponent's experience is trained on as well: the same game
+then gives two trajectories, one that ends in a win and one that ends in a loss.
 """
 from __future__ import annotations
 
@@ -37,6 +39,11 @@ class Game:
     seconds: float
     trajectory: Trajectory | None  # None when the game cannot be trained on
     compile_seconds: float = 0.0  # time spent compiling the trajectory's recipe
+    other: Trajectory | None = None  # the opponent seat's trajectory, when both seats are trained on
+
+    @property
+    def trajectories(self):
+        return tuple(item for item in (self.trajectory, self.other) if item is not None)
 
 
 class Seat:
@@ -155,8 +162,12 @@ def compile_recipe(model, trajectory):
     return trajectory
 
 
-def play(env, model, job, directory, *, guard, on_progress=None):
-    """Play one game to its end and return it with the learner's trajectory."""
+def play(env, model, job, directory, *, guard, on_progress=None, both_seats=False):
+    """Play one game to its end and return it with the learner's trajectory.
+
+    With ``both_seats`` the game also carries the opponent seat's trajectory,
+    unless that seat's history gives none; the game then counts with one.
+    """
     started = time.monotonic()
     seats = [Seat(model, seed, guard=guard) for seed in job.policy_seeds]
     state = env.reset(directory, job.number, job.engine_seed)
@@ -169,13 +180,22 @@ def play(env, model, job, directory, *, guard, on_progress=None):
         state = env.step(seat.act())
         if on_progress is not None:
             on_progress(env.day, tuple(len(item.choices) for item in seats))
-    trajectory, status, reason, detail = None, state.status, state.reason, state.detail
+    trajectory, other, status, reason, detail = None, None, state.status, state.reason, state.detail
+
+    def of(seat):
+        return build_trajectory(env.frames(seat), seats[seat], natural=status == "completed",
+                                outcome=state.outcomes[seat] if state.outcomes else None, guard=guard)
+
     if status in ("completed", "truncated"):
         try:
-            trajectory = build_trajectory(
-                env.frames(job.learner), seats[job.learner], natural=status == "completed",
-                outcome=state.outcomes[job.learner] if state.outcomes else None, guard=guard)
+            trajectory = of(job.learner)
         except Unusable as error:
             status, reason, detail = "failed", "unusable_trajectory", str(error)
+        else:
+            if both_seats:
+                try:
+                    other = of(1 - job.learner)
+                except Unusable:
+                    pass
     return Game(job, status, reason, state.outcomes, detail, env.day,
-                tuple(len(item.choices) for item in seats), time.monotonic() - started, trajectory)
+                tuple(len(item.choices) for item in seats), time.monotonic() - started, trajectory, other=other)

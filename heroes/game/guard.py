@@ -15,6 +15,16 @@ A ``Tracker`` follows one seat's frames and, at every decision, returns the
 * a move to an unrevealed tile, to the hero's own tile, to its previous target
   or to a target that failed since the last progress
 * repeating the previous command exactly, and reopening a town right after closing it
+
+Three daily budgets can be set through the guard's name (``version``). They
+change what a policy may sample and so the games it plays; the standard guard
+has only the first, at 32:
+
+* ``stack-moves``: stack management per hero or town
+* ``windows``: optional window navigation (opening a hero, a town, a panel, a
+  stack, a capability) per hero or town
+* ``decisions``: answers of the whole seat; past it the seat may only close
+  what is open, answer what it must and end its turn
 """
 from collections import Counter
 from dataclasses import dataclass
@@ -24,6 +34,34 @@ from . import contract as c
 VERSION = "visible-interaction-budget-hero-relative-stack-cycle-v1"
 NAVIGATION_LIMIT = 2
 MANAGEMENT_LIMIT = 32
+_BUDGETS = ("stack-moves", "windows", "decisions")
+
+
+def version(*, stack_moves=None, windows=None, decisions=None):
+    """The guard's name with these daily budgets: ``VERSION`` itself for the standard ones."""
+    name = VERSION
+    for label, value in zip(_BUDGETS, (stack_moves, windows, decisions)):
+        if value is not None and (label, value) != ("stack-moves", MANAGEMENT_LIMIT):
+            if type(value) is not int or value < 1:
+                raise ValueError("A daily budget is a positive integer")
+            name += f"+{label}-{value}"
+    return name
+
+
+def budgets(name):
+    """``(stack moves, windows, decisions)`` of a guard name; None where the guard sets no budget."""
+    base, *parts = name.split("+")
+    values = dict.fromkeys(_BUDGETS)
+    for part in parts:
+        label, _, value = part.rpartition("-")
+        values[label] = int(value) if value.isdigit() else None
+    found = (values["stack-moves"] or MANAGEMENT_LIMIT, values["windows"], values["decisions"])
+    # Only the one spelling ``version`` gives is a name: the same guard never has two.
+    if base != VERSION or 0 in found or version(stack_moves=found[0], windows=found[1], decisions=found[2]) != name:
+        raise ValueError(f"Unsupported interaction guard {name!r}; this code implements {VERSION}")
+    return found
+
+
 NAVIGATION_KINDS = frozenset({
     "open_hero", "open_town", "open_panel", "open_building", "open_stack",
     "open_capability", "select_recruit", "select_hero", "select_upgrade",
@@ -181,12 +219,16 @@ class GuardSupport:
     blocked_coordinates: tuple[tuple[str, int, int], ...] = ()
     previous_command: tuple[str, ...] | None = None
     blocked_swaps: tuple[tuple[str, int, str, int], ...] = ()
+    blocked_window_subjects: tuple[str, ...] = ()  # heroes and towns past their daily window budget
+    exhausted: bool = False  # the seat is past its daily decision budget
 
     def permits(self, action, observation, offers):
         if not offers.permits(action):
             return False
         if _mandatory(offers) or action.kind in ("close", "back", "close_capability"):
             return True
+        if self.exhausted:
+            return action.kind == "end_turn"
         if self._repeats_command(action, observation, offers):
             return action.kind == "end_turn" and not self._map_has_alternative(observation, offers)
         if action.kind == "end_turn":
@@ -199,7 +241,8 @@ class GuardSupport:
                 return False
         if action.kind in MANAGEMENT_KINDS:
             return not set(management_subjects(action, observation, offers)).intersection(self.blocked_management_subjects)
-        return nav_key(action, observation, offers) not in self.blocked_navigation
+        key = nav_key(action, observation, offers)
+        return key not in self.blocked_navigation and (key is None or key[1] not in self.blocked_window_subjects)
 
     def _repeats_command(self, action, observation, offers):
         return (self.previous_command is not None and self.previous_command[0] == action.kind
@@ -264,9 +307,11 @@ class Tracker:
     """Follows one seat's frames in order. ``Tracker(None)`` guards nothing."""
 
     def __init__(self, version=None):
-        if version not in (None, VERSION):
-            raise ValueError(f"Unsupported interaction guard {version!r}; this code implements {VERSION}")
+        self.management_limit, self.window_limit, self.decision_limit = (
+            (MANAGEMENT_LIMIT, None, None) if version is None else budgets(version))
         self.version = version
+        self.windows = Counter()  # optional navigation today, by hero or town
+        self.decisions = 0  # answers the engine consumed today
         self.day = None
         self.identity = None
         self.last_seq = -1
@@ -304,6 +349,8 @@ class Tracker:
                 raise ValueError("Interaction guard day cannot move backwards")
             self.day = frame.day
             self.management.clear()
+            self.windows.clear()
+            self.decisions = 0
             self._progress()
         if frame.observation is not None:
             world = _world(frame.observation)
@@ -326,8 +373,11 @@ class Tracker:
             blocked_swaps = _blocked_swaps(frame.observation, frame.offers, self.army_layouts)
             return GuardSupport(
                 tuple(sorted(navigation)),
-                tuple(sorted(subject for subject, count in self.management.items() if count >= MANAGEMENT_LIMIT)),
-                movable, tuple(sorted(blocked)), self.previous_command, blocked_swaps)
+                tuple(sorted(subject for subject, count in self.management.items() if count >= self.management_limit)),
+                movable, tuple(sorted(blocked)), self.previous_command, blocked_swaps,
+                () if self.window_limit is None else
+                tuple(sorted(subject for subject, count in self.windows.items() if count >= self.window_limit)),
+                self.decision_limit is not None and self.decisions >= self.decision_limit)
         if frame.kind == "submitted":
             self.action = frame.action
         elif frame.kind == "consumed":
@@ -342,6 +392,8 @@ class Tracker:
             key = nav_key(self.action, obs, offers)
             if key is not None:
                 self.navigation[key] += 1
+                self.windows[key[1]] += 1
+            self.decisions += not _mandatory(offers)
             if not _mandatory(offers):
                 for subject in management_subjects(self.action, obs, offers):
                     self.management[subject] += 1

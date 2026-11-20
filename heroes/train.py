@@ -4,6 +4,10 @@ Every game of a batch is played by the same weights, the ones in the newest
 checkpoint. Actor processes play the games and hand back the learner seat's
 trajectory; this process runs one PPO update over the whole batch and writes
 the next checkpoint, which the actors then load for the next batch.
+
+With ``play_during_update`` the actors do not wait for the update: they start
+on the next batch at once, with the weights from before it. Those games are one
+update behind; the rest of that batch is played with the new weights.
 """
 from __future__ import annotations
 
@@ -84,10 +88,12 @@ def _play_job(env, model, job, config, report):
     started = time.monotonic()
     try:
         try:
-            game = play(env, model, job, directory, guard=config.guard, on_progress=report)
-            if game.trajectory is not None and config.backend == "mlx":
+            game = play(env, model, job, directory, guard=config.guard, on_progress=report,
+                        both_seats=config.both_seats)
+            if config.backend == "mlx":
                 compiling = time.monotonic()
-                compile_recipe(model, game.trajectory)
+                for trajectory in game.trajectories:
+                    compile_recipe(model, trajectory)
                 game.compile_seconds = time.monotonic() - compiling
         except Exception:
             game = Game(job, "failed", "actor_error", None, traceback.format_exc(limit=8), 0, (0, 0),
@@ -187,14 +193,14 @@ class Pool:
         except OSError:
             pass  # the actor is gone; next() replaces it and reports the game as failed
 
-    def next(self):
-        """The next message from an actor, or None after a quiet second.
+    def next(self, timeout=1):
+        """The next message from an actor, or None after ``timeout`` quiet seconds.
 
         Returns ``("progress", index, (number, day, choices))`` or
         ``("game", index, Game)``. An actor that died is replaced, and the game
         it was playing comes back as failed.
         """
-        ready = multiprocessing.connection.wait(self.pipes, timeout=1)
+        ready = multiprocessing.connection.wait(self.pipes, timeout=timeout)
         if not ready:
             return None
         index = self.pipes.index(ready[0])
@@ -303,38 +309,66 @@ class Log:
 
 # -- the loop --------------------------------------------------------------------
 
-def collect(pool, config, path, target, numbers, update, display, log):
-    """Play until ``target`` games have given a trajectory. All use the weights at ``path``."""
-    games, tally, started = [], {"red": 0, "blue": 0, "truncated": 0, "failed": 0}, time.monotonic()
-    while len(games) < target:
-        while pool.idle and len(games) + len(pool.busy) < target:
-            number = next(numbers)
-            log.write("job", number=number)  # before the game exists, so its number is never handed out twice
+class Batch:
+    """The games of one update while they are being played."""
+
+    def __init__(self, pool, config, target, numbers, update, display, log):
+        self.pool, self.config, self.target, self.numbers, self.update = pool, config, target, numbers, update
+        self.display, self.log = display, log
+        self.games, self.tally, self.started = [], {"red": 0, "blue": 0, "truncated": 0, "failed": 0}, time.monotonic()
+
+    @property
+    def done(self):
+        return len(self.games) >= self.target
+
+    def step(self, path, timeout=1):
+        """Hand games to idle actors, played with the weights at ``path``, and take one message.
+
+        Returns False when none came within ``timeout`` seconds.
+        """
+        pool, games, tally = self.pool, self.games, self.tally
+        while pool.idle and len(games) + len(pool.busy) < self.target:
+            number = next(self.numbers)
+            self.log.write("job", number=number)  # before the game exists, so its number is never handed out twice
             pool.submit(path, Job(number, secrets.randbelow(2**31 - 1) + 1, number % 2,
                                   (secrets.randbits(62), secrets.randbits(62))))
-        message = pool.next()
-        if message is not None and message[0] == "progress":
-            display.playing[message[1]] = message[2]
-        elif message is not None:
-            _, index, game = message
-            display.playing.pop(index, None)
-            samples = len(game.trajectory.decisions) if game.trajectory is not None else 0
-            log.write("game", number=game.job.number, engine_seed=game.job.engine_seed,
-                      policy_seeds=list(game.job.policy_seeds), learner=COLORS[game.job.learner],
-                      status=game.status, reason=game.reason, outcomes=game.outcomes, day=game.day,
-                      choices=list(game.choices), samples=samples, seconds=round(game.seconds, 1),
-                      compile_seconds=round(game.compile_seconds, 1), update=update, detail=game.detail)
-            display.game(game, samples)
-            if game.trajectory is None:
-                tally["failed"] += 1
-                if tally["failed"] > target or (not games and tally["failed"] >= max(3, config.workers)):
-                    raise RuntimeError(f"{tally['failed']} games failed, the last one with {game.reason}:\n{game.detail}\n"
-                                       f"Every failed game is in {config.state / 'log.jsonl'}.")
-            else:
-                tally["truncated" if game.status == "truncated" else COLORS[game.outcomes.index("win")]] += 1
-                games.append(game)
-        display.collecting(update, len(games), target, tally, started)
-    return games, tally
+        message = pool.next(timeout)
+        if message is None:
+            return False
+        if message[0] == "progress":
+            self.display.playing[message[1]] = message[2]
+            return True
+        _, index, game = message
+        self.display.playing.pop(index, None)
+        samples = sum(len(trajectory.decisions) for trajectory in game.trajectories)
+        self.log.write("game", number=game.job.number, engine_seed=game.job.engine_seed,
+                       policy_seeds=list(game.job.policy_seeds), learner=COLORS[game.job.learner],
+                       status=game.status, reason=game.reason, outcomes=game.outcomes, day=game.day,
+                       choices=list(game.choices), samples=samples, seconds=round(game.seconds, 1),
+                       compile_seconds=round(game.compile_seconds, 1), update=self.update, detail=game.detail)
+        self.display.game(game, samples)
+        if game.trajectory is None:
+            tally["failed"] += 1
+            if tally["failed"] > self.target or (not games and tally["failed"] >= max(3, self.config.workers)):
+                raise RuntimeError(f"{tally['failed']} games failed, the last one with {game.reason}:\n{game.detail}\n"
+                                   f"Every failed game is in {self.config.state / 'log.jsonl'}.")
+        else:
+            tally["truncated" if game.status == "truncated" else COLORS[game.outcomes.index("win")]] += 1
+            games.append(game)
+        return True
+
+
+def collect(pool, config, path, target, numbers, update, display, log, batch=None):
+    """Play until ``target`` games have given a trajectory, with the weights at ``path``.
+
+    ``batch`` is a batch begun earlier, during the previous update.
+    """
+    batch = batch or Batch(pool, config, target, numbers, update, display, log)
+    started = time.monotonic()
+    while not batch.done:
+        batch.step(path)
+        display.collecting(update, len(batch.games), target, batch.tally, started)
+    return batch.games, batch.tally
 
 
 def train(config, games, *, fresh=False, out=sys.stderr):
@@ -357,21 +391,32 @@ def _train(config, games, update_policy, fresh, out):
     display.line(f"Continuing from update {state.updates} ({state.progress['games']} games, "
                  f"{state.progress['decisions']} decisions) in {config.state}")
     log.write("start", games=games, backend=config.backend, workers=config.workers, progress=state.progress,
-              ppo=config.ppo.to_dict(), limits=asdict(config.limits), guard=config.guard)
+              ppo=config.ppo.to_dict(), limits=asdict(config.limits), guard=config.guard,
+              both_seats=config.both_seats)
     # Failed and discarded games keep their numbers, so a number never names two games.
     numbers = itertools.count(max(state.progress["games"], log.last_game) + 1)
     pool, saved_update = Pool(config), state.updates
+    following = None  # the next batch, begun while an update ran
     try:
         while games > 0:
             target = min(config.games_per_update, games)
             update, started = state.updates + 1, time.monotonic()
-            batch, tally = collect(pool, config, checkpoint.latest(config.state), target, numbers, update, display, log)
+            path = checkpoint.latest(config.state)
+            batch, tally = collect(pool, config, path, target, numbers, update, display, log, following)
             collected = time.monotonic()
+            following = None
+            if config.play_during_update and games > target:
+                following = Batch(pool, config, min(config.games_per_update, games - target), numbers, update + 1,
+                                  display, log)
 
-            def progress(step, total, update=update, collected=collected):
+            def progress(step, total, update=update, collected=collected, path=path, following=following):
                 display.status(f"update {update}  PPO step {step}/{total}  {_clock(time.monotonic() - collected)}")
+                # The actors play on with the weights this update started from.
+                while following is not None and not following.done and following.step(path, timeout=0):
+                    pass
 
-            report = update_policy(state.model, state.optimizer, [game.trajectory for game in batch],
+            report = update_policy(state.model, state.optimizer,
+                                   [trajectory for game in batch for trajectory in game.trajectories],
                                    config=config.ppo, generator=state.generator, progress=progress)
             updated = time.monotonic()
             state.progress = {"updates": update, "games": state.progress["games"] + len(batch),

@@ -125,6 +125,58 @@ def test_the_minibatch_settings_reach_the_update_and_the_log(config):
     assert [restore(item).optimizer.param_groups[0]["lr"] for item in (config, faster)] == [3e-4, 8.5e-4]
 
 
+def test_both_seats_of_a_game_are_trained_on(config, play_fake, fake_engine, tmp_path):
+    from heroes import actor
+    from heroes.engine.env import Env
+    from heroes.game import guard
+    env = Env(fake_engine(days=3, winner=1))
+    try:
+        game = actor.play(env, play_fake.model, Job(1, 7, 0, (1, 2)), tmp_path / "both", guard=guard.VERSION,
+                          both_seats=True)
+    finally:
+        env.close()
+    assert len(game.trajectories) == 2 and (game.trajectory.reward, game.other.reward) == (-1, 1)
+    assert len(game.trajectory.decisions) == len(game.other.decisions) == 3
+    assert play_fake(days=3).other is None  # one seat unless asked
+    fake_engine(days=3)
+    state = train(replace(config, both_seats=True), 2, fresh=True, out=io.StringIO())
+    records = _log(config)
+    assert records[0]["both_seats"] is True
+    assert [record["samples"] for record in records if record["event"] == "game"] == [6, 6]
+    assert state.progress["games"] == 2 and state.progress["decisions"] == 12
+
+
+def test_the_next_batch_is_begun_while_the_update_runs(config):
+    def order(play_during_update, state):
+        train(replace(config, state=state, play_during_update=play_during_update), 6, fresh=True, out=io.StringIO())
+        records = [json.loads(line) for line in (state / "log.jsonl").read_text().splitlines()]
+        games = [record for record in records if record["event"] == "game"]
+        assert sorted(record["number"] for record in games) == [1, 2, 3, 4, 5, 6]
+        assert [record["update"] for record in sorted(games, key=lambda record: record["number"])] == [1, 1, 2, 2, 3, 3]
+        assert [record["progress"]["games"] for record in records if record["event"] == "update"] == [2, 4, 6]
+        events = [(record["event"], record.get("number", record.get("update"))) for record in records]
+        return events.index(("job", 3)) < events.index(("update", 1)), events.index(("job", 5)) < events.index(("update", 2))
+
+    assert order(False, config.state) == (False, False)
+    assert order(True, config.state.with_name("overlapped")) == (True, True)
+
+
+def test_the_training_changes_are_settings_of_a_run(config):
+    from heroes.game import guard
+    main(["train", "2", "--fresh", "--games-per-update", "2", "--workers", "2", "--both-seats", "--play-during-update",
+          "--max-days", "2", "--stack-moves", "8", "--windows", "6", "--decisions", "40",
+          "--state", str(config.state), "--legacy", str(config.legacy), "--vcmi", str(config.vcmi),
+          "--game-data", str(config.game_data), "--backend", "torch"])
+    records = _log(config)
+    assert records[0]["guard"] == guard.VERSION + "+stack-moves-8+windows-6+decisions-40"
+    assert records[0]["limits"]["max_days"] == 2 and records[0]["both_seats"] is True
+    games = [record for record in records if record["event"] == "game"]
+    assert {(record["status"], record["reason"]) for record in games} == {("truncated", "game_day_limit")}
+    with pytest.raises(SystemExit) as refused:
+        main(["train", "2", "--decisions", "0", "--state", str(config.state.with_name("unused"))])
+    assert refused.value.code == 2
+
+
 def test_a_game_number_is_never_handed_out_twice(tmp_path):
     log = Log(tmp_path / "log.jsonl")
     assert log.last_game == 0

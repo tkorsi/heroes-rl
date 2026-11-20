@@ -98,6 +98,7 @@ def measure(config, *, games=None, seconds=None, warmup=30.0, seed=1):
         pool.shutdown()
         shutil.rmtree(games_folder, ignore_errors=True)
     report = {"workers": config.workers, "vcmi": str(config.vcmi), "max_days": config.limits.max_days, "seed": seed,
+              "guard": config.guard, "both_seats": config.both_seats,
               "failures": [f"game {game.job.number} {game.reason}: {(game.detail or '')[-600:]}"
                            for game in finished if game.status == "failed"]}
     if seconds is not None:
@@ -112,7 +113,7 @@ def measure(config, *, games=None, seconds=None, warmup=30.0, seed=1):
     in_games = sum(game.seconds + game.compile_seconds for game in finished)
     report.update(mode="games", games=len(finished), wall_seconds=round(ended - started, 1), decisions=decisions,
                   decisions_per_second=round(decisions / (ended - started), 1),
-                  samples=sum(len(game.trajectory.decisions) for game in finished if game.trajectory is not None),
+                  samples=sum(len(trajectory.decisions) for game in finished for trajectory in game.trajectories),
                   # What one actor needs per decision of a game, with its engine and the recipe compilation.
                   actor_milliseconds_per_decision=round(1000 * in_games / max(1, decisions), 3),
                   play_seconds=round(sum(game.seconds for game in finished), 1),
@@ -137,6 +138,8 @@ def main():
     parser.add_argument("--max-days", type=int, help="stop each game after this game day (default: the training limit)")
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--vcmi", type=lambda text: Path(text).expanduser().resolve(), help="another vcmiclient")
+    parser.add_argument("--guard", help="another interaction guard name, see heroes.game.guard.version (changes the games)")
+    parser.add_argument("--both-seats", action="store_true", help="build and compile the opponent seat's trajectory too")
     parser.add_argument("--label", help="copied into the report")
     parser.add_argument("--out", type=Path, help="append the JSON report to this file")
     arguments = parser.parse_args()
@@ -148,6 +151,10 @@ def main():
         config = replace(config, vcmi=arguments.vcmi)
     if arguments.max_days is not None:
         config = replace(config, limits=replace(config.limits, max_days=arguments.max_days))
+    if arguments.guard is not None:
+        config = replace(config, guard=arguments.guard)
+    if arguments.both_seats:
+        config = replace(config, both_seats=True)
     report = measure(config, games=arguments.games, seconds=arguments.seconds, warmup=arguments.warmup,
                      seed=arguments.seed)
     if arguments.label:
