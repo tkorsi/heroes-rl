@@ -218,10 +218,20 @@ PPO update:
 | 14 actors, 14 whole games to day 365 (measured before the last engine change) | 980 s | 535 s |
 | 14 actors kept busy, decisions per second (before the last engine change) | 1,210 and 1,150 | 2,060 and 2,190 |
 
-A hundred games of the present length (33,600 decisions on average) took
-about 48 minutes of play at PR 35's rate and take about 26 at 2,120 decisions
-per second; the last engine change, about 15% on the 14-game batches, is not
-in that figure. 16 actors gave no more than 14, and 18 about 6% more.
+A hundred games of 33,600 decisions each, the average of the games logged up
+to update 1790, took about 48 minutes of play at PR 35's rate and take about 26
+at 2,120 decisions per second; the last engine change, about 15% on the
+14-game batches, is not in that figure. 16 actors gave no more than 14, and 18
+about 6% more.
+
+Games have since become longer, and the update is most of a cycle. The batch
+of update 1792, played on main with 14 actors on 2026-11-20, had 68,900
+decisions a game: 51 of its 100 games ran to day 365, against 4, 18, 15 and 24
+in the four batches before it. It took 105 minutes to collect (1,098 decisions
+per second) and 4 h 27 min to train on with the grouped update, 72% of the
+cycle. The changes above shorten the 105 minutes to about 50; the update's
+time grows with the number of samples times the length of a game, so it is the
+length of the games that decides how long a cycle takes.
 
 - `--workers`. On the same evening 14 actors answered about 1,220 decisions per
   second against 1,060 for ten, in windows taken in turns, and 16 gave no more:
