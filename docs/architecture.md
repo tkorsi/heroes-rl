@@ -257,17 +257,23 @@ It starts the engine, so the user launches it:
 
 ```sh
 P=~/Projects/Heroes-artifacts/python/mlx-v1/venv/bin/python
-S=~/Projects/Heroes-artifacts/perf-opt        # a state folder of its own, as for tools/perf
+S=~/Projects/Heroes-artifacts/replay-check   # a state folder of its own: latest.json and the checkpoint it names
 R=vcmi/build/bin/vcmireplay                   # the verifier under test
 $P tools/check_replay.py $S --replay $R                                   # the engine training uses: compact decisions
 $P tools/check_replay.py $S --replay $R \
     --vcmi ~/Projects/Heroes-artifacts/runtime/local-v8-sleep-resume-v1/bin/vcmiclient   # an engine from before the switch
 ```
 
-The `vcmireplay` inside `local-v8-play-switches-v1` was frozen before the
-verifier learned this and rejects compact captures at their first decision.
-The programs that play are not affected, so that runtime stays the default;
-verify with a `vcmireplay` built from this code.
+Each call takes about five seconds with the default three days and prints one
+JSON line. The `vcmireplay` inside `local-v8-play-switches-v1` was frozen
+before the verifier learned this and rejects compact captures at their first
+decision. The programs that play are not affected, so that runtime stays the
+default; verify with a `vcmireplay` built from this code.
+
+`prepare_vcmi.py` does not update a checkout it prepared earlier. After a
+change to a file under `engine/`, copy that file to its place in `vcmi/` (the
+places are in `dependencies/vcmi.json`), confirm with `--check`, and build the
+target that owns it: `cmake --build vcmi/build --target vcmireplay`.
 
 The Python side expects the client at `HEROES_VCMI`, by default
 `~/Projects/Heroes-artifacts/runtime/local-v8-play-switches-v1/bin/vcmiclient`,

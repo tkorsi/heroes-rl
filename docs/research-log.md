@@ -8772,3 +8772,59 @@ that a game stopped at the day limit leaves `engine/replay.jsonl` as `init`,
 `start` and input/applied pairs with at most one trailing input, and that such
 a game verifies with `--prefix` from its own profile folder. If one of these
 does not hold the script stops with the reason and keeps the game.
+
+### 2026-11-20 — The replay check on the real engine: both kinds of capture verify, a changed answer does not
+
+The user approved the launch ("Yes, Claude runs it" on the question whether
+Claude may run the replay check, then "I approve everything. Run as you will").
+Everything ran in the clone `~/Projects/Heroes-opt` at `748a041` and in a new
+state folder `~/Projects/Heroes-artifacts/replay-check`, which holds
+`latest.json` and `checkpoints/update-001789.pt` copied from
+`play-speed-r3u8uh` (same SHA-256). `~/Projects/Heroes` and `training-trial`
+were not touched; the training run there (pid 42215) was going throughout.
+
+**Build.** `prepare_vcmi.py` refuses to change a checkout it prepared earlier
+("unexpected content": its own patches). The only file that differed from the
+recipe was `ContextualReplay.cpp`, and the copy in `vcmi/` was byte for byte
+the old one, so the new file was copied to its place by hand; `--check` then
+passed. `cmake --build vcmi/build --target vcmireplay --parallel 2` compiled
+one object and relinked `vcmireplay` in 6.4 s. `libvcmi.dylib`, `vcmiclient`,
+`vcmiserver` and the AI plugins kept their timestamps of 19 November.
+
+**Result.** `tools/check_replay.py`, seed 1, three days, `--replay` naming the
+rebuilt `vcmireplay`; both calls exited 0 at the first attempt, with no change
+to the script or the verifier.
+
+| | engine that played | decisions in the capture | wall |
+|---|---|---|---|
+| a | `local-v8-play-switches-v1` (training's) | compact | 5.7 s |
+| b | `local-v8-sleep-resume-v1` (before the switch) | repeat the observation | 4.6 s |
+
+In both: `verified`, `form_read_from_capture`,
+`verified_with_the_other_form_in_the_environment` and
+`changed_answer_rejected` are true. The verifier's own summary named the form
+that was in the capture each time, with the other form set in its environment
+too. Checked per replay: 919 client packets, 673 messages, 241 requests,
+335 responses, 2,630 transactions; the ledger has 7,429 records. Record 3763
+(an answer of seat 0, replaced by another answer the same seat gave) made the
+replay stop at record 3768, "Contextual replay differs", at the next message
+of that seat after decision 133 was consumed. Both games were cut at the day
+limit (`truncated:game_day_limit`, day 4) and replayed with `--prefix`, so the
+two things the script assumed about a cut game's files hold. The lines are in
+`replay-check/check-replay.jsonl`.
+
+The two engines played the same game: choices `[202, 133]`, the same number of
+records and of everything checked. That is the claim of the play-speed entry
+(the switches change what is sent, not what is played) seen once more, on one
+short game.
+
+**Also on the Mac.** `tests/test_check_replay.py`, `test_freeze_runtime.py`
+and `test_perf_tools.py -k "not update"`: 14 passed (macOS, with the pytest of
+`perf-opt-mq0j5t/pydeps`; the training environment has none). The update tests
+were left out so that no GPU work ran beside the user's training.
+
+**Not done.** The full suite was not run on the Mac. One game of one seed and
+three days was checked per engine, not a whole game; a whole game's ledger is
+several gigabytes. `freeze_runtime.py` was not run for real, so no runtime
+with the new `vcmireplay` is frozen: verification uses the one in
+`vcmi/build/bin`, as `docs/architecture.md` says.
