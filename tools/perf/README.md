@@ -70,6 +70,14 @@ Never edit the source tree a measurement is running from: an actor imports the
 recipe compiler when its first game ends, and a file changed meanwhile fails
 that game. Measure from a copy (`git archive HEAD | tar -x -C SOMEWHERE`).
 
+`--both-seats` builds and compiles the opponent seat's trajectory as well, as
+training does with that setting, and `--guard NAME` plays with another
+interaction guard, for example
+`--guard "$(python -c 'from heroes.game import guard; print(guard.version(stack_moves=4, windows=6))')"`.
+A guard with other budgets samples from another support, so these are other
+games: compare their counts (the report lists decisions, days and the learner
+seats' actions by kind), not their digests.
+
 ## A fixed batch of real games
 
 Plays games with the folder's checkpoint and keeps each finished game, compiled

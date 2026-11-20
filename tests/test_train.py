@@ -164,14 +164,13 @@ def test_the_next_batch_is_begun_while_the_update_runs(config):
 def test_the_training_changes_are_settings_of_a_run(config):
     from heroes.game import guard
     main(["train", "2", "--fresh", "--games-per-update", "2", "--workers", "2", "--both-seats", "--play-during-update",
-          "--max-days", "2", "--stack-moves", "8", "--windows", "6", "--decisions", "40",
+          "--stack-moves", "8", "--windows", "6", "--decisions", "40",
           "--state", str(config.state), "--legacy", str(config.legacy), "--vcmi", str(config.vcmi),
           "--game-data", str(config.game_data), "--backend", "torch"])
     records = _log(config)
     assert records[0]["guard"] == guard.VERSION + "+stack-moves-8+windows-6+decisions-40"
-    assert records[0]["limits"]["max_days"] == 2 and records[0]["both_seats"] is True
-    games = [record for record in records if record["event"] == "game"]
-    assert {(record["status"], record["reason"]) for record in games} == {("truncated", "game_day_limit")}
+    assert records[0]["limits"]["max_days"] == 365 and records[0]["both_seats"] is True
+    assert [record["samples"] for record in records if record["event"] == "game"] == [6, 6]
     with pytest.raises(SystemExit) as refused:
         main(["train", "2", "--decisions", "0", "--state", str(config.state.with_name("unused"))])
     assert refused.value.code == 2

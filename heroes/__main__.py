@@ -24,8 +24,6 @@ def _config(arguments):
     if any(value is not None for value in budgets.values()):
         from .game import guard
         changes["guard"] = guard.version(**budgets)
-    if getattr(arguments, "max_days", None) is not None:
-        changes["limits"] = replace(config.limits, max_days=arguments.max_days)
     ppo = {name: getattr(arguments, name) for name in ("windows_per_minibatch", "windows_per_game", "learning_rate")
            if getattr(arguments, name, None) is not None}
     if ppo:
@@ -66,7 +64,6 @@ def main(argv=None):
             command.add_argument("--play-during-update", action="store_true",
                                  help="play the next batch while the update runs; its first games use the weights "
                                       "from before that update")
-            command.add_argument("--max-days", type=int, help="stop a game after this game day (default 365)")
             command.add_argument("--stack-moves", type=int,
                                  help="stack rearrangements a hero or town may do per game day (default 32)")
             command.add_argument("--windows", type=int,
@@ -97,8 +94,8 @@ def main(argv=None):
                      "budgets --stack-moves, --windows and --decisions at least 1")
     if arguments.command == "train" and arguments.games < 1:
         parser.error("games must be positive")
-    if config.workers < 1 or config.games_per_update < 1 or config.limits.max_days < 1:
-        parser.error("--workers, --games-per-update and --max-days must be at least 1")
+    if config.workers < 1 or config.games_per_update < 1:
+        parser.error("--workers and --games-per-update must be at least 1")
     try:
         if arguments.command == "check":
             _check(config)
