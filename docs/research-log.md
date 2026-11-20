@@ -8872,3 +8872,25 @@ with the corrected script. What they recorded satisfies the new rule (the two
 lines in `replay-check/check-replay.jsonl` carry "Contextual replay differs at
 record 3768", changed record 3763, and `vcmireplay` ends with status 3 on that
 error), but that is read from their output, not observed by a new run.
+
+### 2026-11-20 — User stopped the 1,000-game run after update 1791
+
+The terminal run in `~/Projects/Heroes-artifacts/training-trial` resumed
+from 1787 with ten actors and MLX PPO. It saved four updates of 100 games,
+1788 through 1791. At the user's request the coordinator received SIGINT
+during collection for 1792. Three games had finished and ten were active in
+that batch. Its trajectories were discarded before the PPO update.
+
+The coordinator, ten actors, ten engine processes and both helper processes
+exited. The state lock was available and the games directory was empty.
+The checkpoint file and `latest.json` were byte-identical across the stop.
+The checkpoint file SHA-256 is
+`ca190c8a51257559c1243761420e68d6c26ef6dff8eb0bb0bbaf8879a0261fe9`.
+The remaining 600 games can resume from 1791 in the same state directory.
+The private `log.jsonl` records the jobs, outcomes and saved updates.
+
+PRs #35, #34, #33 and #32 were merged into their successive bases,
+ending at main commit `2363a6a`. Its tree matches reviewed head `cb5fe99`.
+A separate main worktree at `~/Projects/Heroes-main` passed
+`./train.command check --state ~/Projects/Heroes-artifacts/training-trial`
+with the play-switches runtime, MLX and the saved progress for update 1791.
