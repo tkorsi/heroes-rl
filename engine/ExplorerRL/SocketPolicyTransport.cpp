@@ -4,6 +4,7 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <cerrno>
+#include <charconv>
 #include <poll.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -25,11 +26,97 @@ void waitSocket(int fd, short events, native_session::Deadline deadline)
 		return;
 	}
 }
+/// A string as JsonWriter::writeString writes it, including a backslash it
+/// takes for an escape already made.
+void appendString(std::string & out, const std::string & text)
+{
+	static const std::string escaped = "\"\\\b\f\n\r\t";
+	static const std::string codes = "\"\\bfnrt";
+	out += '"';
+	size_t start = 0;
+	for(size_t pos = 0; pos < text.size(); ++pos)
+	{
+		if(text[pos] == '\\' && pos + 1 < text.size() && codes.find(text[pos + 1]) != std::string::npos)
+		{
+			++pos; // such a pair stays as it is
+			continue;
+		}
+		const auto found = escaped.find(text[pos]);
+		if(found == std::string::npos)
+			continue;
+		out.append(text, start, pos - start);
+		out += '\\';
+		out += codes[found];
+		start = pos + 1;
+	}
+	out.append(text, start, text.size() - start);
+	out += '"';
+}
+
+/// One line of JSON for the policy, appended to ``out``. JsonNode::toCompactString
+/// writes the same values through a stream, pretty-printed with tabs and
+/// spaces between them; this writes them alone, so a reader gets the same
+/// values from fewer bytes. Returns false for a float, which is left to
+/// JsonWriter's formatting.
+bool appendJson(std::string & out, const JsonNode & node)
+{
+	switch(node.getType())
+	{
+	case JsonNode::JsonType::DATA_NULL:
+		out += "null";
+		return true;
+	case JsonNode::JsonType::DATA_BOOL:
+		out += node.Bool() ? "true" : "false";
+		return true;
+	case JsonNode::JsonType::DATA_FLOAT:
+		return false;
+	case JsonNode::JsonType::DATA_INTEGER:
+	{
+		char digits[24];
+		out.append(digits, std::to_chars(digits, digits + sizeof(digits), node.Integer()).ptr);
+		return true;
+	}
+	case JsonNode::JsonType::DATA_STRING:
+		appendString(out, node.String());
+		return true;
+	case JsonNode::JsonType::DATA_VECTOR:
+	{
+		out += '[';
+		bool first = true;
+		for(const auto & item : node.Vector())
+		{
+			if(!first) out += ',';
+			first = false;
+			if(!appendJson(out, item)) return false;
+		}
+		out += ']';
+		return true;
+	}
+	case JsonNode::JsonType::DATA_STRUCT:
+	{
+		out += '{';
+		bool first = true;
+		for(const auto & [name, item] : node.Struct())
+		{
+			if(!first) out += ',';
+			first = false;
+			appendString(out, name);
+			out += ':';
+			if(!appendJson(out, item)) return false;
+		}
+		out += '}';
+		return true;
+	}
+	}
+	return false;
+}
+
 class SocketPolicy final : public native_session::PolicyTransport
 {
 	int fd = -1;
 	int timeoutSeconds;
 	std::string buffer;
+	size_t lastLineBytes = 0;
 public:
 	SocketPolicy(int port, int seconds) : timeoutSeconds(seconds)
 	{
@@ -60,9 +147,15 @@ public:
 	native_session::WriteMetrics send(const JsonNode & message) override
 	{
 		const auto start = std::chrono::steady_clock::now();
-		std::string line = message.toCompactString();
-		line.erase(std::remove(line.begin(), line.end(), '\n'), line.end());
-		line.erase(std::remove(line.begin(), line.end(), '\r'), line.end());
+		std::string line;
+		line.reserve(lastLineBytes + 256);
+		if(!appendJson(line, message))
+		{
+			line = message.toCompactString();
+			line.erase(std::remove(line.begin(), line.end(), '\n'), line.end());
+			line.erase(std::remove(line.begin(), line.end(), '\r'), line.end());
+		}
+		lastLineBytes = line.size();
 		line += '\n';
 		const auto encoded = std::chrono::steady_clock::now();
 		const auto deadline = timeoutSeconds == 0 ? native_session::Deadline::max()

@@ -121,6 +121,9 @@ private:
 	/// EXPLORER_RL_REPEATED_MAP=0 sends a contextual view without its tiles and
 	/// objects when they are those of the same player's previous view.
 	bool repeatedMap = true;
+	/// EXPLORER_RL_TILE_CHANGES=1, with the switch above: a view that changed
+	/// the map while the same tiles stayed visible sends only the changed ones.
+	bool tileChanges = false;
 	int64_t visibleCaptureMicros = 0; ///< since the last profiled message, protected by stateMutex
 	int64_t visibleCaptures = 0; ///< protected by stateMutex
 	/// Engine-side replay evidence (VCMI_EXPERIMENT_REPLAY=1): the pack position

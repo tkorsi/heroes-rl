@@ -125,6 +125,19 @@ bool decisionsRepeatObservation(const std::vector<JsonNode> & tape)
 /// of a view when they are those of the same player's previous view. A
 /// capture with such a view was made that way. One without was made the other
 /// way, or its map changed with every view, and then both ways regenerate it.
+/// And one with a view that lists its changed tiles was made with
+/// EXPLORER_RL_TILE_CHANGES=1; without such a view both ways regenerate it,
+/// unless a view repeats a whole map that only changed, which shows it was not.
+bool viewsListTileChanges(const std::vector<JsonNode> & tape)
+{
+	for(const auto & item : tape)
+		if(item["kind"].String() == "message")
+			for(const auto & record : item["message"]["records"].Vector())
+				if(record["kind"].String() == "view" && record["observation"].Struct().count("tile_changes"))
+					return true;
+	return false;
+}
+
 bool viewsRepeatMap(const std::vector<JsonNode> & tape)
 {
 	for(const auto & item : tape)
@@ -223,6 +236,7 @@ JsonNode ContextualReplay::run(const std::vector<JsonNode> & tape, bool prefix)
 	setenv("EXPLORER_RL_DECISION_OBSERVATION", repeatedObservation ? "1" : "0", 1);
 	const bool repeatedMap = viewsRepeatMap(tape);
 	setenv("EXPLORER_RL_REPEATED_MAP", repeatedMap ? "1" : "0", 1);
+	setenv("EXPLORER_RL_TILE_CHANGES", viewsListTileChanges(tape) ? "1" : "0", 1);
 	unsetenv("VCMI_EXPERIMENT_REPLAY");
 	setExperimentEvidenceHooks(evidence);
 	{

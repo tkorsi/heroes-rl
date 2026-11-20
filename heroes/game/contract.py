@@ -525,8 +525,27 @@ class ArmyExchange:
                      if self.maximum(source.ref, destination.ref) > 0)
 
 
+_SLOT_PLACES = {}  # id of a tuple of armies -> (the tuple, the first army and slot of each reference)
+
+
 def army_slot(armies, ref):
-    return next(((army, slot) for army in armies for slot in army.slots if slot.ref == ref), (None, None))
+    """The displayed army and slot that carry ``ref``: the first, or ``(None, None)``.
+
+    One decision asks this some hundred times about the same two tuples of
+    frozen armies, the window's and the offers', so each is indexed once.
+    """
+    if type(armies) is not tuple:
+        return next(((army, slot) for army in armies for slot in army.slots if slot.ref == ref), (None, None))
+    known = _SLOT_PLACES.get(id(armies))
+    if known is None:
+        found = {}
+        for army in armies:
+            for slot in army.slots:
+                found.setdefault(slot.ref, (army, slot))
+        if len(_SLOT_PLACES) >= 8:
+            _SLOT_PLACES.clear()  # the entry holds its tuple, so an id names nothing else while it is kept
+        known = _SLOT_PLACES[id(armies)] = (armies, found)
+    return known[1].get(ref, (None, None))
 
 
 def army_operation_maximum(armies, kind, source_ref, destination_ref):
@@ -3044,16 +3063,45 @@ def _decode_tiles(raw):
     return tiles
 
 
+_TILE_PLACES = [None, None]  # the tile tuple indexed last, and the place of each of its positions
+
+
+def _changed_tiles(tiles, raw):
+    """``tiles`` with each tile of the raw list in the place of the one at its position."""
+    items = _array(raw)
+    if not items:
+        return tiles
+    if tiles is not _TILE_PLACES[0]:
+        _TILE_PLACES[:] = tiles, {tile.position: place for place, tile in enumerate(tiles)}
+    places, changed, replaced = _TILE_PLACES[1], list(tiles), set()
+    for item in items:
+        tile = _decode_tile(item)
+        place = places.get(tile.position)
+        if place is None or place in replaced or tile == tiles[place]:
+            raise ValueError("A changed tile must replace a different tile of the previous view, once")
+        replaced.add(place)
+        changed[place] = tile
+    return tuple(changed)
+
+
 def decode_observation(raw, *, schema=SCHEMA, unchanged_map=None):
     """The typed observation of raw.
 
     ``unchanged_map`` is the ``(tiles, objects)`` of the seat's previous view,
     already decoded. A raw observation that names neither takes them; they are
-    what decoding its own copy of that unchanged map would return.
+    what decoding its own copy of that unchanged map would return. One that
+    names its objects and, as ``tile_changes``, the tiles that differ from the
+    previous view's takes the previous tiles with those replaced.
     """
     profile = profile_for(schema)
     if schema != profile.history_schema:
         raise ValueError("Observation decoding requires its enclosing history schema")
+    changed = None
+    if type(raw) is dict and "tile_changes" in raw:
+        if unchanged_map is None or "tiles" in raw or "objects" not in raw:
+            raise ValueError("Tile changes need the previous view's tiles and this view's objects")
+        changed = _changed_tiles(unchanged_map[0], raw["tile_changes"])
+        raw = {name: value for name, value in raw.items() if name != "tile_changes"}
     data = _record(raw, Observation)
     if ("army_information" in data) != ("own_armies" in data):
         raise ValueError("Passive own army fields must be present together")
@@ -3066,6 +3114,8 @@ def decode_observation(raw, *, schema=SCHEMA, unchanged_map=None):
             data[name] = _array(data[name])
     if "tiles" in data:
         data["tiles"] = _decode_tiles(data["tiles"])
+    elif changed is not None:
+        data["tiles"] = changed
     if "objects" in data:
         data["objects"] = tuple(_decode_simple(item, ObjectView, ("position",)) for item in _array(data["objects"]))
     for name, decoder in (("heroes", _decode_hero), ("towns", _decode_town)):

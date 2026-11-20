@@ -89,6 +89,9 @@ class Engine:
             # Most views change a window and not the map, so the engine sends
             # tiles and objects only in a view that changed them.
             "EXPLORER_RL_REPEATED_MAP": "0",
+            # A hero's step changes two tiles of four hundred: when the same
+            # tiles stay visible, a view carries only the ones that changed.
+            "EXPLORER_RL_TILE_CHANGES": "1",
             "EXPLORER_RL_PORT_0": str(ports[0]), "EXPLORER_RL_PORT_1": str(ports[1]),
         })
         if not self.replay_ledger:

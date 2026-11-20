@@ -15,7 +15,10 @@ read as before; the frames are equal either way.
 Most views change a window and leave the map as it was. An engine started with
 ``EXPLORER_RL_REPEATED_MAP=0`` sends such a view without ``tiles`` and
 ``objects``, and the view's observation gets those of the seat's previous view,
-the same tuples. An engine that sends them every time is read as before; the
+the same tuples. With ``EXPLORER_RL_TILE_CHANGES=1`` a view that changed the map
+while the same tiles stayed visible sends its objects and, as ``tile_changes``,
+only the tiles that differ; its observation gets the previous tiles with those
+replaced. An engine that sends the whole map every time is read as before; the
 frames are equal either way.
 """
 from __future__ import annotations
