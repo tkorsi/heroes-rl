@@ -1,17 +1,23 @@
-"""The measurement scripts in tools/perf run end to end on tiny scripted games. Needs an Apple GPU."""
+"""The measurement scripts in tools/perf run end to end on tiny scripted games.
+
+The two that time the update need an Apple GPU; the two that play need none.
+"""
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
+import json
 from pathlib import Path
 import sys
 
 import pytest
 
-mx = pytest.importorskip("mlx.core")
-pytestmark = pytest.mark.skipif(not mx.metal.is_available(), reason="the MLX update needs an Apple GPU")
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools" / "perf"))
 
 
 @pytest.fixture
 def scripted(monkeypatch, tmp_path):
+    mx = pytest.importorskip("mlx.core")
+    if not mx.metal.is_available():
+        pytest.skip("the MLX update needs an Apple GPU")
     import bench_update
     monkeypatch.setenv("FAKE_VCMI", "{}")  # restored after the test; the script sets it per game
     weights, trajectories = bench_update.synthetic([20, 3], 20, tmp_path)
@@ -100,3 +106,74 @@ def test_the_game_profiler_splits_a_game_into_its_parts(fake_engine, tmp_path):
     # The wrappers are taken off again.
     from heroes.engine.env import Env
     assert Env._wait.__name__ == "_wait"
+
+
+def test_the_play_benchmark_reports_games_and_a_window(fake_engine, tmp_path):
+    import bench_play
+    from heroes import checkpoint
+    from heroes.config import Config
+    engine = fake_engine(days=4, map=8)
+    config = Config(vcmi=engine.binary, game_data=engine.data, game_map=engine.game_map, state=tmp_path / "state",
+                    workers=2)
+    checkpoint.save(config.state, checkpoint.fresh(learning_rate=3e-4))
+    report = bench_play.measure(config, games=3)
+    assert (report["games"], report["decisions"], report["samples"]) == (3, 24, 12)
+    assert report["statuses"] == ["completed:natural_terminal"] * 3 and all(report["digests"])
+    # The same seeded games on another number of actors are the same games.
+    again = bench_play.measure(replace(config, workers=1), games=3)
+    assert again["digests"] == report["digests"] and again["choices"] == report["choices"]
+    window = bench_play.measure(config, seconds=1.5, warmup=0.5)
+    assert window["mode"] == "window" and window["decisions"] > 0 and window["games_failed"] == 0
+    # Every call played in a folder of its own and took it away again.
+    assert sorted(item.name for item in config.state.iterdir()) == ["checkpoints", "latest.json"]
+
+
+def test_two_play_benchmarks_on_one_state_folder_leave_each_other_alone(fake_engine, tmp_path):
+    import bench_play
+    from heroes import checkpoint
+    from heroes.config import Config
+    engine = fake_engine(days=4, map=8)
+    config = Config(vcmi=engine.binary, game_data=engine.data, game_map=engine.game_map, state=tmp_path / "state",
+                    workers=2)
+    checkpoint.save(config.state, checkpoint.fresh(learning_rate=3e-4))
+    # The same folder and seed give both calls the same game numbers, as a before and after comparison does.
+    with ThreadPoolExecutor(2) as threads:
+        first, second = threads.map(lambda _: bench_play.measure(config, games=4), range(2))
+    assert first["failures"] == second["failures"] == []
+    assert first["digests"] == second["digests"] and all(first["digests"])
+    assert sorted(item.name for item in config.state.iterdir()) == ["checkpoints", "latest.json"]
+
+
+def test_the_play_benchmark_fails_when_a_game_gives_no_trajectory(fake_engine, tmp_path, monkeypatch, capsys):
+    import bench_play
+    from heroes import checkpoint
+    from heroes.config import Config
+
+    def run(*arguments, **script):
+        engine = fake_engine(**script)
+        config = Config(vcmi=engine.binary, game_data=engine.data, game_map=engine.game_map)
+        monkeypatch.setattr(bench_play, "Config", lambda: config)
+        monkeypatch.setattr(sys, "argv", ["bench_play.py", str(tmp_path / "state"), "--workers", "2", "--out",
+                                          str(tmp_path / "play.jsonl"), *arguments])
+        capsys.readouterr()
+        try:
+            bench_play.main()
+            status = 0
+        except SystemExit as stop:
+            status = stop.code
+        return status, json.loads(capsys.readouterr().out)
+
+    checkpoint.save(tmp_path / "state", checkpoint.fresh(learning_rate=3e-4))
+    # A game stopped at the day limit can be trained on and compared: it counts.
+    status, report = run("--games", "2", "--max-days", "2", days=4)
+    assert status == 0 and report["statuses"] == ["truncated:game_day_limit"] * 2 and all(report["digests"])
+    # Two engines that die early are a fast batch and no comparison.
+    status, report = run("--games", "2", days=4, end="crash")
+    assert isinstance(status, str) and status.startswith("2 of 2 games gave no trajectory")
+    assert report["digests"] == [None, None] and len(report["failures"]) == 2
+    assert all(entry.startswith("failed:") for entry in report["statuses"])
+    # The report was written all the same, for the diagnosis.
+    assert json.loads((tmp_path / "play.jsonl").read_text().splitlines()[-1]) == report
+    # A window counts decisions, not games; its report carries the failures and the rate stands.
+    status, report = run("--seconds", "1", "--warmup", "0.2", days=4)
+    assert status == 0 and report["mode"] == "window"

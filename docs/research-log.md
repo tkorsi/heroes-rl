@@ -8506,3 +8506,369 @@ the user's update 1,790. Why the update moves so much further from 1,789 was
 not investigated. One candidate is Adam's state after a long update, in which
 most decisions end up clipped and the gradients shrink; another is a sharper
 policy.
+
+### 2026-11-19 — Faster game play: plan and acceptance criteria (play-speed branch)
+
+**Question.** With the grouped update of the entry above, playing 100 games is
+the larger half of a cycle: update 1790 of the user's run collected its 100
+games in 1 h 54 min on ten actors (3.47 million decisions of both seats, 63.6
+per second and game while two other runs shared the Mac; the two short runs of
+2026-11-18 reached 103 and 106). How much faster can the same games be played,
+and what would a further factor cost in training terms?
+
+**What the earlier profile of one game says** (`5028350`, seed 4, 90 days,
+14,801 decisions, 136 s): 51% of the play time waits for the engine, 28% is
+the policy's forward pass, 11% decoding, 6% sampling; compiling the recipe
+adds another 12%. Reading the engine source for this entry: every decision
+record repeats the observation that the view record before it already
+delivered, about 55 KB of JSON; the replay recorder copies and encodes every
+message a second time for `contextual-replay.jsonl` and flushes each record,
+about 130 KB per decision (5.9 GB after eight minutes of one game of the
+update thread's run, about 450 GB per 100 games), and nothing reads that file.
+On the Python side each of the two copies is parsed, decoded, validated and
+keyed for the policy's memo separately.
+
+**Changes under test, all meant to be exact** (the same game from the same
+seeds, bit for bit in everything the learner reads):
+
+1. Engine switch `VCMI_EXPERIMENT_LEDGER=0`: the recorder keeps its
+   transaction order and terminal barrier and writes nothing.
+2. Engine switch `EXPLORER_RL_DECISION_OBSERVATION=0`: a decision record
+   carries no observation; Python gives the decision frame the observation of
+   the seat's latest view, the same object.
+3. Python: the policy recognises that shared observation by identity instead
+   of by a key over all its contents, sizes a memo entry without walking it,
+   the recipe compiler reuses the shared observation's map recipe and trees,
+   and engine messages are parsed without a Python call per JSON object.
+4. More actors than ten.
+
+**Acceptance criteria, stated before any game ran.** (a) For each of 1 to 3,
+the digest of `tools/perf/profile_game.py` for a seeded game is identical
+before and after, on the old runtime and on the new one; a different digest
+rejects the change. (b) `tools/perf/bench_play.py --games` gives identical
+digests for every game of a ten-actor batch. (c) Speed is reported as
+decisions per second of both seats over a window in which every actor is busy,
+old and new alternating under the same load, with the charger and the other
+runs on the Mac noted; games per hour follow from the mean length of the games
+of the user's run (32,458 decisions over updates 1788 to 1790) and are labelled
+as derived. (d) A higher actor count is recommended only if its window rate is
+higher than ten actors' by more than the spread between repeated windows.
+
+**Not part of this change.** Anything that alters what is trained on: the
+guard's daily budget of 32 stack moves per hero and town (a seat answers about
+100 decisions per game day), the day limit, playing the next batch during the
+update. Those are measured and proposed, not shipped.
+
+### 2026-11-19 — Faster game play, measured: the same games 1.6 times faster; what is left
+
+All times are local (EET, UTC+2), 22:55 on 2026-11-19 to 00:16 on 2026-11-20.
+Mac on the 140 W charger, battery at 100% throughout. The Mac was not free: the
+user's run was in the PPO update of batch 1790 (one busy core and the GPU), the
+update thread's comparison runs played two games at a time and later collected
+games with `collect_games.py`, a browser process took up to three cores for
+minutes, and a game ran under Wine. Every rate below is therefore lower than on
+a free machine; versions were compared in turns under the same conditions.
+Checkpoint 1789 (`weights_sha256` 74da41d9…), copied into
+`~/Projects/Heroes-artifacts/play-speed-r3u8uh`; nothing was trained or saved.
+"Base" is `8ad4fcc` with the runtime `local-v8-sleep-resume-v1`; "new" is
+`2a0e5e4` with `local-v8-play-switches-v1`, built from this branch's engine
+sources and frozen with `tools/freeze_runtime.py` (its `config` and `Mods` are
+identical to the old runtime's). Results are in `results/` of that folder,
+measurements ran from copies of the source tree (`git archive`).
+
+**Exactness (criteria a and b): met.**
+
+| Game | Version | Digest |
+| --- | --- | --- |
+| seed 4, to day 60, 14,208 decisions | base, twice | `fec36b049734ab94` |
+| | new code, old runtime | `fec36b049734ab94` |
+| | new code, new runtime, four times | `fec36b049734ab94` |
+| | new runtime with the ledger forced on / the repeated observation forced on | `fec36b049734ab94` |
+| seed 9, to day 60, 11,658 decisions | base / new | `f154a6e38260d5a5` both |
+| ten games on ten actors, `bench_play.py --games 10 --max-days 60 --seed 3`, 91,868 decisions | base / new | all ten digests equal, game by game |
+
+**One game alone** (`profile_game.py --max-days 60`, seconds):
+
+| Seed 4 | Play | Waiting for the engine | Forward | Decoding | Sampling | Compile | Engine folder |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| base | 149.7 | 76.6 | 43.8 | 15.7 | 8.3 | 17.1 | 2.24 GB |
+| new code, old runtime | 135.4 | 72.1 | 33.9 | 16.1 | 7.3 | 16.3 | 2.24 GB |
+| new runtime, observation still repeated | 117.3 | 53.9 | 34.5 | 16.1 | | 16.0 | 5.0 MB |
+| new runtime, ledger still written | 112.9 | 61.0 | 26.7 | 12.1 | | 12.5 | 1.38 GB |
+| new | 95.7 | 44.3 | 27.5 | 11.8 | 7.6 | 11.9 | 5.0 MB |
+
+Seed 9: 114.7 s and 12.5 s to compile before, 72.4 s and 8.8 s after. Play and
+compile together are 1.55 and 1.57 times faster. The first base run of seed 4
+(147.4 s) had an 8-second `sample` of its engine attached and is not in the
+table. The two "still" rows used wrapper scripts that set one switch back; the
+runtime and the Python code are the new ones.
+
+**Ten actors** (`bench_play.py --seconds 130 --warmup 20 --seed 7`, decisions
+per second of both seats of all games, windows taken in turns): base 663 and
+637; new (`52a9f5c`, the same play path as `2a0e5e4`) 1,058 and 999: 1.58
+times. Two later ten-actor windows of the new code, in the actor-count runs,
+gave 1,066 and 1,120. The ten-game batch to day 60 took 206.1 s before and
+132.9 s after; an actor spent 12.64 ms per decision before and 7.98 ms after,
+play and compile together: 1.58 times.
+
+**Actor count** (criterion d), new code, the same windows:
+
+| Actors | 8 | 10 | 12 | 14 | 16 |
+| --- | --- | --- | --- | --- | --- |
+| decisions per second | 819 | 1,058, 999, 1,066, 1,120 | 1,052 | 1,185, 1,255, 1,208 | 1,150 |
+
+Every 14-actor window is above every 10-actor window, by 15% in the means;
+the spread among the ten-actor windows is 12%. The 12-actor window coincided
+with the browser's burst (load average 96 at its start) and the 16-actor
+window was taken once, so the shape beyond 14 is not established; with 14
+actors `top` showed no idle CPU. The default becomes 14. On a free machine the
+best count may be higher or lower and should be measured again.
+
+**Where the time went, from an 8-second `sample` of the base engine**: of the
+engine's busy time 34% was the replay recorder (a copy of every message, its
+encoding, a flushed write), 18% encoding and sending messages to the policy,
+and 41% `captureContextual`, which builds the player's whole observation as a
+`JsonNode` and compares it with the last one. `CClient::handlePack` runs it for
+both players after every applied pack, and the plugin runs it again before
+every result and every decision. A second sample, of the new engine, shows
+that capture as 86% of what is left. The earlier entry's "the engine sends
+every observation twice" named the smaller half of the engine's cost.
+
+**What a decision costs now** (seed 4, new): 6.7 ms of wall time. In Python:
+policy forward 1.9 ms, decoding 0.8, sampling 0.5, encoding frames 0.2, and
+0.8 ms per decision of the game to compile the recipe afterwards. The engine's
+CPU is not measured per decision; with 14 actors playing, `ps` showed the
+engines at 30% of a core each and the actors at 50%, which puts the engine at
+a little over 2 ms per decision, nearly all of it the captures.
+
+**Hit rate of the whole-observation memo, measured before removing it**
+(profile of seed 4 at `c52493f`+`9c1970d`): of 22,015 views looked up by
+`_record_key`, 3,839 hit (17%); the key cost 14.6 s under the profiler and the
+hits saved about 8 s. It is removed. The observation encoded last is kept and
+recognised by identity, which serves all 14,208 decisions, and the map
+features are kept under the recipe compiler's map key.
+
+**A failed attempt, recorded.** The first actor-count run (23:07) reported two
+failed games among nine. They were mine: I edited `heroes/learner/recipes.py`
+in the tree the benchmark was running from, and an actor imports the recipe
+compiler when its first game ends, so two actors imported a file that no longer
+matched their loaded policy module. The same seeded games ran without a
+failure three times afterwards, from the committed code and from copies. Its
+rates are discarded; the perf guide now says to measure from a copy.
+
+**What the learner chose** (the ten-game batch, 46,632 learner decisions, 435
+of them `end_turn`, so 107 decisions per seat and day): `swap_stacks` 30.4%,
+`split_stack` 8.2%, `merge_stacks` 4.8%; `open_capability` and
+`close_capability` 8.2% each, `close` 7.4%, `open_hero` 6.6%, `back` 5.5%,
+`open_stack` 5.3%; `move_to` 4.2%; `end_turn` 0.9%; recruiting, building,
+hiring and upgrading together 0.5%. The games stop at day 60, so this is the
+early game only.
+
+**What this means for a cycle.** The user's update 1790 collected its 100
+games in 1 h 54 min on ten actors under a similar load. At 1.6 times that is
+about 1 h 10 min, and about 1 h with 14 actors; neither was run. A 1,000-game
+cycle of ten such batches would spend about 10 hours playing instead of 19.
+The target of one hour for the whole cycle is 10 to 20 times further away, and
+no exact change found here closes it: the engine capture is about a third of a
+decision's CPU and Python's share is spread over many small parts.
+
+**Not changed, proposed to the user.** (1) Fewer decisions per game day: 43%
+of decisions are stack moves and another 41% open or close a window; the
+guard's budget is 32 stack moves per hero and town per day. A smaller budget
+is a new guard version and changes what the policy can do. (2) Playing the
+next batch while the update runs: the update needs the GPU and one core, the
+actors the other cores; a cycle would take the longer of the two instead of
+their sum, with games one update behind. (3) A day limit saves little (entry
+above). (4) Rebuilding the engine's capture so that it is cheap to see that
+nothing changed: exact, but a restructuring of the plugin's observation code.
+
+**Limitations.** One evening on a busy machine; no full batch of 100 games and
+no training run was made with the new code; the longest games measured ran to
+day 60 (the windows run to 365 but last 150 s); the new runtime has started a
+few hundred games in these measurements, most of them stopped after 150 s, and
+has played no game of 365 days. `vcmireplay`
+was not run against the changed recorder: with the ledger off there is nothing
+to replay, and `--keep-game-files` restores it.
+
+### 2026-11-20 — Review of the play-speed branch: four findings, fixed; the replay check is not run yet
+
+The user reviewed PR 35 at `3814064` and left four comments. All four were
+confirmed by reading the code; the second one was also reproduced with the
+scripted engine before it was fixed. None of the fixes touches the play loop
+or the update: a seeded game plays as it did.
+
+**1. A kept game could not be verified.** The launcher sets
+`EXPLORER_RL_DECISION_OBSERVATION=0` for every game, also with
+`--keep-game-files`, so a kept ledger has decisions without the observation.
+`vcmireplay` never set the variable and the adapter's default is 1, so a
+replay from a fresh shell regenerated the observation in the first decision
+and `ContextualEvidence::expect` rejected it. An older capture replayed from a
+shell that still held `=0` failed the other way round.
+*Fix, in `engine/ExperimentReplay/ContextualReplay.cpp` only:* before the
+adapters are created, `ContextualReplay::run` reads the first recorded
+decision of the tape and sets the variable to match, in both directions, as
+`configureControllers` already does for `army_information`. Every regenerated
+record is still compared whole with its recording. The summary of a verified
+replay says which form was read (`decisions_repeat_observation`). A tape whose
+decisions are not all of one form fails at the first that differs. The launcher
+is unchanged: every game stays compact. `vcmiclient`, the plugin and the
+recorder are not touched, so the digests of the entry above stand and the
+default runtime stays `local-v8-play-switches-v1`; its own `vcmireplay` was
+frozen before this fix and rejects compact captures, so a kept game is
+verified with a `vcmireplay` built from this commit on.
+Considered and not done: writing the form into the ledger's header. It would
+change the recorder inside the plugin, which means a new play runtime and new
+proof that games are unchanged, for no gain in strictness: the observation of
+a decision is the one of the view record before it, and that record is
+compared either way.
+
+**2. Two benchmark calls removed each other's games.** `bench_play.py` named a
+game's folder by its number under `STATE/games`, the number follows from the
+seed, and an actor removes the folder before and after playing; the state lock
+is taken only by `train`. Reproduced: two calls with the same folder and seed,
+at once, on the scripted engine, gave `actor_error` in the unfixed code.
+*Fix:* every call plays in a folder of its own inside STATE
+(`bench-play-…`), removed at the end. It stays inside the state folder, which
+is what the perf guide promises about these tools.
+
+**3. A failed batch looked like a fast one.** With `--games`, a run in which
+games failed printed its report and exited 0. *Fix:* the report is printed and
+appended as before, and the exit status is 1 with the count on stderr when any
+requested game has no trajectory. A game stopped at the day limit has one and
+counts. The window mode is unchanged: it counts decisions, a failed game there
+lowers the rate instead of raising it, and its report carries the failures.
+
+**4. A failed freeze left a half-copied runtime at the final path.** It had an
+executable `vcmiclient`, which is all `Engine.check` asks for, and the retry
+failed on the existing `bin/AI`. *Fix:* `freeze_runtime.py` builds the runtime
+in `NAME.partial-<pid>` beside the final place and renames it when `config`
+and `Mods` are in; on any failure the partial folder is removed. An existing
+`NAME` is refused before anything is copied, and the rename does not replace a
+folder that has files in it.
+
+**Tests.** 52 pass and 3 are skipped in the cloud container (Linux, no Apple
+GPU; 38 and 2 before): 12 new ones, and the two play-benchmark tests now run
+without MLX because only the update benchmarks need it. The three benchmark
+tests fail on the code before the fixes. The freeze tests replace `otool`,
+`install_name_tool` and `codesign` by a recorder. The changed
+`ContextualReplay.cpp` was syntax-checked with g++ 13 (`-std=c++20
+-fsyntax-only`) against the engine headers of the Mac's `vcmi` checkout and
+this branch's `ExplorerRL` headers; a deliberate error was caught the same
+way. It was **not built, linked or run**.
+
+**Not verified: finding 1 against real captures.** That needs the engine and
+the game data. `tools/check_replay.py` is the acceptance test: it plays one
+short game with the ledger, then replays it from an environment without the
+variable, replays it with the other form set, and replays it with one recorded
+answer of the policy replaced by another answer of the same seat; it passes
+only if the first two verify and the third does not. Run with the training
+engine it checks a compact capture, and with `--vcmi` naming
+`local-v8-sleep-resume-v1` a capture that repeats the observation; the
+commands are in `docs/architecture.md`. The script itself has only run against
+hand-written captures and stand-in verifiers (one that reads the form from the
+tape passes, one that takes it from its environment fails, one that accepts a
+changed answer fails). What it assumes about the real files and has not seen:
+that a game stopped at the day limit leaves `engine/replay.jsonl` as `init`,
+`start` and input/applied pairs with at most one trailing input, and that such
+a game verifies with `--prefix` from its own profile folder. If one of these
+does not hold the script stops with the reason and keeps the game.
+
+### 2026-11-20 — The replay check on the real engine: both kinds of capture verify, a changed answer does not
+
+The user approved the launch ("Yes, Claude runs it" on the question whether
+Claude may run the replay check, then "I approve everything. Run as you will").
+Everything ran in the clone `~/Projects/Heroes-opt` at `748a041` and in a new
+state folder `~/Projects/Heroes-artifacts/replay-check`, which holds
+`latest.json` and `checkpoints/update-001789.pt` copied from
+`play-speed-r3u8uh` (same SHA-256). `~/Projects/Heroes` and `training-trial`
+were not touched; the training run there (pid 42215) was going throughout.
+
+**Build.** `prepare_vcmi.py` refuses to change a checkout it prepared earlier
+("unexpected content": its own patches). The only file that differed from the
+recipe was `ContextualReplay.cpp`, and the copy in `vcmi/` was byte for byte
+the old one, so the new file was copied to its place by hand; `--check` then
+passed. `cmake --build vcmi/build --target vcmireplay --parallel 2` compiled
+one object and relinked `vcmireplay` in 6.4 s. `libvcmi.dylib`, `vcmiclient`,
+`vcmiserver` and the AI plugins kept their timestamps of 19 November.
+
+**Result.** `tools/check_replay.py`, seed 1, three days, `--replay` naming the
+rebuilt `vcmireplay`; both calls exited 0 at the first attempt, with no change
+to the script or the verifier.
+
+| | engine that played | decisions in the capture | wall |
+|---|---|---|---|
+| a | `local-v8-play-switches-v1` (training's) | compact | 5.7 s |
+| b | `local-v8-sleep-resume-v1` (before the switch) | repeat the observation | 4.6 s |
+
+In both: `verified`, `form_read_from_capture`,
+`verified_with_the_other_form_in_the_environment` and
+`changed_answer_rejected` are true. The verifier's own summary named the form
+that was in the capture each time, with the other form set in its environment
+too. Checked per replay: 919 client packets, 673 messages, 241 requests,
+335 responses, 2,630 transactions; the ledger has 7,429 records. Record 3763
+(an answer of seat 0, replaced by another answer the same seat gave) made the
+replay stop at record 3768, "Contextual replay differs", at the next message
+of that seat after decision 133 was consumed. Both games were cut at the day
+limit (`truncated:game_day_limit`, day 4) and replayed with `--prefix`, so the
+two things the script assumed about a cut game's files hold. The lines are in
+`replay-check/check-replay.jsonl`.
+
+The two engines played the same game: choices `[202, 133]`, the same number of
+records and of everything checked. That is the claim of the play-speed entry
+(the switches change what is sent, not what is played) seen once more, on one
+short game.
+
+**Also on the Mac.** `tests/test_check_replay.py`, `test_freeze_runtime.py`
+and `test_perf_tools.py -k "not update"`: 14 passed (macOS, with the pytest of
+`perf-opt-mq0j5t/pydeps`; the training environment has none). The update tests
+were left out so that no GPU work ran beside the user's training.
+
+**Not done.** The full suite was not run on the Mac. One game of one seed and
+three days was checked per engine, not a whole game; a whole game's ledger is
+several gigabytes. `freeze_runtime.py` was not run for real, so no runtime
+with the new `vcmireplay` is frozen: verification uses the one in
+`vcmi/build/bin`, as `docs/architecture.md` says.
+
+### 2026-11-20 — The replay check counted a crashed verifier as a rejection; corrected
+
+A fifth review comment, on `tools/check_replay.py` at `92c1dc8`. The user
+reproduced a false pass: a stand-in verifier passed both clean replays and
+then ended with status 42 before writing a report for the capture with the
+changed answer. The script's fallback for a missing report was
+`{"verified": false}`, the third check asked only for `verified == false` and a
+status other than 0, so the crash counted as "changed answer rejected" and the
+whole check passed. Confirmed by reading the code and by a test that fails on
+`92c1dc8`.
+
+**Fix, in the checker only.** The changed answer counts as rejected when the
+verifier's report exists, is a JSON object, says `verified: false`, carries the
+error of `ContextualEvidence::expect` ("Contextual replay differs at record N")
+with N greater than the number of the changed record, and the status is not 0.
+The changed answer is itself read from the capture, so its effect can only show
+in a record regenerated later; a difference at an earlier record is not caused
+by it. A run without a readable report no longer gets a `verified` value at all;
+its entry says the status and where the console log is. On any failed check the
+work folder stays, as before, with every report and console log. The verifier
+and the engine are not touched.
+
+The rule is tied to the wording of that one error. If the wording changes, the
+check fails and says what it got; it cannot pass by mistake.
+
+**Tests** (scripted, 61 pass and 3 skipped in the cloud container; 52 and 3
+before). Seven stand-in verifiers that pass both clean replays and then, on
+the changed capture: crash with status 42 and no report, leave half a report,
+write JSON that is not a report, stop with another error, give no reason,
+report a difference before the changed answer, or report the difference and
+end with status 0. Each fails the check; the first six passed it at `92c1dc8`.
+One test runs `main` with such a verifier: exit status 1, the folder is kept
+and named in the report. One test gives the rule the error text the Mac's
+`vcmireplay` produced today (difference at record 3768 after the change at
+3763): accepted. The earlier test with a verifier that takes the form from its
+environment now also shows the second case: its difference at the first
+decision is not counted as a rejection of the answer changed later.
+
+**Not run.** The two real-engine checks of the entry above were not repeated
+with the corrected script. What they recorded satisfies the new rule (the two
+lines in `replay-check/check-replay.jsonl` carry "Contextual replay differs at
+record 3768", changed record 3763, and `vcmireplay` ends with status 3 on that
+error), but that is read from their output, not observed by a new run.

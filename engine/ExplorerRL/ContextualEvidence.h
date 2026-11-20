@@ -61,6 +61,7 @@ private:
 	size_t cursor = 0;
 	uint64_t nextSequence = 0;
 	bool replay = false;
+	bool silent = false; ///< live only, VCMI_EXPERIMENT_LEDGER=0: same state, no ledger written
 	bool builtin = false;
 	bool prefix = false;
 	bool stopping = false;
@@ -76,6 +77,7 @@ private:
 	JsonNode checked;
 	void rejectSealedEvent(const std::string & actor, const std::string & operation) const;
 	void append(JsonNode record);
+	void skip();
 	void expect(JsonNode record);
 	void drainAutomatic();
 	void advance();

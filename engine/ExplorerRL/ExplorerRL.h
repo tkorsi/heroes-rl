@@ -115,6 +115,9 @@ private:
 	std::optional<BattleSide> battleSide; ///< own side in the current battle, protected by stateMutex
 	std::optional<bool> battleWon; ///< protected by stateMutex
 	bool profile = false;
+	/// EXPLORER_RL_DECISION_OBSERVATION=0 sends a contextual decision without the
+	/// copy of the observation its latest view record already delivered.
+	bool decisionObservation = true;
 	int64_t visibleCaptureMicros = 0; ///< since the last profiled message, protected by stateMutex
 	int64_t visibleCaptures = 0; ///< protected by stateMutex
 	/// Engine-side replay evidence (VCMI_EXPERIMENT_REPLAY=1): the pack position

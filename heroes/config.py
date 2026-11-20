@@ -23,7 +23,7 @@ def _artifacts():
 
 
 def _vcmi():
-    return Path(os.environ.get("HEROES_VCMI", _artifacts() / "runtime/local-v8-sleep-resume-v1/bin/vcmiclient")).expanduser()
+    return Path(os.environ.get("HEROES_VCMI", _artifacts() / "runtime/local-v8-play-switches-v1/bin/vcmiclient")).expanduser()
 
 
 @dataclass(frozen=True)
@@ -36,7 +36,7 @@ class Config:
     legacy: Path = field(default_factory=lambda: _artifacts() / "selfplay-ten-then-check")  # imported once
 
     # How games are played.
-    workers: int = 10  # games in play at once, one process each
+    workers: int = 14  # games in play at once, one process each; 16 cores carry no more
     limits: Limits = Limits()
     guard: str | None = guard.VERSION  # repeated no-progress actions the policy may not sample; None for none
     keep_game_files: bool = False  # keep every game's engine folder instead of deleting it
@@ -47,4 +47,4 @@ class Config:
     ppo: PPOConfig = PPOConfig()
 
     def engine(self):
-        return Engine(self.vcmi, self.game_data, self.game_map)
+        return Engine(self.vcmi, self.game_data, self.game_map, replay_ledger=self.keep_game_files)

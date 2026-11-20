@@ -52,7 +52,7 @@ def main(argv=None):
             command.add_argument("--fresh", action="store_true",
                                  help="start from a random policy when the state folder is empty")
             command.add_argument("--games-per-update", type=int, help="games per PPO update (default 100)")
-            command.add_argument("--workers", type=int, help="games in play at once (default 10)")
+            command.add_argument("--workers", type=int, help="games in play at once (default 14)")
             command.add_argument("--keep-game-files", action="store_true", help="keep every game's engine folder")
             command.add_argument("--windows-per-minibatch", type=int,
                                  help="loss windows of 16 decisions per optimizer step (default 2)")

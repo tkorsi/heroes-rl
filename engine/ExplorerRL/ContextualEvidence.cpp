@@ -126,9 +126,18 @@ ContextualEvidence::ContextualEvidence(const std::string & episode, bool town, b
 	const char * directory = std::getenv("VCMI_EXPERIMENT_DIR");
 	if(!directory || !*directory)
 		throw std::runtime_error("Contextual evidence requires VCMI_EXPERIMENT_DIR");
-	output.open(std::string(directory) + "/contextual-replay.jsonl", std::ios::out | std::ios::trunc);
-	if(!output)
-		throw std::runtime_error("Cannot create contextual replay ledger");
+	// VCMI_EXPERIMENT_LEDGER=0 keeps everything a live game needs from this
+	// recorder, the transaction order and the terminal barrier, and writes no
+	// ledger: such a game cannot be replayed, and costs no copy, no encoding
+	// and no disk write per record.
+	const char * ledger = std::getenv("VCMI_EXPERIMENT_LEDGER");
+	silent = ledger && std::string(ledger) == "0";
+	if(!silent)
+	{
+		output.open(std::string(directory) + "/contextual-replay.jsonl", std::ios::out | std::ios::trunc);
+		if(!output)
+			throw std::runtime_error("Cannot create contextual replay ledger");
+	}
 	metadata["kind"].String() = "init";
 	builtin = experimentBuiltinLearner() >= 0;
 	metadata["schema"].String() = builtin ? BUILTIN_SCHEMA : SCHEMA;
@@ -141,6 +150,8 @@ ContextualEvidence::ContextualEvidence(const std::string & episode, bool town, b
 	metadata["action_schema"].String() = expanded ? "heroes-context-actions-v8" : dialogs ? "heroes-context-actions-v7" : management ? "heroes-context-actions-v6" : heroes ? "heroes-context-actions-v5" : armies ? "heroes-context-actions-v4" : town ? "heroes-context-actions-v3" : "heroes-context-actions-v2";
 	if(ownArmies)
 		metadata["army_information"].String() = OWN_ARMY_INFORMATION;
+	if(silent)
+		return;
 	output << line(metadata) << '\n';
 	output.flush();
 	if(!output)
@@ -242,16 +253,26 @@ void ContextualEvidence::finishNativeSession()
 	std::lock_guard lock(mutex);
 	if(replay || recorder.get() != this)
 		throw std::logic_error("Native session can close only its detached live recorder");
-	output.flush();
-	if(!output) throw std::runtime_error("Cannot flush final native session evidence");
-	output.close();
+	if(!silent)
+	{
+		output.flush();
+		if(!output) throw std::runtime_error("Cannot flush final native session evidence");
+		output.close();
+	}
 	// The caller retains a shared owner throughout this call. Release the
 	// module's sticky live owner so no prior episode ledger/state is retained.
 	recorder.reset();
 }
 
+void ContextualEvidence::skip()
+{
+	if(sealed) throw std::runtime_error("Contextual evidence is sealed at its terminal barrier");
+	++nextSequence;
+}
+
 void ContextualEvidence::append(JsonNode record)
 {
+	if(silent) return skip();
 	if(sealed) throw std::runtime_error("Contextual evidence is sealed at its terminal barrier");
 	record["seq"].Integer() = nextSequence++;
 	output << line(record) << '\n';
@@ -342,6 +363,7 @@ void ContextualEvidence::eventEntered(const std::string & actor, const std::stri
 	std::lock_guard lock(mutex);
 	rejectSealedEvent(actor, operation);
 	transactionActor = actor;
+	if(silent) return skip();
 	JsonNode record;
 	record["kind"].String() = "enter";
 	record["actor"].String() = actor;
@@ -379,6 +401,7 @@ void ContextualEvidence::eventLeaving(const std::string & actor, const std::stri
 void ContextualEvidence::nativeRequest(const CPackForServer & pack, PlayerColor player)
 {
 	std::lock_guard lock(mutex);
+	if(silent && !builtin) return skip(); // a built-in opponent's requests keep their source check
 	auto record = requestRecord(pack, player);
 	if(replay) expect(record); else append(record);
 }
@@ -386,6 +409,7 @@ void ContextualEvidence::nativeRequest(const CPackForServer & pack, PlayerColor 
 void ContextualEvidence::callbacksComplete(const CPackForClient &, ExperimentReceiptPosition value)
 {
 	std::lock_guard lock(mutex);
+	if(silent) return skip();
 	JsonNode record;
 	record["kind"].String() = "packet_complete";
 	record["index"].Integer() = value.index;
@@ -427,6 +451,7 @@ void ContextualEvidence::terminalBarrierComplete(const ExperimentTerminalBarrier
 void ContextualEvidence::message(int player, const JsonNode & value)
 {
 	std::lock_guard lock(mutex);
+	if(silent) return skip(); // before the copy of a whole observation
 	JsonNode record;
 	record["kind"].String() = "message";
 	record["player"].Integer() = player;
@@ -437,6 +462,7 @@ void ContextualEvidence::message(int player, const JsonNode & value)
 void ContextualEvidence::response(int player, const JsonNode & value)
 {
 	std::lock_guard lock(mutex);
+	if(silent) return skip();
 	JsonNode record;
 	record["kind"].String() = "response";
 	record["player"].Integer() = player;

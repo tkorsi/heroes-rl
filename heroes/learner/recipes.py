@@ -8,7 +8,7 @@ replaced, so there is exactly one definition of the action space.
 from __future__ import annotations
 
 from math import copysign, log1p
-from ..model.policy import ConditionalProbability, ContextualDistribution, _text, observation_semantics
+from ..model.policy import ConditionalProbability, ContextualDistribution, _text, map_key, observation_semantics
 from .plan import History
 
 
@@ -88,9 +88,7 @@ class _RecipeDistribution(ContextualDistribution):
 
 
 def _map_recipe(model, observation, arena, cache=None):
-    key = (observation.size, observation.tiles, tuple(hero.position for hero in observation.heroes),
-           tuple(town.position for town in observation.towns),
-           tuple((obj.position, obj.kind, obj.subtype, obj.owner) for obj in observation.objects))
+    key = map_key(observation)
     if cache is not None and key in cache:
         return {**cache[key], 'own': arena.add(observation_semantics(observation))}
     width, height, _ = observation.size
@@ -122,13 +120,22 @@ def compile_history(model, inputs, actions):
     frames) and the conditionals of each decision in ``actions`` {seq: Action}."""
     nodes, frames, shared, map_cache = [], [], {}, {}
     pending = set(actions)
+    last = None  # the observation compiled last, its map recipe and the arena's trees after it
     for seq, frame in enumerate(inputs):
         arena = _Arena(nodes, shared)
         if frame.semantics is None:
             frames.append({"root": -1, "map": None, "conditionals": None})
             continue
         # Map first, then the frame, then its conditionals: node order is part of the recipe.
-        map_recipe = None if frame.observation is None else _map_recipe(model, frame.observation, arena, map_cache)
+        if frame.observation is None:
+            map_recipe = None
+        elif last is not None and last[0] is frame.observation:
+            # A decision shares the observation of the view before it. Compiling it
+            # again would add no node and leave the arena with exactly these trees.
+            map_recipe, arena.ids = dict(last[1]), dict(last[2])
+        else:
+            map_recipe = _map_recipe(model, frame.observation, arena, map_cache)
+            last = (frame.observation, map_recipe, dict(arena.ids))
         root = arena.add(frame.semantics)
         conditionals = None
         if seq in actions:
