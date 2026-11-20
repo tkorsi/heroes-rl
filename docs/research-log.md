@@ -9358,3 +9358,20 @@ game day against 101 to 120. The cycle was
 at about 2,100 decisions per second the same decisions are about 55 minutes
 instead of 105, which would make the cycle about 5 h 20 min. Derived, not
 played.
+
+Two more things the same log shows, noted here because they bear on what a
+cycle costs and were reported to the user; neither was investigated.
+
+- The games stopped at day 365 hold most of what is trained on: 12%, 45%, 39%,
+  52% and 73% of the samples of the batches of updates 1788 to 1792. Such a
+  game has no result. Its return is the policy's own value estimate at the
+  learner's next decision (`build_trajectory`), and returns are undiscounted
+  (`gae`), so nothing in the targets makes a shorter game better than a longer
+  one, and for the side that would have lost, reaching the limit scores its
+  own estimate instead of -1. The user's expectation was that games become
+  shorter with training; over these five batches they became longer. Five
+  batches of one run, with a large policy change per update (approximate KL
+  0.06 to 0.16), do not show a cause.
+- Blue wins most decided games in every batch: 73 to 23, 60 to 22, 63 to 22,
+  48 to 28 and 31 to 18. Both seats play with the same weights, so this is the
+  map, the turn order or the policy's play of the two seats.
