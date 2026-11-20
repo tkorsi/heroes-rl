@@ -84,6 +84,7 @@ def weights_sha256(model):
 _LEAF_MEMO = object()
 _LEAF_MEMO_LIMIT = 65536
 _NODE_MEMO_LIMIT = 16384  # internal-node entries keep their (larger) trees alive
+_KEPT_VISIT_LIMIT = 2048  # each entry keeps the encodings of one kept tree's subtrees
 # Key of the per-frame cache entry that is False once the cache may hold a tree
 # equal to, but not identical with, a later one (see _encode_root).
 _EXACT_CACHE = object()
@@ -110,6 +111,8 @@ def _exact_tree(tree):
     while stack:
         item = stack.pop()
         if type(item) is not tuple:
+            if type(item) is _Kept and item.exact:
+                continue  # checked when it was built
             return False
         kind = item[0] if item else None
         if kind == "number":
@@ -127,6 +130,54 @@ def _exact_tree(tree):
         else:
             return False
     return True
+
+
+# -- trees met again in later frames ---------------------------------------------
+#
+# The contract decodes an unchanged army, hero, town or panel once and hands out
+# the same frozen object every time (contract._decoded_once), so the semantic
+# tree of such a value is built once as well. It is kept as a ``_Kept``: the
+# tuple itself, which also remembers its hash, its repr and whether equality is
+# identity inside it. A tree that holds kept trees is hashed, sorted and checked
+# without walking them again, and the model encodes a kept tree once per
+# version of its weights (see ``_encode_tree``).
+
+class _Kept(tuple):
+    """A semantic tree built once. Equal to the plain tuple, with its hash and its repr."""
+
+    def __hash__(self):
+        return self.hashed
+
+    def __repr__(self):
+        text = self.__dict__.get("text")
+        if text is None:  # only a tree that is sorted among others is ever asked
+            text = self.text = tuple.__repr__(self)
+        return text
+
+
+def _keep(tree):
+    kept = _Kept(tree)
+    kept.hashed = tuple.__hash__(kept)
+    kept.exact = _exact_tree(tree)
+    return kept
+
+
+_KEPT_LIMIT = 8192
+_KEPT_VALUES = {}  # id of a decoded value -> (the value, its kept tree)
+_KEPT_PAIRS = {}  # (tag, id of a kept tree, id of another) -> the kept node of the two
+
+
+def _pair(tag, first, second):
+    """``_node(tag, first, second)``, built once for two kept trees."""
+    if type(first) is not _Kept or type(second) is not _Kept:
+        return _node(tag, first, second)
+    key = (tag, id(first), id(second))
+    node = _KEPT_PAIRS.get(key)
+    if node is None:
+        if len(_KEPT_PAIRS) >= _KEPT_LIMIT:
+            _KEPT_PAIRS.clear()  # bounded memory; a miss only builds the node again
+        node = _KEPT_PAIRS[key] = _keep(_node(tag, first, second))  # it holds both trees, so neither id is reused
+    return node
 
 
 def _node(tag, *children):
@@ -280,6 +331,13 @@ def _semantic(value):
                      ("ordered", "notice_text", tuple(_semantic(token) for token in value.text)),
                      _set("components", [_semantic(component) for component in value.components]))
     if is_dataclass(value):
+        kept = type(value) in _KEPT_TYPES
+        if kept:
+            # The tree is a function of the frozen value alone, and the entry
+            # holds the value, so its id names nothing else.
+            hit = _KEPT_VALUES.get(id(value))
+            if hit is not None:
+                return hit[1]
         children = []
         for name in c._field_names(type(value)):
             item = getattr(value, name)
@@ -308,8 +366,18 @@ def _semantic(value):
             else:
                 encoded = _semantic(item)
             children.append(_node(name, encoded))
-        return _node(type(value).__name__, *children)
+        tree = _node(type(value).__name__, *children)
+        if kept:
+            if len(_KEPT_VALUES) >= _KEPT_LIMIT:
+                _KEPT_VALUES.clear()  # bounded memory; a miss only builds the tree again
+            tree = _keep(tree)
+            _KEPT_VALUES[id(value)] = (value, tree)
+        return tree
     raise ValueError("Unsupported model semantic payload")
+
+
+# The values contract._decoded_once shares between observations.
+_KEPT_TYPES = frozenset((c.OwnArmyStack, c.OwnArmy, c.ArmyView, c.Hero, c.Town, c.TownPanel, c.CapabilityPanel))
 
 
 @dataclass(frozen=True)
@@ -421,7 +489,7 @@ def observation_semantics(observation):
                 _node("current_window_subject", _subject(observation, observation.context.subject)))
     if observation.window is not None and observation.window.armies is not None:
         window = observation.window
-        bindings = [_node("displayed_army", _semantic(army), _subject(observation, army.subject)) for army in window.armies]
+        bindings = [_pair("displayed_army", _semantic(army), _subject(observation, army.subject)) for army in window.armies]
         if window.stack_panel is not None:
             parent = window.stack_panel.parent_context
             bindings.append(_node("stack_parent", _subject(observation, parent.subject),
@@ -430,7 +498,7 @@ def observation_semantics(observation):
             bindings.append(_node("exchange_partner", _subject(observation, window.context.selection)))
         own = _node("management_observation", own, _set("army_bindings", bindings))
     if observation.own_armies is not None:
-        bindings = [_node("own_army", _semantic(army), _subject(observation, army.subject))
+        bindings = [_pair("own_army", _semantic(army), _subject(observation, army.subject))
                     for army in observation.own_armies]
         own = _node("passive_army_observation", own, _set("own_army_bindings", bindings))
     return own
@@ -504,7 +572,7 @@ class ContextualActorCritic(nn.Module):
         if memo is None or memo["versions"] != versions:
             memo = self.__dict__["_memo_state"] = {
                 "parameters": parameters, "versions": versions, "text": {}, "number": {}, "node": {},
-                "map": None, "observation": None}
+                "kept": {}, "map": None, "observation": None}
         return memo
 
     def load_state_dict(self, *arguments, **options):
@@ -534,6 +602,42 @@ class ContextualActorCritic(nn.Module):
         return self._encode_tree(tree, cache)
 
     def _encode_tree(self, tree, cache, nodes=None):
+        """The encoding of ``tree``; the cache gains every subtree it did not hold.
+
+        A kept tree met with the memo (``nodes``, see ``_encode_root``) is
+        visited once per version of the weights. Every entry of such a cache
+        is the exact encoding of its tree and the cache holds the subtrees of
+        whatever it holds, so a visit leaves it with the tree's subtrees added
+        to what it had: the later meeting adds those same entries at once.
+        """
+        if nodes is None or type(tree) is not _Kept:
+            return self._encode_visit(tree, cache, nodes)
+        visits = cache[_LEAF_MEMO]["kept"]
+        visit = visits.get(id(tree))
+        if visit is None:
+            result = self._encode_visit(tree, cache, nodes)
+            if len(visits) >= _KEPT_VISIT_LIMIT:
+                visits.clear()  # bounded memory; a miss only visits again
+            entries, stack = {}, [tree]
+            while stack:
+                item = stack.pop()
+                if item in entries:
+                    continue
+                inner = visits.get(id(item)) if type(item) is _Kept else None
+                if inner is not None:
+                    entries.update(inner[2])
+                    continue
+                entries[item] = cache[item]
+                if item[0] not in ("text", "number"):
+                    label = _text(item[1])
+                    entries[label] = cache[label]
+                    stack.extend(item[2])
+            visits[id(tree)] = (tree, result, entries)  # holds the tree, so its id names nothing else
+            return result
+        cache.update(visit[2])
+        return visit[1]
+
+    def _encode_visit(self, tree, cache, nodes=None):
         if tree in cache:
             return cache[tree]
         kind = tree[0]
@@ -543,7 +647,7 @@ class ContextualActorCritic(nn.Module):
             entries = memo[kind]
             result = entries.get(key)
             if result is None:
-                result = self._encode_tree(tree, {})
+                result = self._encode_visit(tree, {})
                 if len(entries) >= _LEAF_MEMO_LIMIT:
                     entries.clear()  # bounded memory; a miss only recomputes
                 entries[key] = result

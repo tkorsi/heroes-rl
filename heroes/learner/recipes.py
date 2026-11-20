@@ -8,26 +8,63 @@ replaced, so there is exactly one definition of the action space.
 from __future__ import annotations
 
 from math import copysign, log1p
-from ..model.policy import ConditionalProbability, ContextualDistribution, _text, map_key, observation_semantics
+from ..model.policy import ConditionalProbability, ContextualDistribution, _Kept, _text, map_key, observation_semantics
 from .plan import History
 
 
 class _Arena:
-    def __init__(self, nodes, shared=None):
+    def __init__(self, nodes, shared=None, kept=None):
         self.nodes = nodes
         self.shared = {} if shared is None else shared
         # A new equality cache per frame preserves signed-zero first-use and
         # Python's existing numeric equality rules within that frame only.
         self.ids = {}
+        self.kept = {} if kept is None else kept  # id of a kept tree -> (the tree, its node, the ids of its subtrees)
+        self.exact = True  # until this frame adds a leaf that equals another without being it
 
     def add(self, tree):
+        """The node of ``tree``; the frame's ids gain every subtree they did not hold.
+
+        A kept tree is walked once per game. While equality is identity for
+        everything this frame added and for the tree, each of its subtrees
+        gets the node it got before, a function of the subtree alone once it
+        is among the shared nodes, and no node is new: the later meeting adds
+        those same ids at once.
+        """
+        if type(tree) is not _Kept or not tree.exact or not self.exact:
+            return self._add(tree)
+        visit = self.kept.get(id(tree))
+        if visit is None:
+            index = self._add(tree)
+            ids, stack = {}, [tree]
+            while stack:
+                item = stack.pop()
+                if item in ids:
+                    continue
+                inner = self.kept.get(id(item)) if type(item) is _Kept else None
+                if inner is not None:
+                    ids.update(inner[2])
+                    continue
+                ids[item] = self.ids[item]
+                if item[0] not in ("text", "number"):
+                    label = _text(item[1])
+                    ids[label] = self.ids[label]
+                    stack.extend(item[2])
+            self.kept[id(tree)] = (tree, index, ids)  # holds the tree, so its id names nothing else
+            return index
+        self.ids.update(visit[2])
+        return visit[1]
+
+    def _add(self, tree):
         if tree in self.ids:
             return self.ids[tree]
         kind = tree[0]
         if kind == "text":
+            self.exact = self.exact and type(tree[1]) is str
             node = (kind, tree[1].encode("utf-8"), [])
         elif kind == "number":
             value = tree[1]
+            self.exact = self.exact and type(value) is float and (value > 0 or value < 0 or copysign(1., value) > 0)
             node = (kind, [copysign(log1p(abs(value)), value), float(value == 0)], [])
         else:
             tag, children = tree[1:]
@@ -118,11 +155,11 @@ def _map_recipe(model, observation, arena, cache=None):
 def compile_history(model, inputs, actions):
     """Build the recipe for every frame of ``inputs`` (an iterable of encoded
     frames) and the conditionals of each decision in ``actions`` {seq: Action}."""
-    nodes, frames, shared, map_cache = [], [], {}, {}
+    nodes, frames, shared, kept, map_cache = [], [], {}, {}, {}
     pending = set(actions)
     last = None  # the observation compiled last, its map recipe and the arena's trees after it
     for seq, frame in enumerate(inputs):
-        arena = _Arena(nodes, shared)
+        arena = _Arena(nodes, shared, kept)
         if frame.semantics is None:
             frames.append({"root": -1, "map": None, "conditionals": None})
             continue
@@ -132,10 +169,10 @@ def compile_history(model, inputs, actions):
         elif last is not None and last[0] is frame.observation:
             # A decision shares the observation of the view before it. Compiling it
             # again would add no node and leave the arena with exactly these trees.
-            map_recipe, arena.ids = dict(last[1]), dict(last[2])
+            map_recipe, arena.ids, arena.exact = dict(last[1]), dict(last[2]), last[3]
         else:
             map_recipe = _map_recipe(model, frame.observation, arena, map_cache)
-            last = (frame.observation, map_recipe, dict(arena.ids))
+            last = (frame.observation, map_recipe, dict(arena.ids), arena.exact)
         root = arena.add(frame.semantics)
         conditionals = None
         if seq in actions:

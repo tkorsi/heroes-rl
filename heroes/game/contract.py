@@ -2929,6 +2929,59 @@ def decode_capability_panel(raw, *, schema=EXPANDED_SCHEMA):
 
 _TILE_FIELDS = frozenset(("position", "terrain", "road", "blocked", "visitable"))
 _TILE_CACHE = {}
+_DECODED_LIMIT = 4096
+_DECODED = {}  # (decoder, marshal bytes of a raw value) -> what the decoder made of it
+
+
+def _decoded_once(decoder, raw, *context):
+    """``decoder(raw, *context)``, as one shared object for every raw value that is exactly the same.
+
+    From one view to the next most of an observation stays as it was: every
+    army but the one just rearranged, the heroes that did not move. Equal
+    marshal bytes mean equal values of identical exact types (marshal refuses
+    subclasses and keeps bool, int and float apart), and only a successful
+    decoding is kept, so the frozen value returned is the one decoding would
+    build again. ``context`` is whatever else the decoder reads; it is hashable.
+    """
+    try:
+        key = (decoder, marshal.dumps(raw), *context)
+    except ValueError:
+        return decoder(raw, *context)
+    value = _DECODED.get(key)
+    if value is None:
+        value = decoder(raw, *context)
+        if len(_DECODED) >= _DECODED_LIMIT:
+            _DECODED.clear()  # bounded memory; a miss only decodes again
+        _DECODED[key] = value
+    return value
+
+
+def _decode_own_stack(raw):
+    return OwnArmyStack(**_exact_record(raw, OwnArmyStack))
+
+
+def _decode_own_army(raw):
+    row = _exact_record(raw, OwnArmy)
+    row["slots"] = tuple(_decoded_once(_decode_own_stack, slot) for slot in _array(row["slots"]))
+    return OwnArmy(**row)
+
+
+def _decode_town_panel(raw, schema):
+    return decode_town_panel(raw, schema=schema)
+
+
+def _decode_capability_panel(raw, schema):
+    return decode_capability_panel(raw, schema=schema)
+
+
+def _decode_hero(raw):
+    return _decode_simple(raw, Hero, ("position",))
+
+
+def _decode_town(raw):
+    return _decode_simple(raw, Town, ("position",))
+
+
 _TILE_CACHE_LIMIT = 65536
 _LAST_TILES = [None, None]  # marshal bytes of the last decoded raw tile list, and its tiles
 
@@ -2995,20 +3048,17 @@ def decode_observation(raw, *, schema=SCHEMA, unchanged_map=None):
     if "army_information" in data:
         if data["army_information"] != OWN_ARMY_INFORMATION:
             raise ValueError("Unsupported passive own army information version")
-        armies = []
-        for raw_army in _array(data["own_armies"]):
-            row = _exact_record(raw_army, OwnArmy)
-            row["slots"] = tuple(OwnArmyStack(**_exact_record(slot, OwnArmyStack)) for slot in _array(row["slots"]))
-            armies.append(OwnArmy(**row))
-        data["own_armies"] = tuple(armies)
+        data["own_armies"] = tuple(_decoded_once(_decode_own_army, army) for army in _array(data["own_armies"]))
     for name in ("size", "resources"):
         if name in data:
             data[name] = _array(data[name])
     if "tiles" in data:
         data["tiles"] = _decode_tiles(data["tiles"])
-    for name, cls in (("objects", ObjectView), ("heroes", Hero), ("towns", Town)):
+    if "objects" in data:
+        data["objects"] = tuple(_decode_simple(item, ObjectView, ("position",)) for item in _array(data["objects"]))
+    for name, decoder in (("heroes", _decode_hero), ("towns", _decode_town)):
         if name in data:
-            data[name] = tuple(_decode_simple(item, cls, ("position",)) for item in _array(data[name]))
+            data[name] = tuple(_decoded_once(decoder, item) for item in _array(data[name]))
     if unchanged_map is not None and "tiles" not in data and "objects" not in data:
         data["tiles"], data["objects"] = unchanged_map
     if data.get("window") is not None:
@@ -3019,7 +3069,7 @@ def decode_observation(raw, *, schema=SCHEMA, unchanged_map=None):
         if "capability_controls" in window:
             window["capability_controls"] = _array(window["capability_controls"])
         if window.get("capability_panel") is not None:
-            window["capability_panel"] = decode_capability_panel(window["capability_panel"], schema=schema)
+            window["capability_panel"] = _decoded_once(_decode_capability_panel, window["capability_panel"], schema)
         if profile.dialogs != ("dialog_panel" in window):
             raise ValueError("dialog_panel is explicit in v7 windows and absent in older profiles")
         if window.get("dialog_panel") is not None:
@@ -3029,9 +3079,9 @@ def decode_observation(raw, *, schema=SCHEMA, unchanged_map=None):
             if "town_panel" in window:
                 raise ValueError("Town economy fields are absent from this context/schema")
         else:
-            window["town_panel"] = decode_town_panel(window.get("town_panel"), schema=profile.history_schema)
+            window["town_panel"] = _decoded_once(_decode_town_panel, window.get("town_panel"), profile.history_schema)
         if "armies" in window:
-            window["armies"] = tuple(decode_army(item) for item in _array(window["armies"]))
+            window["armies"] = tuple(_decoded_once(decode_army, item) for item in _array(window["armies"]))
         if window.get("stack_panel") is not None:
             window["stack_panel"] = decode_stack_panel(window["stack_panel"], profile)
         if window.get("army") is not None:
