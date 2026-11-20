@@ -1,146 +1,223 @@
-# Architecture and research guide
+# How it works
 
-The [README](../README.md) defines the current workflow and accepted settings.
-This guide maps that workflow to its implementation. Historical contracts remain
-in [project history](project-history.md); experiment evidence belongs in the
-append-only [research journal](research-log.md).
-
-## Follow one cycle
+The [README](../README.md) says how to run training. This guide follows one
+game from the engine to a weight update and names the code at each step.
 
 ```text
-run-100-games.command → continue-selfplay.sh → tools/run_selfplay_training.py
-  collect + prepare a complete batch → PPO → save and restore-check
-  repeat remaining batches → one independently verified diagnostic
+heroes/train.py          restore → [ collect 100 games → update → save ] …
+   └ Pool                14 actor processes (heroes/train.py: worker)
+       └ actor.play      one game, both seats, the learner's trajectory
+           ├ engine/     vcmiclient process, two sockets, typed frames
+           ├ model/      frames → GRU state → action distribution, value
+           └ game/       what may be offered, done and sampled
+   └ learner/            targets, loss windows, MLX update
+   └ checkpoint.py       one file per update
 ```
 
-| Stage | Code and responsibility |
+## The game as the policy sees it
+
+VCMI runs headless with both players controlled by the **ExplorerRL** plugin
+([engine/ExplorerRL](../engine/ExplorerRL/)). Whenever a player may act on the
+adventure map, the plugin sends what that player can see and waits for an
+answer. Each player has its own TCP connection to the Python side; messages are
+one JSON object per line.
+
+[`heroes/engine/protocol.py`](../heroes/engine/protocol.py) turns the messages
+of one seat into **frames**, appended to that seat's `PlayerHistory`
+([`heroes/game/contract.py`](../heroes/game/contract.py)):
+
+| Frame | Meaning |
 | --- | --- |
-| Manual entry | [run-100-games.command](../run-100-games.command) accepts game count/backend; [continue-selfplay.sh](../continue-selfplay.sh) selects the locked Python and macOS sleep assertion |
-| Coordinate | [run_selfplay_training.py](../tools/run_selfplay_training.py) owns source checks, seed reservations, ten rolling actors, batch boundaries, publication and retirement |
-| Observe and act | [contextual.py](../experiments/learner/contextual.py) defines typed state/actions; [contextual_rollout.py](../experiments/learner/contextual_rollout.py) collects player histories; [interaction_guard.py](../experiments/learner/interaction_guard.py) applies versioned action restrictions |
-| Store and admit | [contextual_storage.py](../experiments/learner/contextual_storage.py) transfers bound captures; [selfplay_training.py](../experiments/learner/selfplay_training.py) checks receipts, prepares histories and restores complete checkpoint pairs |
-| Learn | [ppo.py](../experiments/learner/ppo.py) owns GAE, shuffled windows, clipping and update order; [builtin_gameplay.py](../experiments/learner/builtin_gameplay.py) supplies transactional rollback |
-| Inspect progress | [game_progress.py](../experiments/learner/game_progress.py) renders game cells and PPO counters; display files cannot authorize training |
-| Verify a diagnostic | [run_selfplay_one_game.py](../tools/run_selfplay_one_game.py), [headless replay](../experiments/headless/) and retained [validation probes](../validation/probes/) reconstruct both policies and replay native actions |
+| `view`, `event` | something became visible: the map, a battle result, a notice |
+| `decision` | the player must act; carries the observation and the offers |
+| `submitted` | the action the policy answered with |
+| `consumed`, `issued`, `acknowledged` | the engine took the action and ran its commands |
+| `context`, `context_opened`, `context_invalidated` | a window opened or closed |
+| `result` | how the action ended |
+| `superseded` | the engine withdrew a decision or closed an action another way |
+| `terminal` | the game ended for this player: win or loss |
 
-Preparation overlaps capture; all declared training captures and owned-worker
-cleanup must complete before an update. Capture wins are
-engine-reported, whereas the final diagnostic has independent reconstruction and
-replay. Saved updates and diagnostic success are distinct outcomes. Fresh seeds
-remain consumed even when an attempt fails or never starts.
+`PlayerHistory.append` checks every frame against the order the engine must
+follow and refuses anything else, so a protocol bug fails the game instead of
+reaching training. The contract also carries the profiles of earlier, smaller
+interfaces (history v2 to v7); the engine and the checkpoints use the newest,
+`adventure-capabilities-v1` with history v8.
 
-## Policy and update backends
+An **observation** is the visible map (terrain, roads, objects), the player's
+heroes and towns, resources and the open window. **Offers** say which actions
+are legal now. An **action** is typed: `move_to` a tile, `open_town`,
+`recruit` a count, `choose_dialog`, `end_turn` and so on.
 
-[contextual_model.py](../experiments/learner/contextual_model.py) combines a typed
-semantic tree, map CNN and owned-state features with recurrent history memory.
-The adapter exposes player-visible information; it does not substitute an
-omniscient state or image-based policy. [native_recipes.py](../experiments/learner/native_recipes.py)
-compiles checked histories into the representation shared by update backends.
+The engine sends an observation once, in a `view`, whenever what the player
+sees has changed. A decision is always about the observation of the player's
+latest view, so the launcher tells the engine not to repeat it
+(`EXPLORER_RL_DECISION_OBSERVATION=0`) and the decision frame gets the view's
+observation, the same Python object. The policy and the recipe compiler
+recognise it by identity and do its work once. An engine that still repeats the
+observation is read as before and gives equal frames.
 
-| Backend | Implementation | Boundary |
+## One game
+
+[`heroes/engine/process.py`](../heroes/engine/process.py) starts a fresh
+`vcmiclient` per game in its own folder, with its own profile directory, a copy
+of the map and a random engine seed.
+
+[`heroes/engine/env.py`](../heroes/engine/env.py) is the two-seat environment:
+
+```python
+state = env.reset(folder, game_number, seed)      # the first Request
+while isinstance(state, Request):
+    state = env.step(action)                      # the next Request, or the End
+```
+
+A `Request` belongs to one seat and carries that seat's new frames, ending with
+the decision to answer. The game ends in one of three ways:
+
+| End | When | Trained on |
 | --- | --- | --- |
-| Metal, current default | [metal_backend.py](../experiments/learner/metal_backend.py), `metal_gru.py`, `metal_tree.py`, `metal_map_delta.py`, `metal_map_kernels.py` and [Metal shaders](../native/learner/metal/) | Adopted full-D source; FP32 MPS and custom GRU/tree/sparse-map kernels; feature size 32, hidden size 64 |
-| CPU, explicit fallback | [native_backend.py](../experiments/learner/native_backend.py), [kernels.cpp](../native/learner/kernels.cpp), `text_replay.h`, `replay_tape.h` | Source-, binary- and runtime-bound native implementation; also used by diagnostic verification |
+| `completed` | The engine finished. Both seats got complementary win and loss terminals, the engine log agrees with the sockets and the process exited cleanly. | yes, with reward +1 or −1 |
+| `truncated` | A decision arrived after day 365, or a seat had answered 163,840 decisions. The game is stopped there. | yes, without reward |
+| `failed` | Anything else: a crash, a protocol error, an engine that reports its own failure. | no |
 
-Metal's prefix cache stores immutable packed constants, bounded to 4 GiB on the
-device. It never caches encoded recurrent features across weight updates. Each
-prefix is recomputed with current weights. Sparse map execution avoids the large
-neighborhood materializations that caused the initial full-cohort OOM. Custom
-tree/backward operations and the full-D GRU arithmetic belong to this backend;
-PPO settings and batch admission stay shared. Model and Adam tensors return to
-CPU, including on failure, and the original optimizer configuration is restored.
+[`heroes/actor.py`](../heroes/actor.py) plays the game. Both seats use the same
+weights but each has its own recurrent state and random generator (`Seat`).
+One seat is the **learner**. When the game ends, `build_trajectory` joins what
+the learner's policy recorded while playing (action, log-probability, value)
+with the frames:
 
-The user accepted CPU/Metal numerical differences. Full D's measured speedup
-and failed strict policy-comparison gate are both retained in the journal.
-Those measurements predate integration into main; the new launcher default has
-not received a fresh integrated runtime preflight or test-suite run under the
-current no-launch instruction.
-Later deterministic pool/object-reduction candidates are private investigations,
-not part of this adopted implementation. These benchmarks did not publish an
-official training checkpoint.
+- A decision is trained on once its action was resolved, by a `result` or, for
+  the very last action of a finished game, by the terminal.
+- Only the last action of a completed game has a reward. The game is
+  undiscounted, so every earlier advantage is the final outcome minus the value.
+- A truncated game ends at the last action whose following decision the policy
+  saw. That decision's value stands in for the rest of the game.
 
-## Engine boundary
+## Many games at once
+
+[`heroes/train.py`](../heroes/train.py) keeps `--workers` actor processes, each
+with its own pipe to the trainer. An actor loads the newest checkpoint, plays
+the games it is handed one at a time and sends back each finished `Game`. A
+game's number is written to `log.jsonl` before the game starts, so a number is
+never used twice, even after a run that was killed.
+
+An actor that dies closes its pipe: the trainer replaces it at once and counts
+its game as failed. An actor stops when the trainer is gone and takes its
+engine with it. `lock` in the state folder keeps a second run out.
+
+## The policy
+
+[`heroes/model/policy.py`](../heroes/model/policy.py). `ContextualEncoder`
+turns each frame into a semantic tree; `ContextualActorCritic` encodes it:
+
+- text and numbers become leaf vectors (a byte-level GRU, a small MLP);
+- a node pools its children and combines them with its tag; ordered
+  sequences use a second GRU;
+- an observation's map goes through a small CNN, its heroes, towns and window
+  through the tree encoder;
+- one `GRUCell` (64 units) carries everything the policy remembers.
+
+At a decision, `ContextualDistribution` samples an action step by step: the
+kind first, then what it applies to, then a tile or a quantity. The
+log-probability of an action is the sum over those steps. Engine handles and
+revision numbers are never features; they only select which visible entity a
+step refers to.
+
+The **interaction guard** ([`heroes/game/guard.py`](../heroes/game/guard.py))
+removes actions that are legal but lead nowhere, such as reopening the same
+window or swapping stacks back and forth. It restricts what is sampled; it is
+not a reward and not a game rule. See the
+[restriction register](temporary-restrictions.md).
+
+While acting, the model reuses encodings it has already computed: of trees,
+of the map it encoded last (most decisions are taken in a window while the map
+stays as it is) and of the observation it encoded last. That memo is dropped as
+soon as any weight changes.
+
+## The update
+
+[`heroes/learner/ppo.py`](../heroes/learner/ppo.py) prepares a batch:
+undiscounted GAE with λ = 1, advantages normalized over the batch, and
+**loss windows** of 16 consecutive trained decisions. A minibatch is two
+windows. For each window the update recomputes the recurrent state from the
+first frame of the game up to the window with the current weights and without
+gradients, then differentiates through the window. Hidden states from play are
+never reused.
+
+That replay is what an update spends most of its time on, and it grows with the
+square of the length of a game. One setting changes how often it happens;
+`Batch.minibatches` in `ppo.py` holds its rule, and both backends follow it.
+
+`windows_per_game` above 1 shuffles each game's windows, cuts them into groups
+of that size and builds a minibatch from whole groups. One replay of a game, to
+the latest of its windows in the step, then serves the whole group. Every state
+is still computed with the current weights, so this is the same update on
+larger minibatches from as few games as before, in fewer steps. Fewer steps at
+the same learning rate move the weights less: Adam's steps on this problem are
+mostly noise, and the distance grows with the learning rate times the square
+root of the number of steps. `learning_rate` is therefore set with it: 8 times
+fewer steps take the square root of 8 times the rate, 8.5e-4 with 16 windows.
+
+A state is never kept from one optimizer step to the next. Two ways of doing
+that were built and measured on real games, and both are gone: keeping states
+for many steps changed the gradient beyond use, and keeping them for only 8
+small steps kept each gradient close but let the policy drift 3 to 5 times
+further in a whole update, because a state computed before earlier steps hides
+how far the policy has already moved on that game. The journal entries of
+2026-11-19 have the numbers.
+
+The plan of a minibatch depends on no weight, and an epoch's schedule is known
+when it starts, so a helper thread builds the next plans while the GPU runs the
+current step.
+
+| Setting | Value |
+| --- | --- |
+| clip ratio, value clip | 0.2, 0.2 |
+| value coefficient | 0.5 |
+| gradient norm | 0.5 |
+| epochs | 1 |
+| optimizer | Adam, 3e-4 |
+| entropy bonus | none |
+| windows per minibatch, per game | 2, 1 |
+| recurrent state before a window | replayed with the current weights at every step |
+
+`ppo.update` is the plain autograd reference, correct and slow. Production uses
+[`heroes/learner/mlx/`](../heroes/learner/mlx/): each actor compiles its game
+into a weight-independent **recipe** (`learner/recipes.py`: which trees every
+frame reads, which choices each trained action took), the learner turns recipes
+into batched plans (`learner/plan.py`, `mlx/plans.py`) and runs them with
+custom Metal kernels for the GRUs, the tree encoder and the sparse map CNN.
+Weights and Adam state are copied into MLX for the update and copied back only
+when every step succeeded.
+
+## Checkpoints
+
+[`heroes/checkpoint.py`](../heroes/checkpoint.py). A checkpoint is one
+`torch.save` file: model configuration, weights and their SHA-256, Adam state,
+the generator that shuffles minibatches, and the counters. Files are written to
+a temporary name and renamed; `latest.json` is switched last. A state folder
+that holds checkpoints but no `latest.json` is refused, not started over.
+
+The previous pipeline wrote a `policy.pt` and a `resume.pt` per update.
+`find_legacy` locates the newest pair and `import_legacy` reads it. This
+happens once, when the state folder is empty.
+
+## Engine
 
 | Path | Responsibility |
 | --- | --- |
-| [engine/ExplorerRL](../engine/ExplorerRL/) | Visible-state adapter, typed adventure actions and policy transport |
-| [engine/ExperimentReplay](../engine/ExperimentReplay/) | Native action replay, terminal/request accounting and verifier host |
-| [engine/patches](../engine/patches/) | Canonical changes to pinned upstream VCMI |
-| [engine/NativeSession](../engine/NativeSession/) | Historical opt-in reusable host, distinct from ordinary cold-process collection |
-| [experiments/headless](../experiments/headless/) | Process ownership, environment protocol, capture and replay |
-| [starting_equipment_runtime.py](../tools/starting_equipment_runtime.py) | Runtime/rule acceptance and v4 map selection |
+| [engine/ExplorerRL](../engine/ExplorerRL/) | visible-state adapter, typed actions, socket transport |
+| [engine/patches](../engine/patches/) | changes to pinned upstream VCMI 1.7.5 |
+| [engine/ExperimentReplay](../engine/ExperimentReplay/) | the engine-side replay recorder and the replay worker. The engine's end-of-game shutdown is built on the recorder, so it stays switched on, but with `VCMI_EXPERIMENT_LEDGER=0` it writes no ledger; training reads none of it. `--keep-game-files` turns the ledger back on, and `vcmireplay` verifies such a game, see below |
+| [engine/NativeSession](../engine/NativeSession/) | an earlier reusable-host experiment; not used |
+| [maps/](../maps/) | the scenario both seats play, `hero-management-v4` |
 
-Generated `vcmi/` is ignored, not a submodule or an independent source of fixes.
-[dependencies/vcmi.json](../dependencies/vcmi.json) pins VCMI 1.7.5 at
-`6901839ae9760dfcd1d5ff2c4aa4ef6968fee752` and declares all engine overlays.
-Edit canonical root sources and patches; preserve exact agreement with generated
-VCMI. The v4 scenario restores native calendar neutral spawning while keeping
-starting taverns. [The restriction register](temporary-restrictions.md) records
-the remaining simplifications and their removal boundaries.
-
-## What the research preserves
-
-The useful record includes the typed observation/action contract, full-history
-recurrent PPO, native replay and checkpoint provenance, and measured costs of
-collecting and updating on real game histories. Failed runs and negative
-numerical controls are evidence alongside successful timings.
-
-- [research-log.md](research-log.md): chronological hypotheses, criteria, source/runtime identities, measurements, failures and corrections.
-- [project-history.md](project-history.md): earlier design decisions, contracts and preserved README chronology.
-- [research/](research/): focused investigation write-ups; [validation/](../validation/) contains existing compact evidence and verifier code.
-- [replay-viewers.md](replay-viewers.md): scope of renderer footage and the [Swift inspector](../apps/replay-inspector/); historical match viewers are not generic latest-checkpoint evaluations.
-- [native-headless-shutdown.md](native-headless-shutdown.md), [native-engine-session.md](native-engine-session.md), [native-lifecycle-optimizer.md](native-lifecycle-optimizer.md): native lifecycle work and its measured limits.
-
-Engine outcomes, verified outcomes, admitted games, published updates and playing
-strength are different claims. One self-play diagnostic or a faster update does
-not establish stronger play. Keep raw evidence privately and cite its exact
-identity from the journal; do not publish captures, weights or diagnostic helpers.
-
-## Compatibility and retained files
-
-Some historical names still carry live dependencies. The current coordinator
-imports helpers from `tools/benchmark_copied_training.py` and `validation/probes/`.
-Source identity covers every learner module and native learner file; capability
-acceptance also binds engine, headless, episode and verifier sources. Legacy
-launchers and configurations participate in historical source-transition checks.
-Deleting or moving them requires an explicit compatibility change, not merely
-an absence of direct imports in the current launcher.
-
-Existing tests, maps, configs and validation evidence therefore remain at their
-bound paths. [Legacy local-training instructions](operations/local-script-training.md)
-describe older lineages, not the current manual cycle. Likewise, dated cloud
-reports and historical launch permissions are not active work orders.
-
-The private artifacts directory contains execution dependencies as well as raw
-logs: locked Python, game data, native runtime/build acceptance, checkpoint pairs,
-seed ledgers and locks. The launcher retires only reviewed raw runs after copying
-and exactly restoring retained state. Keep `docs/research-log.md` and its retention
-markers in place; the coordinator reads them before cleanup.
-
-## Setup reference
-
-The prepared Mac launcher uses `HEROES_PYTHON`, or its locked interpreter
-under `Heroes-artifacts/python/mlx-v1/`, installed from
-`dependencies/learner-mlx.lock`. This adds MLX/MLX Metal 0.31.1 while preserving
-the existing Torch 2.9.1 / NumPy 2.3.5 checkpoint and native-history dependencies.
-The previous interpreter remains intact under `python/next-launch-numpy235-v1/`.
-Accepted native manifests
-also bind Python, Torch and compiled library identities. The validated macOS
-runtime is CPython 3.13 / Torch 2.9.1; Linux CPU uses its separate CPython 3.12
-lock. A successful import alone does not establish checkpoint compatibility.
-See [dependency pins](../dependencies/) and [Linux setup](cloud-environment.md).
-
-The following are **manual developer commands**, not actions performed by reading
-or editing this guide. They do not authorize a training run:
+`vcmi/` is a generated checkout, ignored by Git. The canonical engine changes
+are the patches and the folders above; never leave work only in the checkout.
 
 ```sh
-python3 tools/prepare_vcmi.py
-python3 tools/prepare_vcmi.py --check
-```
+python3 tools/prepare_vcmi.py           # fetch VCMI and apply patches and overlays
+python3 tools/prepare_vcmi.py --check   # verify the checkout matches them exactly
 
-For an existing macOS Homebrew build environment:
-
-```sh
 cmake -S vcmi -B vcmi/build -G Ninja -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_PREFIX_PATH=/opt/homebrew -DENABLE_GOLDMASTER=ON \
   -DENABLE_STRICT_COMPILATION=OFF -DENABLE_EXPLORER_RL=ON \
@@ -148,10 +225,74 @@ cmake -S vcmi -B vcmi/build -G Ninja -DCMAKE_BUILD_TYPE=Release \
   -DENABLE_MMAI=OFF -DENABLE_NULLKILLER2_AI=OFF -DENABLE_TRANSLATIONS=OFF
 cmake --build vcmi/build --parallel 2 \
   --target vcmiclient vcmiserver ExplorerRL Nullkiller BattleAI vcmireplay
-python3 tools/prepare_vcmi.py --check
 ```
 
-Use the existing test suite and native checks appropriate to an authorized code
-change. Tests requiring native assets report their requirements separately.
-Read [AGENTS.md](../AGENTS.md) for launch and publication boundaries; validation
-does not grant permission to publish new tests or auxiliary tooling.
+A build finds its library through the path of the build folder. To use it for
+training, copy it into a runtime folder that stands on its own:
+
+```sh
+python3 tools/freeze_runtime.py ~/Projects/Heroes-artifacts/runtime/local-v8-play-switches-v1
+```
+
+The runtime is put together beside its final place and renamed into it when
+the last file is ready, so a freeze that fails leaves nothing behind and the
+same command works again. An existing runtime is refused, never changed.
+
+### Verifying a kept game
+
+A game kept with `--keep-game-files` has its replay ledger in
+`engine/contextual-replay.jsonl`. `vcmireplay` plays the recorded inputs again
+and compares every record the adapter regenerates with the ledger. Training
+games carry each observation once (`EXPLORER_RL_DECISION_OBSERVATION=0`) and
+games of an engine built before that switch carry it again in every decision.
+The verifier reads which of the two a capture has from its first recorded
+decision and regenerates that form, whatever its own environment says, so both
+kinds verify from any shell; everything else is compared exactly as before.
+
+`tools/check_replay.py` shows this on a real game. It plays one short game with
+the ledger, replays it three times, and passes only if the capture verifies
+from a clean environment, verifies with the other form set in the environment,
+and is rejected once one recorded answer of the policy is replaced by another.
+Rejected means that the verifier's report names a difference at a record after
+the changed answer; a verifier that crashed, wrote no report or stopped for
+another reason fails the check, and the folder with its output is kept.
+It starts the engine, so the user launches it:
+
+```sh
+P=~/Projects/Heroes-artifacts/python/mlx-v1/venv/bin/python
+S=~/Projects/Heroes-artifacts/replay-check   # a state folder of its own: latest.json and the checkpoint it names
+R=vcmi/build/bin/vcmireplay                   # the verifier under test
+$P tools/check_replay.py $S --replay $R                                   # the engine training uses: compact decisions
+$P tools/check_replay.py $S --replay $R \
+    --vcmi ~/Projects/Heroes-artifacts/runtime/local-v8-sleep-resume-v1/bin/vcmiclient   # an engine from before the switch
+```
+
+Each call takes about five seconds with the default three days and prints one
+JSON line. The `vcmireplay` inside `local-v8-play-switches-v1` was frozen
+before the verifier learned this and rejects compact captures at their first
+decision. The programs that play are not affected, so that runtime stays the
+default; verify with a `vcmireplay` built from this code.
+
+`prepare_vcmi.py` does not update a checkout it prepared earlier. After a
+change to a file under `engine/`, copy that file to its place in `vcmi/` (the
+places are in `dependencies/vcmi.json`), confirm with `--check`, and build the
+target that owns it: `cmake --build vcmi/build --target vcmireplay`.
+
+The Python side expects the client at `HEROES_VCMI`, by default
+`~/Projects/Heroes-artifacts/runtime/local-v8-play-switches-v1/bin/vcmiclient`,
+and the original game's `Data` folder under `~/Projects/Heroes-artifacts/game-data`.
+That runtime is the engine of `local-v8-sleep-resume-v1` plus the two switches
+above. Both are off unless the launcher sets them, and an older runtime ignores
+them: it plays the same games, slower, and writes its ledger.
+Python dependencies are pinned in [dependencies/](../dependencies/):
+Torch 2.9.1, NumPy 2.3.5 and MLX 0.31.1 on CPython 3.13.
+
+## Earlier work
+
+Before November 2026 the loop was a much larger system of launch plans,
+receipts, replay verification and several learner backends. It is described in
+[project history](project-history.md), the [research notes](research/) and the
+two engine notes ([shutdown](native-headless-shutdown.md),
+[reusable session](native-engine-session.md)). Paths those documents cite under
+`experiments/`, `tools/`, `validation/`, `reports/` and `apps/` exist in Git
+history up to commit `5efe811`.

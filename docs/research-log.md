@@ -6981,3 +6981,1894 @@ After this documentation-only amendment, repeat inspection on the final commit
 and retain `retry-100-preflight-final.log`, then sync that exact main to GitHub.
 User command remains `./run-100-games.command 100 --mlx`; this is a fresh
 100-game continuation from 1768, not resumption/admission of the failed batch.
+
+
+### 2026-11-15 — First successful restored-stack cycle after repeat-count fix
+
+User requested a current-run status/error check only. Read existing reports;
+no workload, replay or optimizer was launched. `run-20261115T140446Z-0a723861`
+on source `10ddb9f94586e99beb9d9032efeb8f691fe0a0fe` completed from parent 1768
+to 1769: 100 captured/admitted games, zero failures or interruptions, 466,381
+samples, 14,598 optimizer steps. CPU inference / MLX PPO, restored-stack support,
+MLX/MLX-metal 0.31.1. Engine training outcomes: Blue 73, Red 25, two cutoffs;
+training captures do not receive independent reconstruction/native replay.
+Collection/preparation 2,217.5668 s (36m58s), production PPO 1,791.9264 s
+(29m52s), final diagnostic/verification 154.0003 s, full cycle 4,170.1019 s
+(69m30s), completed 15:14:18 UTC. The strict 600-second PPO target is not met.
+Larger histories/action counts prevent a direct backend speed comparison with
+the previous restricted 228,930-sample run.
+
+Checkpoint 1769 passed the report's complete restore verification; weights
+`733002cd969ca2a4b9d151d71a37027d2e29a07bd20fafc3404d17e88a7d8e27`.
+Exit zero, empty shutdown errors, owned cleanup and protected inputs passed.
+No recurrence of the support-construction failure was reported in 100 training
+games or the diagnostic. This establishes a successful campaign, not immunity
+to every possible future management state.
+
+Diagnostic Blue (frozen 1768) beat Red (new 1769). Both policies reconstructed
+exactly: Red 1,737 actions/values and 4,102 conditionals, Blue 2,825 and 7,145;
+maximum difference zero, native replay passed. Restored actions were exercised:
+Red/Blue split 88/65 times, merged 26/41, swapped stacks 554/1,513; Red also
+upgraded twice. These are submitted-action counts, not a claim that every
+operation was strategically useful or improved playing strength. Numerous
+rearrangements warrant behavioral analysis before claiming learning.
+Evidence: run report/shutdown and diagnostic neural-rollout/reconstruction JSON.
+No commit, push, new launch or artifact removal performed during this check.
+
+
+### 2026-11-15 — Detailed 1769 diagnostic: useful consolidation and slot cycles
+
+Question: explain Blue's win, distinguish newly available management actions
+from learned improvement, and identify whether rearrangement is productive.
+Acceptance: trace events/armies and compare exact slot states within consecutive
+submitted swap runs; do not infer strength or intent from counts. Read-only
+analysis of existing player histories and rollout audit, no engine/model job.
+Evidence: `run-20261115T140446Z-0a723861/evaluation-000/execution/episode-000001/`
+`agents/{red,blue}/history-v8.jsonl`, `neural-rollout.json`, and reconstruction.
+Source/backend/weights identities are in the preceding successful-cycle entry.
+Red is 1769, Blue frozen 1768; both use CPU and restored-stack support. Day 31
+natural terminal, Blue wins. Exact policy reconstruction and replay passed.
+
+Red clears the nearby neutral on day 1 and buys 14 pikemen, builds upgraded
+level-1 dwelling on day 5, hires a hero and combines it with town troops through
+garrison swap (25 pikemen), upgrades that stack on day 6. A second hired hero
+on day 16 brings 20 pikemen; a cross-hero swap passes the 25 halberdiers to it,
+and the other hero upgrades its 20 pikemen on day 18. Red builds marketplace
+day 19. Useful actions exist, but troops are scattered: before decisive fights,
+25 pikemen on original hero, 22 halberdiers on another, four on another and
+19 in town. Only 14 creatures purchased all game, three additional heroes hired.
+Red sells two units of resource 5 for 100 gold on day 19, then buys one unit of
+that same resource for 5,000 gold on day 23; ends that day with 105 gold. No
+later construction uses it in this game. This is an observed poor exchange
+sequence, not a claim about unobserved policy intent.
+
+Blue buys 28 pikemen day 14 and 14 day 16, hires three heroes over days 14–15.
+Repeated cross-army movement ultimately yields useful consolidation on day 18:
+28 purchased town pikemen plus 12 from a hired hero form 40, then a merge into
+the original hero's 25 produces 65 (Blue history seq 10673). Blue wins neutral
+combat and captures the wood mine day 19. Day 20 kills Red's one-gnoll hero.
+Day 22 Red original hero kills one Blue hero, falling from 25 to 15 pikemen;
+day 23 Red's 22-halberdier hero attacks Blue's 65-pikeman hero and dies, Blue
+retains 54. Day 27 Blue's weaker 15-pikeman/six-archer hero fails attacking
+Red town; its 19-halberdier garrison falls to five. Day 28 Blue's 54-pikeman
+hero captures that town, retaining 53. Day 29 Blue kills the four-halberdier
+hero, day 31 its other hero (three griffins +21 goblins before combat) kills
+Red's final 15-pikeman hero and wins. Blue's consolidation and Red's dispersed
+forces explain the decisive material mismatch. Failed day-27 assault also
+shows Blue's play was imperfect. Combat choices are BattleAI's, not the policy's.
+
+Slot analysis uses every submitted swap_stacks matched to its result and the
+latest preceding/following own_armies observation. Exact layout signatures retain
+subject, slot, creature and count; inventory signatures aggregate creature counts
+per subject, ignoring slot. A run ends at any other submitted action. These
+metrics are descriptive, not a learned usefulness classifier.
+Red: 554 swaps across 264 runs; 552 preserve every subject's inventory, 72 return
+to a layout already seen in that run, 31 are two-step returns; longest run 12
+(day 26, seq 12187–12264). Blue: 1513 swaps across 304 runs; 1498 preserve each
+subject's inventory, 442 return to an earlier run layout, 80 are two-step returns;
+longest run 30 on day 1, seq 114–317. Thus 2050/2067 swaps (~99.2%) only change
+slot layout, and 514 swap completions return to an earlier full army layout in
+the same consecutive-action run. Counts are returns, not distinct cycles, and
+must not be added as disjoint categories. No swapped result was rejected.
+
+Swap share of all decisions: Red 554/1737=31.9%, Blue 1513/2825=53.6%. Red also
+splits 88 and merges 26 times, Blue splits 65 and merges 41. Pure reordering can
+affect battle deployment, so unchanged inventory alone does not prove uselessness;
+repeated reversals and returns with no intervening travel/battle are direct
+behavioral-loop evidence. Most reordering has no observed lasting contribution,
+whereas a small number of cross-hero operations demonstrably build useful armies.
+The command cooldown compares ordered command arguments, so A-to-B and B-to-A
+swaps are different commands; it neither recognizes equivalent inverse swaps nor
+remembers visited army layouts. The existing 32-management-action budget bounds
+bursts, not all possible later loops. Terminal-only rewards with gamma=1 have no
+explicit per-action cost; this is a plausible contributor, not a proved causal
+training diagnosis. Do not introduce penalties or new restrictions without a
+separate user decision.
+
+Positive Red examples relative to the previous recorded 1768 diagnostic are
+first-day neutral combat, construction and upgrades, but upgrades/stack operations
+were forbidden in that older game. The frozen 1768 Blue in the current game also
+uses restored actions and constructs the winning consolidated stack. Therefore
+new management behavior is not evidence that the 1769 update learned it. Red
+makes fewer swaps both absolutely and as a fraction, but one unmatched game with
+different positions/armies is not a reliable improvement/regression measure.
+Current Red move targets still favor x=0 (96/132 versus Blue 76/157); Red ends
+17 turns with some hero movement remaining, Blue zero. Overall no clear strength
+improvement is established; useful behaviors coexist with costly cycles.
+No code changes, simulations, training, commit, push or artifact removal in this
+review. Research findings are appended locally.
+
+
+### 2026-11-15 — Prepare cycle-aware swaps and user-run 1000 games from 1769
+
+User request: fix slot-rearrangement loops while preserving useful troop
+management, prepare 1000 games from 1769; the user launches training personally.
+No game, optimizer, numerical probe or benchmark launch is authorized here.
+Hypothesis: a history-derived visited-layout mask prevents exact rearrangement
+cycles without removing native split/merge/transfer/upgrade actions or legitimate
+new formations. Acceptance: version the new support, keep old snapshots and
+checkpoint restore valid, block returns in both swap directions across window
+reopening, reset on meaningful world progress, preserve the observed 65-pikeman
+consolidation and mandatory exits, run existing tests and non-neural fixture/
+recorded-history checks, and inspect a clean 1000-game preview (ten 100-game
+updates, one final diagnostic, CPU policy / MLX PPO, no deadline).
+
+Implementation adds `visible-interaction-budget-hero-relative-stack-cycle-v1`.
+Tracker records semantic complete owned-army slot layouts at decisions, scoped
+to the existing visible-progress epochs. A decision snapshot carries only the
+canonical unordered subject/slot pairs whose swapped result has already been
+seen. Slot refs/revisions and UI navigation cannot evade the mask. The existing
+progress reset covers travel/world changes, a new day, combat and successful
+recruitment/construction/upgrades; closing/opening windows does not reset it.
+Only swap_stacks gains the visited-layout restriction. Split/merge/transfer,
+quantity exclusion, garrison changes and upgrades retain existing legality and
+budgets. Mandatory dialogs bypass optional restrictions as before. No reward,
+model shape, engine, precision, PPO hyperparameter or backend change.
+
+This removes exact cycles, not every strategically unhelpful novel permutation;
+unchanged historical rules remain available for reconstruction. Broader changes
+to action cost, exploration or formation budgets are outside this change.
+Validation results follow. All validation code/evidence remain private and out
+of any published diff.
+
+
+Validation: 54 existing tests passed in 2.675 s (recruit_only_guard,
+interaction_guard, contextual_management_model, selfplay_checkpoint,
+selfplay_training). Private non-neural fixtures passed inverse and longer-cycle
+rejection, window reopen persistence, novel-swap allowance, travel-progress
+reset, tracker-copy isolation, strict snapshot roundtrip/rejection, historical
+snapshot shape, all seven restored management kinds, optional close and a
+mandatory policy-selected level-up choice. No numerical probe or game ran.
+Evidence: private `run-investigations/2026-11-15-stack-cycles/`
+`existing-tests.log` and `check-rules-final.log`.
+
+Recorded-history annotation on the 1769 diagnostic passed 4,562 decision snapshot
+roundtrips. It would reject 200/554 Red swaps and 637/1,513 Blue swaps (837 total),
+while all 2,495 non-swap chosen actions retained their original permissibility.
+Blue's useful merge to 65 pikemen remains allowed. Attempt 1 checked the wrong
+submitted sequence number for that merge and failed its coverage assertion;
+no action-preservation assertion failed. Inspection identified submitted seq
+10668, result seq 10673; attempt 2 corrected the harness and passed. This also
+corrects the earlier detailed-review reference to seq 10671. Evidence:
+`check-recorded.log`, `check-recorded-02.log`, `recorded-result.json`.
+These are annotations of fixed histories, not a counterfactual game trajectory,
+measured speedup or evidence that all remaining permutations are useful.
+All validation scripts/results remain private and outside the staged diff.
+
+Retention-reviewed run: `run-20261115T140446Z-0a723861`.
+
+Prepare a local production commit and read-only 1,000-game inspection from
+complete 1769. The existing launcher already partitions 1,000 into ten batches
+of 100 with one final diagnostic and twice the 500-game dashboard height; no
+new launch wrapper or training job is added. Keep CPU policy / MLX PPO, starting
+taverns, native neutral spawning, no artifacts, automatic combat, existing
+cooldowns and native management legality. No wall-clock deadline, no new seed
+reservation until the user launches. No merge or push is authorized by this
+preparation request; keep the experimental comparison branch unchanged.
+
+
+Clean-source 1,000-game read-only preflight passed on local `551fce7`: exact
+complete checkpoint 1769 restore, CPU inference, MLX PPO, new cycle-aware support,
+ten batches of 100, ten optimizer updates and one held-out diagnostic (1001
+physical games). No deadline, seed reservation, cleanup, gameplay or optimizer
+execution occurred. Next unreserved engine base 1980003059, count 1001; policy
+base 1982006118, count 2002. Evidence: private `stack-cycles/next-1000-preflight.log`.
+Actual training and diagnostic `_plan` gates plus metadata checks also passed
+on temporary read-only copies carrying current source identities/new support,
+and unknown support was rejected (`stack-cycles/plan-gates.log`). No checkpoint
+was saved by these checks. A documentation-only amendment follows; repeat preview
+on the final clean source (`next-1000-preflight-final.log`) before user handoff.
+Production source/configuration only is committed locally; validation scripts,
+raw captures and test changes are absent. GitHub publication is not performed.
+
+
+### 2026-11-16 — 1000-game training saved; final cleanup not certified
+
+User asked whether `Process cleanup deadline exhausted; closure is not verified`
+is a problem. Read-only inspection, no workload, kill, recovery, receipt rewrite
+or gate bypass. Run `run-20261115T230642Z-da5480b8`, source `9e85dd2`, CPU
+policy / MLX PPO / cycle-aware stacks, parent 1769. All ten batches are
+checkpoint_verified, 1000 captures/admissions, 10 PPO updates, 4,892,383 samples.
+Zero capture failures or interruptions; engine outcomes Blue 681, Red 284,
+35 cutoffs. Latest complete published checkpoint 1779, weights
+`30fec04b42477288e6f0d94b311196deaae464e94718df1e8d657e82ca886ca3`.
+Final paired restore verification is true, policy/resume files exist and their
+SHA256 values match the publication; latest-checkpoint.json points to this pair.
+Collection/preparation sum 30,515.8663 s, complete PPO sum 20,788.0849 s;
+overall elapsed 51,661.9329 s (14h21m02s), coordinator ended 13:27:45 UTC.
+
+Final diagnostic evaluation-009 passed: Blue wins, Red loses; exact
+reconstruction has max difference zero for both policies (Red 4047 actions/values,
+9495 conditionals; Blue 3875,9182), native replay passed. Training captures are
+not independently replay-verified. The coordinator returned zero, but final
+supervision recorded owned_cleanup_verified=false and marked report stopped.
+Protected inputs are unchanged. Thus training publication and diagnostic success
+must be distinguished from an uncertified shutdown; do not call the entire
+campaign cleanly completed or discard its saved updates.
+
+Supervisor finally uses close_owned_process(timeout=5) and then audits each
+execution deadline receipt with cleanup_from_evidence(timeout=5). The identical
+TimeoutError can arise at either step and does not name the offending group;
+the existing log cannot conclusively identify the original timeout's exact group
+or cause. Coordinator guardian recorded parent_exited at 13:27:47 UTC; shutdown
+file was written about 19 seconds later. Current ps shows no training coordinator,
+VCMI client or process_deadline worker. Do not infer proof of historical closure
+solely from that current command-name search.
+
+Read 2003 deadline receipts (2003 launches,1991 distinct recorded PGIDs); one
+historical numeric group currently maps to an unrelated Codex node_repl. Its
+PID/PGID 70187 was the native worker for batch 004 episode 71 at 04:56 UTC and
+its guardian recorded parent_exited at 04:57. Current node process start is
+15:47:42 Kyiv (13:47 UTC), after this run's cleanup failure. This demonstrates
+numeric PGID reuse and why historical groups must not be signalled; it does
+NOT establish the cause of the original timeout, since this current process
+started afterward. No process was killed. A future repair/reconciliation must
+preserve identity-aware ownership and fresh closure evidence. The current
+owned_cleanup_verified=false blocks ten_inspect and therefore another launch;
+do not manually flip the flag or bypass the gate. No retirement marker for this
+run is added before shutdown reconciliation.
+
+Correction to earlier diagnostic interpretations: the evaluation plan binds
+BOTH learner and frozen-opponent weights to 1779's identical digest. The name
+`evaluation-009-frozen` does not mean checkpoint 1778. Source inspection also
+confirms the preceding published controller (`10ddb9f`) passed state.model and
+previous_pair['policy'] AFTER its update when constructing the final diagnostic.
+Earlier journal/chat assertions that 1769 Red played against 1768 Blue (and that
+similar final diagnostics compared adjacent checkpoints) were incorrect. Those
+within-game behavioral observations remain valid, but they are self-play of the
+same current checkpoint, not direct evidence for an adjacent-checkpoint win/loss.
+Do not reuse those outcome-based strength comparisons. No new paired-seed quality
+evaluation was performed. Evidence: run report/shutdown/latest publication,
+evaluation plan/reconstruction and archived controller source.
+
+
+### 2026-11-16 — Authorized cleanup fix and fresh closure reconciliation
+
+User requested correcting final cleanup and verifying process completion so the
+next launch is unblocked, preserving complete checkpoint 1779 and launching no
+training. Acceptance: retain fail-closed behavior for live/ambiguous original
+processes, never signal historical numeric groups, distinguish reused process
+identities, batch receipt inspection, preserve original failure evidence, and
+set closure verified only after a successful fresh audit. Verify exact model/
+Adam/RNG/progress through read-only launch inspection afterward; no game or PPO.
+
+Checkpoint 1779 policy and complete resume plus original report/shutdown/launch,
+latest pointer and consumed-seed ledger have hash-verified private backups under
+`run-investigations/2026-11-16-cleanup/` (`preserved-inputs.json`). Original run
+and checkpoints remain in place. The known timeout's original offending group
+is not identifiable from its old error; do not present PID reuse as proved cause.
+The previous check did independently demonstrate a reused PGID after the run.
+
+Implementation keeps guardian ownership/signalling unchanged. Receipt cleanup
+accepts a batch, validates each launch receipt, uses one current process-table
+snapshot per pass, and checks matching private-session membership. A matching
+numeric session leader is excluded only when its process birth is provably
+later than the recorded creation upper bound (with a one-second precision
+margin). Missing legacy identity data or uncertain/live originals still block.
+Existing direct-child cleanup receives a creation upper bound from its Popen.
+Supervisor writes explicit closure-audit evidence and batches historical receipts
+under one bounded 30-second deadline rather than running ps for each receipt.
+These are existing cleanup functions, not a replacement orchestration/recovery
+system. Private process-control validation runs only benign helper subprocesses;
+no game, model or optimizer execution. Results and reconciliation follow.
+
+
+Validation passed: 22 existing process_deadline tests (final run 2.547 s), plus
+seven private lifecycle/identity cases (0.503 s). Private checks cover different
+sessions with reused PGIDs, newer same-ID private-session leaders, live original
+and birth-time-ambiguous leaders, surviving descendants with no leader, unresolved
+receipts, a 2003-receipt single-snapshot batch, and a real benign owned helper
+that remains blocked while alive and closes only after ownership release. No
+historical numeric group was signalled by receipt inspection. Tests and private
+scripts stay outside the production commit. Original deadline-exhaustion and
+late-scan rejection tests remain green. Evidence: private cleanup investigation
+`process-tests-final.log`, `private-tests-final.log`, `check_cleanup.py`.
+
+Under the existing exclusive activity lease, a fresh audit matched every expected
+worker/native/coordinator receipt against the complete report (2003), checked all
+ten checkpoint pairs' policy/resume hashes, and rechecked protected inputs and
+the original latest pointer/seed ledger. The corrected audit verified all 1991
+distinct groups in 0.0801 s with zero original live members. Current PGID 70187
+was safely excluded by its different session (SID 1). This confirms present
+closure; it does not identify the cause of the original finalization timeout.
+Evidence: run `closure-recheck.json`, a private copy, and `reconcile.log`.
+
+Only after the audit passed, shutdown/report were atomically updated to closure
+verified and completed, retaining `initial_errors` / `initial_supervisor_errors`
+and a binding to the new audit. Original report/shutdown remain hash-bound in
+private backup. Coordinator return code and original end time are unchanged.
+All checkpoint, latest pointer, launch and seed ledger hashes remain unchanged.
+No training or replay ran; no samples were newly admitted and no weights updated.
+No artifacts were deleted and the unrelated reused-PGID process was not killed.
+This is fresh evidence reconciliation, not manually bypassing a failed gate.
+
+Prepare a local production commit with only cleanup code, exact source pins
+and documentation, then run the normal read-only launcher check against 1779.
+No new launch, merge or GitHub push is authorized by this cleanup request.
+
+
+Final hardening keeps a member that disappears between ps and getsid unresolved
+until another whole-table snapshot, because it may have forked before exiting.
+A private regression requires that second snapshot. Final validation: 22 existing
+tests passed in 2.562 s and eight private checks in 0.583 s; logs are
+`process-tests-release.log` and `private-tests-release.log`. No validation files
+are staged. A second fresh full audit with the release implementation passed
+2003 receipts /1991 groups in 0.2873 s, zero original live members, same safely
+excluded different-session PGID. `closure-recheck-final.json` binds the preceding
+audit and the release implementation; report/shutdown point to this later proof.
+Checkpoint, pointer, launch and seed ledger hashes are unchanged again.
+
+Normal read-only launcher inspection passed on clean local `ee5ce83`: complete
+1779 model/Adam/RNG/progress/sampler/pool restored exactly, no pending diagnostic
+or cleanup block. It performed zero gameplay/optimizer updates, reserved no seeds
+and removed no artifacts. Evidence: private cleanup investigation
+`ready-1779-preflight.log`. This check revalidates the full saved publication
+chain, not only the manually repaired report fields. Record this result and the
+last conservative race hardening in a local amendment, then repeat the read-only
+inspection against its clean final source (`ready-1779-preflight-final.log`).
+No GitHub push, new training campaign, native replay or evaluation game performed.
+
+
+### 2026-11-16 — Correct missing retention review before the next user launch
+
+User reported launching another 100 games from 1779 and requested status. There
+is no new campaign directory, consumed seed reservation or active training
+process. The latest run remains the completed/reconciled 1000-game campaign;
+its shutdown is closure verified with no current errors. Inspection identifies
+a separate prelaunch blocker: cycle_retire requires the latest run's exact
+Retention-reviewed marker, which was intentionally withheld before closure
+reconciliation and inadvertently not added after reconciliation succeeded.
+The previous handoff therefore incorrectly implied full launch readiness:
+`--check` does not exercise this journal/retirement prerequisite.
+
+The 1000-game results, checkpoint identities, timings, diagnostic verification,
+limitations and diagnostic-opponent correction are already recorded above.
+Original full run report/launch, closure evidence, complete checkpoint 1779
+policy/resume and seed ledger are preserved outside run retention under
+`run-investigations/2026-11-16-cleanup`. Rechecked live policy/resume SHA256 and
+completed/verified closure before marking retention reviewed. No rule is removed
+or bypassed; this supplies the documented review after actually completing it.
+Normal next user launch may retire old raw captures while preserving complete
+continuation state. No run artifacts were deleted by this status check.
+
+Retention-reviewed run: `run-20261115T230642Z-da5480b8`.
+
+Commit this documentation-only correction locally so the checkout remains clean,
+then inspect the 100-game continuation without gameplay, updates or seed
+reservation. The user launches personally. No runtime code change, training,
+replay, process restart, merge or push is performed.
+
+### 2026-11-18 — Commit the staged retention review that blocked the next launch
+
+The user's next `./run-100-games.command 100 --mlx` attempt stopped before
+gameplay with "Selected checkout must be clean and committed". Cause: the
+2026-11-16 entry above, which supplies the exact Retention-reviewed marker for
+`run-20261115T230642Z-da5480b8`, was staged but never committed. `cycle_retire`
+reads the working-tree journal, so its marker check (the cause of the earlier
+"Analyze the latest run and record its Retention-reviewed run marker" refusal)
+now passes, but `checkout_identity` in `tools/benchmark_copied_training.py`
+correctly refuses any uncommitted change because every launch binds the clean
+source commit. Both refusals are prelaunch gate results, not game outcomes.
+
+Read-only inspection found no side effects from either refusal: no new run
+directory, seed reservation, retained checkpoint copy or deletion under
+`selfplay-ten-then-check` since 2026-11-16, no game or learner process running.
+Correction: commit the 2026-11-16 entry unchanged together with this note. No
+guard, marker rule or runtime code is changed.
+
+The "Process cleanup deadline exhausted; closure is not verified" message is the
+initial shutdown error of that same 1000-game run. It is already superseded by
+the verified closure recheck recorded above: the run's `shutdown.json` keeps it
+under `initial_errors`, with empty `errors`, `owned_cleanup_verified: true` and
+`protected_inputs_unchanged: true`, which is what the next launch requires.
+
+The next normal cycle launch will copy checkpoint 1779 into `retained/` and then
+delete the reviewed raw run (about 94 GiB); its report, launch, closure evidence,
+checkpoint pair and seed ledger copies remain under
+`run-investigations/2026-11-16-cleanup`. The assistant ran no `--check`,
+gameplay, training, replay or benchmark; the user launches personally. No merge
+or push is performed.
+
+### 2026-11-18 — 1000-game MLX cycle stopped by the owned-process memory guard
+
+User launched `./run-100-games.command 1000 --mlx` at source `a8637ca`
+(run `run-20261118T003841Z-91a203dd`, parent checkpoint 1779, ten planned
+batches of 100 plus one final diagnostic, 1001 consumed training seeds from
+ledger offset 4060, engine base 1980004060, policy base 1982008120). Collection
+used ten actors, CPU policy inference and MLX PPO. The user reported the run as
+failed; this entry records read-only analysis of its private artifacts.
+
+Observed: five complete batches each passed one PPO update and checkpoint
+publication, 1779 -> 1784 (500 admitted games, 3,224,647 learner samples).
+Engine outcomes are unverified training captures, not learner results:
+
+| Batch | Engine Red / Blue / cutoffs | Samples | Collection s | Update s |
+| --- | --- | --- | --- | --- |
+| 000 | 17 / 78 / 5 | 500,788 | 2,319 | 2,135 |
+| 001 | 31 / 66 / 3 | 586,267 | 2,618 | 2,746 |
+| 002 | 21 / 76 / 3 | 636,201 | 2,918 | 3,439 |
+| 003 | 14 / 82 / 4 | 755,229 | 3,292 | 4,474 |
+| 004 | 23 / 72 / 5 | 746,162 | 3,511 | 4,341 |
+
+Batch 005 began collection at 09:29:12Z. About 12 minutes later the supervisor's
+`require_cycle_memory_budget` stopped the run with "Cycle memory budget reached"
+(owned-process resident memory above physical RAM minus the 48 GiB reserve, i.e.
+80 GiB on this 128 GiB Mac). At that point 13 games were captured, 10 running
+games were interrupted and 77 had not started; no batch-005 update or publication
+occurred. Shutdown records `owned_cleanup_verified: true`,
+`protected_inputs_unchanged: true`, process closure verified over 1047 groups,
+and coordinator return code -9 (killed by the supervisor after the guard), so
+`report.json` has no `ended_utc` or final diagnostic. The latest pointer is the
+complete publication chain at checkpoint 1784; the next launch must first run
+the pending diagnostic recovery.
+
+Evidence for the cause, which is inferred rather than measured because the guard
+does not log per-process memory: four of the ten concurrent games (episodes 7, 9,
+10 and 11) had run since batch start and reached days 245–253 with 23k–26k
+learner choices each, far above the batch-004 mean of about 7.5k samples per game;
+each had already written about 5.6 GB of temporary contextual replay. A capture
+worker returns its whole episode from `run_episode`, so its Python history grows
+with game length, while the coordinator held only 13 newly prepared games. The
+guard therefore most likely tripped on several simultaneous very long games, not
+on the PPO update: the 755k-sample update in batch 003 completed under the same
+guard. Samples per batch rose by about 50% over five batches (the previous
+1000-game run peaked at 661k), so recurrence is plausible. This is not evidence
+of learning or regression in either direction.
+
+No guard was changed. Whether to keep ten actors (a recorded decision) or reduce
+concurrency is left to the user. Compact evidence (report, launch, shutdown,
+closure, deadline log, progress files, seed ledger, lineage, latest pointer,
+batch-004 publication, checkpoint 1784 policy/resume with matching SHA256, the
+batch-005 plan/attempts and logs of the interrupted episodes) is preserved under
+`run-investigations/2026-11-18-memory-stop`. The assistant ran no gameplay,
+training, `--check`, replay or benchmark; the user launches personally.
+
+Retention-reviewed run: `run-20261118T003841Z-91a203dd`.
+
+### 2026-11-18 — Remove the cycle owned-process memory guard (user decision)
+
+After the analysis above, the user decided to remove the cycle memory guard
+completely rather than reduce the ten actors. History: the guard was added on
+2026-11-05 (`cf92730`) together with one-game-at-a-time history compilation,
+after an earlier stopped run had shown a memory warning caused by unbounded
+concurrent full-history retention (that stop recorded no measured peak). It ran
+every two seconds in the supervisor and stopped the whole cycle when the summed
+resident memory of the supervisor's process tree exceeded physical RAM minus
+48 GiB, or when `memory_pressure -Q` reported less than 20% free memory.
+
+Implemented: `require_cycle_memory_budget`, its supervisor call and the
+`memory_reserve_gib=48` launch-configuration field are removed from
+`tools/run_selfplay_training.py`; README updated. Unchanged: ten actors, the
+30 GiB disk reserve, deadlines, seed/checkpoint/source/cleanup gates and MLX's
+own 25%-of-working-set allocator cap with its PPO MemoryError check.
+
+Expected consequence: concurrent very long games may now drive macOS into swap
+or compression, slowing the run, and in the extreme the OS may terminate a
+process; a terminated worker or coordinator still stops the run through the
+existing failure paths and preserves the last published checkpoint. Validation:
+the module compiles; no test, `--check`, gameplay or training was run by the
+assistant. The user launches personally.
+
+Correction (same day): the first relaunch after `fadbdc9` stopped before any
+gameplay with "Evaluation changed an existing learner, adapter, engine or
+replay source". `verify_runtime_sources` in `tools/run_selfplay_one_game.py`
+binds the cycle controller to an exact reviewed SHA256 (the `after` pin of
+`tools/run_selfplay_training.py` in `MLX_PPO_SOURCES`), which the guard removal
+changed. Following the precedent of `d0f0fb0`, that single pin is updated to the
+new controller digest `8b1fa8d1c215a3c779b59ce8e41d84a22629d7587f10745ed3ec1fe70b5fcd24`;
+no other source pin or check changes. The refusal reserved no seeds and changed
+no run artifacts.
+
+### 2026-11-18 — Replace the training pipeline with one small package (refactor branch)
+
+**Goal (user request).** Throw away dead and overbuilt code and reduce the
+project to a simple core that is quick to change and to optimize, while keeping
+what learning needs: the engine binding, the policy, PPO and checkpoint
+continuity from 1,784. Work on branch `claude/project-thread-tlvy67`; nothing
+was merged to `main` and the user's checkout was not edited.
+
+**Acceptance criteria, set before the rewrite.** (1) The moved policy
+recomputes recorded decisions of captured games bit for bit. (2) The MLX update
+of the new layout hands its GPU backend the same inputs as the old one for the
+same games. (3) Checkpoint 1,784 imports into the new format with identical
+weights, Adam state, shuffle generator and counters. (4) The loop runs end to
+end against a scripted engine: play, update, save, resume. (5) A first real run
+on the Mac, launched by the user. Criterion 5 is open.
+
+**Implemented.** The loop is now the `heroes/` package: 34 Python files and
+8,823 lines in the repository, down from 466 files and 121,882 lines.
+
+- `heroes/engine/`: process launch, wire protocol, a two-seat environment that
+  classifies each game as completed, truncated or failed.
+- `heroes/actor.py`: plays one game with one set of weights on both seats and
+  builds the learner seat's trajectory.
+- `heroes/learner/`: PPO targets and loss windows shared by a plain autograd
+  reference update and the MLX update.
+- `heroes/checkpoint.py`: one file per update plus `latest.json`, and a one-time
+  import of the previous `policy.pt`/`resume.pt` pair.
+- `heroes/train.py`: restore, collect a batch with a pool of actor processes,
+  update, save, repeat.
+- `heroes/model/policy.py`, `heroes/game/contract.py`, `heroes/game/guard.py`
+  and `heroes/learner/mlx/` are the existing policy, typed contract, interaction
+  guard and MLX learner, moved and trimmed.
+
+Removed, and still in Git history up to `5efe811`: launch plans, capture
+bindings and receipts, evidence envelopes, source-hash pins, the supervisor and
+its fourteen launch scripts, retention and cleanup audits, the final diagnostic
+game with two-policy reconstruction and native replay, the CPU native and
+PyTorch/Metal learner backends, the replay inspector app, map generators,
+recording tools, `validation/`, `reports/`, `configs/` and the previous test
+suite. `engine/` is unchanged.
+
+**Behaviour that changed.** These are deliberate simplifications, not
+measurements.
+
+1. *Truncation.* A decision of either seat past day 365, or after 163,840
+   answered decisions, stops the game at once. The learner keeps every completed
+   action whose following decision its policy saw, and that decision's value is
+   the bootstrap. The previous paired cutoff with bounded continuation and
+   dialog draining is gone. The separate 5,120 reserved choices are folded into
+   the single action limit.
+2. *No proof frames.* Histories no longer end with `finalized`,
+   `cutoff_finalized` or `failure` frames. The policy never read them.
+3. *Failed games are replaced.* A failed game is logged and another is played.
+   A run stops only when more games failed than the batch needs, or when the
+   first ten all failed. Previously one failed capture stopped the cycle.
+4. *No final diagnostic.* No game is reconstructed or natively replayed. The
+   diagnostic that the interrupted run of 2026-11-18 still owed is not carried
+   over.
+5. *Seeds.* Engine and sampling seeds are drawn fresh per game and written to
+   `log.jsonl`. The seed reservation ledger is gone.
+6. *One guard version.* Only
+   `visible-interaction-budget-hero-relative-stack-cycle-v1` remains
+   executable. One model schema remains, `heroes-context-model-v6`.
+7. *Memo validity.* Encodings reused while acting are tied to the parameters'
+   version counters instead of a bit comparison of the weights on every frame.
+8. *Every checkpoint is kept.* Nothing retires old files.
+
+Unchanged: PPO settings (λ 1, clip 0.2, value clip 0.2, value coefficient 0.5,
+gradient norm 0.5, one epoch, windows of 16 decisions, two windows per
+minibatch, Adam 3e-4, normalized advantages), ten actors, 100 games per update,
+both seats on the batch-start weights with the learner seat alternating, the
+engine settings and environment, the scenario, `no-artifacts-v1`, and the MLX
+network, kernels and first-minibatch sanity limits. Engine replay logging stays
+on. An earlier text of this entry offered a switch for it; the review entry
+below corrects that.
+
+**What actually ran.** Everything below ran in a cloud sandbox on Linux x86-64
+with CPython 3.13 and Torch 2.9.1. No VCMI, no Metal and no MLX kernel ran, and
+nothing ran on the Mac. The inputs were read-only copies of the checkpoint 1,784
+pair and of three captured games (episodes 000006, 000011 and 000019 of
+`run-20261118T104905Z-ebe300b5`, batch 000) with that batch's `learner.pt`.
+No PPO update was run on captured games.
+
+- *Policy regression.* For both seats of the three games (19,667 frames, 2,580
+  recorded decisions), the old code's recomputed log-probabilities, values and
+  final recurrent state were hashed at `5efe811`. The new code reproduces every
+  hash, before and after the trim.
+- *Trajectory and recipe.* For the three learner histories (1,433 samples) the
+  new sample builder returns the same decisions, log-probabilities, values and
+  reward as the stored samples, and the compiled recipe has the same digest as
+  the old compiler's. The only difference is the old trailing proof frame, one
+  empty recipe entry.
+- *MLX boundary.* The GPU backend class was replaced by a recorder in both the
+  old and the new update, so no numerical step ran. For the three games the two
+  updates produce identical manifests, whole-game prefix plans, 46 minibatch
+  plans with their old log-probabilities, values, advantages and returns, and
+  the same shuffle generator state afterwards.
+- *Checkpoint import.* The 1,784 pair imports with weights digest `6f5f6592…`
+  as recorded, progress 1,784 updates / 9,822 games / 12,926,530 decisions /
+  406,884 optimizer steps, and survives a save and load unchanged.
+- *Tests.* 25 tests pass. They use `tests/fake_vcmi.py`, a scripted stand-in
+  that speaks the real wire protocol over real sockets, with random weights.
+  They cover natural, terminal-closed, truncated, crashed and silent games, PPO
+  targets and windows, the reference update, the acting memo, checkpoints
+  including a synthetic legacy pair, recipe compilation, and the whole loop
+  with resume and legacy import.
+
+**Limitations.** The scripted engine is not VCMI: it plays end-turn-only games
+on a one-tile map. Engine behaviour under the new environment (startup, the
+stop at a limit, shutdown, ten concurrent processes) is untested until the first
+real run. The MLX path is verified up to the backend boundary only; its
+first-minibatch check against recorded behaviour is the remaining safeguard.
+None of this says anything about learning or playing strength.
+
+**Next.** The user launches a small trial into a scratch state folder, for
+example `./train.command 10 --games-per-update 10 --state
+~/Projects/Heroes-artifacts/training-trial`, then the real run. The assistant
+ran no gameplay, training, replay or benchmark on real data beyond the
+forward-only regression above.
+
+### 2026-11-18 — Review of the refactor branch: thirteen findings, one correction
+
+**Question.** Does the new pipeline contain defects that a real run on the Mac
+would hit and that the scripted tests and the three-game regression cannot see?
+
+**Method.** Separate reviewer sessions, which did not see the author's
+reasoning, each compared one area of the new code with the pipeline at `5efe811`
+and with the C++ engine side: the engine binding, what is trained on, the
+trimmed policy/guard/contract, and the trainer with its process pool and
+checkpoints. A second reviewer then tried to refute each finding. A second pass
+reviewed the trainer again and the commit that fixed the first pass. Reviewers
+ran only the scripted engine with random weights, differential tests of old
+against new code on synthetic inputs, and the three existing read-only
+regression checks. No real engine, no MLX and no update on captured games ran.
+The first pass was cut short by a usage limit: its trainer review and the
+challenge of the learning and model findings did not run. The second pass
+covered the trainer, and the author reproduced the learning and model findings
+with tests.
+
+**Correction to the entry above.** That entry and the first README of this
+branch offered `--no-replay-log` to stop the engine's replay logs. This would
+have broken every naturally finished game. In evidence mode the client shuts
+down only on the server's terminal barrier, and the server builds that barrier
+from the replay recorder (`engine/patches/0013`, `0015`, `0029`); without the
+recorder the call throws. This was established by reading the patches, not by
+running the engine. The previous binding refused that configuration. The switch
+is removed and `VCMI_EXPERIMENT_REPLAY=1` is always set. Removing the logs
+needs an engine change and a rebuild.
+
+**Findings of the first pass, fixed in `bac2a10`.**
+
+1. The replay switch above.
+2. A relative state folder reached the engine unresolved, although the engine
+   runs in its binary's folder. Every game would have failed at startup.
+   Reproduced with the scripted engine. The folder is now resolved.
+3. An engine that exits before either seat connects was reported as a reader
+   timeout after five seconds, hiding its exit status and log marker.
+   Reproduced. Readers now stop waiting once the engine has exited.
+4. A dead actor was noticed only after a second without any message from any
+   actor, so not while others reported progress. Reproduced.
+5. An actor killed while idle left its inbox queue locked, so its replacement
+   never received a game and the batch hung. Reproduced. For 4 and 5 every
+   actor now has its own pipe: its death is an end-of-file the trainer sees at
+   once, and a replacement gets a new pipe.
+6. Game numbers restarted from the count of usable games, so failed and
+   discarded games shared numbers with later ones.
+7. The acting memo stayed valid after weight changes that do not bump a
+   parameter's version counter (`assign=True`, a replaced `.data`). No code path
+   of the package does this. The memo key now includes the storage address and
+   loading a state dict drops the memo. In-place writes through
+   `parameter.data` remain undetected and are documented as unsupported.
+
+**Findings of the second pass, fixed in the following commit.**
+
+8. A state folder with checkpoints but without `latest.json` counted as empty:
+   the run re-imported 1,784 (or started from random weights with `--fresh`)
+   and replaced later checkpoints one by one. Nothing in the pipeline removes
+   the pointer, so the trigger is manual. Such a folder is now refused and the
+   message says how to restore the pointer.
+9. The actor's watch for a dead trainer read the parent's process id inside the
+   child. An actor still starting when the trainer was killed never noticed, and
+   with a silent engine it stayed for good. The trainer now passes its own id.
+10. `--workers 0` waited forever without output. Arguments are now checked.
+11. Orphaned actors of a hard-killed trainer could delete the game folders of a
+    run restarted within about a second, because in-flight game numbers were
+    reused. The challenger could reproduce this only with a scripted engine
+    that ignores SIGTERM and judged it unreachable with the real one. It is
+    closed anyway: a `job` record is written to `log.jsonl` when a number is
+    handed out, and numbering continues after the highest such record. The
+    challenger's reproducer no longer collides.
+12. The new startup cleanup of `games/` deleted folders an earlier run had kept
+    with `--keep-game-files`. Kept folders now live in `kept-games/`.
+13. The new actor-death test could misread a progress message under extreme
+    load. Not observed without injected delays; the test now waits for the
+    message it means.
+
+**Changes prompted by reviewer notes that were not findings.**
+
+- The environment waits for engine events one second at a time, so an actor
+  that is told to stop cannot sit out a silent engine. A wait without a timeout
+  is interrupted by signals on Linux, where CPython's locks are semaphores.
+  Where they are a mutex and a condition variable, which to the author's
+  knowledge includes macOS, POSIX does not guarantee that. Not verified on
+  macOS.
+- The actor's SIGTERM handler fires once, so a second signal cannot interrupt
+  the cleanup the first one started.
+- `latest.json` is synced to disk before it is renamed into place.
+- `train.command` attaches `caffeinate -is -w` to the trainer instead of
+  wrapping it, as the previous launcher did, so Ctrl-C returns once the trainer
+  has stopped its games. Checked on Linux with stand-ins for `caffeinate` and
+  Python; not run on macOS.
+- The message after Ctrl-C names the last update that was saved.
+
+**What the reviews found to be equal to the previous pipeline.** These are the
+reviewers' own reports of what they ran.
+
+- The launch (command line, environment, settings, profile layout) equals the
+  recorded production launch apart from paths and ports. Production also ran
+  without an engine deadline.
+- Six real seat histories of up to 4,980 frames round-trip through the new wire
+  protocol frame for frame.
+- On 200,000 random histories the old and the new code select the same trained
+  decisions, reward and usable/unusable verdict. Cutting the three captured
+  games at every day gave 116 of 116 correct truncated trajectories.
+- On 1,400 synthetic histories (26,826 frame encodings) the old and the new
+  encoder agree on every frame. With equal weights and seeds, 3,458 steps and
+  3,912 sampled actions are bit-identical between old and new model.
+- The single remaining guard version equals the old stack-cycle version on
+  16,142 decisions and 1.2 million permission checks.
+- The weights digest equals the old one on 400 random state dicts.
+- The legacy pointer file and the 1,784 pair on the Mac snapshot import as
+  expected (read only).
+- With the scripted engine on Linux: SIGINT, SIGTERM, SIGKILL and SIGHUP in
+  several phases leave no process behind; twelve actors killed at random during
+  a 40-game run gave twelve `actor_died` records, 40 completed games and unique
+  numbers; 200 parallel games over four ending shapes were all classified
+  correctly.
+
+**What actually ran after the fixes.** 32 tests pass, each new test fails
+without its fix, and the three regression checks on captured games pass
+unchanged (19,667 frames and 2,580 decisions; 1,433 samples; 46 minibatch
+plans). The reviewers' reproducers for findings 9 and 11 no longer reproduce.
+
+**Limitations.** Everything ran on Linux. Signal delivery, `flock`, process
+spawning and `caffeinate` on macOS were judged by reading. How the real engine
+reacts to a closed policy socket or to SIGTERM was read from the C++ side and
+from the previous pipeline's production use, not run. The review cannot replace
+the first real run, which remains open.
+
+### 2026-11-18 — First real runs of the new pipeline (user-launched) and timing against main
+
+**Question (user request).** How long does it take to train ten games on `main`
+and on the refactor branch? No acceptance criterion was set in advance. This is
+a read-only comparison of runs the user had already launched; the assistant
+started no game, training, check or benchmark, and edited nothing on the Mac.
+
+**What ran, all launched by the user on the Mac.**
+
+- `main` at `5efe811`: one cycle of 100 games, run
+  `run-20261118T104905Z-ebe300b5`, launched 10:49:05 UTC, parent checkpoint
+  1,784 (weights `6f5f6592…`), CPU policy, MLX PPO, ten actors. It ended with
+  status completed and exit code 0 and published checkpoint 1,785.
+- The branch at `e46fe66` (checked out on the Mac at 21:28 UTC): two runs of ten
+  games and one update each into the scratch folder
+  `~/Projects/Heroes-artifacts/training-trial`, started 21:28:34 and 21:49:56
+  UTC, CPU policy, MLX PPO, ten actors. Engine and sampling seeds of all 20
+  games are in that folder's `log.jsonl`.
+
+Evidence: `launch.json`, `report.json`, `shutdown.json`,
+`batch-train-000/attempts.json`, the 100 episode manifests and
+`latest-checkpoint.json` of the `main` run; `log.jsonl`, `latest.json` and a
+read-only copy of `checkpoints/update-001785.pt` of the trial folder.
+
+**Correction to the two entries above.** They call 1,784 the last checkpoint of
+the previous pipeline and say that a diagnostic game was still owed. Both were
+true for the snapshot the refactor was checked against, taken while the `main`
+run above was collecting. That run then played the owed diagnostic (670 s),
+trained, published **1,785** (9,922 games, 13,713,041 decisions, 431,486
+optimizer steps, weights `6a41cead…`) and passed its own final diagnostic. The
+previous pipeline's last checkpoint is therefore 1,785 and no diagnostic is
+owed.
+
+**Observed: criterion 5 of the refactor, the first real run.**
+
+- The one-time import chose 1,785 from `latest-checkpoint.json`, not the older
+  pair under `retained/`. The copy of `update-001785.pt` loads with weights
+  digest `6a41cead7e35c388b94d60908affddf68760bd42ed650393fdaa0c404028ad3f`,
+  the digest `main` published, and with the same counters.
+- 20 games were handed out and all 20 ended naturally. No game failed, was
+  stopped at a limit or had to be replaced. `games/` is empty afterwards.
+- Both MLX updates completed and were saved. The update raises before its first
+  optimizer step when its first minibatch disagrees with the probabilities
+  recorded during play, so both passed that comparison.
+
+  | Update | Games | Learner samples | Optimizer steps | Approx. KL | Clip fraction | Policy loss | Value loss |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | 1,786 | 9,923 to 9,932 | 105,875 | 3,311 | 0.00278 | 0.0233 | 0.00040 | 0.341 |
+  | 1,787 | 9,933 to 9,942 | 172,718 | 5,400 | 0.00450 | 0.0295 | 0.00096 | 0.465 |
+
+- The second run resumed from the first run's `latest.json`. Weights after
+  1,787 are `ef2ebef0…`.
+- Not observed with the real engine: a game stopped at day 365 or at the action
+  limit, a failed or replaced game, a killed actor, an interrupted run, two runs
+  competing for one folder. Nothing has run in the real state folder
+  `~/Projects/Heroes-artifacts/training`; it does not exist yet. The two trial
+  updates live only in the scratch folder.
+
+**Timings as recorded.**
+
+| | `main`, 100 games | Branch, run 1 | Branch, run 2 |
+| --- | --- | --- | --- |
+| Decisions of both seats | 1,546,610 | 183,683 | 319,372 |
+| Learner samples | 786,511 | 105,875 | 172,718 |
+| Optimizer steps | 24,602 | 3,311 | 5,400 |
+| Diagnostic games | 669.8 s owed + 306.1 s final | none | none |
+| Collection | 3,532.4 s | 589.0 s | 1,004.2 s |
+| Update | 4,798.8 s | 652.4 s | 1,692.0 s |
+| Whole run | 9,317.9 s | 1,241.4 s | 2,696.2 s |
+
+Inside the update, `main` reports 4,767.6 s for the steps including 275.2 s of
+plan building and 54.0 s of state validation; the branch reports 651.4 s
+(31.8 s, 7.1 s) and 1,690.1 s (48.1 s, 10.7 s). The `main` batch had 95 natural
+ends and 5 games stopped at the day limit.
+
+**The same quantities on one scale.**
+
+- *Playing.* Decisions of both seats per second of one game's wall time
+  (`wall_seconds` of the manifest on `main`, `seconds` in `log.jsonl` on the
+  branch): 60.3 on `main` over 100 games, 105.3 on the branch over 20 games. By
+  game size, from under 2,000 to over 45,000 decisions: 82.4, 72.7, 65.2, 60.8,
+  58.6, 58.0 on `main` and 119.6, 119.1, 106.9, 105.1, 106.6, 103.5 on the
+  branch, a ratio of 1.45 to 1.8. On `main` ten games were in play for the whole
+  batch. In a batch of ten the number of games in play falls as games end, so
+  the long games of the trial had fewer neighbours. The two smallest size
+  classes ended while at least eight games were in play in both pipelines; their
+  ratios are 1.45 and 1.64.
+- *After a game.* `main` spent 2,981.0 s of `preparation_seconds` on 786,518
+  learner decisions, 3.79 ms each, in the coordinator and one game at a time;
+  capture receipts trailed the end of their game by 181 s on average and 406 s
+  at most. The branch compiles inside each actor: 451.3 s for 278,593 learner
+  decisions, 1.62 ms each. `main` also wrote 15.1 GB of `training-rollout.bin`
+  for the batch.
+- *Between the end of a game and its arrival in the trainer* the branch needs
+  about 1 s for small games, 13.6 s for the game of 53,393 decisions and 25.8 s
+  for the game of 89,123. This contains engine shutdown, removal of the game
+  folder and the transfer of the pickled trajectory. Not broken down.
+- *Update.* 5.16 optimizer steps per second on `main`, 5.08 in run 1, 3.20 in
+  run 2; per learner sample 6.1 ms, 6.2 ms and 9.8 ms. The code is the same on
+  both sides (the refactor moved it; equality was checked up to the backend
+  boundary). The difference is the mix of game lengths: the sample-weighted mean
+  game length Σ L² / Σ L is 16,120, 20,374 and 34,237 learner decisions.
+  `MLXBackend.prefix_states` encodes each game of a minibatch from frame 0 to
+  that minibatch's last window start at every optimizer step, so this part of a
+  game's cost grows with the square of its length. A least-squares fit of
+  `update = a·ΣL + b·ΣL²` over the three batches gives a = 2.79 ms and
+  b = 2.02e-7 s and reproduces them within 0.2%, 12% and 0.7%; by that fit the
+  one game of 63,390 learner decisions accounts for about 990 s of run 2's
+  1,690 s. Three batches and two parameters do not establish the form; the code
+  does. The five batches of the stopped `main` run earlier that day show the
+  same growth, from 4.26 ms per sample at 500,788 samples to 5.92 ms at 755,229.
+
+**Estimate, not a measurement: `main` on the same ten games.** No ten-game run
+of `main` with the current policy exists. A ten-game batch on ten actors lasts
+as long as its longest game. Taking the rate of `main`'s games above 45,000
+decisions (55.7 to 62.6 per second), its preparation of long games (3.3 to
+3.8 ms per learner decision), 60 s of batch setup and teardown seen in the
+100-game run, the update time measured on the branch, and one final diagnostic
+of 306 to 670 s:
+
+| | `main`, estimated | Branch, measured |
+| --- | --- | --- |
+| The ten games of run 1 (longest: 53,393 decisions) | 33 to 41 min | 20 min 41 s |
+| The ten games of run 2 (longest: 89,123 decisions) | 62 to 71 min | 44 min 56 s |
+
+Not included for `main`: the launch itself, which first analyses and deletes the
+previous run's folder.
+
+**Limitations.** Different games, different weights (1,784 against 1,785 and
+1,786), different times of day, uncontrolled machine load and temperature. The
+`main` rates come from a full ten-actor load, the trial's long games from a
+lighter one. Two ten-game runs differ by a factor of 2.2 on the same code only
+because of the games drawn, so no single ten-game run on either side could
+settle the comparison more precisely than the per-decision rates do. No part of
+the difference in playing speed is attributed to a specific change. Nothing here
+says anything about learning or playing strength.
+
+**What a direct measurement on `main` would require.** The old launcher refuses
+to start until the journal on `main` carries the retention marker for
+`run-20261118T104905Z-ebe300b5`. It would then delete that run's folder and
+train the previous lineage for real, 1,785 to 1,786. Neither was done; the
+decision is the user's.
+
+**Next.** The update's recurrent prefix is the largest remaining cost. Any
+change to it changes what the update computes and is a decision about the
+learning method, to be proposed separately.
+
+### 2026-11-19 — Where a training cycle spends its time; reusable window states (optimization branch)
+
+**Goal (user request).** Find and test ways to make training faster without
+disturbing the user's own 1,000-game run. Work in a separate clone
+(`~/Projects/Heroes-opt`, branch `claude/project-thread-mq0j5t`, from
+`e46fe66`); nothing in `~/Projects/Heroes` or in the run's state folder
+`training-trial` was written. The user authorized assistant execution in the
+project thread. The permission check of the assistant's session nevertheless
+refused every launch of a real game and every timing run, so **only tests
+ran**; see "What actually ran".
+
+**Observed in the user's run (read-only, from `training-trial/log.jsonl`).**
+The run continues checkpoint 1,787 with the defaults: ten actors, 100 games per
+update, windows of 16 decisions, two windows per minibatch, one epoch.
+
+| Update | Games | Samples | Optimizer steps | Collect | Update | Per step | KL | Clip fraction |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1,786 | 10 | 105,875 | 3,311 | 589 s | 652 s | 197 ms | 0.0028 | 0.023 |
+| 1,787 | 10 | 172,718 | 5,400 | 1,004 s | 1,692 s | 313 ms | 0.0045 | 0.030 |
+| 1,788 | 100 | 1,372,976 | 42,930 | 6,605 s | 16,756 s | 390 ms | 0.0642 | 0.105 |
+
+The PPO update is 53%, 63% and 72% of these cycles. Of update 1,788's 16,756 s,
+772 s is CPU plan building and 103 s is the finite check of weights and Adam
+state. Batch 1,789 (100 games, 1,710,118 samples, 18 stopped at the day limit)
+took 3 h 17 min to collect and its update was still running at the time of
+writing.
+
+*Why the update is slow.* Each optimizer step takes two windows and replays
+both games from their first frame to the window with the current weights. The
+replay length is the sample-weighted mean game length halved: about 10,200
+decisions per window in update 1,786, 17,100 in 1,787 and 11,900 in 1,788,
+against 16 decisions that are differentiated. A straight line through the first
+two updates gives about 26 ms per step that does not depend on game length and
+about 8.4 µs per replayed decision. That is a two-point estimate from whole
+updates, not a measurement of the parts, and update 1,788 is slower than it
+predicts (see the power finding below).
+
+*The policy moves much further in a 100-game update.* The mean approximate KL
+between the updated and the behaviour policy is 0.064 with 10.5% of the samples
+clipped, against 0.003 to 0.005 and 2 to 3% in the 10-game updates. A 100-game
+batch is one epoch of 42,930 Adam steps at 3e-4 on minibatches of 32 samples.
+This is an observation about learning dynamics, not a speed measurement, and
+nothing was changed because of it.
+
+**The Mac was power-limited for most of the run.** `system_profiler
+SPPowerDataType` reports a 65 W charger. `pmset -g log` shows the battery at
+77% at 00:28, at 28% at 02:05 and at 8% at 02:18:40, all but the first "Using
+AC", and still at 7% at 11:53. The display turned off at 02:18:51. The run
+started at 01:52:37 local time. In `log.jsonl` the rate of answered decisions
+per second of game time, both seats together, is:
+
+| Games | Decisions per second and game |
+| --- | --- |
+| updates 1,786 and 1,787 (ten games each, the evening before) | 103.5 and 106.4 |
+| batch 1,788, the first 50 games to finish (up to minute 27.3) | 98.7 and 94.3 per quarter |
+| batch 1,788, the last 50 games (minute 27.6 to 109.6) | 44.8 and 32.8 per quarter |
+| batch 1,789, all 100 games | 34.0 (33.2 to 34.9 per quarter) |
+| games under 2,000 decisions: updates 1,786 to 1,788 / batch 1,789 | about 120 / 42.3 (median) |
+
+The rate fell by about a factor of three within a minute of the battery
+reaching 8% and stayed there for nine hours while the charge held at 7%, which
+it can only do if the machine draws no more than the charger supplies. Short
+games slowed as much as long ones, so the cause is not game length. CPU plan
+building per optimizer step also doubled, from 9.6 ms and 8.9 ms in updates
+1,786 and 1,787 to 18.0 ms in 1,788. The supported reading is that a 65 W
+supply cannot carry ten games, that the battery covered the difference until it
+was empty, and that macOS then limited performance to the charger. The display
+turning off in the same minute is a confound these logs cannot separate, and no
+intervention (a stronger charger, a display kept on) was tried. The user was
+told. **Timings of this run after 02:18 are not a baseline for code changes.**
+
+**Change: reusable window states.** `PPOConfig.state_refresh_steps` (default 1,
+the behaviour so far). With a value above 1 the update replays a game once to
+its last window, keeps the recurrent state before each of its windows, and
+reuses these states for that many optimizer steps before it replays the game
+again. A window can then start from a state computed with weights that are at
+most that many steps old; the window itself is always computed and
+differentiated with the current weights. Hidden states recorded during play are
+still never used. A game expected in a minibatch less than once per refresh
+interval (`refresh × windows per minibatch × its windows < all windows`), or
+with a single window, is not kept: it is replayed up to the window at each use
+with the current weights, as before, because replaying it to the end would cost
+more than it saves. The rule is `Batch.kept` in `heroes/learner/ppo.py`; the
+torch reference and the MLX update share it. `PPOReport.game_replays` and the
+update record in `log.jsonl` count the whole-game replays.
+
+This is a change of what is computed, not only of how fast, as soon as the
+setting is above 1: the states are stale by up to that many optimizer steps.
+Stored-state recurrent PPO as commonly implemented uses states from the rollout
+for the whole update; this setting is between that and the exact replay.
+
+**Hypotheses and acceptance criteria, set before any measurement.**
+
+1. *Speed.* On a fixed batch of real games, MLX update time per optimizer step
+   with `state_refresh_steps` of 1,024 no longer grows with game length, and
+   the whole update of a ten-game batch like 1,787 is at least five times
+   faster than with 1. Measured with `tools/perf/bench_update.py`, both settings
+   on the same games, weights and shuffle seed, interleaved, on a Mac that is
+   not power-limited and whose GPU is not shared with another update.
+2. *Fidelity per step.* For the same minibatch and the same weights, taken along
+   an exact update: the gradient computed from reused states has a cosine of at
+   least 0.99 at the median and 0.95 at the 5th percentile with the exact
+   gradient, and the log-probabilities differ by at most 0.02 at the 95th
+   percentile (0.02 is the existing first-minibatch limit between play and
+   update). Measured with `tools/perf/state_fidelity.py` for 64, 256, 1,024 and
+   "never refresh", by fifths of the update, because staleness grows with the
+   distance the weights have moved.
+3. *A setting that fails 2 is not recommended as a default.* If only small
+   values pass, the default stays 1 and the report says what the speed-up of
+   the passing value is.
+
+None of this can show that learning is unaffected; only training runs can.
+
+**What actually ran.** `python -m pytest` on the Mac, against
+`tests/fake_vcmi.py` with random weights in temporary folders: 41 tests pass
+(32 before this branch). Nine are new:
+
+- The MLX update is run in tests for the first time, on scripted games, and
+  agrees with the torch reference in policy loss, value loss, KL and clip
+  fraction within 2% (or 2e-4 absolute) after a five-step update; the same with
+  kept states refreshed every third step, and on a scripted 20×20 map whose
+  objects move every day, which takes the sparse prefix CNN.
+- With a learning rate of zero the losses with states kept for the whole update
+  equal those with a replay at every step (MLX: within 1e-5 relative; torch:
+  exactly), and the replay counts are as the rule predicts.
+- The scripts in `tools/perf` run end to end on tiny scripted games, and the
+  fidelity probe reports zero error while the weights stand still and a nonzero
+  one when they move.
+
+No real game was played, no saved game was read, no benchmark was timed and no
+checkpoint was written. The commands that could not run are in
+`tools/perf/README.md`.
+
+**Limitations.** The scripted games offer one legal action, so in these tests
+the gradient reaches the weights through the value head only; the policy heads'
+log-probabilities are constant. Agreement of the MLX update with the reference
+on real games still rests on its first-minibatch check. The acceptance criteria
+above are unmeasured. The two-point cost model is an estimate. The power
+finding is an inference from two logs that agree in time.
+
+**Tools added (`tools/perf/`).** `collect_games.py` plays real games into a
+state folder of its own and keeps each `Game`; `bench_update.py` times the MLX
+update on such a batch or on scripted games for several settings;
+`state_fidelity.py` measures criterion 2; `profile_game.py` plays one real game
+in-process and splits its wall time into engine wait, decoding, encoding, the
+forward pass, sampling and recipe compilation.
+
+### 2026-11-19 — Measured on real games: state reuse is fast but inaccurate; where play time goes
+
+**Correction to the entry above.** It says the permission check refused every
+launch, so only tests ran. Later the same day the user's own message reached the
+assistant's session directly and the same launches were accepted. Everything
+below ran after that, by the assistant, under the user's explicit permission in
+the project thread ("you can run different parts of the project, or you can run
+the whole learning loop"). The acceptance criteria of the entry above were
+written before any of these runs and are judged here.
+
+**Conditions of every measurement in this entry.** Clone `~/Projects/Heroes-opt`,
+branch `claude/project-thread-mq0j5t`. Own state folder
+`~/Projects/Heroes-artifacts/perf-opt-mq0j5t` with a copy of checkpoint 1,787
+(SHA-256 `a70e7095…`, equal to the file in `training-trial`). M4 Max on the same
+65 W charger, battery between 16% and 30% and charging, so not power-limited at
+the time. The user's run was in its PPO update of batch 1,789 throughout: its
+ten actors were idle, **its update shared the GPU with every update timing
+below**, and at times two of the assistant's own GPU jobs ran together. Absolute
+update times are therefore upper bounds; comparisons were run back to back or
+alternating. Nothing was written to `training-trial`, and no checkpoint was
+written anywhere.
+
+**A fixed batch of real games.** `tools/perf/collect_games.py`, three actors,
+seed 1: 12 games in 1,532 s, eleven finished naturally and one stopped at day
+366. 135,373 learner samples, 1,033,919 learner frames (7.6 frames per trained
+decision), games of 263 to 28,070 samples, 4,233 optimizer steps at the default
+settings. The games ran at 94 to 165 decisions per second each.
+
+**The update on that batch (hypothesis 1: confirmed).**
+`tools/perf/bench_update.py`, same weights, games and shuffle seed for every run.
+
+| `state_refresh_steps` | Run | Seconds per step | Whole update | Whole-game replays |
+| --- | --- | --- | --- | --- |
+| 1 (exact, the default) | 300 steps, twice | 0.360, 0.386 | 1,691 s and 1,785 s, projected | none |
+| 1,024 | 300 steps, twice | 0.040, 0.044 | | |
+| 256 | whole update | | 262 s | 185 |
+| 1,024 | whole update | | 225 s | 55 |
+| never refreshed | whole update | | 214 s | 12 |
+
+The exact update was not run to its end for timing; its total is the 300-step
+rate times 4,233 steps. With states reused the update is 6.5 to 8 times faster
+and the time per step no longer depends on the length of the games. On scripted
+games of 20,000, 5,000 and 5,000 decisions (180,003 frames) the same comparison
+gave 0.162 and 0.182 s per step against 0.039 and 0.032. With states reused, 37
+to 39 s of the 214 to 262 s is CPU plan building and 18 s the finite check.
+
+**Accuracy of reused states (hypothesis 2: rejected for every value tested).**
+`tools/perf/state_fidelity.py` ran the exact update over all 4,233 steps and, at
+every 25th step (170 minibatches), compared what each setting would have used
+for the same minibatch at the same weights.
+
+| Refresh every | State error, median / p95 | Log-probability difference, median / p95 | Value difference, median / p95 | Gradient cosine, median / 5th percentile / lowest |
+| --- | --- | --- | --- | --- |
+| 64 steps | 0.063 / 0.244 | 0.009 / 0.112 | 0.047 / 0.452 | 0.998 / 0.514 / −0.104 |
+| 256 steps | 0.132 / 0.365 | 0.022 / 0.179 | 0.089 / 0.455 | 0.990 / 0.320 / −0.104 |
+| 1,024 steps | 0.213 / 0.501 | 0.034 / 0.280 | 0.151 / 0.647 | 0.951 / 0.004 / −0.862 |
+| never | 0.417 / 0.683 | 0.066 / 0.445 | 0.449 / 1.299 | 0.381 / −0.275 / −0.956 |
+
+State error is the relative L2 distance of the windows' starting states from
+the exact ones; the differences are the largest over the minibatch's decisions.
+The criteria were a cosine of at least 0.99 at the median and 0.95 at the 5th
+percentile, and a log-probability difference of at most 0.02 at the 95th
+percentile. Only the median cosine at 64 and 256 steps passes. The state before
+a window moves by 6% within at most 63 optimizer steps and by 42% over an
+update, far more than the weights themselves: this recurrent state depends on
+the weights through the whole game before it. In the first fifth of the update
+the error at a given age is larger than later (median 0.34 for ages up to 825
+steps, against 0.19 to 0.21 for ages up to 1,023 later).
+
+The exact update's own losses on this batch were policy loss 0.00155, value
+loss 0.2803, KL 0.0047 and clip fraction 0.031. The updates that reused states
+reported 0.0018 to 0.0020, 0.284, 0.0054 to 0.0055 and 0.033 to 0.037 (256 and
+1,024 steps) and 0.0013, 0.2797, 0.0041, 0.026 (never). These averages look
+close and hide the per-minibatch differences above; a state that is never
+refreshed even reports a smaller KL, because it does not see the weights move.
+
+**Decision by the criteria set beforehand.** `state_refresh_steps` stays at 1
+and no other value is recommended. What "stored-state" recurrent PPO does for
+the whole update, never refreshing, would here give gradients that mostly point
+elsewhere (median cosine 0.38). The setting remains in the code, off, because
+the measurement tools and the follow-up below build on it.
+
+**Where a game's time goes.** `tools/perf/profile_game.py`, one game in-process
+with the same checkpoint, both seats.
+
+| Game | Decisions | Play | Engine wait | Policy forward | Decoding | Sampling | Encoding | Other | Compile after |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| seed 1, ended naturally on day 12 | 1,483 | 9.0 s | 47.5% | 28.9% | 10.9% | 8.0% | 2.7% | 1.8% | 0.4 s |
+| seed 4, stopped after day 90 | 14,801 | 136.1 s | 50.5% | 28.2% | 11.4% | 5.8% | 2.3% | 1.6% | 16.4 s |
+
+Four later plain runs of the seed-4 game took 119 to 124 s (120 to 124
+decisions per second) with identical digests, so a seeded game replays exactly.
+"Engine wait" is the time the actor's main thread waits for the next message.
+It includes the JSON parsing of that message, which runs in the reader thread.
+The engine folder of the seed-4 game held 1.95 GB when it ended, 132 KB per
+decision, almost all of it replay logs nothing reads. Under cProfile, which
+inflates Python-heavy code, the largest items of the 205 s of play were the
+observation features of the policy (69 s: its memo key 21 s, the map and tree
+encoding of new observations 29 s, the memo's size accounting 16 s), decoding
+and validating observations (27 s), the action walk (25 s, play and compile
+together) and JSON parsing (21 s, of which 13 s the per-object duplicate-key
+hook). In a 30-day game 12,779 observations arrived for 5,098 decisions, and
+two in five repeated the observation before them exactly: the engine sends what
+a seat sees as a view and again inside the decision that follows.
+
+**A play-side change that was tried and dropped.** Reusing the decoded
+observation when a decision repeats the preceding view, with shortcuts by object
+identity in the policy memo, the guard and the recipe compiler. The same seeded
+game gave the same digest and took 123.5 s against 120.8 and 123.8 s before:
+the type-exact comparison of the raw observations costs what the reuse saves.
+A first version compared marshal bytes of the whole observation and caught only
+17.5% of the repeats, because those bytes depend on which strings the rest of
+the message shares. The change is not in the branch.
+
+**Changes kept.** In the MLX update, the plan of a minibatch is now built on a
+helper thread while the GPU runs earlier steps, and the finite check covers the
+arrays a step wrote and is evaluated with the step. Both leave the arithmetic
+unchanged. One alternating measurement with states reused (400 steps, twice
+each, three GPU jobs running) gave 0.127 and 0.125 s per step before and 0.115
+and 0.118 after. That is a first indication under heavy contention, not a clean
+number, and the effect on the default exact update is unmeasured.
+
+**Observations that are not changes.**
+
+- *Game length.* In the user's batches 1,788 and 1,789 a seat answers about 100
+  decisions per game day (median 96.5), the mean game lasts 151 days, and the 27%
+  of games that reach day 200 hold 60% of all decisions. With the guard's budget
+  of 32 stack moves per hero or town and day, most of a long game is stack
+  management. This multiplies both play and update time and is a question of
+  the guard and the action space, not of code speed.
+- *The engine.* About half of a game's wall time is spent waiting for the
+  engine. Reading `engine/ExplorerRL` suggests where: the observation is rebuilt
+  and serialized several times per decision, sent once as a view and again in the
+  decision, and copied into the replay ledger, at 132 KB per decision. Removing
+  that needs an engine change and a rebuild; it was read, not measured.
+- *Minibatch size.* An update is 4,233 optimizer steps of 32 samples here and
+  42,930 for 100 games. Each step replays two games whatever it does with them.
+
+**Limitations.** One batch of 12 games from one checkpoint. Gradient cosines are
+per minibatch of 32 samples, a noisy quantity; they show that reused states
+change what a step does, not how learning would differ. The GPU was shared in
+every timing. Nothing here measured learning.
+
+### 2026-11-19 — A short replay does not rescue reused states: the policy remembers the whole game
+
+**Question.** The entry above found that a window's starting state drifts too
+far when it is reused across optimizer steps. Is the drift in what the state
+remembers of the recent frames only? Then replaying a few thousand frames before
+the window with the current weights, from a reused state or even from the
+initial state, would be accurate and still cheap ("burn-in").
+
+**Criteria, as before.** Gradient cosine with the exact gradient at least 0.99
+at the median and 0.95 at the 5th percentile; log-probability difference at most
+0.02 at the 95th percentile.
+
+**What ran.** `tools/perf/state_fidelity.py --refresh 1024,1000000000 --burn-in
+512,2048,8192 --from-zeros 2048,8192,32768 --steps 2200 --every 20`, the script
+as committed in `ed004f4` with the learner code of `3908015`, on the same 12
+real games, weights and conditions as the entry above: the first 2,200 steps of
+the exact update, 110 minibatches compared. The
+frames before each window were encoded with the current weights, and the
+recurrent network was run over the last of them from the other starting state.
+A window has 7.6 frames per trained decision, so 8,192 frames are about 1,070
+decisions and 32,768 about 4,300. A test on scripted games checks that replaying
+all frames reproduces the exact state.
+
+| Starting state | Frames replayed | State error, median / p95 | Log-probability difference, median / p95 | Gradient cosine, median / 5th percentile |
+| --- | --- | --- | --- | --- |
+| reused, refreshed every 1,024 steps | none | 0.263 / 0.532 | 0.045 / 0.301 | 0.953 / −0.165 |
+| | 512 | 0.148 / 0.425 | 0.039 / 0.291 | 0.960 / −0.129 |
+| | 2,048 | 0.130 / 0.320 | 0.033 / 0.251 | 0.960 / −0.167 |
+| | 8,192 | 0.092 / 0.284 | 0.022 / 0.217 | 0.982 / −0.304 |
+| reused, never refreshed | none | 0.374 / 0.647 | 0.071 / 0.402 | 0.409 / −0.484 |
+| | 8,192 | 0.146 / 0.351 | 0.031 / 0.364 | 0.811 / −0.487 |
+| the initial state | 2,048 | 0.420 / 0.594 | 0.093 / 0.731 | 0.264 / −0.616 |
+| | 8,192 | 0.329 / 0.560 | 0.067 / 0.420 | 0.325 / −0.640 |
+| | 32,768 | 0.212 / 0.426 | 0.051 / 0.399 | 0.488 / −0.631 |
+
+**What the evidence supports.** No variant meets the criteria. A state rebuilt
+from the last 32,768 frames alone is still 21% away from the exact one at the
+median, so the recurrent state at a decision carries information from more than
+4,000 of the learner's decisions back, in practice from the whole game. That
+is why it follows the weights so closely, and why neither a stale state nor a
+truncated replay stands in for it. For this policy the exact replay from the
+first frame is not an implementation luxury. Its cost can be shared, as with
+`windows_per_game`, but not skipped.
+
+**Limitations.** As above: one batch, one checkpoint, 32-sample gradients, a
+shared GPU. The cosine criteria are the assistant's choice; a training run could
+still show that learning tolerates some of this, and none was made.
+
+### 2026-11-19 — Sharing the replay: grouped minibatches, and two small costs in the default update
+
+**Question.** The two entries above leave the exact replay as it is. Can its
+cost be shared between windows instead, and is anything in the default update
+wasted outright?
+
+**Corrections to the entry "Measured on real games".** The 12 collected games
+ran at 94 to 136 decisions per second each (100.9 over all of them), not "94 to
+165"; 165.7 was the single short game of the profile. These games ran on the
+same Mac, charger and code as the user's batch 1,789, which ran at 34: the
+difference is that the battery was charging while they ran. This supports the
+reading of the first entry that the user's run was short of power, without
+being a test of it.
+
+**Change: `windows_per_game`.** `Batch.minibatches` now builds the schedule of
+an epoch for both backends. With the default of 1 it is the same shuffle as
+before, consuming the generator in the same way (checked by a test against
+`torch.randperm`). With a larger value each game's windows are shuffled and cut
+into groups of that size, the groups of all games are shuffled, and a minibatch
+takes `windows_per_minibatch / windows_per_game` whole groups. A step then
+replays each of its games once, to the latest of that game's windows in the
+step, and all states are still computed with the current weights. What changes
+is the optimization: an update makes fewer steps on larger minibatches. With 16
+and 8 a minibatch holds 256 decisions from two games where it held 32 from two
+games before.
+
+**Hypothesis and criterion, stated before the timing.** Sharing one replay among
+g windows should cut the replay work per sample by about (g + 1) / 2, since a
+replay to the latest of g windows covers g / (g + 1) of a game on average where
+one window needs half. The criterion was a whole update at least four times
+faster than the default on the 12-game batch for g = 8.
+
+**What ran.** Same batch, weights, shuffle seed and conditions as the entries
+above (the user's update on the same GPU throughout, battery 49% to 56% and
+charging). `tools/perf/bench_update.py` at `ed004f4` for the first table and at
+`3ebcf3e` for the second.
+
+| Windows per minibatch / per game | Optimizer steps | Seconds per step | Whole update | Policy loss | Value loss | KL | Clip fraction |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 2 / 1 (default) | 4,233 | 0.369 and 0.364 (150 steps each) | about 1,560 to 1,580 s, projected | 0.0016 | 0.280 | 0.0047 | 0.031 |
+| 16 / 1 | 530 | 1.12 (30 steps) | about 600 s, projected | | | | |
+| 16 / 8 | 532 | 0.678 | 371 s, measured | 0.0027 | 0.288 | 0.0045 | 0.022 |
+| 32 / 16 | 268 | 0.781 | 221 s, measured | 0.0026 | 0.290 | 0.0045 | 0.019 |
+
+Projected totals are the steady rate per step times the steps, plus about 15 s
+for building each game's plan once. The losses of the default are those of the
+exact update in the fidelity run. The criterion is met, narrowly: 4.2 times
+faster with eight windows per game, and 7 times with sixteen. Larger
+minibatches without grouping gain less, and part of that only because 12 games
+collide often; with 100 games they would not.
+
+**Correction to the projections in the entry "Measured on real games".** Its
+"1,691 s and 1,785 s, projected" for the exact update scaled a 300-step run up
+with its one-time start-up costs, as the benchmark script then did. The steady
+rates of those runs, 0.360 and 0.386 s per step, give about 1,540 to 1,650 s for
+the 4,233 steps. Reused states were therefore 6 to 7.7 times faster, not 6.5 to
+8. The script now projects from the steady rate. The conclusions of that entry
+do not change.
+
+*A batch of production size.* No 100-game batch was collected. `--copies 8`
+uses each of the 12 games eight times: 96 games, 1,082,984 samples, 8.3 million
+frames, the same length distribution. The copies share their CPU plans but
+each has its own plan on the GPU, 9.1 GiB together against a cache of 4 GiB.
+Only the first 80 to 120 steps of each setting were run.
+
+| Setting | Seconds per step | Whole update, projected from that rate |
+| --- | --- | --- |
+| default, before the byte-count change below | 0.540, 0.556, 0.490 | 4.6 to 5.2 h (33,864 steps) |
+| default, after it | 0.488, 0.472, 0.439, 0.439 | 4.1 to 4.6 h |
+| 16 windows per minibatch, 8 per game | 0.748 | 53 min (4,256 steps) |
+| 32 windows per minibatch, 16 per game | 0.898 | 32 min (2,140 steps) |
+
+These are short runs on a shared GPU, taken at different minutes; the spread of
+the default alone is 25%. They support "several times faster at production
+size", about five and eight times, not a precise factor.
+
+**Two costs found in the default update, and one that was not there.**
+
+- *Counting a plan's bytes.* A cProfile of the default update on the
+  production-size batch showed `MLXBackend.plan` spending 18.5 of 68.7 s in the
+  recursion that counts the bytes of a plan entering the GPU cache: 40.9
+  million calls for 84 cache misses, because it walked the planner's integer
+  sequences, half a million Python ints for a long game, each worth zero.
+  `plan_bytes` skips them; a test checks it against the plain walk. Alternating
+  runs gave 0.556 and 0.490 s per step before and 0.488 and 0.472 after. The
+  profiler inflates such code about fivefold, so the real saving is near 40 ms
+  per miss, around 8% of a step at this size and nothing while all plans fit
+  the cache, as they did for ten games.
+- *Plan building beside the GPU, and the finite check.* Described two entries
+  above. On the default update of the 12-game batch the step time is unchanged
+  within the noise (0.369 and 0.364 s after, 0.360 and 0.386 before): there the
+  plan was already built while the replay ran. It matters when a step is short,
+  as with grouped minibatches or reused states.
+- *The size of the GPU plan cache.* Raising it from 4 to 16 GiB, for the
+  benchmark only (`--plan-cache-gib`), gave 0.425 and 0.411 s per step against
+  0.439 and 0.439. A miss costs little once the byte count is fixed: converting
+  the largest game's 267 MiB plan took 4 ms on the CPU and 10 ms to the GPU.
+  The cache stays at 4 GiB.
+
+**What was not done.** No training run used any of these settings, so nothing
+is known about how grouped minibatches learn. Fewer, larger steps at the same
+learning rate move the policy differently; in these single updates the mean KL
+was the same (0.0045 against 0.0047) and fewer samples were clipped. The defaults
+are unchanged. The assistant's benchmarks shared the GPU with the user's update
+of batch 1,789 for about an hour and forty minutes in total and will have
+slowed it by some part of that.
+
+**Tests.** 45 pass (32 before the branch): the schedule and its step count, both
+backends on grouped minibatches against each other, the byte count, the
+command-line checks, and the measurement scripts on scripted games.
+
+**Limitations.** As in the entries above. The production-size batch is a
+multiple of 12 games, not 100 different ones. Timings are from a shared GPU.
+
+**Evidence.** Private, not in Git:
+`~/Projects/Heroes-artifacts/perf-opt-mq0j5t/results/*.jsonl` (one JSON line per
+run), `logs/`, the batch in `batch/` and the two profiles
+`results/game-seed4.prof` and `results/update-copies8.prof`.
+
+### 2026-11-19 — A correct fast update: reused states fail even for 8 steps; the grouped update needs its learning rate
+
+**Question.** The user asked for the fast mode of the entry above
+(`--windows-per-minibatch 16 --windows-per-game 8`) to be a correct PPO update,
+checked against the exact default on real games, and for an estimate of a
+1,000-game cycle. His concern was that the larger minibatches lose information.
+He authorized assistant-launched benchmarks and training games for this task.
+
+**What the flag changes, and what it does not.** Every state in a grouped
+minibatch is computed with the current weights, so each step is an exact PPO
+step and nothing inside a minibatch is lost: all 256 decisions enter the loss.
+What changes is the optimization. An update makes 8 times fewer Adam steps, each
+on 8 times more decisions, at the same learning rate.
+
+**First design, withdrawn: small steps on a shared replay.** To keep the
+optimization of the default, `windows_per_replay` (commits `010acc3` to
+`97b6a0e` on `claude/project-thread-aclj7d`, removed again in `980dff6`) made
+an update a sequence of rounds: a round replayed each of its games once with
+the weights it started from and then made 8 optimizer steps of the default
+size, so a state was at most 7 steps old.
+
+*Per step it looked good.* `tools/perf/state_fidelity.py` (in those commits)
+compared each step with the exact one on the 12-game batch of the entries
+above, checkpoint 1,787. With 8 steps per replay the state before a window
+differed by 1.4% in the median and 6.3% at the 95th percentile, the
+log-probabilities by at most 0.037 for 95% of decisions, and the gradient had a
+cosine of 0.9999 in the median and 0.978 at the 5th percentile with the exact
+gradient, with single outliers down to 0.001. With 16 steps the 5th percentile
+of the cosine fell to 0.57.
+
+*Whole updates did not.* A new script, `tools/perf/update_quality.py`, makes one
+whole update per setting from the same checkpoint with its Adam state on the
+same 12 games (135,373 decisions), then judges every set of weights with
+forward passes only, on those games and on 12 games no update saw (150,188
+decisions, played by the same checkpoint with another seed). It reports the
+mean of (ratio - 1) - log ratio as KL, the share of decisions whose ratio left
+the clip range, half the mean squared error of the value against the game's
+result, the first-order estimate of the policy's gain, and the length of the
+update's change of all weights with the cosines between such changes. No
+numeric criterion was fixed before these runs. Every figure is read against two
+runs of the exact update that differ only in the shuffle seed.
+
+| Update | Steps | KL, trained / held out | Clipped, trained / held out | Value loss, trained / held out | Weight change |
+| --- | --- | --- | --- | --- | --- |
+| checkpoint, no update | | | | 0.396 / 0.464 | |
+| exact default, seed 0 | 4,233 | 0.0067 / 0.0104 | 0.037 / 0.047 | 0.080 / 0.341 | 4.57 |
+| exact default, seed 1 | 4,233 | 0.0144 / 0.0151 | | 0.077 / 0.266 | 4.38 |
+| 8 small steps per replay | 4,233 | 0.0358 / 0.0209 | | 0.069 / 0.267 | 4.78 |
+| 4 small steps per replay | 4,233 | 0.0078 / 0.0094 | | 0.054 / 0.244 | 4.67 |
+| the 8-step order, but exact states | 4,233 | 0.0052 / 0.0076 | | 0.111 / 0.236 | 4.51 |
+
+With 8 steps per replay the policy ended 2.5 to 5 times further from the one
+that played the trained games than after either exact update, with no more
+change of the weights. The same order of steps with states replayed at every
+step behaved like the exact update, so the cause is the age of the states and
+not the order in which a round visits its games. A state computed before the
+earlier steps of a round still describes the policy as it was; the ratios the
+clip sees are then too close to 1, and the clip stops the policy later than it
+should on exactly the games the round keeps stepping on. A per-step gradient
+cosine of 0.98 did not show this, because the error has the same sign step
+after step. Four steps per replay stayed inside the spread of the exact
+update on one run, at 1.5 to 2 times the cost of the grouped update below. The
+mode is withdrawn, and with it `state_refresh_steps`, the switch of the entries
+above that kept states for far longer.
+
+**Why the grouped update moved less, and the learning rate that goes with it.**
+At the default learning rate of 3e-4 the grouped update of the entry above
+changed the weights by 1.99 and 2.00 (two seeds), the default by 4.57 and 4.38.
+The cosine between the weight changes of two exact updates that differ only in
+the shuffle is 0.54, and between any two updates measured here 0.36 to 0.76:
+most of an update's change of the weights is noise of the minibatches, and for
+Adam in that regime the distance grows with the learning rate times the square
+root of the number of steps. Eight times fewer steps then travel the square
+root of 8 times less far, 4.57 / 2.83 = 1.6 predicted and 2.0 measured, and
+keeping the distance takes 3e-4 x 2.83 = 8.5e-4. This is the known square-root
+scaling rule for Adam; here it was checked, not assumed.
+
+**Hypothesis for the confirmation, stated before it ran.** The grouped update
+at 8.5e-4 changes the weights as far as the exact default and moves the policy
+no further. Measured with the code of `5028350` while the user's run was
+collecting games, so the GPU was otherwise free:
+
+| Update | Steps | KL, trained / held out | Clipped, trained / held out | Value loss, trained / held out | Weight change | Seconds |
+| --- | --- | --- | --- | --- | --- | --- |
+| exact default, seed 0 | 4,233 | 0.0067 / 0.0104 | 0.037 / 0.047 | 0.080 / 0.341 | 4.57 | 986 to 997, projected from 300 steps |
+| exact default, seed 1 | 4,233 | 0.0144 / 0.0151 | | 0.077 / 0.266 | 4.38 | |
+| 16 / 8 at 3e-4, seed 0 | 532 | 0.0033 / 0.0064 | 0.018 / 0.025 | 0.082 / 0.236 | 1.99 | 248 |
+| 16 / 8 at 3e-4, seed 1 | 532 | 0.0037 / 0.0031 | 0.017 / 0.013 | 0.078 / 0.249 | 2.00 | 252 |
+| 16 / 8 at 8.5e-4, seed 0 | 532 | 0.0050 / 0.0070 | 0.037 / 0.045 | 0.061 / 0.232 | 4.14 | 250 |
+| 16 / 8 at 8.5e-4, seed 1 | 532 | 0.0065 / 0.0066 | 0.035 / 0.032 | 0.067 / 0.277 | 4.89 | 248 |
+
+The hypothesis holds on these games: the weight change (4.14 and 4.89) brackets
+the default's, the clipped share is the same, the KL is at or below the lower
+of the two exact runs, and the value error on held-out games is at least as
+low. Against the exact update of seed 0, resampling the games gives 90%
+intervals that include zero for every measure except the held-out value loss
+of seed 0, which is lower (-0.109, interval -0.192 to -0.013). At 3e-4 the
+grouped update is a correct but smaller update: about 0.44 times the weight
+change and half the clipped share.
+
+**What these runs cannot show.** The first-order gain estimate is within noise
+of zero for the exact and the grouped updates alike (between -0.006 and
++0.0005 on the trained games), so a single update on 12 games does not show any of them
+improving the policy, only how far each moves it and how well it fits the
+value. Which setting wins more games is a question for training runs of many
+updates.
+
+**Change.** `980dff6`: the update is the exact one of the entry above, with
+`--windows-per-game` and a new `--learning-rate` on the command line (default
+3e-4; the help names 8.5e-4 for 16 windows). `state_refresh_steps`,
+`Batch.kept`, `MLXBackend.prefix_table`, the `game_replays` report field,
+`--refresh` in `bench_update.py` and `tools/perf/state_fidelity.py` are
+removed. The defaults are unchanged, so a run without options is the update
+of PR 32.
+
+**Clean timings.** `bench_update.py` at `5028350`, 17:55 to 18:06 UTC,
+the user's run collecting games on the CPU and nothing else on the GPU, 140 W
+charger, battery full:
+
+| Batch | Setting | Steps | Seconds per step | Whole update |
+| --- | --- | --- | --- | --- |
+| 12 games, 135,373 decisions | default | 4,233 | 0.230 and 0.232 (300 steps each) | 986 and 997 s, projected |
+| 12 games | 16 / 8 | 532 | 0.448 | 248 s, measured |
+| the 12 games 8 times, 1,082,984 decisions | default | 33,864 | 0.310 (120 steps) | 2.9 h, projected |
+| the same | 16 / 8 | 4,256 | 0.538 (120 steps) | 38 min, projected |
+
+The grouped update is 4.0 times faster on 12 games and 4.6 times at production
+size. The figures of the entry above were taken beside the user's update and
+are 1.4 to 1.6 times these.
+
+**Training runs beside the user's run: one update, and two lost batches.** The
+user asked for training games in both modes. Two runs of `980dff6` were started
+at 18:34 UTC from copies of his checkpoint 1,789 in state folders of their own
+(`arm-exact` with the defaults, `arm-flag` with `--windows-per-minibatch 16
+--windows-per-game 8 --learning-rate 8.5e-4`), 4 actors and 10 games per update
+each, while his run was collecting batch 1,790 with 10 actors.
+
+- *The default run made one update.* Ten games, all ended naturally (red 2,
+  blue 8), 159,436 learner decisions, collected in 2,526 s at 51 decisions per
+  second per game beside 14 other actors. The update: 4,985 steps in 1,977 s,
+  policy loss -0.0100, value loss 0.478, KL 0.111, clipped share 0.160. It was
+  then stopped so that it would not collect beside the user's update.
+- *The fast run made none.* A guard written for these runs stopped it twice
+  when memory ran short: at 19:16, with 9 of 10 games played, when the kernel
+  reported memory pressure level 2, and at 21:00, 2.5 minutes into its update
+  on a second batch (10 games, 288,040 decisions, 5 of them stopped at day
+  366), when swap grew beside the user's update of 1.77 million decisions. A
+  stopped trainer discards its batch, so both batches are lost. Nothing aborted
+  in those 2.5 minutes, which is all that is known about the first-minibatch
+  check with 256 decisions per step in a real run.
+- *Cost to the user's run.* About 3.7 GB went to swap between 19:18 and 21:00
+  with these runs beside his, 0.3 GB of it during the fast run's update; very
+  little was read back. His batch 1,790 took 1 h 54 min to collect (first job
+  17:31, last game 19:25) at 63 decisions per second per game with these jobs
+  beside it.
+- *A mistake in the guard.* Its first stop signal never arrived: a process
+  started in the background of a non-interactive shell ignores SIGINT. The run
+  was ended with SIGTERM five minutes later, and later runs were started
+  through a wrapper that restores the default handler.
+
+**An observation outside the question: the update from checkpoint 1,789 moves
+the policy about 20 times further.** The default update above reports a mean KL
+of 0.111 and 16% clipped decisions over 4,985 steps. The same code from
+checkpoint 1,787 on 12 games reported 0.0047 and 3% over 4,233 steps, and the
+user's 10-game updates 1,786 and 1,787 reported 0.0028 and 0.0045. Between
+them lie his two 100-game updates, 1,788 and 1,789, of about 43,000 and 53,465
+steps, which themselves reported 0.064 and 0.116. Everything measured in this
+entry about the learning rate was measured from checkpoint 1,787. Whether the
+fast setting behaves like the default from 1,789 as well is not known yet; a
+comparison of both on one batch of games from 1,789 is prepared and runs after
+the user's update 1,790. Why the update moves so much further from 1,789 was
+not investigated. One candidate is Adam's state after a long update, in which
+most decisions end up clipped and the gradients shrink; another is a sharper
+policy.
+
+### 2026-11-19 — Faster game play: plan and acceptance criteria (play-speed branch)
+
+**Question.** With the grouped update of the entry above, playing 100 games is
+the larger half of a cycle: update 1790 of the user's run collected its 100
+games in 1 h 54 min on ten actors (3.47 million decisions of both seats, 63.6
+per second and game while two other runs shared the Mac; the two short runs of
+2026-11-18 reached 103 and 106). How much faster can the same games be played,
+and what would a further factor cost in training terms?
+
+**What the earlier profile of one game says** (`5028350`, seed 4, 90 days,
+14,801 decisions, 136 s): 51% of the play time waits for the engine, 28% is
+the policy's forward pass, 11% decoding, 6% sampling; compiling the recipe
+adds another 12%. Reading the engine source for this entry: every decision
+record repeats the observation that the view record before it already
+delivered, about 55 KB of JSON; the replay recorder copies and encodes every
+message a second time for `contextual-replay.jsonl` and flushes each record,
+about 130 KB per decision (5.9 GB after eight minutes of one game of the
+update thread's run, about 450 GB per 100 games), and nothing reads that file.
+On the Python side each of the two copies is parsed, decoded, validated and
+keyed for the policy's memo separately.
+
+**Changes under test, all meant to be exact** (the same game from the same
+seeds, bit for bit in everything the learner reads):
+
+1. Engine switch `VCMI_EXPERIMENT_LEDGER=0`: the recorder keeps its
+   transaction order and terminal barrier and writes nothing.
+2. Engine switch `EXPLORER_RL_DECISION_OBSERVATION=0`: a decision record
+   carries no observation; Python gives the decision frame the observation of
+   the seat's latest view, the same object.
+3. Python: the policy recognises that shared observation by identity instead
+   of by a key over all its contents, sizes a memo entry without walking it,
+   the recipe compiler reuses the shared observation's map recipe and trees,
+   and engine messages are parsed without a Python call per JSON object.
+4. More actors than ten.
+
+**Acceptance criteria, stated before any game ran.** (a) For each of 1 to 3,
+the digest of `tools/perf/profile_game.py` for a seeded game is identical
+before and after, on the old runtime and on the new one; a different digest
+rejects the change. (b) `tools/perf/bench_play.py --games` gives identical
+digests for every game of a ten-actor batch. (c) Speed is reported as
+decisions per second of both seats over a window in which every actor is busy,
+old and new alternating under the same load, with the charger and the other
+runs on the Mac noted; games per hour follow from the mean length of the games
+of the user's run (32,458 decisions over updates 1788 to 1790) and are labelled
+as derived. (d) A higher actor count is recommended only if its window rate is
+higher than ten actors' by more than the spread between repeated windows.
+
+**Not part of this change.** Anything that alters what is trained on: the
+guard's daily budget of 32 stack moves per hero and town (a seat answers about
+100 decisions per game day), the day limit, playing the next batch during the
+update. Those are measured and proposed, not shipped.
+
+### 2026-11-19 — Faster game play, measured: the same games 1.6 times faster; what is left
+
+All times are local (EET, UTC+2), 22:55 on 2026-11-19 to 00:16 on 2026-11-20.
+Mac on the 140 W charger, battery at 100% throughout. The Mac was not free: the
+user's run was in the PPO update of batch 1790 (one busy core and the GPU), the
+update thread's comparison runs played two games at a time and later collected
+games with `collect_games.py`, a browser process took up to three cores for
+minutes, and a game ran under Wine. Every rate below is therefore lower than on
+a free machine; versions were compared in turns under the same conditions.
+Checkpoint 1789 (`weights_sha256` 74da41d9…), copied into
+`~/Projects/Heroes-artifacts/play-speed-r3u8uh`; nothing was trained or saved.
+"Base" is `8ad4fcc` with the runtime `local-v8-sleep-resume-v1`; "new" is
+`2a0e5e4` with `local-v8-play-switches-v1`, built from this branch's engine
+sources and frozen with `tools/freeze_runtime.py` (its `config` and `Mods` are
+identical to the old runtime's). Results are in `results/` of that folder,
+measurements ran from copies of the source tree (`git archive`).
+
+**Exactness (criteria a and b): met.**
+
+| Game | Version | Digest |
+| --- | --- | --- |
+| seed 4, to day 60, 14,208 decisions | base, twice | `fec36b049734ab94` |
+| | new code, old runtime | `fec36b049734ab94` |
+| | new code, new runtime, four times | `fec36b049734ab94` |
+| | new runtime with the ledger forced on / the repeated observation forced on | `fec36b049734ab94` |
+| seed 9, to day 60, 11,658 decisions | base / new | `f154a6e38260d5a5` both |
+| ten games on ten actors, `bench_play.py --games 10 --max-days 60 --seed 3`, 91,868 decisions | base / new | all ten digests equal, game by game |
+
+**One game alone** (`profile_game.py --max-days 60`, seconds):
+
+| Seed 4 | Play | Waiting for the engine | Forward | Decoding | Sampling | Compile | Engine folder |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| base | 149.7 | 76.6 | 43.8 | 15.7 | 8.3 | 17.1 | 2.24 GB |
+| new code, old runtime | 135.4 | 72.1 | 33.9 | 16.1 | 7.3 | 16.3 | 2.24 GB |
+| new runtime, observation still repeated | 117.3 | 53.9 | 34.5 | 16.1 | | 16.0 | 5.0 MB |
+| new runtime, ledger still written | 112.9 | 61.0 | 26.7 | 12.1 | | 12.5 | 1.38 GB |
+| new | 95.7 | 44.3 | 27.5 | 11.8 | 7.6 | 11.9 | 5.0 MB |
+
+Seed 9: 114.7 s and 12.5 s to compile before, 72.4 s and 8.8 s after. Play and
+compile together are 1.55 and 1.57 times faster. The first base run of seed 4
+(147.4 s) had an 8-second `sample` of its engine attached and is not in the
+table. The two "still" rows used wrapper scripts that set one switch back; the
+runtime and the Python code are the new ones.
+
+**Ten actors** (`bench_play.py --seconds 130 --warmup 20 --seed 7`, decisions
+per second of both seats of all games, windows taken in turns): base 663 and
+637; new (`52a9f5c`, the same play path as `2a0e5e4`) 1,058 and 999: 1.58
+times. Two later ten-actor windows of the new code, in the actor-count runs,
+gave 1,066 and 1,120. The ten-game batch to day 60 took 206.1 s before and
+132.9 s after; an actor spent 12.64 ms per decision before and 7.98 ms after,
+play and compile together: 1.58 times.
+
+**Actor count** (criterion d), new code, the same windows:
+
+| Actors | 8 | 10 | 12 | 14 | 16 |
+| --- | --- | --- | --- | --- | --- |
+| decisions per second | 819 | 1,058, 999, 1,066, 1,120 | 1,052 | 1,185, 1,255, 1,208 | 1,150 |
+
+Every 14-actor window is above every 10-actor window, by 15% in the means;
+the spread among the ten-actor windows is 12%. The 12-actor window coincided
+with the browser's burst (load average 96 at its start) and the 16-actor
+window was taken once, so the shape beyond 14 is not established; with 14
+actors `top` showed no idle CPU. The default becomes 14. On a free machine the
+best count may be higher or lower and should be measured again.
+
+**Where the time went, from an 8-second `sample` of the base engine**: of the
+engine's busy time 34% was the replay recorder (a copy of every message, its
+encoding, a flushed write), 18% encoding and sending messages to the policy,
+and 41% `captureContextual`, which builds the player's whole observation as a
+`JsonNode` and compares it with the last one. `CClient::handlePack` runs it for
+both players after every applied pack, and the plugin runs it again before
+every result and every decision. A second sample, of the new engine, shows
+that capture as 86% of what is left. The earlier entry's "the engine sends
+every observation twice" named the smaller half of the engine's cost.
+
+**What a decision costs now** (seed 4, new): 6.7 ms of wall time. In Python:
+policy forward 1.9 ms, decoding 0.8, sampling 0.5, encoding frames 0.2, and
+0.8 ms per decision of the game to compile the recipe afterwards. The engine's
+CPU is not measured per decision; with 14 actors playing, `ps` showed the
+engines at 30% of a core each and the actors at 50%, which puts the engine at
+a little over 2 ms per decision, nearly all of it the captures.
+
+**Hit rate of the whole-observation memo, measured before removing it**
+(profile of seed 4 at `c52493f`+`9c1970d`): of 22,015 views looked up by
+`_record_key`, 3,839 hit (17%); the key cost 14.6 s under the profiler and the
+hits saved about 8 s. It is removed. The observation encoded last is kept and
+recognised by identity, which serves all 14,208 decisions, and the map
+features are kept under the recipe compiler's map key.
+
+**A failed attempt, recorded.** The first actor-count run (23:07) reported two
+failed games among nine. They were mine: I edited `heroes/learner/recipes.py`
+in the tree the benchmark was running from, and an actor imports the recipe
+compiler when its first game ends, so two actors imported a file that no longer
+matched their loaded policy module. The same seeded games ran without a
+failure three times afterwards, from the committed code and from copies. Its
+rates are discarded; the perf guide now says to measure from a copy.
+
+**What the learner chose** (the ten-game batch, 46,632 learner decisions, 435
+of them `end_turn`, so 107 decisions per seat and day): `swap_stacks` 30.4%,
+`split_stack` 8.2%, `merge_stacks` 4.8%; `open_capability` and
+`close_capability` 8.2% each, `close` 7.4%, `open_hero` 6.6%, `back` 5.5%,
+`open_stack` 5.3%; `move_to` 4.2%; `end_turn` 0.9%; recruiting, building,
+hiring and upgrading together 0.5%. The games stop at day 60, so this is the
+early game only.
+
+**What this means for a cycle.** The user's update 1790 collected its 100
+games in 1 h 54 min on ten actors under a similar load. At 1.6 times that is
+about 1 h 10 min, and about 1 h with 14 actors; neither was run. A 1,000-game
+cycle of ten such batches would spend about 10 hours playing instead of 19.
+The target of one hour for the whole cycle is 10 to 20 times further away, and
+no exact change found here closes it: the engine capture is about a third of a
+decision's CPU and Python's share is spread over many small parts.
+
+**Not changed, proposed to the user.** (1) Fewer decisions per game day: 43%
+of decisions are stack moves and another 41% open or close a window; the
+guard's budget is 32 stack moves per hero and town per day. A smaller budget
+is a new guard version and changes what the policy can do. (2) Playing the
+next batch while the update runs: the update needs the GPU and one core, the
+actors the other cores; a cycle would take the longer of the two instead of
+their sum, with games one update behind. (3) A day limit saves little (entry
+above). (4) Rebuilding the engine's capture so that it is cheap to see that
+nothing changed: exact, but a restructuring of the plugin's observation code.
+
+**Limitations.** One evening on a busy machine; no full batch of 100 games and
+no training run was made with the new code; the longest games measured ran to
+day 60 (the windows run to 365 but last 150 s); the new runtime has started a
+few hundred games in these measurements, most of them stopped after 150 s, and
+has played no game of 365 days. `vcmireplay`
+was not run against the changed recorder: with the ledger off there is nothing
+to replay, and `--keep-game-files` restores it.
+
+### 2026-11-20 — Review of the play-speed branch: four findings, fixed; the replay check is not run yet
+
+The user reviewed PR 35 at `3814064` and left four comments. All four were
+confirmed by reading the code; the second one was also reproduced with the
+scripted engine before it was fixed. None of the fixes touches the play loop
+or the update: a seeded game plays as it did.
+
+**1. A kept game could not be verified.** The launcher sets
+`EXPLORER_RL_DECISION_OBSERVATION=0` for every game, also with
+`--keep-game-files`, so a kept ledger has decisions without the observation.
+`vcmireplay` never set the variable and the adapter's default is 1, so a
+replay from a fresh shell regenerated the observation in the first decision
+and `ContextualEvidence::expect` rejected it. An older capture replayed from a
+shell that still held `=0` failed the other way round.
+*Fix, in `engine/ExperimentReplay/ContextualReplay.cpp` only:* before the
+adapters are created, `ContextualReplay::run` reads the first recorded
+decision of the tape and sets the variable to match, in both directions, as
+`configureControllers` already does for `army_information`. Every regenerated
+record is still compared whole with its recording. The summary of a verified
+replay says which form was read (`decisions_repeat_observation`). A tape whose
+decisions are not all of one form fails at the first that differs. The launcher
+is unchanged: every game stays compact. `vcmiclient`, the plugin and the
+recorder are not touched, so the digests of the entry above stand and the
+default runtime stays `local-v8-play-switches-v1`; its own `vcmireplay` was
+frozen before this fix and rejects compact captures, so a kept game is
+verified with a `vcmireplay` built from this commit on.
+Considered and not done: writing the form into the ledger's header. It would
+change the recorder inside the plugin, which means a new play runtime and new
+proof that games are unchanged, for no gain in strictness: the observation of
+a decision is the one of the view record before it, and that record is
+compared either way.
+
+**2. Two benchmark calls removed each other's games.** `bench_play.py` named a
+game's folder by its number under `STATE/games`, the number follows from the
+seed, and an actor removes the folder before and after playing; the state lock
+is taken only by `train`. Reproduced: two calls with the same folder and seed,
+at once, on the scripted engine, gave `actor_error` in the unfixed code.
+*Fix:* every call plays in a folder of its own inside STATE
+(`bench-play-…`), removed at the end. It stays inside the state folder, which
+is what the perf guide promises about these tools.
+
+**3. A failed batch looked like a fast one.** With `--games`, a run in which
+games failed printed its report and exited 0. *Fix:* the report is printed and
+appended as before, and the exit status is 1 with the count on stderr when any
+requested game has no trajectory. A game stopped at the day limit has one and
+counts. The window mode is unchanged: it counts decisions, a failed game there
+lowers the rate instead of raising it, and its report carries the failures.
+
+**4. A failed freeze left a half-copied runtime at the final path.** It had an
+executable `vcmiclient`, which is all `Engine.check` asks for, and the retry
+failed on the existing `bin/AI`. *Fix:* `freeze_runtime.py` builds the runtime
+in `NAME.partial-<pid>` beside the final place and renames it when `config`
+and `Mods` are in; on any failure the partial folder is removed. An existing
+`NAME` is refused before anything is copied, and the rename does not replace a
+folder that has files in it.
+
+**Tests.** 52 pass and 3 are skipped in the cloud container (Linux, no Apple
+GPU; 38 and 2 before): 12 new ones, and the two play-benchmark tests now run
+without MLX because only the update benchmarks need it. The three benchmark
+tests fail on the code before the fixes. The freeze tests replace `otool`,
+`install_name_tool` and `codesign` by a recorder. The changed
+`ContextualReplay.cpp` was syntax-checked with g++ 13 (`-std=c++20
+-fsyntax-only`) against the engine headers of the Mac's `vcmi` checkout and
+this branch's `ExplorerRL` headers; a deliberate error was caught the same
+way. It was **not built, linked or run**.
+
+**Not verified: finding 1 against real captures.** That needs the engine and
+the game data. `tools/check_replay.py` is the acceptance test: it plays one
+short game with the ledger, then replays it from an environment without the
+variable, replays it with the other form set, and replays it with one recorded
+answer of the policy replaced by another answer of the same seat; it passes
+only if the first two verify and the third does not. Run with the training
+engine it checks a compact capture, and with `--vcmi` naming
+`local-v8-sleep-resume-v1` a capture that repeats the observation; the
+commands are in `docs/architecture.md`. The script itself has only run against
+hand-written captures and stand-in verifiers (one that reads the form from the
+tape passes, one that takes it from its environment fails, one that accepts a
+changed answer fails). What it assumes about the real files and has not seen:
+that a game stopped at the day limit leaves `engine/replay.jsonl` as `init`,
+`start` and input/applied pairs with at most one trailing input, and that such
+a game verifies with `--prefix` from its own profile folder. If one of these
+does not hold the script stops with the reason and keeps the game.
+
+### 2026-11-20 — The replay check on the real engine: both kinds of capture verify, a changed answer does not
+
+The user approved the launch ("Yes, Claude runs it" on the question whether
+Claude may run the replay check, then "I approve everything. Run as you will").
+Everything ran in the clone `~/Projects/Heroes-opt` at `748a041` and in a new
+state folder `~/Projects/Heroes-artifacts/replay-check`, which holds
+`latest.json` and `checkpoints/update-001789.pt` copied from
+`play-speed-r3u8uh` (same SHA-256). `~/Projects/Heroes` and `training-trial`
+were not touched; the training run there (pid 42215) was going throughout.
+
+**Build.** `prepare_vcmi.py` refuses to change a checkout it prepared earlier
+("unexpected content": its own patches). The only file that differed from the
+recipe was `ContextualReplay.cpp`, and the copy in `vcmi/` was byte for byte
+the old one, so the new file was copied to its place by hand; `--check` then
+passed. `cmake --build vcmi/build --target vcmireplay --parallel 2` compiled
+one object and relinked `vcmireplay` in 6.4 s. `libvcmi.dylib`, `vcmiclient`,
+`vcmiserver` and the AI plugins kept their timestamps of 19 November.
+
+**Result.** `tools/check_replay.py`, seed 1, three days, `--replay` naming the
+rebuilt `vcmireplay`; both calls exited 0 at the first attempt, with no change
+to the script or the verifier.
+
+| | engine that played | decisions in the capture | wall |
+|---|---|---|---|
+| a | `local-v8-play-switches-v1` (training's) | compact | 5.7 s |
+| b | `local-v8-sleep-resume-v1` (before the switch) | repeat the observation | 4.6 s |
+
+In both: `verified`, `form_read_from_capture`,
+`verified_with_the_other_form_in_the_environment` and
+`changed_answer_rejected` are true. The verifier's own summary named the form
+that was in the capture each time, with the other form set in its environment
+too. Checked per replay: 919 client packets, 673 messages, 241 requests,
+335 responses, 2,630 transactions; the ledger has 7,429 records. Record 3763
+(an answer of seat 0, replaced by another answer the same seat gave) made the
+replay stop at record 3768, "Contextual replay differs", at the next message
+of that seat after decision 133 was consumed. Both games were cut at the day
+limit (`truncated:game_day_limit`, day 4) and replayed with `--prefix`, so the
+two things the script assumed about a cut game's files hold. The lines are in
+`replay-check/check-replay.jsonl`.
+
+The two engines played the same game: choices `[202, 133]`, the same number of
+records and of everything checked. That is the claim of the play-speed entry
+(the switches change what is sent, not what is played) seen once more, on one
+short game.
+
+**Also on the Mac.** `tests/test_check_replay.py`, `test_freeze_runtime.py`
+and `test_perf_tools.py -k "not update"`: 14 passed (macOS, with the pytest of
+`perf-opt-mq0j5t/pydeps`; the training environment has none). The update tests
+were left out so that no GPU work ran beside the user's training.
+
+**Not done.** The full suite was not run on the Mac. One game of one seed and
+three days was checked per engine, not a whole game; a whole game's ledger is
+several gigabytes. `freeze_runtime.py` was not run for real, so no runtime
+with the new `vcmireplay` is frozen: verification uses the one in
+`vcmi/build/bin`, as `docs/architecture.md` says.
+
+### 2026-11-20 — The replay check counted a crashed verifier as a rejection; corrected
+
+A fifth review comment, on `tools/check_replay.py` at `92c1dc8`. The user
+reproduced a false pass: a stand-in verifier passed both clean replays and
+then ended with status 42 before writing a report for the capture with the
+changed answer. The script's fallback for a missing report was
+`{"verified": false}`, the third check asked only for `verified == false` and a
+status other than 0, so the crash counted as "changed answer rejected" and the
+whole check passed. Confirmed by reading the code and by a test that fails on
+`92c1dc8`.
+
+**Fix, in the checker only.** The changed answer counts as rejected when the
+verifier's report exists, is a JSON object, says `verified: false`, carries the
+error of `ContextualEvidence::expect` ("Contextual replay differs at record N")
+with N greater than the number of the changed record, and the status is not 0.
+The changed answer is itself read from the capture, so its effect can only show
+in a record regenerated later; a difference at an earlier record is not caused
+by it. A run without a readable report no longer gets a `verified` value at all;
+its entry says the status and where the console log is. On any failed check the
+work folder stays, as before, with every report and console log. The verifier
+and the engine are not touched.
+
+The rule is tied to the wording of that one error. If the wording changes, the
+check fails and says what it got; it cannot pass by mistake.
+
+**Tests** (scripted, 61 pass and 3 skipped in the cloud container; 52 and 3
+before). Seven stand-in verifiers that pass both clean replays and then, on
+the changed capture: crash with status 42 and no report, leave half a report,
+write JSON that is not a report, stop with another error, give no reason,
+report a difference before the changed answer, or report the difference and
+end with status 0. Each fails the check; the first six passed it at `92c1dc8`.
+One test runs `main` with such a verifier: exit status 1, the folder is kept
+and named in the report. One test gives the rule the error text the Mac's
+`vcmireplay` produced today (difference at record 3768 after the change at
+3763): accepted. The earlier test with a verifier that takes the form from its
+environment now also shows the second case: its difference at the first
+decision is not counted as a rejection of the answer changed later.
+
+**Not run.** The two real-engine checks of the entry above were not repeated
+with the corrected script. What they recorded satisfies the new rule (the two
+lines in `replay-check/check-replay.jsonl` carry "Contextual replay differs at
+record 3768", changed record 3763, and `vcmireplay` ends with status 3 on that
+error), but that is read from their output, not observed by a new run.

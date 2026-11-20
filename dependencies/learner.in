@@ -1,4 +1,4 @@
-# Optional CPU prototype environment; existing recording tools remain stdlib-only.
+# Policy inference, checkpoints and the reference PPO update.
 torch==2.9.1
-# Enable the optional Torch array bridge without changing the tensor backend.
+# Plans handed to the MLX update are NumPy arrays.
 numpy==2.3.5

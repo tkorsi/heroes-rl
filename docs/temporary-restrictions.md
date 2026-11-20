@@ -2,18 +2,30 @@
 
 These restrictions simplify early adventure-policy learning. They are not final
 rules of Heroes III and must not be forgotten when interpreting results.
-The current cycle uses `hero-management-v4`; historical maps and captures keep
-the rules under which they were created.
 
 | Restriction | Current scope | Removal work |
 | --- | --- | --- |
-| Prebuilt starting taverns | `hero-management-v4` retains the v3 starting Tavern in both towns at no resource cost. Hiring still costs native gold and requires a free visitor slot. | Remove each starting Tavern in a new map version; compare recovery after hero loss. |
-| Calendar neutral spawning restored | Since v4, native special-month conditions can create wandering neutral armies. This does not mean new armies appear every month. Initial neutrals, existing growth and town growth retain their native rules. | This restriction was removed on November 12, 2026. Keep v3's disabled-spawning map for historical provenance. |
-| Automatic combat | Adventure experiments delegate tactical combat to BattleAI. | Add and validate a separate battle policy before claiming end-to-end learned play. |
-| Manual troop-slot management restored | New cycles from checkpoint 1,768 use `visible-interaction-budget-hero-relative-stack-management-v1`, restoring split, merge, swap, transfer, stack inspection and upgrades. Historical recruitment-only captures retain their original support. | Prepared for the next user-run cycle; not yet observed in new games. |
-| No artifacts anywhere | `no-artifacts-v1` removes all hero equipment and disables every artifact, including spellbooks and war machines, throughout the game. Starts, hires, purchases, loot and rewards are covered. | Restore normal artifact acquisition in a separately versioned experiment; report that removing catapults and spellbooks changes siege and spell access. |
-| One-action town cooldown | `visible-interaction-budget-recruit-only-town-cooldown-v1` excludes `open_town` after a player closes a town, until that player completes a different action. It also applies after an empty visit. | Review repeat openings and menu alternation after the frozen game. Remove the cooldown by selecting a different support version and retain the original version for replay. |
-| Consecutive identical commands | `visible-interaction-budget-hero-relative-cooldown-v1` retains the town rule and excludes the previous command for each player. Another hero, tile or quantity is a different command. Mandatory choices and window exits stay available, and a repeated end turn is allowed when it is the only available action. | Measure repeated commands, travel and menu alternation. Select a separate support version to remove the restriction. |
+| Prebuilt starting taverns | The scenario `hero-management-v4` gives both starting towns a Tavern at no cost. Hiring still costs gold and needs a free visitor slot. | Remove each starting Tavern in a new map version; compare recovery after hero loss. |
+| Automatic combat | Tactical combat is delegated to VCMI's BattleAI. | Add and validate a separate battle policy before claiming end-to-end learned play. |
+| No artifacts anywhere | The engine setting `no-artifacts-v1` removes all hero equipment and disables every artifact, including spellbooks and war machines, for the whole game. | Restore normal artifacts in a separately versioned experiment; report that removing catapults and spellbooks changes siege and spell access. |
+| Interaction guard | `visible-interaction-budget-hero-relative-stack-cycle-v1` ([heroes/game/guard.py](../heroes/game/guard.py)) keeps the policy from sampling these legal actions: a navigation step already taken twice since the last visible progress, further stack management by a hero or town after 32 such moves in a day, a swap that recreates an army layout already seen since the last progress, a move to an unrevealed tile, to the hero's own tile, to its previous target or to a target that failed since the last progress, the previous command repeated exactly, and reopening a town right after closing it. Mandatory choices and window exits always stay available. | Measure repeated commands, travel and menu alternation, then select a new guard version. |
+| Game horizon | A game is stopped at day 365 or after 163,840 answered decisions per seat and then trained on without a win or loss. | Review once games end naturally well before the limit. |
+
+Not restricted: calendar neutral spawning (restored in v4 on November 12, 2026)
+and manual troop-slot management (split, merge, swap, transfer, stack inspection
+and upgrades, restored from checkpoint 1,768).
+
+The policy also receives `own-army-details-v1`: each owned hero and town's
+composition and stack statistics without opening a window. It reveals nothing
+about enemy armies and is not a reward.
+
+Earlier guard versions (recruit-only, town cooldown, hero-relative cooldown,
+stack management) were removed from the code in the November 2026 refactor. The
+current version contains their rules except the recruit-only exclusion. Captures
+made under the earlier versions can no longer be re-evaluated by this code; the
+versions remain in Git history up to commit `5efe811`.
+
+## How these decisions were made
 
 The historical troop-slot restriction was explicitly requested on 30 October 2026. It excludes
 `split_stack`, `merge_stacks`, `swap_stacks`, `transfer_stack`, `open_stack`,

@@ -1,4 +1,4 @@
-# Production Apple Silicon learner: preserve the existing checkpoint/runtime dependencies.
+# The training Mac: everything in learner.lock plus MLX for the PPO update.
 -r learner.lock
 
 mlx==0.31.1 \

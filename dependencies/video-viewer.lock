@@ -1,2 +1,0 @@
-# Optional offline schematic presentation dependency; not a learner dependency.
-Pillow==12.3.0

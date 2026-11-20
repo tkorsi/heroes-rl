@@ -1,182 +1,243 @@
 # Heroes RL
 
-Learn Heroes III adventure-map strategy with recurrent PPO in the real VCMI
-engine. The policy sees structured, player-visible information and chooses typed
-actions. Combat is handled by BattleAI; screenshots are not policy inputs.
+A policy learns to play the Heroes III adventure map by playing against itself
+in the real [VCMI](https://github.com/vcmi/vcmi) engine. It sees what a player
+sees, as structured data, and chooses typed actions: move a hero, open a town,
+recruit, build, answer a dialog, end the turn. Battles are fought by VCMI's
+BattleAI. Screenshots are never an input.
 
-**Start here:** [architecture and key code](docs/architecture.md) ·
+Training is recurrent PPO. The whole loop is the `heroes/` package, about 8,000
+lines, of which 3,200 are the typed game contract.
+
+**More:** [how it works](docs/architecture.md) ·
 [research journal](docs/research-log.md) ·
 [current restrictions](docs/temporary-restrictions.md)
 
-## Run a training cycle
+## Train
 
-Use the main checkout at `/Users/orsi/Projects/Heroes`. The user runs these
-commands in Terminal; editing or reviewing this project never starts training.
-The prepared Mac runtime and private game assets must already be available.
-The MLX source completed a fresh 100-game continuation from checkpoint 1,765 to
-1,766 and its exact two-policy reconstruction/native-replay diagnostic. The
-targeted existing test run had 94 passes and three errors also reproduced on the
-prior source; it is not a fully green suite. The commands below are for the user
-to run unless assistant execution is explicitly authorized.
+You run training yourself, in Terminal, on the Mac that has the prepared VCMI
+runtime and your Heroes III data. Reading or editing this project never starts it.
 
 ```sh
-cd /Users/orsi/Projects/Heroes
-./run-100-games.command --check       # Preview; no games or artifact cleanup
-./run-100-games.command 200           # 200 games using CPU policy and MLX PPO
-./run-100-games.command              # Default: 500 games
-./run-100-games.command 200 --cpu     # Explicit CPU fallback
-./run-100-games.command 200 --metal   # Previous PyTorch/Metal PPO, CPU policy
+cd ~/Projects/Heroes
+./train.command 1000          # play 1,000 more games, one PPO update per 100
+./train.command check         # show what a run would start from; plays nothing
 ```
 
-The filename remains compatible with existing shortcuts. Any integer from
-**10 to 1,000** is supported, including `--games 250`. Double-clicking launches
-the default 500. There is no default time limit; `--hours 30` adds an explicit
-wall-clock deadline. No automatic launch or restart is scheduled. See
-[the launch policy](AGENTS.md).
+`train.command` uses the training Python, keeps the Mac awake and passes every
+other argument on:
 
-| Current contract | Behavior |
+| Option | Meaning | Default |
+| --- | --- | --- |
+| `--games-per-update N` | games played with the same weights before one update | 100 |
+| `--workers N` | games in play at once, one process each | 14 |
+| `--keep-game-files` | keep each game's engine folder and logs, in `kept-games/`, and have the engine write its replay ledger, about 130 KB per decision | deleted, no ledger |
+| `--backend torch` | slow reference update without MLX | `mlx` |
+| `--windows-per-minibatch N` | loss windows of 16 decisions per optimizer step | 2 |
+| `--windows-per-game N` | windows of a minibatch that come from the same game and share one replay of it; see [Making it faster](#making-it-faster) | 1 |
+| `--learning-rate X` | Adam step size; 8.5e-4 goes with 16 windows per step, see the same section | 3e-4 |
+| `--state DIR` | where checkpoints and the log go | `~/Projects/Heroes-artifacts/training` |
+| `--fresh` | start from a random policy when the state folder is empty | off |
+
+Every default lives in [`heroes/config.py`](heroes/config.py). Paths follow
+`HEROES_ARTIFACTS`, `HEROES_VCMI` and `HEROES_PYTHON` when those are set.
+
+Press Ctrl-C to stop. Games of the unfinished batch are discarded and the next
+run continues from the last saved update.
+
+## What a run does
+
+```text
+newest checkpoint
+   │  14 actor processes, each one game at a time, both seats the same weights
+   ▼
+100 games  ──►  one PPO update on the learner seat of each  ──►  next checkpoint
+   ▲                                                                  │
+   └──────────────────────────────────────────────────────────────────┘
+```
+
+1. **Restore.** The newest checkpoint in the state folder. An empty state
+   folder imports the last checkpoint of the previous pipeline once (weights,
+   Adam, shuffle generator and counters) and saves it as its first file.
+2. **Play.** Each actor starts a headless `vcmiclient`, and the policy answers
+   every decision of both seats. One seat is the learner, alternating by game.
+   A game counts when the engine finished it with a verified win and loss, or
+   when it was stopped at day 365. A crashed or inconsistent game is logged,
+   never trained on, and replaced by another one.
+3. **Update.** After 100 usable games, one PPO epoch over all of them. The
+   update recomputes the recurrent state from the start of each game with the
+   current weights; nothing stored during play is reused except the action
+   taken, its probability and the value estimate. This replay is most of an
+   update's time; see [Making it faster](#making-it-faster).
+4. **Save.** One file per update, then back to step 2.
+
+The state folder holds everything:
+
+| Path | Content |
 | --- | --- |
-| Published state | Latest complete checkpoint **1,768**; restore model, Adam, RNG and progress together |
-| Collection | Ten rolling actors; balanced learner seats against a frozen copy of the batch-start policy |
-| Updates | Complete batches of at most 100 games; save and restore-check each update |
-| Backend | CPU policy and MLX PPO; compatible checkpoint and sampling boundaries |
-| Final game | One fresh diagnostic after the last update; recover any outstanding diagnostic first |
-| Scenario | `hero-management-v4`, starting taverns built, native calendar neutral spawning restored |
-| Game horizon | 365 days; 158,720 ordinary and 5,120 reserved choices per player |
+| `checkpoints/update-NNNNNN.pt` | model, Adam state, shuffle generator and counters after that update |
+| `latest.json` | which checkpoint is newest; switched last, so a crash never leaves a half state |
+| `log.jsonl` | one line when a game is handed out, one when it ends and one per update: outcome, days, samples, losses, timings |
+| `games/` | engine folders of games in play, deleted as each game ends and emptied when a run starts |
+| `lock` | held by the running trainer, so two runs cannot share one state folder |
 
-Training outcomes are engine-reported and do not receive post-game replay or
-policy reconstruction. Source, seed, action, boundary and reward checks remain.
-The final diagnostic receives exact two-policy reconstruction and native replay
-and never enters PPO. A partial batch cannot publish an update; completed
-checkpoints survive a later failure. One diagnostic is not evidence of stronger play.
+## Where the code is
 
-The dashboard shows individual outcomes (`B`, `R`, `C`, `E`) and separate PPO
-progress. Above 100 games, each cell holds five games; 1,000 games use twice the
-grid height of 500. On macOS, `caffeinate -is` permits display sleep while keeping
-idle computation awake. Closing the lid or requesting sleep may still pause the
-process; it continues after wake. Keep Terminal open and power connected.
-
-The next prepared user launch is `./run-100-games.command 100 --mlx` from
-checkpoint **1,768**, with CPU policy inference and MLX PPO. New cycles restore
-manual troop-slot management and upgrades under a new explicit support version;
-all other restrictions and PPO settings remain. Historical captures retain
-their original policy support. The first restored-stack cycle stopped before
-PPO because the quantity sampler could repeat a command rejected by its guard.
-The correction reproduced that failure from saved history and passed exact
-sampling/evaluation checks; the next 100-game continuation still starts at 1,768.
-
-## MLX results and remaining performance work
-
-The user-run **CPU policy / MLX PPO** cycle continued 1,767 to **1,768** with
-100 new games, 228,930 samples and 7,179 optimizer steps. Collection/preparation
-took **23m10s**, complete PPO **600.1246 s**, and the whole cycle **34m26s**.
-Compared with the preceding MLX-policy cycle (35m41s / 12m09s / 51m30s), total
-time fell 33.15%, saving 17m04s; samples fell 4.16%. Different trajectories and
-conditions limit causal attribution, but this supports retaining CPU inference.
-The strict complete-PPO <=600 s target is still missed by 0.1246 s; the inner
-adapter took 596.9127 s. All captures completed, checkpoint restore passed,
-and the final diagnostic passed exact two-policy reconstruction/native replay.
-Red (new 1,768) beat Blue (frozen 1,767); one game does not prove stronger play.
-`--mlx` now selects MLX PPO with CPU gameplay and diagnostics. The initial
-hybrid attempt failed before gameplay because of a stale capture-plan gate;
-that failure and its correction are retained in the research journal.
-
-The subsequent user-run optimized cycle continued 1,766 to **1,767**: 100 new
-games, 238,862 samples and 7,487 optimizer steps. Complete PPO took **729.14 s
-(12m09s)**, collection/preparation 35m41s, and the entire cycle 51m30s. PPO was
-35.9% shorter than the preceding run, with approximately 1.44x throughput after
-normalizing by samples/steps; different recurrent histories and conditions still
-limit attribution. The 600-second goal remains unmet. Checkpoint restore and
-exact two-policy reconstruction/native replay passed; diagnostic Blue (frozen
-1,766) beat Red (new 1,767). One game does not establish a strength change.
-
-The MLX production migration completed a fresh 100-game continuation from
-checkpoint 1,765: 259,090 PPO samples and 8,119 optimizer steps. The complete
-production PPO phase took **1,137.24 seconds (18m57s)**, including admission,
-planning and state import. This misses the **600-second target**; optimization
-continues. Collection and overlapping preparation took 42m51s; the complete
-cycle took 63m02s. All observed power samples showed AC power. Follow-up changes
-overlap current-weight prefixes with CPU planning, remove unused plan/gate
-buffers, and validate shared admission inputs once before and once after the
-individual captures. A saved two-game probe improved from 33.66 to 31.74–31.85
-seconds across two candidate repeats; this does not establish the full-100
-target. The **next fresh cycle is user-launched**.
-The canonical network/PPO code is
-`experiments/learner/mlx_model.py` and `mlx_backend.py`; live neural scoring is
-`mlx_policy.py`. Torch remains at checkpoint, native-history and sampling
-boundaries. Existing CPU and PyTorch/Metal modes remain explicit fallbacks.
-
-Saved-input integration checks completed 1,089 samples / 35 steps and verified
-transaction rollback. Live MLX inference passed unchanged exact reconstruction
-for 1,089 actions/values and 1,861 conditionals. That serial inference probe was
-about three times slower than CPU; gameplay acceleration is not assumed.
-
-The first user-run comparison on `codex/ppo-framework-comparison` completed:
-one shared ten-game cohort, followed by current PyTorch/Metal, Python/MLX and
-Swift/MLX updates. Full update times were 70.86, 204.18 and 251.99 seconds for
-10,885 samples and 343 steps (one epoch). The implementations have different
-kernel optimizations and validation overhead; this does not rank framework or
-language performance in isolation. See the results and comparison contract in `docs/framework-comparison.md` on the preserved local experimental branch.
-It does not replace the campaign backend or publish an official checkpoint.
-The authorized optimized comparison on two saved games is now complete: all nine
-trials passed, with 1,089 samples and 35 steps per trial. Median ready-bundle full
-updates were 9.159 s (PyTorch/Metal), 1.681 s (Python/MLX) and 1.526 s (Swift/MLX).
-MLX consumes plans/targets prepared during a separate 2.012 s export, whereas
-Metal rebuilds them inside its timer. Charging that export entirely to MLX gives
-conservative accounting speedups of 2.48x and 2.59x, not a measured production
-pipeline result. Numerical agreement was close; playing strength and larger-batch
-scaling remain untested. The comparison code is in local commit `8da9caa`.
-The user authorized consolidating the production CPU-policy / MLX-PPO path into `main`; comparison runners and Swift prototypes remain on the preserved experimental branch.
-
-The previous Metal backend uses the **full-D implementation** measured on the same saved
-100-game cohort: 273,913 samples and 8,583 optimizer steps. On the same Mac,
-CPU took **5h30m54s** and Metal **46m34s**, including preparation: **7.105× faster for the complete
-update**. This single paired measurement excludes gameplay and the final
-diagnostic. It is not a promise about total campaign time.
-
-The user accepted CPU/Metal FP32 differences when choosing this backend.
-Full D failed the earlier strict numerical comparison: 439/450 conditional
-argmax matches, with KL and value errors above their bounds. Adoption changes
-the accepted numerical contract; it does not establish equal learning quality
-or playing strength. Later deterministic-pooling prototypes remain separate
-from the adopted full-D source. Exact results and failed attempts remain in
-[the journal](docs/research-log.md).
-
-Metal keeps the original PPO settings, full current-weight recurrent prefixes,
-CPU checkpoint format, 25% MPS memory cap and 4 GiB prefix-constant cache.
-The process retains the 48 GiB RAM reserve, 20% system-free-memory check and
-30 GiB disk reserve. The fresh MLX cycle published checkpoint 1,766; offline
-benchmarks do not publish training checkpoints.
-
-## Find the implementation and evidence
-
-| Read or change | Start here |
+| Path | What it holds |
 | --- | --- |
-| Collection, scheduling, retention and progress | [Cycle coordinator](tools/run_selfplay_training.py) |
-| Policy representation and recurrent memory | [Contextual model](experiments/learner/contextual_model.py) |
-| MLX network, PPO and live inference | [MLX model](experiments/learner/mlx_model.py), [MLX update](experiments/learner/mlx_backend.py), [MLX policy](experiments/learner/mlx_policy.py) |
-| PPO and CPU/Metal execution | [PPO](experiments/learner/ppo.py), [Metal backend](experiments/learner/metal_backend.py) |
-| Admission and checkpoint restoration | [Self-play training](experiments/learner/selfplay_training.py) |
-| Native game actions and replay | [ExplorerRL](engine/ExplorerRL/), [ExperimentReplay](engine/ExperimentReplay/) |
-| Hypotheses, failures, measurements and limitations | [Research journal](docs/research-log.md), [historical notes](docs/project-history.md) |
+| [`heroes/train.py`](heroes/train.py) | the loop above and the pool of actor processes |
+| [`heroes/actor.py`](heroes/actor.py) | play one game, build the learner's trajectory |
+| [`heroes/engine/`](heroes/engine/) | launch VCMI, speak its socket protocol, classify how a game ended |
+| [`heroes/game/`](heroes/game/) | typed observations, offers and actions; the interaction guard |
+| [`heroes/model/policy.py`](heroes/model/policy.py) | the network and its action distribution |
+| [`heroes/learner/`](heroes/learner/) | PPO targets and windows, the reference update, the MLX update |
+| [`heroes/checkpoint.py`](heroes/checkpoint.py) | save, load, and the one-time import of earlier checkpoints |
+| [`engine/`](engine/) | the C++ side: VCMI patches and the ExplorerRL plugin that asks the policy |
+| [`tests/`](tests/) | tests against a scripted stand-in engine; no VCMI needed |
 
-The [architecture guide](docs/architecture.md) explains the execution path,
-setup and compatibility boundaries. Historical launchers, maps and validation
-sources are retained where imports, replay or source hashes still depend on
-them; they are not alternative entry points for the current campaign.
+## Status
 
-## Preserve the research state
+The last checkpoint of the previous pipeline is update **1,785** (9,922 games,
+13.7 million decisions). This pipeline continues from it.
 
-Record, analyze, then retire the preceding reviewed raw run at the next manual
-launch. Cleanup preserves and restore-checks the complete checkpoint pair,
-consumed seed reservations and pending diagnostic obligation. An unreviewed or
-live run cannot be retired. Keep the current investigation's saved cohort while
-it remains required evidence; the journal records retention decisions.
+The refactored pipeline was first verified without the engine: three captured
+games replay through the moved policy bit for bit, the MLX update receives
+byte-identical inputs for them, the previous pipeline's checkpoints import with
+identical weights and optimizer state, and the loop runs end to end against a
+scripted engine.
 
-Weights, raw captures, runtime builds and original game data stay in private
-storage. Keep the append-only journal and its `Retention-reviewed run` markers
-at their existing path. Read [AGENTS.md](AGENTS.md) before changing source or
-publishing work; no experiments or validation tooling are published by default.
+On 2026-11-18 it ran on the Mac for the first time: two runs of ten games and
+one PPO update each, into a scratch folder. All 20 games ended naturally, both
+updates were saved, and the second run resumed from the first. A game stopped
+at a limit, a failed game and an interrupted run have not been seen with the
+real engine yet, and nothing has run in the real state folder.
+
+To try a change without touching the real state, use a scratch folder:
+
+```sh
+./train.command 10 --games-per-update 10 --state ~/Projects/Heroes-artifacts/training-trial
+```
+
+The MLX update checks its first minibatch against the probabilities recorded
+during play and stops if they disagree, so a mismatch between play and update
+cannot train silently.
+
+## Making it faster
+
+`log.jsonl` records, for every game, its wall time and recipe compile time, and
+for every update how long collecting, planning and the GPU steps took.
+[`tools/perf/`](tools/perf/README.md) has scripts that measure the parts on real
+games.
+
+The two runs of 2026-11-18, ten games per update:
+
+| | Learner decisions | Collecting | PPO update |
+| --- | --- | --- | --- |
+| Run 1 | 105,875 | 9 min 49 s | 10 min 52 s |
+| Run 2 | 172,718 | 16 min 44 s | 28 min 12 s |
+
+The first update of 100 games, on 2026-11-19, took 4 h 39 min for 1,372,976
+learner decisions that took 1 h 50 min to collect, on a Mac that was short of
+power for most of it. What these numbers and the measurements of 2026-11-19 in
+the [journal](docs/research-log.md) say:
+
+- **The charger.** Ten games need more power than a 65 W charger supplies.
+  Once the battery is empty the Mac slows to what the charger gives: games fell
+  from about 100 to about 34 decisions per second each, for the rest of the
+  night. `pmset -g batt` must not show the charge falling while on AC.
+- **The update is most of a cycle, and nearly all of it is replay.** Every
+  optimizer step recomputes the recurrent state of the two games its windows
+  come from, from their first frame with the current weights: about 600
+  replayed decisions for each one that is trained on. This part of a game's
+  cost grows with the square of its length. Run 2 above held one game with
+  63,390 learner decisions and needed 9.8 ms per decision, run 1 needed 6.2 ms.
+- **The replay cannot be skipped.** Keeping the states before a game's windows
+  from one optimizer step to the next was built twice and removed twice. Kept
+  for many steps, they changed the gradient beyond use, and replaying only the
+  last 8,000 or 32,000 frames before a window did not help: the policy's memory
+  spans the whole game. Kept for only 8 small steps, each gradient stayed close
+  to the exact one, and a whole update still moved the policy 2.5 to 5 times
+  further than the exact update, because a state from before earlier steps
+  hides how far the policy has already moved on that game.
+- **The replay can be shared.** `--windows-per-minibatch 16 --windows-per-game 8
+  --learning-rate 8.5e-4` takes eight windows of a game per step, so one replay
+  serves all eight, still with the current weights: every step is an exact PPO
+  step on 256 decisions instead of 32. On 12 real games with the GPU otherwise
+  free a whole update took 248 s against about 990 s by default, and on a batch
+  of production size (those games eight times, 1.08 million decisions) the
+  rates of the first 120 steps project to 38 minutes against 2.9 hours. The
+  learning rate belongs to the setting: 8 times fewer steps at 3e-4 change the
+  weights less than half as far as the default update, and at 8.5e-4 as far.
+  Judged on 12 games no update saw, the update then moved the policy no further
+  than the default and fitted the value at least as well. Which setting wins
+  more games per game played is a question for long training runs, so the
+  defaults are unchanged.
+- **A batch no larger than the number of actors takes as long as its longest
+  game.** With 100 games per update the actors stay busy and this evens out.
+- `--games-per-update`. Fewer games per update means more frequent updates on
+  less data.
+
+### Playing games
+
+Until 2026-11-19 the engine sent every observation twice, as a view and again
+inside the decision that follows, and its replay recorder wrote about 130 KB
+per decision into a ledger that nothing reads: 2.2 GB for a game of 14,000
+decisions, some 450 GB of disk writes per 100 games. The runtime
+`local-v8-play-switches-v1` has a switch for each, and the launcher sets both.
+A decision now takes the observation of the view before it, as the same Python
+object, and the policy and the recipe compiler do that observation's work once.
+The games are the same games: a seeded game gives the same digest of everything
+the learner reads, before and after, on the old runtime and on the new one.
+
+Measured on 2026-11-19 while the Mac was also running a PPO update and the
+games of another run, so every figure is lower than on a free machine:
+
+| | Before | After |
+| --- | --- | --- |
+| one seeded game to day 60, 14,208 decisions: play, then compile | 147 s, 16 s | 94 s, 12 s |
+| ten actors, the same seeded games, decisions per second of all games | 650 | 1,030 |
+| engine folder of that one game | 2.2 GB | 5 MB |
+
+- `--workers`. On the same evening 14 actors answered about 1,220 decisions per
+  second against 1,060 for ten, in windows taken in turns, and 16 gave no more:
+  a game keeps about 0.8 of a core busy and the Mac has 16. 14 is the default.
+  An actor holds its game's frames until the game ends, up to about 3.5 GB for
+  a game of 365 days.
+- **What is left.** A decision costs about 6 ms of CPU. About 2 ms are the
+  engine's: after every applied network packet, and again before every result
+  and decision, it rebuilds each player's whole observation to see whether it
+  changed. That needs the plugin to build its observation in a form that is
+  cheap to compare; nothing in Python can remove it. The policy's forward pass
+  takes 1.9 ms, decoding and checking a view 0.8 ms, sampling 0.5 ms, and
+  compiling the recipe after the game another 0.8 ms per decision.
+- **Game length is the larger lever, and it is not code.** A seat answers about
+  100 decisions per game day, most of them stack moves within the guard's daily
+  budget of 32 per hero and town, and a game averages 32,000 decisions. The 13%
+  of games that reach day 350 hold a third of all decisions, yet a day limit
+  alone saves little: stopping at day 200 would cut 22% of the decisions and
+  leave twice as many games without a result. Fewer decisions per day would cut
+  play and update time alike. That is a question of the guard and the action
+  space.
+
+## Develop
+
+```sh
+python -m pip install pytest
+python -m pytest              # about 30 seconds, no engine, no saved games
+```
+
+The tests play scripted games through the real sockets, environment, actor,
+PPO reference update and checkpoint code. They cannot tell you whether VCMI
+behaves; only a real run can.
+
+To rebuild the engine see [the architecture guide](docs/architecture.md#engine).
+
+## Rules of the project
+
+- Read [AGENTS.md](AGENTS.md) before changing or publishing anything. The user
+  launches all training.
+- Record meaningful steps in the [research journal](docs/research-log.md).
+- Weights, captures, runtime builds and game data stay in private storage.
 
 VCMI is GPL-2.0-or-later; see [third-party notices](THIRD_PARTY_NOTICES.md).
 Original Heroes III assets are user-supplied and are not redistributed here.
