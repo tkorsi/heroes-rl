@@ -251,7 +251,7 @@ training run yet; what is known is what they do to a batch of games.
 | `--stack-moves N` | stack rearrangements a hero or town may do per game day; 32 without the flag | 8: 66 decisions per seat and day instead of 100. 4: 55 |
 | `--windows N` | windows a hero or town may open per game day; no daily budget without the flag | 6: 74 decisions per seat and day |
 | `--decisions N` | decisions a seat may take per game day before it can only close windows and end its turn | 40: 33 decisions per seat and day, but half the moves and a sixth of the recruiting |
-| `--play-during-update` | the actors start on the next batch while the update runs, with the weights from before it | not measured: it needs a training run |
+| `--play-during-update` | the actors start on the next batch while the update runs, with the weights from before it; with `--backend torch` only | not measured: it needs a training run |
 
 - **The two targeted budgets together are the useful ones.** A seat answers
   about 100 decisions per game day and the learner seats' actions are 47%
@@ -271,7 +271,15 @@ training run yet; what is known is what they do to a batch of games.
 - **Play during the update** makes the first games of each batch one update
   old: PPO's ratio is then taken against the weights that played them, as it
   is for every game, but those are no longer the weights the update starts
-  from. Tested with the scripted engine only.
+  from. The MLX update refuses exactly that: before its first step it compares
+  what it computes for a minibatch with what was recorded during play, and it
+  would stop the second update. So the setting is refused with the MLX
+  backend before any game is played and works with the reference update only,
+  which is too slow for training runs. Making it usable needs each trajectory
+  to name the checkpoint that played it and the check to be made against
+  those weights. If the next batch fails while an update runs, that update is
+  finished and saved before the failure is reported. Tested with the scripted
+  engine only.
 - A day limit below 365 was measured (on 14 whole games, 180 keeps 64% of the
   decisions and 9 of the 12 natural endings) and not made a setting: with
   enough training, games become shorter by themselves.

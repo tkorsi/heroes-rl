@@ -9217,3 +9217,60 @@ update with two trajectories per game and the play-during-update path have not
 met the real engine or the MLX update. Budget rows are single 14-game batches.
 The last engine change was timed on two single games and two batch pairs only,
 because the Mac was no longer free.
+
+### 2026-11-20 — Review of the third play-speed round: three findings and the suggested launch, corrected
+
+The user reviewed PR 36 at `de0720e`. He confirmed the collection speedup on
+the saved measurements and reproduced three faults with the scripted engine.
+All three were real.
+
+1. **Play during the update stops the second MLX update.** Games begun during
+   update N are played by the weights from before it. Before its first step
+   the MLX update compares what it computes for the first minibatch with the
+   log-probabilities and values recorded during play, and stops when they
+   differ ("Initial MLX prediction sanity limits exceeded"). The tests of the
+   entry above ran the reference update, which has no such check, so this went
+   unseen, and the launch suggested in the PR would have failed at its second
+   update. Fixed the small way: `train` refuses `--play-during-update` with
+   the MLX backend before anything is played. The setting now works with the
+   reference update only, which is too slow for training; supporting MLX
+   needs each trajectory to name its behaviour checkpoint and the check to be
+   made against those weights. Not built.
+2. **A failing next batch lost the update that was running.** `Batch.step`
+   raised from inside the update's progress callback, which unwound the update
+   before `checkpoint.save`. The callback now keeps the error and stops
+   stepping; the update finishes, is saved and logged, and the error is raised
+   after that. A restart continues from the saved update.
+3. **The two-seat benchmark hashed one seat.** `bench_play.py --both-seats`
+   counted both seats' samples but its `digests` covered the learner seat
+   only, so a changed or missing opponent trajectory was invisible. The report
+   now also carries `seat_digests`, one per colour and game, `null` for a
+   missing trajectory; `digests` is unchanged, so earlier runs still compare.
+   The two-seat rows of the entry above therefore show that the learner seats
+   were unchanged and say nothing about the opponent trajectories beyond their
+   sample count.
+
+**The suggested launch was wrong** in two ways besides the overlap flag. Its
+state folder did not exist, so `restore` would have imported the earlier
+pipeline's checkpoint 1785 instead of 1791; and it mixed the new settings into
+what was meant as a speed comparison. Corrected in the PR description: copy
+`update-001791.pt` into a new folder, write a `latest.json` that names it, and
+read `./train.command check --state` before playing. Tried without playing:
+the check prints `continues {'updates': 1791, 'games': 10342, 'decisions':
+20791899, 'optimizer_steps': 652799}`, and the copied file has the SHA-256 the
+entry of the pause records (`ca190c8a…`). The comparison run keeps the usual
+settings.
+
+**Tests.** 89 scripted tests pass (86 before): the refusal with the MLX
+backend through `train` and through the command line, with no state folder
+created; a first batch of two good games, every later game failing while a
+slowed reference update runs, ending with update 1 saved, the failure raised,
+and a restart reaching update 2 (without the fix the same test leaves only the
+initial checkpoint); `seat_digests` equal across two runs, the learner's equal
+to the one-seat digests, and a dropped opponent trajectory shown as `null`.
+
+**Not run.** The two-seat benchmark was not repeated on real games with the
+new digests: the user's 100-game baseline run on main was in progress and a
+14-actor benchmark beside it would have spoiled its timing. A full 100-game
+cycle including the PPO update has still not been measured with this branch;
+the 26 minutes of the entry above are collection only.

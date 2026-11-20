@@ -161,6 +161,45 @@ def test_the_next_batch_is_begun_while_the_update_runs(config):
     assert order(True, config.state.with_name("overlapped")) == (True, True)
 
 
+def test_playing_during_the_update_is_refused_with_the_mlx_update(config):
+    # The MLX update checks its first minibatch against the weights it starts from; games begun during the
+    # previous update were played by older ones, and the second update would stop there.
+    with pytest.raises(SystemExit, match="--backend torch only"):
+        train(replace(config, backend="mlx", play_during_update=True), 4, fresh=True, out=io.StringIO())
+    assert not config.state.exists()
+    with pytest.raises(SystemExit, match="--backend torch only"):
+        main(["train", "4", "--fresh", "--play-during-update", "--state", str(config.state), "--vcmi", str(config.vcmi),
+              "--game-data", str(config.game_data)])
+    assert not config.state.exists()
+
+
+def test_a_failing_next_batch_does_not_cost_the_update_that_was_running(config, fake_engine, monkeypatch):
+    from heroes.learner import ppo
+    fake_engine(days=3, abort_from=3)  # the two games of the first batch are fine, every later one fails
+    reference = ppo.update
+
+    def slow_update(*arguments, progress, **options):
+        # This update "runs" until the next batch was handed out and failed three times, and a little longer.
+        deadline, after = time.monotonic() + 30, 0
+        while time.monotonic() < deadline and after < 10:
+            progress(0, 1)
+            time.sleep(0.05)
+            after += sum(record["event"] == "game" and record["status"] == "failed" for record in _log(config)) >= 3
+        return reference(*arguments, progress=progress, **options)
+
+    monkeypatch.setattr(ppo, "update", slow_update)
+    with pytest.raises(RuntimeError, match="games failed"):
+        train(replace(config, play_during_update=True), 4, fresh=True, out=io.StringIO())
+    # The update that was running finished and was saved before the failure was reported.
+    assert checkpoint.latest(config.state).name == "update-000001.pt"
+    records = _log(config)
+    assert [record["update"] for record in records if record["event"] == "update"] == [1]
+    assert sum(record["event"] == "game" and record["status"] == "failed" for record in records) >= 3
+    # A restart finds it.
+    fake_engine(days=3)
+    assert train(config, 2, out=io.StringIO()).progress["updates"] == 2
+
+
 def test_the_training_changes_are_settings_of_a_run(config):
     from heroes.game import guard
     main(["train", "2", "--fresh", "--games-per-update", "2", "--workers", "2", "--both-seats", "--play-during-update",

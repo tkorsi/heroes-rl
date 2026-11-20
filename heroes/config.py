@@ -43,7 +43,7 @@ class Config:
 
     # What a game is trained on.
     both_seats: bool = False  # train on the opponent seat's experience too: two trajectories per game
-    play_during_update: bool = False  # collect the next batch while the update runs, one update behind
+    play_during_update: bool = False  # collect the next batch while the update runs, one update behind; torch backend only
 
     # How the policy learns.
     games_per_update: int = 100  # all played with the same weights, then one PPO update

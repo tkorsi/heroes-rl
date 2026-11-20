@@ -122,10 +122,43 @@ def test_the_play_benchmark_reports_games_and_a_window(fake_engine, tmp_path):
     # The same seeded games on another number of actors are the same games.
     again = bench_play.measure(replace(config, workers=1), games=3)
     assert again["digests"] == report["digests"] and again["choices"] == report["choices"]
+    assert "seat_digests" not in report  # one seat: the report is what it was
+    # Both seats: the learner seat's digests are those of the one-seat run, and every colour has its own.
+    both = bench_play.measure(replace(config, both_seats=True), games=3)
+    assert both["digests"] == report["digests"] and both["samples"] == 24
+    assert [sorted(seats) for seats in both["seat_digests"]] == [["blue", "red"]] * 3
+    assert [seats[("red", "blue")[number % 2]] for number, seats in enumerate(both["seat_digests"], 1)] == both["digests"]
+    assert all(len(set(seats.values())) == 2 and all(seats.values()) for seats in both["seat_digests"])
+    assert bench_play.measure(replace(config, both_seats=True), games=3)["seat_digests"] == both["seat_digests"]
     window = bench_play.measure(config, seconds=1.5, warmup=0.5)
     assert window["mode"] == "window" and window["decisions"] > 0 and window["games_failed"] == 0
     # Every call played in a folder of its own and took it away again.
     assert sorted(item.name for item in config.state.iterdir()) == ["checkpoints", "latest.json"]
+
+
+def test_a_seat_without_a_trajectory_shows_in_the_two_seat_digests(fake_engine, tmp_path, monkeypatch):
+    import bench_play
+    from heroes import checkpoint
+    from heroes.config import Config
+    engine = fake_engine(days=4, map=8)
+    config = Config(vcmi=engine.binary, game_data=engine.data, game_map=engine.game_map, state=tmp_path / "state",
+                    workers=1, both_seats=True)
+    checkpoint.save(config.state, checkpoint.fresh(learning_rate=3e-4))
+    whole = bench_play.measure(config, games=2)
+    original = bench_play.Pool.next
+
+    def next_without_the_opponent(self, *arguments):  # digests are taken here, after an actor handed its game back
+        message = original(self, *arguments)
+        if message is not None and message[0] == "game":
+            message[2].other = None
+        return message
+
+    monkeypatch.setattr(bench_play.Pool, "next", next_without_the_opponent)
+    partial = bench_play.measure(config, games=2)
+    assert partial["digests"] == whole["digests"]
+    for learner, seats, complete in zip(("blue", "red"), partial["seat_digests"], whole["seat_digests"]):
+        opponent = "red" if learner == "blue" else "blue"
+        assert seats == {learner: complete[learner], opponent: None} and complete[opponent]
 
 
 def test_two_play_benchmarks_on_one_state_folder_leave_each_other_alone(fake_engine, tmp_path):

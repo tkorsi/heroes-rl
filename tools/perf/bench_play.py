@@ -41,6 +41,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from heroes import checkpoint  # noqa: E402
 from heroes.actor import Job  # noqa: E402
 from heroes.config import Config  # noqa: E402
+from heroes.engine.env import COLORS  # noqa: E402
 from heroes.train import Pool  # noqa: E402
 
 
@@ -125,6 +126,12 @@ def measure(config, *, games=None, seconds=None, warmup=30.0, seed=1):
                                             for action in game.trajectory.actions).most_common()),
                   game_seconds=[round(game.seconds, 1) for game in finished],
                   digests=[digest(game.trajectory)[:16] if game.trajectory is not None else None for game in finished])
+    if config.both_seats:
+        # One digest per colour: the learner seat's above says nothing about the other trajectory, or its absence.
+        report["seat_digests"] = [
+            {COLORS[seat]: digest(trajectory)[:16] if trajectory is not None else None
+             for seat, trajectory in ((game.job.learner, game.trajectory), (1 - game.job.learner, game.other))}
+            for game in finished]
     return report
 
 

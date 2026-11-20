@@ -71,7 +71,10 @@ recipe compiler when its first game ends, and a file changed meanwhile fails
 that game. Measure from a copy (`git archive HEAD | tar -x -C SOMEWHERE`).
 
 `--both-seats` builds and compiles the opponent seat's trajectory as well, as
-training does with that setting, and `--guard NAME` plays with another
+training does with that setting. The report then also carries `seat_digests`,
+one digest per colour for every game, with `null` where a seat gave no
+trajectory; `digests` stays the learner seat's, so it still compares with a
+run without the flag. `--guard NAME` plays with another
 interaction guard, for example
 `--guard "$(python -c 'from heroes.game import guard; print(guard.version(stack_moves=4, windows=6))')"`.
 A guard with other budgets samples from another support, so these are other

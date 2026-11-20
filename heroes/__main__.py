@@ -63,7 +63,7 @@ def main(argv=None):
                                  help="train on both seats of every game: two trajectories per game")
             command.add_argument("--play-during-update", action="store_true",
                                  help="play the next batch while the update runs; its first games use the weights "
-                                      "from before that update")
+                                      "from before that update (with --backend torch only)")
             command.add_argument("--stack-moves", type=int,
                                  help="stack rearrangements a hero or town may do per game day (default 32)")
             command.add_argument("--windows", type=int,

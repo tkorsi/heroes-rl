@@ -17,6 +17,8 @@ The script is the JSON in ``FAKE_VCMI``:
            the policy side hangs up) or "abort" (fails before connecting)
   still    true for a map whose objects stay where they are, so only the
            resources change from day to day (default false)
+  abort_from  game number from which every game fails before connecting, like
+           "abort" (default: none)
   repeat   true for an engine that ignores EXPLORER_RL_DECISION_OBSERVATION=0
            and sends the observation again in every decision (default false)
   flicker  true for a map on which two tiles change from day to day (default false)
@@ -148,7 +150,7 @@ class Seat:
 def main():
     if not (CONFIG / "settings.json").is_file() or not Path(sys.argv[sys.argv.index("--logLocation") + 1]).is_dir():
         sys.exit("Headless game start failed: no profile at " + str(CONFIG))
-    if SCRIPT["end"] == "abort":
+    if SCRIPT["end"] == "abort" or "abort_from" in SCRIPT and int(EPISODE) >= SCRIPT["abort_from"]:
         print("Headless game start failed: scripted", flush=True)
         sys.exit(134)
     seats = [Seat(0), Seat(1)]

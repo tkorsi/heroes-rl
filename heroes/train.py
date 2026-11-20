@@ -7,7 +7,9 @@ the next checkpoint, which the actors then load for the next batch.
 
 With ``play_during_update`` the actors do not wait for the update: they start
 on the next batch at once, with the weights from before it. Those games are one
-update behind; the rest of that batch is played with the new weights.
+update behind; the rest of that batch is played with the new weights. Only the
+reference backend takes such a batch: the MLX update refuses games that the
+weights it starts from did not play.
 """
 from __future__ import annotations
 
@@ -373,6 +375,14 @@ def collect(pool, config, path, target, numbers, update, display, log, batch=Non
 
 def train(config, games, *, fresh=False, out=sys.stderr):
     """Play ``games`` games in batches of ``config.games_per_update`` and update after each batch."""
+    if config.play_during_update and config.backend == "mlx":
+        # Before its first step the MLX update compares what it computes for a
+        # minibatch with what was recorded while playing, and stops if they
+        # differ. Games begun during an update were played by the weights from
+        # before it, so that check would stop the next update.
+        raise SystemExit("--play-during-update works with --backend torch only: the MLX update checks its first "
+                         "minibatch against the weights that played the games, and the first games of each "
+                         "batch would have been played by the weights from before the previous update.")
     config.engine().check()
     update_policy = update_function(config)
     config.state.mkdir(parents=True, exist_ok=True)
@@ -409,11 +419,18 @@ def _train(config, games, update_policy, fresh, out):
                 following = Batch(pool, config, min(config.games_per_update, games - target), numbers, update + 1,
                                   display, log)
 
-            def progress(step, total, update=update, collected=collected, path=path, following=following):
+            failed = []  # what stopped the next batch while this update ran
+
+            def progress(step, total, update=update, collected=collected, path=path, following=following,
+                         failed=failed):
                 display.status(f"update {update}  PPO step {step}/{total}  {_clock(time.monotonic() - collected)}")
                 # The actors play on with the weights this update started from.
-                while following is not None and not following.done and following.step(path, timeout=0):
-                    pass
+                # If that batch fails, this update still finishes and is saved first.
+                try:
+                    while following is not None and not failed and not following.done and following.step(path, timeout=0):
+                        pass
+                except Exception as error:
+                    failed.append(error)
 
             report = update_policy(state.model, state.optimizer,
                                    [trajectory for game in batch for trajectory in game.trajectories],
@@ -436,6 +453,8 @@ def _train(config, games, update_policy, fresh, out):
                          f"KL {report.approximate_kl:.5f}  games {_clock(collected - started)}  "
                          f"PPO {_clock(updated - collected)}")
             games -= target
+            if failed:
+                raise failed[0]
     except KeyboardInterrupt:
         display.line(f"Stopped. The next run continues from update {saved_update}; "
                      "games of the unfinished batch are discarded.")
