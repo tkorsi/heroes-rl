@@ -17,7 +17,10 @@ and that it still compares every record:
 
 1. the capture verifies from an environment without the variable;
 2. it verifies with the variable set to the other form;
-3. with one recorded answer of the policy replaced by another, it does not.
+3. with one recorded answer of the policy replaced by another, the verifier
+   reports that the replay differs from the capture at a record after that
+   answer. Only that report counts: a verifier that crashed, wrote no report
+   or stopped for another reason has rejected nothing, and the check fails.
 
 One JSON line reports them; the exit status is 0 only if all three held. Run
 it once with the engine training uses and once with ``--vcmi`` naming an
@@ -31,6 +34,7 @@ import json
 import os
 from pathlib import Path
 import random
+import re
 import shutil
 import subprocess
 import sys
@@ -41,6 +45,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 # What the launcher sets for a game. A replay starts without any of it, like a fresh shell.
 OWNED_VARIABLES = ("EXPLORER_RL_", "VCMI_RECORD_", "VCMI_EXPERIMENT_", "VCMI_USER_DATA_DIR", "XDG_")
 SWITCH = "EXPLORER_RL_DECISION_OBSERVATION"
+# How ``ContextualEvidence::expect`` words a regenerated record that is not the recorded one.
+DIFFERS = re.compile(r"Contextual replay differs at record (\d+)\b")
 
 
 def play(config, seed, directory):
@@ -136,10 +142,27 @@ def replay(binary, profile, folder, name, log, tape, *, prefix, switch=None, tim
                                 stdin=subprocess.DEVNULL, stdout=console, stderr=subprocess.STDOUT, timeout=timeout)
     try:
         outcome = json.loads(report.read_text())
+        if not isinstance(outcome, dict):
+            raise ValueError("not a report")
     except (OSError, ValueError):
-        outcome = {"verified": False, "error": f"vcmireplay wrote no report; see {folder / (name + '-console.log')}"}
+        # Not a verdict of either kind, so no "verified" here: the verifier did not get to give one.
+        outcome = {"error": f"vcmireplay ended with status {result.returncode} and no report; "
+                            f"see {folder / (name + '-console.log')}"}
     files["contextual"].unlink()  # the largest file by far; the report and the console log stay
     return {**outcome, "returncode": result.returncode}
+
+
+def differs_after(outcome, record):
+    """Whether a replay's report says the replay differs from its capture at a record after ``record``.
+
+    A changed answer is itself read from the capture, so what it changes shows in
+    a record the adapter regenerates later. Nothing else is a rejection of the
+    change: not a crash, not a missing report, not another error, and not a
+    difference at an earlier record, which the change cannot have caused.
+    """
+    error = outcome.get("error")
+    found = DIFFERS.match(error) if outcome.get("verified") is False and isinstance(error, str) else None
+    return found is not None and int(found.group(1)) > record and outcome["returncode"] != 0
 
 
 def check(game_folder, binary, work, *, prefix):
@@ -159,7 +182,7 @@ def check(game_folder, binary, work, *, prefix):
         return replay(binary, profile, work, name, log, lines, prefix=prefix, switch=switch)
 
     def reason(outcome):
-        return (outcome.get("error") or json.dumps(outcome.get("divergence")))[:400]
+        return str(outcome.get("error") or json.dumps(outcome.get("divergence")))[:400]
 
     plain = run("plain", tape)
     other = run("other-environment", tape, switch="0" if repeated else "1")
@@ -168,7 +191,7 @@ def check(game_folder, binary, work, *, prefix):
         "verified": plain.get("verified") is True and plain["returncode"] == 0,
         "form_read_from_capture": plain.get("summary", {}).get("decisions_repeat_observation") is repeated,
         "verified_with_the_other_form_in_the_environment": other.get("verified") is True and other["returncode"] == 0,
-        "changed_answer_rejected": tampered.get("verified") is False and tampered["returncode"] != 0,
+        "changed_answer_rejected": differs_after(tampered, changed[1]),
     }
     report = {"decisions": "repeat the observation" if repeated else "compact", "records": len(tape), **held,
               "checked": plain.get("summary", {}).get("checked"), "changed_record": changed[1]}

@@ -8828,3 +8828,47 @@ three days was checked per engine, not a whole game; a whole game's ledger is
 several gigabytes. `freeze_runtime.py` was not run for real, so no runtime
 with the new `vcmireplay` is frozen: verification uses the one in
 `vcmi/build/bin`, as `docs/architecture.md` says.
+
+### 2026-11-20 — The replay check counted a crashed verifier as a rejection; corrected
+
+A fifth review comment, on `tools/check_replay.py` at `92c1dc8`. The user
+reproduced a false pass: a stand-in verifier passed both clean replays and
+then ended with status 42 before writing a report for the capture with the
+changed answer. The script's fallback for a missing report was
+`{"verified": false}`, the third check asked only for `verified == false` and a
+status other than 0, so the crash counted as "changed answer rejected" and the
+whole check passed. Confirmed by reading the code and by a test that fails on
+`92c1dc8`.
+
+**Fix, in the checker only.** The changed answer counts as rejected when the
+verifier's report exists, is a JSON object, says `verified: false`, carries the
+error of `ContextualEvidence::expect` ("Contextual replay differs at record N")
+with N greater than the number of the changed record, and the status is not 0.
+The changed answer is itself read from the capture, so its effect can only show
+in a record regenerated later; a difference at an earlier record is not caused
+by it. A run without a readable report no longer gets a `verified` value at all;
+its entry says the status and where the console log is. On any failed check the
+work folder stays, as before, with every report and console log. The verifier
+and the engine are not touched.
+
+The rule is tied to the wording of that one error. If the wording changes, the
+check fails and says what it got; it cannot pass by mistake.
+
+**Tests** (scripted, 61 pass and 3 skipped in the cloud container; 52 and 3
+before). Seven stand-in verifiers that pass both clean replays and then, on
+the changed capture: crash with status 42 and no report, leave half a report,
+write JSON that is not a report, stop with another error, give no reason,
+report a difference before the changed answer, or report the difference and
+end with status 0. Each fails the check; the first six passed it at `92c1dc8`.
+One test runs `main` with such a verifier: exit status 1, the folder is kept
+and named in the report. One test gives the rule the error text the Mac's
+`vcmireplay` produced today (difference at record 3768 after the change at
+3763): accepted. The earlier test with a verifier that takes the form from its
+environment now also shows the second case: its difference at the first
+decision is not counted as a rejection of the answer changed later.
+
+**Not run.** The two real-engine checks of the entry above were not repeated
+with the corrected script. What they recorded satisfies the new rule (the two
+lines in `replay-check/check-replay.jsonl` carry "Contextual replay differs at
+record 3768", changed record 3763, and `vcmireplay` ends with status 3 on that
+error), but that is read from their output, not observed by a new run.

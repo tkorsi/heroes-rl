@@ -253,6 +253,9 @@ kinds verify from any shell; everything else is compared exactly as before.
 the ledger, replays it three times, and passes only if the capture verifies
 from a clean environment, verifies with the other form set in the environment,
 and is rejected once one recorded answer of the policy is replaced by another.
+Rejected means that the verifier's report names a difference at a record after
+the changed answer; a verifier that crashed, wrote no report or stopped for
+another reason fails the check, and the folder with its output is kept.
 It starts the engine, so the user launches it:
 
 ```sh
