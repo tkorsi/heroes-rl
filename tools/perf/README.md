@@ -55,7 +55,13 @@ $P tools/perf/bench_play.py $S --workers 10 --seconds 130 --warmup 20 --out $S/r
 
 The first is how a change to the play path is shown to be exact on more than
 one game: game `n` of a seed is the same game in every run, whatever the number
-of actors, so every digest must stay as it was. The second is the rate a
+of actors, so every digest must stay as it was. If a game gives no trajectory
+the run compares nothing, however fast it was: the report is still written,
+with the reason of each failure, and the exit status is 1. A game stopped at
+the day limit has a trajectory and counts. Every call plays in a folder of its
+own inside the state folder, so two calls on the same folder and seed do not
+remove each other's games; they still share the Mac, so only their digests
+compare, not their times. The second is the rate a
 training run collects at while no actor is idle. It depends on everything else
 the Mac is doing, so compare versions alternating, and compare actor counts in
 one sitting. `--vcmi` selects another engine build; `HEROES_VCMI` does the same.

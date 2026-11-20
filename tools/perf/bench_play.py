@@ -4,13 +4,17 @@
     python tools/perf/bench_play.py STATE --workers 14 --seconds 180 [--warmup 30]
 
 STATE is a state folder of its own with a checkpoint and ``latest.json``.
-Nothing is trained or saved besides the report, one JSON line.
+Nothing is trained or saved besides the report, one JSON line. Every call
+plays in a folder of its own inside STATE and removes it at the end, so two
+calls with the same STATE and seed do not touch each other's games.
 
 With ``--games`` the same seeded games are played to their end, whatever the
 number of actors, and the line carries one digest per game of everything the
 learner reads of it. A change to the play path that is meant to be exact must
 leave every digest as it was; the times then compare the two versions on
-identical work.
+identical work. A game that gives no trajectory makes the run useless as a
+comparison, however fast it was: the report is still printed, with the reason
+of each failure, and the exit status is 1.
 
 With ``--seconds`` every actor is kept busy for that long after the warm-up and
 the line carries the decisions answered per second in the window, both seats
@@ -26,7 +30,9 @@ from dataclasses import replace
 import json
 from pathlib import Path
 import random
+import shutil
 import sys
+import tempfile
 import time
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -53,7 +59,10 @@ def measure(config, *, games=None, seconds=None, warmup=30.0, seed=1):
     path = checkpoint.latest(config.state)
     if path is None:
         raise SystemExit(f"{config.state} has no latest.json")
-    source, pool = jobs(seed), Pool(config)
+    # The actors remove a game's folder before and after playing it, and the
+    # folder is named by the game's number alone. Give this call its own place.
+    games_folder = Path(tempfile.mkdtemp(prefix="bench-play-", dir=config.state))
+    source, pool = jobs(seed), Pool(replace(config, state=games_folder))
     finished, playing, handed = [], {}, 0  # playing: actor -> decisions answered in its current game
     started = time.monotonic()
     window = None  # (time, decisions) at the start of the measured window
@@ -87,6 +96,7 @@ def measure(config, *, games=None, seconds=None, warmup=30.0, seed=1):
         total = answered()
     finally:
         pool.shutdown()
+        shutil.rmtree(games_folder, ignore_errors=True)
     report = {"workers": config.workers, "vcmi": str(config.vcmi), "max_days": config.limits.max_days, "seed": seed,
               "failures": [f"game {game.job.number} {game.reason}: {(game.detail or '')[-600:]}"
                            for game in finished if game.status == "failed"]}
@@ -148,6 +158,10 @@ def main():
         arguments.out.parent.mkdir(parents=True, exist_ok=True)
         with arguments.out.open("a") as stream:
             stream.write(line + "\n")
+    missing = report.get("digests", []).count(None)  # a game stopped at the day limit has a trajectory and counts
+    if missing:
+        sys.exit(f"{missing} of {arguments.games} games gave no trajectory: this run compares nothing. "
+                 "The report lists each failure.")
 
 
 if __name__ == "__main__":
