@@ -200,11 +200,25 @@ def test_the_play_benchmark_fails_when_a_game_gives_no_trajectory(fake_engine, t
     # A game stopped at the day limit can be trained on and compared: it counts.
     status, report = run("--games", "2", "--max-days", "2", days=4)
     assert status == 0 and report["statuses"] == ["truncated:game_day_limit"] * 2 and all(report["digests"])
+    # With both seats a game counts when either seat gives a trajectory. Stopped at red's decision of day 2,
+    # blue's one action has no decision after it: red's digest and null for blue, whoever the learner was.
+    status, report = run("--games", "2", "--max-days", "1", "--both-seats", days=4)
+    assert status == 0 and report["statuses"] == ["truncated:game_day_limit"] * 2 and report["samples"] == 2
+    assert [list(seats) for seats in report["seat_digests"]] == [["red", "blue"]] * 2
+    assert all(seats["red"] and seats["blue"] is None for seats in report["seat_digests"])
+    assert report["digests"] == [None, report["seat_digests"][1]["red"]]  # the learner seats: blue, then red
+    # The same games with one seat: the game whose learner is blue gives nothing, as before.
+    status, report = run("--games", "2", "--max-days", "1", days=4)
+    assert isinstance(status, str) and status.startswith("1 of 2 games gave no trajectory")
+    assert report["statuses"] == ["failed:unusable_trajectory", "truncated:game_day_limit"] and "seat_digests" not in report
     # Two engines that die early are a fast batch and no comparison.
     status, report = run("--games", "2", days=4, end="crash")
     assert isinstance(status, str) and status.startswith("2 of 2 games gave no trajectory")
     assert report["digests"] == [None, None] and len(report["failures"]) == 2
     assert all(entry.startswith("failed:") for entry in report["statuses"])
+    status, report = run("--games", "2", "--both-seats", days=4, end="crash")  # nor with both seats
+    assert isinstance(status, str) and status.startswith("2 of 2 games gave no trajectory")
+    assert report["seat_digests"] == [{"red": None, "blue": None}] * 2
     # The report was written all the same, for the diagnosis.
     assert json.loads((tmp_path / "play.jsonl").read_text().splitlines()[-1]) == report
     # A window counts decisions, not games; its report carries the failures and the rate stands.

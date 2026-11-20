@@ -146,6 +146,53 @@ def test_both_seats_of_a_game_are_trained_on(config, play_fake, fake_engine, tmp
     assert state.progress["games"] == 2 and state.progress["decisions"] == 12
 
 
+def test_with_both_seats_a_game_counts_when_either_seat_has_a_trajectory(config, play_fake, fake_engine, tmp_path):
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools" / "perf"))
+    from profile_game import digest
+    from heroes import actor
+    from heroes.engine.env import Env, Limits
+    from heroes.game import guard
+    count = iter(range(100))
+
+    def play(learner, both_seats):
+        # Stopped at red's decision of day 2. Red finished one action and saw what followed it;
+        # blue's one action has no decision after it, so blue gives no trajectory.
+        env = Env(fake_engine(days=4), Limits(max_days=1))
+        try:
+            return actor.play(env, play_fake.model, Job(5, 7, learner, (1, 2)), tmp_path / f"either-{next(count)}",
+                              guard=guard.VERSION, both_seats=both_seats)
+        finally:
+            env.close()
+
+    as_red, as_blue = play(0, True), play(1, True)
+    for game in (as_red, as_blue):
+        assert (game.status, game.reason, game.choices) == ("truncated", "game_day_limit", (1, 1))
+        assert len(game.trajectories) == 1 and game.detail == "blue: this seat completed no action"
+    # Red's trajectory stays red's: it is the learner's in one game and the opponent's in the other.
+    assert as_red.other is None and as_blue.trajectory is None
+    assert as_red.trajectory.actions == as_blue.other.actions and len(as_red.trajectory.decisions) == 1
+    assert (digest(actor.compile_recipe(play_fake.model, as_red.trajectory))
+            == digest(actor.compile_recipe(play_fake.model, as_blue.other)))
+    # With one seat the rule is what it was: a learner without a trajectory is a failed game.
+    alone = play(1, False)
+    assert (alone.status, alone.reason, alone.detail, alone.trajectories) == (
+        "failed", "unusable_trajectory", "this seat completed no action", ())
+    assert play(0, False).status == "truncated"
+
+    # The training loop takes such games: every second one has blue as its learner.
+    fake_engine(days=4)
+    state = train(replace(config, both_seats=True, limits=Limits(max_days=1)), 2, fresh=True, out=io.StringIO())
+    records = _log(config)
+    games = [record for record in records if record["event"] == "game"]
+    assert [(record["number"], record["learner"], record["status"], record["samples"]) for record in sorted(
+        games, key=lambda record: record["number"])] == [(1, "blue", "truncated", 1), (2, "red", "truncated", 1)]
+    update = next(record for record in records if record["event"] == "update")
+    assert (update["games"], update["truncated"], update["failed"], update["samples"]) == (2, 2, 0, 2)
+    assert state.progress["games"] == 2 and state.progress["decisions"] == 2
+
+
 def test_the_next_batch_is_begun_while_the_update_runs(config):
     def order(play_during_update, state):
         train(replace(config, state=state, play_during_update=play_during_update), 6, fresh=True, out=io.StringIO())

@@ -129,8 +129,8 @@ def measure(config, *, games=None, seconds=None, warmup=30.0, seed=1):
     if config.both_seats:
         # One digest per colour: the learner seat's above says nothing about the other trajectory, or its absence.
         report["seat_digests"] = [
-            {COLORS[seat]: digest(trajectory)[:16] if trajectory is not None else None
-             for seat, trajectory in ((game.job.learner, game.trajectory), (1 - game.job.learner, game.other))}
+            {colour: digest(trajectory)[:16] if trajectory is not None else None
+             for colour, trajectory in zip(COLORS, (game.trajectory, game.other)[::1 if game.job.learner == 0 else -1])}
             for game in finished]
     return report
 
@@ -172,7 +172,10 @@ def main():
         arguments.out.parent.mkdir(parents=True, exist_ok=True)
         with arguments.out.open("a") as stream:
             stream.write(line + "\n")
-    missing = report.get("digests", []).count(None)  # a game stopped at the day limit has a trajectory and counts
+    # A game stopped at the day limit has a trajectory and counts. With both seats one seat's is enough,
+    # as it is in training; the seat without one shows as null among the seat digests.
+    missing = (sum(not any(seats.values()) for seats in report["seat_digests"]) if "seat_digests" in report
+               else report.get("digests", []).count(None))
     if missing:
         sys.exit(f"{missing} of {arguments.games} games gave no trajectory: this run compares nothing. "
                  "The report lists each failure.")

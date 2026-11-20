@@ -267,7 +267,10 @@ training run yet; what is known is what they do to a batch of games.
   from: these are other games, and the comparison above is of counts.
 - **Both seats** makes a batch of 100 games 200 trajectories, so the update
   takes about twice as long per game; `--games-per-update 50` keeps the
-  update's size.
+  update's size. Each seat's trajectory is built on its own and a game counts
+  as soon as one of them gives a trajectory; the game's `detail` in the log
+  then names the seat that gave none. Without the flag a game whose learner
+  seat gives no trajectory is a failed game, as before.
 - **Play during the update** makes the first games of each batch one update
   old: PPO's ratio is then taken against the weights that played them, as it
   is for every game, but those are no longer the weights the update starts

@@ -349,7 +349,7 @@ class Batch:
                        choices=list(game.choices), samples=samples, seconds=round(game.seconds, 1),
                        compile_seconds=round(game.compile_seconds, 1), update=self.update, detail=game.detail)
         self.display.game(game, samples)
-        if game.trajectory is None:
+        if not game.trajectories:
             tally["failed"] += 1
             if tally["failed"] > self.target or (not games and tally["failed"] >= max(3, self.config.workers)):
                 raise RuntimeError(f"{tally['failed']} games failed, the last one with {game.reason}:\n{game.detail}\n"
