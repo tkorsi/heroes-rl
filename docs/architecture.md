@@ -207,7 +207,7 @@ happens once, when the state folder is empty.
 | --- | --- |
 | [engine/ExplorerRL](../engine/ExplorerRL/) | visible-state adapter, typed actions, socket transport |
 | [engine/patches](../engine/patches/) | changes to pinned upstream VCMI 1.7.5 |
-| [engine/ExperimentReplay](../engine/ExperimentReplay/) | the engine-side replay recorder and the replay worker. The engine's end-of-game shutdown is built on the recorder, so it stays switched on, but with `VCMI_EXPERIMENT_LEDGER=0` it writes no ledger; training reads none of it. `--keep-game-files` turns the ledger back on |
+| [engine/ExperimentReplay](../engine/ExperimentReplay/) | the engine-side replay recorder and the replay worker. The engine's end-of-game shutdown is built on the recorder, so it stays switched on, but with `VCMI_EXPERIMENT_LEDGER=0` it writes no ledger; training reads none of it. `--keep-game-files` turns the ledger back on, and `vcmireplay` verifies such a game, see below |
 | [engine/NativeSession](../engine/NativeSession/) | an earlier reusable-host experiment; not used |
 | [maps/](../maps/) | the scenario both seats play, `hero-management-v4` |
 
@@ -233,6 +233,41 @@ training, copy it into a runtime folder that stands on its own:
 ```sh
 python3 tools/freeze_runtime.py ~/Projects/Heroes-artifacts/runtime/local-v8-play-switches-v1
 ```
+
+The runtime is put together beside its final place and renamed into it when
+the last file is ready, so a freeze that fails leaves nothing behind and the
+same command works again. An existing runtime is refused, never changed.
+
+### Verifying a kept game
+
+A game kept with `--keep-game-files` has its replay ledger in
+`engine/contextual-replay.jsonl`. `vcmireplay` plays the recorded inputs again
+and compares every record the adapter regenerates with the ledger. Training
+games carry each observation once (`EXPLORER_RL_DECISION_OBSERVATION=0`) and
+games of an engine built before that switch carry it again in every decision.
+The verifier reads which of the two a capture has from its first recorded
+decision and regenerates that form, whatever its own environment says, so both
+kinds verify from any shell; everything else is compared exactly as before.
+
+`tools/check_replay.py` shows this on a real game. It plays one short game with
+the ledger, replays it three times, and passes only if the capture verifies
+from a clean environment, verifies with the other form set in the environment,
+and is rejected once one recorded answer of the policy is replaced by another.
+It starts the engine, so the user launches it:
+
+```sh
+P=~/Projects/Heroes-artifacts/python/mlx-v1/venv/bin/python
+S=~/Projects/Heroes-artifacts/perf-opt        # a state folder of its own, as for tools/perf
+R=vcmi/build/bin/vcmireplay                   # the verifier under test
+$P tools/check_replay.py $S --replay $R                                   # the engine training uses: compact decisions
+$P tools/check_replay.py $S --replay $R \
+    --vcmi ~/Projects/Heroes-artifacts/runtime/local-v8-sleep-resume-v1/bin/vcmiclient   # an engine from before the switch
+```
+
+The `vcmireplay` inside `local-v8-play-switches-v1` was frozen before the
+verifier learned this and rejects compact captures at their first decision.
+The programs that play are not affected, so that runtime stays the default;
+verify with a `vcmireplay` built from this code.
 
 The Python side expects the client at `HEROES_VCMI`, by default
 `~/Projects/Heroes-artifacts/runtime/local-v8-play-switches-v1/bin/vcmiclient`,

@@ -8689,3 +8689,86 @@ few hundred games in these measurements, most of them stopped after 150 s, and
 has played no game of 365 days. `vcmireplay`
 was not run against the changed recorder: with the ledger off there is nothing
 to replay, and `--keep-game-files` restores it.
+
+### 2026-11-20 — Review of the play-speed branch: four findings, fixed; the replay check is not run yet
+
+The user reviewed PR 35 at `3814064` and left four comments. All four were
+confirmed by reading the code; the second one was also reproduced with the
+scripted engine before it was fixed. None of the fixes touches the play loop
+or the update: a seeded game plays as it did.
+
+**1. A kept game could not be verified.** The launcher sets
+`EXPLORER_RL_DECISION_OBSERVATION=0` for every game, also with
+`--keep-game-files`, so a kept ledger has decisions without the observation.
+`vcmireplay` never set the variable and the adapter's default is 1, so a
+replay from a fresh shell regenerated the observation in the first decision
+and `ContextualEvidence::expect` rejected it. An older capture replayed from a
+shell that still held `=0` failed the other way round.
+*Fix, in `engine/ExperimentReplay/ContextualReplay.cpp` only:* before the
+adapters are created, `ContextualReplay::run` reads the first recorded
+decision of the tape and sets the variable to match, in both directions, as
+`configureControllers` already does for `army_information`. Every regenerated
+record is still compared whole with its recording. The summary of a verified
+replay says which form was read (`decisions_repeat_observation`). A tape whose
+decisions are not all of one form fails at the first that differs. The launcher
+is unchanged: every game stays compact. `vcmiclient`, the plugin and the
+recorder are not touched, so the digests of the entry above stand and the
+default runtime stays `local-v8-play-switches-v1`; its own `vcmireplay` was
+frozen before this fix and rejects compact captures, so a kept game is
+verified with a `vcmireplay` built from this commit on.
+Considered and not done: writing the form into the ledger's header. It would
+change the recorder inside the plugin, which means a new play runtime and new
+proof that games are unchanged, for no gain in strictness: the observation of
+a decision is the one of the view record before it, and that record is
+compared either way.
+
+**2. Two benchmark calls removed each other's games.** `bench_play.py` named a
+game's folder by its number under `STATE/games`, the number follows from the
+seed, and an actor removes the folder before and after playing; the state lock
+is taken only by `train`. Reproduced: two calls with the same folder and seed,
+at once, on the scripted engine, gave `actor_error` in the unfixed code.
+*Fix:* every call plays in a folder of its own inside STATE
+(`bench-play-…`), removed at the end. It stays inside the state folder, which
+is what the perf guide promises about these tools.
+
+**3. A failed batch looked like a fast one.** With `--games`, a run in which
+games failed printed its report and exited 0. *Fix:* the report is printed and
+appended as before, and the exit status is 1 with the count on stderr when any
+requested game has no trajectory. A game stopped at the day limit has one and
+counts. The window mode is unchanged: it counts decisions, a failed game there
+lowers the rate instead of raising it, and its report carries the failures.
+
+**4. A failed freeze left a half-copied runtime at the final path.** It had an
+executable `vcmiclient`, which is all `Engine.check` asks for, and the retry
+failed on the existing `bin/AI`. *Fix:* `freeze_runtime.py` builds the runtime
+in `NAME.partial-<pid>` beside the final place and renames it when `config`
+and `Mods` are in; on any failure the partial folder is removed. An existing
+`NAME` is refused before anything is copied, and the rename does not replace a
+folder that has files in it.
+
+**Tests.** 52 pass and 3 are skipped in the cloud container (Linux, no Apple
+GPU; 38 and 2 before): 12 new ones, and the two play-benchmark tests now run
+without MLX because only the update benchmarks need it. The three benchmark
+tests fail on the code before the fixes. The freeze tests replace `otool`,
+`install_name_tool` and `codesign` by a recorder. The changed
+`ContextualReplay.cpp` was syntax-checked with g++ 13 (`-std=c++20
+-fsyntax-only`) against the engine headers of the Mac's `vcmi` checkout and
+this branch's `ExplorerRL` headers; a deliberate error was caught the same
+way. It was **not built, linked or run**.
+
+**Not verified: finding 1 against real captures.** That needs the engine and
+the game data. `tools/check_replay.py` is the acceptance test: it plays one
+short game with the ledger, then replays it from an environment without the
+variable, replays it with the other form set, and replays it with one recorded
+answer of the policy replaced by another answer of the same seat; it passes
+only if the first two verify and the third does not. Run with the training
+engine it checks a compact capture, and with `--vcmi` naming
+`local-v8-sleep-resume-v1` a capture that repeats the observation; the
+commands are in `docs/architecture.md`. The script itself has only run against
+hand-written captures and stand-in verifiers (one that reads the form from the
+tape passes, one that takes it from its environment fails, one that accepts a
+changed answer fails). What it assumes about the real files and has not seen:
+that a game stopped at the day limit leaves `engine/replay.jsonl` as `init`,
+`start` and input/applied pairs with at most one trailing input, and that such
+a game verifies with `--prefix` from its own profile folder. If one of these
+does not hold the script stops with the reason and keeps the game.
