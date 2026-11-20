@@ -86,6 +86,9 @@ class Engine:
             # A decision is always about the observation of the seat's latest
             # view, so the engine need not send it a second time.
             "EXPLORER_RL_DECISION_OBSERVATION": "0",
+            # Most views change a window and not the map, so the engine sends
+            # tiles and objects only in a view that changed them.
+            "EXPLORER_RL_REPEATED_MAP": "0",
             "EXPLORER_RL_PORT_0": str(ports[0]), "EXPLORER_RL_PORT_1": str(ports[1]),
         })
         if not self.replay_ledger:

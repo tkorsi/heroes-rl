@@ -1168,6 +1168,9 @@ class OwnArmy:
             raise ValueError("Passive owned army slots must be unique and ordered")
 
 
+_CHECKED_TILES = [None, None, None]  # the tile tuple checked last, the map size it was checked for, its positions
+
+
 @dataclass(frozen=True)
 class Observation:
     size: tuple[int, int, int]
@@ -1184,13 +1187,22 @@ class Observation:
         _position(self.size)
         if any(n <= 0 for n in self.size) or self.size[2] != 1:
             raise ValueError("First contextual interface requires one map level")
+        # Most observations carry the very tile tuple of the one before. Its
+        # checks passed then and depend on nothing but the tuple and the size.
+        checked = self.tiles is _CHECKED_TILES[0] and self.size == _CHECKED_TILES[1]
         for name, cls in (("tiles", Tile), ("objects", ObjectView), ("heroes", Hero), ("towns", Town)):
+            if checked and name == "tiles":
+                continue
             _tuple(getattr(self, name), cls, name)
             for entry in getattr(self, name):
                 if any(p >= n for p, n in zip(entry.position, self.size)):
                     raise ValueError("Observed position outside public map bounds")
-        _unique([t.position for t in self.tiles], "visible tile")
-        visible = {t.position for t in self.tiles}
+        if checked:
+            visible = _CHECKED_TILES[2]
+        else:
+            _unique([t.position for t in self.tiles], "visible tile")
+            visible = frozenset(t.position for t in self.tiles)
+            _CHECKED_TILES[:] = self.tiles, self.size, visible
         if any(obj.position not in visible for obj in self.objects):
             raise ValueError("Current object must be on a currently visible tile")
         for name in ("objects", "heroes", "towns"):
@@ -2967,7 +2979,13 @@ def _decode_tiles(raw):
     return tiles
 
 
-def decode_observation(raw, *, schema=SCHEMA):
+def decode_observation(raw, *, schema=SCHEMA, unchanged_map=None):
+    """The typed observation of raw.
+
+    ``unchanged_map`` is the ``(tiles, objects)`` of the seat's previous view,
+    already decoded. A raw observation that names neither takes them; they are
+    what decoding its own copy of that unchanged map would return.
+    """
     profile = profile_for(schema)
     if schema != profile.history_schema:
         raise ValueError("Observation decoding requires its enclosing history schema")
@@ -2991,6 +3009,8 @@ def decode_observation(raw, *, schema=SCHEMA):
     for name, cls in (("objects", ObjectView), ("heroes", Hero), ("towns", Town)):
         if name in data:
             data[name] = tuple(_decode_simple(item, cls, ("position",)) for item in _array(data[name]))
+    if unchanged_map is not None and "tiles" not in data and "objects" not in data:
+        data["tiles"], data["objects"] = unchanged_map
     if data.get("window") is not None:
         window = _record(data["window"], Window)
         if (profile.capabilities != ("capability_controls" in window)

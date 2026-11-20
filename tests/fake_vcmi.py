@@ -15,12 +15,18 @@ The script is the JSON in ``FAKE_VCMI``:
            terminal instead of a result), "endless" (never ends), "crash"
            (exits with an error on day 2), "hang" (goes silent on day 2 until
            the policy side hangs up) or "abort" (fails before connecting)
+  still    true for a map whose objects stay where they are, so only the
+           resources change from day to day (default false)
   repeat   true for an engine that ignores EXPLORER_RL_DECISION_OBSERVATION=0
            and sends the observation again in every decision (default false)
+  repeat_map  true for an engine that ignores EXPLORER_RL_REPEATED_MAP=0 and
+           sends tiles and objects in every view (default false)
 
 Like the engine it sends a view whenever what the seat sees has changed, and
 then the decision; told EXPLORER_RL_DECISION_OBSERVATION=0, the decision
-carries no second copy of that observation.
+carries no second copy of that observation. Told EXPLORER_RL_REPEATED_MAP=0, a
+view whose tiles and objects are those of the seat's previous view carries
+neither.
 
 Like the engine it runs in its own folder, so it finds its profile only when
 the paths it was given are absolute.
@@ -45,6 +51,8 @@ OBSERVATION = c.Observation((2, 2, 1), (c.Tile((0, 0, 0), 1, 0, False, False),),
                             army_information=ARMIES, own_armies=() if ARMIES else None)
 SIDE = SCRIPT.get("map")
 REPEAT = SCRIPT.get("repeat", False) or os.environ.get("EXPLORER_RL_DECISION_OBSERVATION") != "0"
+REPEAT_MAP = SCRIPT.get("repeat_map", False) or os.environ.get("EXPLORER_RL_REPEATED_MAP") != "0"
+STILL = SCRIPT.get("still", False)
 TILES = SIDE and tuple(c.Tile((x, y, 0), 1 + (x * 7 + y * 3) % 5, int((x + 2 * y) % 5 == 0), (x * y) % 11 == 3, False)
                        for y in range(SIDE) for x in range(SIDE))
 
@@ -53,8 +61,9 @@ def observation(day, player):
     """What the seat sees on ``day``: the fixed view, or a full map with wandering objects."""
     if not SIDE:
         return OBSERVATION
-    objects = tuple(c.ObjectView(f"object-{index}", ((index * 5 + day * (index % 3) + player) % SIDE,
-                                                      (index * 11 + (day * (index % 4)) // 2) % SIDE, 0),
+    moved = 0 if STILL else day
+    objects = tuple(c.ObjectView(f"object-{index}", ((index * 5 + moved * (index % 3) + player) % SIDE,
+                                                      (index * 11 + (moved * (index % 4)) // 2) % SIDE, 0),
                                  10 + index % 7, index % 4, ("self", "opponent", "neutral")[index % 3])
                     for index in range(14))
     resources = (1000 * day % 20011, day % 17, day % 13, (day + player) % 11, day % 7, day % 5, day % 3)
@@ -100,6 +109,9 @@ class Seat:
         seen = observation(day, self.player)
         if self.seen != (seen, day):
             self.emit("view", day=day, observation=seen)
+            if not REPEAT_MAP and self.seen is not None and (seen.tiles, seen.objects) == (self.seen[0].tiles, self.seen[0].objects):
+                wire = self.batch[-1]["observation"]
+                self.batch[-1]["observation"] = {name: wire[name] for name in wire if name not in ("tiles", "objects")}
             self.seen = seen, day
         offers = c.Offers.from_observation(seen, schema=PROFILE.action_schema)
         decision = self.history.emit("decision", day=day, observation=seen, offers=offers,

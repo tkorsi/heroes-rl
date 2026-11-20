@@ -10,6 +10,29 @@
 
 namespace explorer_rl
 {
+/// What the tiles and objects of an observation are written from, as plain
+/// numbers. Two of them are equal exactly when the JSON written from them is,
+/// so a capture that changed nothing on the map is found without building the
+/// JSON of every visible tile.
+struct VisibleMap
+{
+	struct Tile
+	{
+		int x, y, terrain, road;
+		bool blocked, visitable;
+		bool operator==(const Tile &) const = default;
+	};
+	struct Object
+	{
+		int id, x, y, kind, subtype;
+		int owner; ///< 0 self, 1 opponent, 2 neutral: the relative owner the policy is told
+		bool operator==(const Object &) const = default;
+	};
+	std::vector<Tile> tiles; ///< row by row, as the observation lists them
+	std::vector<Object> objects; ///< in the order their tiles were met
+	bool operator==(const VisibleMap &) const = default;
+};
+
 /// Per-player adapter bookkeeping. All access is protected by ExplorerRL's
 /// state mutex; engine identifiers never leave these routing tables.
 struct ContextualState
@@ -17,7 +40,8 @@ struct ContextualState
 	std::map<int, std::string> handles;
 	std::map<std::string, int> subjects;
 	std::vector<JsonNode> records;
-	JsonNode lastObservation;
+	JsonNode lastObservation; ///< of the latest view, without its tiles and objects
+	VisibleMap lastMap; ///< the tiles and objects of the latest view
 	int lastDay = 0;
 	std::string context = "map";
 	std::string subject;

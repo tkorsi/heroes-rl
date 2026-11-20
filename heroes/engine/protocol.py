@@ -11,6 +11,12 @@ record. An engine started with ``EXPLORER_RL_DECISION_OBSERVATION=0`` therefore
 sends the decision without it, and the decision frame gets the view's
 observation, the same object. An engine that still repeats the observation is
 read as before; the frames are equal either way.
+
+Most views change a window and leave the map as it was. An engine started with
+``EXPLORER_RL_REPEATED_MAP=0`` sends such a view without ``tiles`` and
+``objects``, and the view's observation gets those of the seat's previous view,
+the same tuples. An engine that sends them every time is read as before; the
+frames are equal either way.
 """
 from __future__ import annotations
 
@@ -127,7 +133,12 @@ class Producer:
             if "observation" in raw:
                 if declared_army_information(raw["observation"], self.profile.environment) != self.army_information:
                     raise ValueError("Observation army information differs from the negotiated extension")
-            if record_kind == "decision":
+            if record_kind == "view":
+                # A view without its map has the map of the view before it.
+                observation = contract.decode_observation(
+                    raw["observation"], schema=self.profile.history_schema,
+                    unchanged_map=None if self.view is None else (self.view.tiles, self.view.objects))
+            elif record_kind == "decision":
                 if "observation" in raw:
                     observation = contract.decode_observation(raw["observation"], schema=self.profile.history_schema)
                 elif self.view is None:
@@ -135,7 +146,7 @@ class Producer:
                 else:
                     observation = self.view
                 raw["offers"] = contract.encode_offers(contract.Offers.from_observation(observation, schema=self.profile.action_schema))
-            # The decision's observation is decoded once: here, or when its view arrived.
+            # An observation is decoded once: here, or for a decision when its view arrived.
             frame = contract.decode_frame(raw, observation=observation)
             self.history.append(frame)
             appended.append(frame)
