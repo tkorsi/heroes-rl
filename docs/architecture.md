@@ -61,7 +61,12 @@ tiles and objects as plain numbers and compares those, so finding that nothing
 changed builds no JSON, and the launcher tells it to send a view's tiles and
 objects only when they differ from the player's previous view
 (`EXPLORER_RL_REPEATED_MAP=0`); the reader gives such a view the previous
-view's tuples. The rest of an observation is treated the same way in Python:
+view's tuples. A hero's step changes two tiles and is a view for every player
+who sees it, so a view that changed the map while the same tiles stayed
+visible carries its objects and only the tiles that differ
+(`EXPLORER_RL_TILE_CHANGES=1`), and the reader puts them into the previous
+tiles. The line itself is written straight from the plugin's JSON tree,
+without the tabs and spaces of VCMI's writer. The rest of an observation is treated the same way in Python:
 [`contract._decoded_once`](../heroes/game/contract.py) decodes an army, a
 stack, a hero, a town or a panel once per exact raw value and hands out the
 same frozen object, the policy keeps the semantic tree of such a value
@@ -247,7 +252,7 @@ A build finds its library through the path of the build folder. To use it for
 training, copy it into a runtime folder that stands on its own:
 
 ```sh
-python3 tools/freeze_runtime.py ~/Projects/Heroes-artifacts/runtime/local-v8-changed-map-v1
+python3 tools/freeze_runtime.py ~/Projects/Heroes-artifacts/runtime/local-v8-tile-changes-v1
 ```
 
 The runtime is put together beside its final place and renamed into it when
@@ -265,7 +270,8 @@ The verifier reads which of the two a capture has from its first recorded
 decision and regenerates that form, whatever its own environment says, so both
 kinds verify from any shell; everything else is compared exactly as before.
 It reads the form of the views the same way: a capture with a view that
-carries no tiles was made with `EXPLORER_RL_REPEATED_MAP=0`.
+carries no tiles was made with `EXPLORER_RL_REPEATED_MAP=0`, and one with a
+view that lists `tile_changes` with `EXPLORER_RL_TILE_CHANGES=1`.
 
 `tools/check_replay.py` shows this on a real game. It plays one short game with
 the ledger, replays it three times, and passes only if the capture verifies
@@ -288,7 +294,8 @@ $P tools/check_replay.py $S --replay $R \
 Each call takes about five seconds with the default three days and prints one
 JSON line. The `vcmireplay` inside `local-v8-play-switches-v1` was frozen
 before the verifier learned this and rejects compact captures at their first
-decision; the one inside `local-v8-changed-map-v1` reads both forms.
+decision; the ones inside `local-v8-changed-map-v1` and
+`local-v8-tile-changes-v1` read every form.
 
 `prepare_vcmi.py` does not update a checkout it prepared earlier. After a
 change to a file under `engine/`, copy that file to its place in `vcmi/` (the
@@ -296,9 +303,9 @@ places are in `dependencies/vcmi.json`), confirm with `--check`, and build the
 target that owns it: `cmake --build vcmi/build --target vcmireplay`.
 
 The Python side expects the client at `HEROES_VCMI`, by default
-`~/Projects/Heroes-artifacts/runtime/local-v8-changed-map-v1/bin/vcmiclient`,
+`~/Projects/Heroes-artifacts/runtime/local-v8-tile-changes-v1/bin/vcmiclient`,
 and the original game's `Data` folder under `~/Projects/Heroes-artifacts/game-data`.
-That runtime is the engine of `local-v8-sleep-resume-v1` plus the three
+That runtime is the engine of `local-v8-sleep-resume-v1` plus the four
 switches above. All are off unless the launcher sets them, and an older runtime
 ignores the ones it does not know: it plays the same games, slower.
 Python dependencies are pinned in [dependencies/](../dependencies/):

@@ -201,43 +201,80 @@ games of another run, so every figure is lower than on a free machine:
 On 2026-11-20 two more changes of the same kind. After every applied packet,
 for both players, the plugin rebuilt all 400 map tiles as JSON to find that
 nothing had changed, and sent them again with every view; it now compares
-plain numbers and sends the map only when it changed (runtime
-`local-v8-changed-map-v1`, which is the default). And an army, hero, town or
-panel that stayed as it was from one view to the next is decoded, turned into
-its semantic tree and encoded once instead of every time. Again the games are
-the same games, by digest, on 2 single games and on 14 games played by 14
-actors. Measured while the Mac ran a PPO update:
+plain numbers and sends the map only when it changed; when a hero's step
+changed it, only the two tiles that differ (runtime
+`local-v8-tile-changes-v1`, which is the default; it also writes its JSON
+without VCMI's stream and padding). And an army, hero, town or panel that
+stayed as it was from one view to the next is decoded, turned into its
+semantic tree and encoded once instead of every time. Again the games are the
+same games, by digest: on 2 single games, on 14 games played by 14 actors, and
+on 14 whole games to day 365 (539,195 decisions). Measured while the Mac ran a
+PPO update:
 
 | | PR 35 | Now |
 | --- | --- | --- |
-| one seeded game to day 60, 14,208 decisions: play, then compile | 90.5 s, 11.6 s | 47.2 s, 7.6 s |
-| 14 actors, the same 14 seeded games to day 60 | 140 s and 151 s | 82 s, 90 s and 80 s |
-| 14 actors kept busy, decisions per second | 1,210 and 1,150 | 1,990 and 1,700 |
+| one seeded game to day 60, 14,208 decisions: play, then compile | 90.5 s, 11.6 s | 37.1 s, 6.8 s |
+| 14 actors, the same 14 seeded games to day 60 | 140 s and 151 s | 69 s and 63 s |
+| 14 actors, 14 whole games to day 365 (measured before the last engine change) | 980 s | 535 s |
+| 14 actors kept busy, decisions per second (before the last engine change) | 1,210 and 1,150 | 2,060 and 2,190 |
 
-A hundred games of the present length (33,600 decisions on average) then take
-about 30 minutes instead of 48.
+A hundred games of the present length (33,600 decisions on average) took
+about 48 minutes of play at PR 35's rate and take about 26 at 2,120 decisions
+per second; the last engine change, about 15% on the 14-game batches, is not
+in that figure. 16 actors gave no more than 14, and 18 about 6% more.
 
 - `--workers`. On the same evening 14 actors answered about 1,220 decisions per
   second against 1,060 for ten, in windows taken in turns, and 16 gave no more:
   a game keeps about 0.8 of a core busy and the Mac has 16. 14 is the default.
   An actor holds its game's frames until the game ends, up to about 3.5 GB for
   a game of 365 days.
-- **What is left.** A decision costs about 3.3 ms of one actor's time plus
-  0.5 ms for compiling the recipe after the game: 1.1 ms waiting for the
-  engine, 1.1 ms in the policy's forward pass, 0.45 ms sampling, 0.4 ms
-  decoding. No single item stands out any more. In the engine about 12% of a
-  game's time is still spent rebuilding the non-map half of each observation
-  (over a third of that the passive army statistics) and 5% writing JSON. In Python
-  the largest pieces are the walk that samples an action, which builds and
-  checks about 56 candidate actions per decision, and the 400 tiles of every
-  view that did change the map. Each is worth 1 to 7%.
-- **Fewer decisions per game is the larger lever, and it changes training.**
-  A seat answers about 100 decisions per game day, most of them stack moves
-  and opening or closing windows. On 14 seeded games to day 60, a daily
-  stack-management budget of 8 per hero and town instead of 32 gave 66
-  decisions per seat and day instead of 100, and a budget of 4 gave 55; those
-  are other games, so the comparison is of counts, not of play. Not adopted:
-  the guard is unchanged.
+- **What is left.** A decision costs about 2.6 ms of one actor's time plus
+  0.5 ms for compiling the recipe after the game: 0.7 ms waiting for the
+  engine, 1.0 ms in the policy's forward pass, 0.45 ms sampling, 0.3 ms
+  decoding. No single item stands out any more. The engine still rebuilds the
+  non-map half of each observation after every packet (over a third of that
+  is the passive army statistics, which cost bonus-system queries). In Python
+  the largest piece is the walk that samples an action, which builds and
+  checks about 56 candidate actions per decision, and compiling the recipe
+  walks every trained decision a second time. Each is worth 1 to 5%.
+
+### Settings that change training
+
+Everything above plays the same games faster. What follows changes what is
+played or what is trained on. Each is a flag of `train`, off unless given, and
+a run without them plays and trains as before. None has been through a
+training run yet; what is known is what they do to a batch of games.
+
+| Flag | What it does | Measured on 14 seeded games to day 60 |
+| --- | --- | --- |
+| `--both-seats` | trains on the opponent seat's experience as well: every game gives two trajectories, one ending in a win and one in a loss | 2.15 times the samples per game for 11% more actor time (the second recipe) |
+| `--stack-moves N` | stack rearrangements a hero or town may do per game day; 32 without the flag | 8: 66 decisions per seat and day instead of 100. 4: 55 |
+| `--windows N` | windows a hero or town may open per game day; no daily budget without the flag | 6: 74 decisions per seat and day |
+| `--decisions N` | decisions a seat may take per game day before it can only close windows and end its turn | 40: 33 decisions per seat and day, but half the moves and a sixth of the recruiting |
+| `--play-during-update` | the actors start on the next batch while the update runs, with the weights from before it | not measured: it needs a training run |
+
+- **The two targeted budgets together are the useful ones.** A seat answers
+  about 100 decisions per game day and the learner seats' actions are 47%
+  stack moves and 47% opening and closing windows; 4 moves, and far fewer
+  recruitments, buildings and hirings, are the rest. `--stack-moves 4
+  --windows 6` gave 43 decisions per seat and day with as many moves (4.4 a
+  day against 4.2), recruitments, buildings and hirings as before. The flat
+  cap `--decisions` removes useful actions in proportion, because a policy
+  that samples junk reaches the cap before it moves.
+- **A budget is part of the guard's name** (`heroes.game.guard.version`), which
+  every trajectory carries, so the recipe compiler and the reference update
+  rebuild the same support. A budget changes the support a policy samples
+  from: these are other games, and the comparison above is of counts.
+- **Both seats** makes a batch of 100 games 200 trajectories, so the update
+  takes about twice as long per game; `--games-per-update 50` keeps the
+  update's size.
+- **Play during the update** makes the first games of each batch one update
+  old: PPO's ratio is then taken against the weights that played them, as it
+  is for every game, but those are no longer the weights the update starts
+  from. Tested with the scripted engine only.
+- A day limit below 365 was measured (on 14 whole games, 180 keeps 64% of the
+  decisions and 9 of the 12 natural endings) and not made a setting: with
+  enough training, games become shorter by themselves.
 - **Game length is the larger lever, and it is not code.** A seat answers about
   100 decisions per game day, most of them stack moves within the guard's daily
   budget of 32 per hero and town, and a game averages 32,000 decisions. The 13%
