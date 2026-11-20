@@ -588,13 +588,24 @@ def _operation_maxima(armies, kind):
                            _operation_maximum(kind, *origin, *found[destination_ref]))
 
 
+_LAST_CHOICES = {}  # kind -> (the armies asked about last, their choices)
+
+
 def army_operation_choices(armies, kind):
-    return tuple(item for item in _operation_maxima(armies, kind) if item[2] > 0)
+    """Every pair of displayed slots the operation can be applied to, with its maximum.
+
+    A decision asks this several times about the same tuple of armies: which
+    kinds exist, which swaps the guard excludes, which pairs are offered. The
+    armies are frozen, so the same tuple has the same choices.
+    """
+    last = _LAST_CHOICES.get(kind)
+    if last is None or last[0] is not armies or type(armies) is not tuple:
+        last = _LAST_CHOICES[kind] = (armies, tuple(item for item in _operation_maxima(armies, kind) if item[2] > 0))
+    return last[1]
 
 
 def has_army_operation(armies, kind):
-    """bool(army_operation_choices(armies, kind)), stopping at the first choice."""
-    return any(maximum > 0 for _, _, maximum in _operation_maxima(armies, kind))
+    return bool(army_operation_choices(armies, kind))
 
 
 def _replace_window_slots(window, changes):
@@ -1190,13 +1201,14 @@ class Observation:
         # Most observations carry the very tile tuple of the one before. Its
         # checks passed then and depend on nothing but the tuple and the size.
         checked = self.tiles is _CHECKED_TILES[0] and self.size == _CHECKED_TILES[1]
+        width, height, levels = self.size
         for name, cls in (("tiles", Tile), ("objects", ObjectView), ("heroes", Hero), ("towns", Town)):
             if checked and name == "tiles":
                 continue
             _tuple(getattr(self, name), cls, name)
-            for entry in getattr(self, name):
-                if any(p >= n for p, n in zip(entry.position, self.size)):
-                    raise ValueError("Observed position outside public map bounds")
+            # Every entry checked its own position: three exact integers.
+            if any(x >= width or y >= height or z >= levels for x, y, z in [entry.position for entry in getattr(self, name)]):
+                raise ValueError("Observed position outside public map bounds")
         if checked:
             visible = _CHECKED_TILES[2]
         else:

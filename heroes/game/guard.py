@@ -241,10 +241,20 @@ class GuardSupport:
                 and self._permits_movement(subject, index % width, index // width, revealed))
 
 
+_SORTED_TILES = [None, None]  # the tile tuple sorted last, and its tiles by position
+
+
+def _tiles_by_position(tiles):
+    # Most observations carry the very tile tuple of the one before.
+    if tiles is not _SORTED_TILES[0]:
+        _SORTED_TILES[:] = tiles, tuple(sorted(tiles, key=lambda item: item.position))
+    return _SORTED_TILES[1]
+
+
 def _world(observation):
     # No window, army layout, artifact inventory, query reference or revision.
     # Garrison swaps and artifact-derived movement maxima do not renew budgets.
-    return (observation.size, tuple(sorted(observation.tiles, key=lambda item: item.position)),
+    return (observation.size, _tiles_by_position(observation.tiles),
             tuple(sorted(observation.objects, key=lambda item: item.handle)), observation.resources,
             tuple(sorted((h.handle, h.position, h.movement) for h in observation.heroes)),
             tuple(sorted(observation.towns, key=lambda item: item.handle)))
