@@ -9345,9 +9345,10 @@ to tell this difference from a change of play.
 **The user's baseline cycle, read from his log** (`training-trial/log.jsonl`,
 update 1792 on main `c1c96ce`, 14 actors, `--windows-per-minibatch 16
 --windows-per-game 8 --learning-rate 8.5e-4`, started 18:50 local on
-2026-11-20, beside the last minutes of this branch's benchmarks and four runs
-of its scripted tests): 100 games collected in 6,273 s, 6,901,403 decisions of
-both seats, 1,100 per second; the update took 16,005 s for 3,467,583 samples
+2026-11-20, seven minutes after this branch's last benchmark ended; four runs
+of its scripted tests, about a minute each, fell into the first 25 minutes):
+100 games collected in 6,273 s, 6,901,403 decisions of both seats, 1,100 per
+second; the update took 16,005 s for 3,467,583 samples
 and 13,574 steps, 4,452 s of it building plans. 51 of the 100 games ran to
 day 365; the batches of updates 1788 to 1791 had 4, 18, 15 and 24. A game had
 65,700 decisions on average against 28,000 to 38,600 in those batches, and a
