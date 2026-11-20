@@ -118,6 +118,12 @@ private:
 	/// EXPLORER_RL_DECISION_OBSERVATION=0 sends a contextual decision without the
 	/// copy of the observation its latest view record already delivered.
 	bool decisionObservation = true;
+	/// EXPLORER_RL_REPEATED_MAP=0 sends a contextual view without its tiles and
+	/// objects when they are those of the same player's previous view.
+	bool repeatedMap = true;
+	/// EXPLORER_RL_TILE_CHANGES=1, with the switch above: a view that changed
+	/// the map while the same tiles stayed visible sends only the changed ones.
+	bool tileChanges = false;
 	int64_t visibleCaptureMicros = 0; ///< since the last profiled message, protected by stateMutex
 	int64_t visibleCaptures = 0; ///< protected by stateMutex
 	/// Engine-side replay evidence (VCMI_EXPERIMENT_REPLAY=1): the pack position
@@ -184,7 +190,8 @@ private:
 	void runContextualTurn(QueryID queryID, bool modalOnly = false);
 	void captureContextual(); ///< stable game state; acquires stateMutex
 	void captureContextualLocked(); ///< stable game state and stateMutex held
-	JsonNode contextualObservation(); ///< stable game state and stateMutex held
+	/// Stable game state and stateMutex held. Everything but the tiles and objects, which go to ``map``.
+	JsonNode contextualObservation(explorer_rl::VisibleMap & map);
 	JsonNode takeContextualRecords(); ///< acquires stateMutex
 	void contextualEvent(JsonNode event); ///< stable game state; acquires stateMutex
 	void contextualTerminal(const char * outcome); ///< network thread, under sendMutex

@@ -195,6 +195,8 @@ void ExplorerRL::initGameInterface(std::shared_ptr<Environment> ENV, std::shared
 		explorer_rl::ContextualEvidence::live(episode, townEconomy, armyTransfer, heroRecruitment, armyManagement, adventureDialogs, expandedInterface, ownArmyInformation);
 	profile = environmentInteger("EXPLORER_RL_PROFILE", 0, 0, 1) == 1;
 	decisionObservation = environmentInteger("EXPLORER_RL_DECISION_OBSERVATION", 1, 0, 1) == 1;
+	repeatedMap = environmentInteger("EXPLORER_RL_REPEATED_MAP", 1, 0, 1) == 1;
+	tileChanges = environmentInteger("EXPLORER_RL_TILE_CHANGES", 0, 0, 1) == 1;
 	timeoutSeconds = environmentInteger("EXPLORER_RL_TIMEOUT", 30, 0, 300);
 	snapshotEvery = environmentInteger("EXPLORER_RL_SNAPSHOT_EVERY", 1, 0, 1000000);
 	if(const char * replay = std::getenv("VCMI_EXPERIMENT_REPLAY"); replay && std::string(replay) == "1")

@@ -23,7 +23,7 @@ def _artifacts():
 
 
 def _vcmi():
-    return Path(os.environ.get("HEROES_VCMI", _artifacts() / "runtime/local-v8-play-switches-v1/bin/vcmiclient")).expanduser()
+    return Path(os.environ.get("HEROES_VCMI", _artifacts() / "runtime/local-v8-tile-changes-v1/bin/vcmiclient")).expanduser()
 
 
 @dataclass(frozen=True)
@@ -40,6 +40,10 @@ class Config:
     limits: Limits = Limits()
     guard: str | None = guard.VERSION  # repeated no-progress actions the policy may not sample; None for none
     keep_game_files: bool = False  # keep every game's engine folder instead of deleting it
+
+    # What a game is trained on.
+    both_seats: bool = False  # train on the opponent seat's experience too: two trajectories per game
+    play_during_update: bool = False  # collect the next batch while the update runs, one update behind; torch backend only
 
     # How the policy learns.
     games_per_update: int = 100  # all played with the same weights, then one PPO update

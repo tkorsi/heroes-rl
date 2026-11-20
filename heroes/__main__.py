@@ -17,8 +17,13 @@ def _config(arguments):
     changes = {name: getattr(arguments, name) for name in ("state", "legacy", "vcmi", "game_data", "game_map",
                                                            "workers", "games_per_update", "backend")
                if getattr(arguments, name, None) is not None}
-    if getattr(arguments, "keep_game_files", False):
-        changes["keep_game_files"] = True
+    for name in ("keep_game_files", "both_seats", "play_during_update"):
+        if getattr(arguments, name, False):
+            changes[name] = True
+    budgets = {name: getattr(arguments, name, None) for name in ("stack_moves", "windows", "decisions")}
+    if any(value is not None for value in budgets.values()):
+        from .game import guard
+        changes["guard"] = guard.version(**budgets)
     ppo = {name: getattr(arguments, name) for name in ("windows_per_minibatch", "windows_per_game", "learning_rate")
            if getattr(arguments, name, None) is not None}
     if ppo:
@@ -54,6 +59,18 @@ def main(argv=None):
             command.add_argument("--games-per-update", type=int, help="games per PPO update (default 100)")
             command.add_argument("--workers", type=int, help="games in play at once (default 14)")
             command.add_argument("--keep-game-files", action="store_true", help="keep every game's engine folder")
+            command.add_argument("--both-seats", action="store_true",
+                                 help="train on both seats of every game: two trajectories per game")
+            command.add_argument("--play-during-update", action="store_true",
+                                 help="play the next batch while the update runs; its first games use the weights "
+                                      "from before that update (with --backend torch only)")
+            command.add_argument("--stack-moves", type=int,
+                                 help="stack rearrangements a hero or town may do per game day (default 32)")
+            command.add_argument("--windows", type=int,
+                                 help="windows a hero or town may open per game day (default: no daily budget)")
+            command.add_argument("--decisions", type=int,
+                                 help="decisions a seat may take per game day before it can only close windows "
+                                      "and end its turn (default: no budget)")
             command.add_argument("--windows-per-minibatch", type=int,
                                  help="loss windows of 16 decisions per optimizer step (default 2)")
             command.add_argument("--windows-per-game", type=int,
@@ -73,7 +90,8 @@ def main(argv=None):
         config = _config(arguments)
     except ValueError:
         parser.error("--windows-per-minibatch and --windows-per-game must be at least 1, --windows-per-game "
-                     "must divide --windows-per-minibatch, and --learning-rate must be positive")
+                     "must divide --windows-per-minibatch, --learning-rate must be positive, and the daily "
+                     "budgets --stack-moves, --windows and --decisions at least 1")
     if arguments.command == "train" and arguments.games < 1:
         parser.error("games must be positive")
     if config.workers < 1 or config.games_per_update < 1:

@@ -525,8 +525,27 @@ class ArmyExchange:
                      if self.maximum(source.ref, destination.ref) > 0)
 
 
+_SLOT_PLACES = {}  # id of a tuple of armies -> (the tuple, the first army and slot of each reference)
+
+
 def army_slot(armies, ref):
-    return next(((army, slot) for army in armies for slot in army.slots if slot.ref == ref), (None, None))
+    """The displayed army and slot that carry ``ref``: the first, or ``(None, None)``.
+
+    One decision asks this some hundred times about the same two tuples of
+    frozen armies, the window's and the offers', so each is indexed once.
+    """
+    if type(armies) is not tuple:
+        return next(((army, slot) for army in armies for slot in army.slots if slot.ref == ref), (None, None))
+    known = _SLOT_PLACES.get(id(armies))
+    if known is None:
+        found = {}
+        for army in armies:
+            for slot in army.slots:
+                found.setdefault(slot.ref, (army, slot))
+        if len(_SLOT_PLACES) >= 8:
+            _SLOT_PLACES.clear()  # the entry holds its tuple, so an id names nothing else while it is kept
+        known = _SLOT_PLACES[id(armies)] = (armies, found)
+    return known[1].get(ref, (None, None))
 
 
 def army_operation_maximum(armies, kind, source_ref, destination_ref):
@@ -588,13 +607,24 @@ def _operation_maxima(armies, kind):
                            _operation_maximum(kind, *origin, *found[destination_ref]))
 
 
+_LAST_CHOICES = {}  # kind -> (the armies asked about last, their choices)
+
+
 def army_operation_choices(armies, kind):
-    return tuple(item for item in _operation_maxima(armies, kind) if item[2] > 0)
+    """Every pair of displayed slots the operation can be applied to, with its maximum.
+
+    A decision asks this several times about the same tuple of armies: which
+    kinds exist, which swaps the guard excludes, which pairs are offered. The
+    armies are frozen, so the same tuple has the same choices.
+    """
+    last = _LAST_CHOICES.get(kind)
+    if last is None or last[0] is not armies or type(armies) is not tuple:
+        last = _LAST_CHOICES[kind] = (armies, tuple(item for item in _operation_maxima(armies, kind) if item[2] > 0))
+    return last[1]
 
 
 def has_army_operation(armies, kind):
-    """bool(army_operation_choices(armies, kind)), stopping at the first choice."""
-    return any(maximum > 0 for _, _, maximum in _operation_maxima(armies, kind))
+    return bool(army_operation_choices(armies, kind))
 
 
 def _replace_window_slots(window, changes):
@@ -1168,6 +1198,9 @@ class OwnArmy:
             raise ValueError("Passive owned army slots must be unique and ordered")
 
 
+_CHECKED_TILES = [None, None, None]  # the tile tuple checked last, the map size it was checked for, its positions
+
+
 @dataclass(frozen=True)
 class Observation:
     size: tuple[int, int, int]
@@ -1184,13 +1217,23 @@ class Observation:
         _position(self.size)
         if any(n <= 0 for n in self.size) or self.size[2] != 1:
             raise ValueError("First contextual interface requires one map level")
+        # Most observations carry the very tile tuple of the one before. Its
+        # checks passed then and depend on nothing but the tuple and the size.
+        checked = self.tiles is _CHECKED_TILES[0] and self.size == _CHECKED_TILES[1]
+        width, height, levels = self.size
         for name, cls in (("tiles", Tile), ("objects", ObjectView), ("heroes", Hero), ("towns", Town)):
+            if checked and name == "tiles":
+                continue
             _tuple(getattr(self, name), cls, name)
-            for entry in getattr(self, name):
-                if any(p >= n for p, n in zip(entry.position, self.size)):
-                    raise ValueError("Observed position outside public map bounds")
-        _unique([t.position for t in self.tiles], "visible tile")
-        visible = {t.position for t in self.tiles}
+            # Every entry checked its own position: three exact integers.
+            if any(x >= width or y >= height or z >= levels for x, y, z in [entry.position for entry in getattr(self, name)]):
+                raise ValueError("Observed position outside public map bounds")
+        if checked:
+            visible = _CHECKED_TILES[2]
+        else:
+            _unique([t.position for t in self.tiles], "visible tile")
+            visible = frozenset(t.position for t in self.tiles)
+            _CHECKED_TILES[:] = self.tiles, self.size, visible
         if any(obj.position not in visible for obj in self.objects):
             raise ValueError("Current object must be on a currently visible tile")
         for name in ("objects", "heroes", "towns"):
@@ -2917,6 +2960,59 @@ def decode_capability_panel(raw, *, schema=EXPANDED_SCHEMA):
 
 _TILE_FIELDS = frozenset(("position", "terrain", "road", "blocked", "visitable"))
 _TILE_CACHE = {}
+_DECODED_LIMIT = 4096
+_DECODED = {}  # (decoder, marshal bytes of a raw value) -> what the decoder made of it
+
+
+def _decoded_once(decoder, raw, *context):
+    """``decoder(raw, *context)``, as one shared object for every raw value that is exactly the same.
+
+    From one view to the next most of an observation stays as it was: every
+    army but the one just rearranged, the heroes that did not move. Equal
+    marshal bytes mean equal values of identical exact types (marshal refuses
+    subclasses and keeps bool, int and float apart), and only a successful
+    decoding is kept, so the frozen value returned is the one decoding would
+    build again. ``context`` is whatever else the decoder reads; it is hashable.
+    """
+    try:
+        key = (decoder, marshal.dumps(raw), *context)
+    except ValueError:
+        return decoder(raw, *context)
+    value = _DECODED.get(key)
+    if value is None:
+        value = decoder(raw, *context)
+        if len(_DECODED) >= _DECODED_LIMIT:
+            _DECODED.clear()  # bounded memory; a miss only decodes again
+        _DECODED[key] = value
+    return value
+
+
+def _decode_own_stack(raw):
+    return OwnArmyStack(**_exact_record(raw, OwnArmyStack))
+
+
+def _decode_own_army(raw):
+    row = _exact_record(raw, OwnArmy)
+    row["slots"] = tuple(_decoded_once(_decode_own_stack, slot) for slot in _array(row["slots"]))
+    return OwnArmy(**row)
+
+
+def _decode_town_panel(raw, schema):
+    return decode_town_panel(raw, schema=schema)
+
+
+def _decode_capability_panel(raw, schema):
+    return decode_capability_panel(raw, schema=schema)
+
+
+def _decode_hero(raw):
+    return _decode_simple(raw, Hero, ("position",))
+
+
+def _decode_town(raw):
+    return _decode_simple(raw, Town, ("position",))
+
+
 _TILE_CACHE_LIMIT = 65536
 _LAST_TILES = [None, None]  # marshal bytes of the last decoded raw tile list, and its tiles
 
@@ -2967,30 +3063,66 @@ def _decode_tiles(raw):
     return tiles
 
 
-def decode_observation(raw, *, schema=SCHEMA):
+_TILE_PLACES = [None, None]  # the tile tuple indexed last, and the place of each of its positions
+
+
+def _changed_tiles(tiles, raw):
+    """``tiles`` with each tile of the raw list in the place of the one at its position."""
+    items = _array(raw)
+    if not items:
+        return tiles
+    if tiles is not _TILE_PLACES[0]:
+        _TILE_PLACES[:] = tiles, {tile.position: place for place, tile in enumerate(tiles)}
+    places, changed, replaced = _TILE_PLACES[1], list(tiles), set()
+    for item in items:
+        tile = _decode_tile(item)
+        place = places.get(tile.position)
+        if place is None or place in replaced or tile == tiles[place]:
+            raise ValueError("A changed tile must replace a different tile of the previous view, once")
+        replaced.add(place)
+        changed[place] = tile
+    return tuple(changed)
+
+
+def decode_observation(raw, *, schema=SCHEMA, unchanged_map=None):
+    """The typed observation of raw.
+
+    ``unchanged_map`` is the ``(tiles, objects)`` of the seat's previous view,
+    already decoded. A raw observation that names neither takes them; they are
+    what decoding its own copy of that unchanged map would return. One that
+    names its objects and, as ``tile_changes``, the tiles that differ from the
+    previous view's takes the previous tiles with those replaced.
+    """
     profile = profile_for(schema)
     if schema != profile.history_schema:
         raise ValueError("Observation decoding requires its enclosing history schema")
+    changed = None
+    if type(raw) is dict and "tile_changes" in raw:
+        if unchanged_map is None or "tiles" in raw or "objects" not in raw:
+            raise ValueError("Tile changes need the previous view's tiles and this view's objects")
+        changed = _changed_tiles(unchanged_map[0], raw["tile_changes"])
+        raw = {name: value for name, value in raw.items() if name != "tile_changes"}
     data = _record(raw, Observation)
     if ("army_information" in data) != ("own_armies" in data):
         raise ValueError("Passive own army fields must be present together")
     if "army_information" in data:
         if data["army_information"] != OWN_ARMY_INFORMATION:
             raise ValueError("Unsupported passive own army information version")
-        armies = []
-        for raw_army in _array(data["own_armies"]):
-            row = _exact_record(raw_army, OwnArmy)
-            row["slots"] = tuple(OwnArmyStack(**_exact_record(slot, OwnArmyStack)) for slot in _array(row["slots"]))
-            armies.append(OwnArmy(**row))
-        data["own_armies"] = tuple(armies)
+        data["own_armies"] = tuple(_decoded_once(_decode_own_army, army) for army in _array(data["own_armies"]))
     for name in ("size", "resources"):
         if name in data:
             data[name] = _array(data[name])
     if "tiles" in data:
         data["tiles"] = _decode_tiles(data["tiles"])
-    for name, cls in (("objects", ObjectView), ("heroes", Hero), ("towns", Town)):
+    elif changed is not None:
+        data["tiles"] = changed
+    if "objects" in data:
+        data["objects"] = tuple(_decode_simple(item, ObjectView, ("position",)) for item in _array(data["objects"]))
+    for name, decoder in (("heroes", _decode_hero), ("towns", _decode_town)):
         if name in data:
-            data[name] = tuple(_decode_simple(item, cls, ("position",)) for item in _array(data[name]))
+            data[name] = tuple(_decoded_once(decoder, item) for item in _array(data[name]))
+    if unchanged_map is not None and "tiles" not in data and "objects" not in data:
+        data["tiles"], data["objects"] = unchanged_map
     if data.get("window") is not None:
         window = _record(data["window"], Window)
         if (profile.capabilities != ("capability_controls" in window)
@@ -2999,7 +3131,7 @@ def decode_observation(raw, *, schema=SCHEMA):
         if "capability_controls" in window:
             window["capability_controls"] = _array(window["capability_controls"])
         if window.get("capability_panel") is not None:
-            window["capability_panel"] = decode_capability_panel(window["capability_panel"], schema=schema)
+            window["capability_panel"] = _decoded_once(_decode_capability_panel, window["capability_panel"], schema)
         if profile.dialogs != ("dialog_panel" in window):
             raise ValueError("dialog_panel is explicit in v7 windows and absent in older profiles")
         if window.get("dialog_panel") is not None:
@@ -3009,9 +3141,9 @@ def decode_observation(raw, *, schema=SCHEMA):
             if "town_panel" in window:
                 raise ValueError("Town economy fields are absent from this context/schema")
         else:
-            window["town_panel"] = decode_town_panel(window.get("town_panel"), schema=profile.history_schema)
+            window["town_panel"] = _decoded_once(_decode_town_panel, window.get("town_panel"), profile.history_schema)
         if "armies" in window:
-            window["armies"] = tuple(decode_army(item) for item in _array(window["armies"]))
+            window["armies"] = tuple(_decoded_once(decode_army, item) for item in _array(window["armies"]))
         if window.get("stack_panel") is not None:
             window["stack_panel"] = decode_stack_panel(window["stack_panel"], profile)
         if window.get("army") is not None:

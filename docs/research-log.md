@@ -8873,6 +8873,163 @@ lines in `replay-check/check-replay.jsonl` carry "Contextual replay differs at
 record 3768", changed record 3763, and `vcmireplay` ends with status 3 on that
 error), but that is read from their output, not observed by a new run.
 
+### 2026-11-20 — Faster game play, second round: the engine compares numbers, Python keeps what did not change
+
+The user asked for the largest possible speedup of play, trying several ideas,
+toward a 1000-game cycle in under an hour, and wrote "run it" in the thread for
+measurements on the Mac. Branch `claude/project-thread-r4x7mn` on top of the
+play-speed branch at `cb5fe99`, worked on in a clone of its own,
+`~/Projects/Heroes-fast`; the training checkout was not touched. State folder
+`~/Projects/Heroes-artifacts/fast-r4x7mn` (checkpoint 1789 copied from the
+play-speed folder; `src-<commit>/` are the frozen trees every measurement ran
+from, `measure-1.sh` to `measure-4.sh` the queues, `results/*.jsonl` the
+reports, `logs/` the times of every start and end).
+
+**Starting point and hypotheses, written before the measurements.** The entry
+of 2026-11-19 left two large items: the engine rebuilt each player's whole
+observation as JSON after every applied pack to see whether it had changed
+(about 2 ms of a 6 ms decision), and the policy's forward pass (1.9 ms). The
+map is 20 by 20, so each observation carries up to 400 tiles, about 30 KB of
+its JSON, and the old CPU sample put more than two thirds of the capture's time
+into the tile loop. Hypothesis 1: collecting tiles and objects as plain numbers
+and comparing those finds the unchanged map without JSON, and a view that did
+not change the map need not carry it; the engine's share should about halve.
+Hypothesis 2: a view costs about 0.9 ms in Python because the passive army
+statistics (17 fields for each of up to seven stacks of every hero and town)
+are decoded, rebuilt as a semantic tree and walked for every view although one
+army at most changed; doing that once per unchanged value should remove most
+of it. Acceptance for both: the digest of everything the learner reads stays
+the same on seeded real games, single and with the actor pool, versions
+measured in turns from frozen trees.
+
+**Implemented.**
+
+- `7b39cfd`, engine and reader. `ExplorerRL::contextualObservation` fills a
+  `VisibleMap` (per tile: position, terrain, road, blocked, visitable; per
+  object: engine id, position, kind, subtype and the relative owner the policy
+  is told) and builds JSON for everything else as before. Two maps are equal
+  exactly when the JSON written from them is: object ids and handles
+  correspond one to one, and the owner is stored as the relation, so two
+  different neutral owner values still compare equal as they did. Handles are
+  still taken while the tiles are scanned, so their numbering is unchanged.
+  `captureContextualLocked` compares map and rest and returns as before when
+  neither changed. `EXPLORER_RL_REPEATED_MAP=0`, which the launcher now sets,
+  leaves `tiles` and `objects` out of a view when they are those of the
+  player's previous view; the first view always carries them, and a decision
+  that repeats its observation (the older form) is still complete.
+  `Producer` hands `decode_observation` the previous view's tuples for such a
+  view. `vcmireplay` reads the form from the capture (a view without tiles),
+  as it does for decisions. `Observation.__post_init__` runs its tile checks
+  once per tile tuple and map size.
+- `ad363c0`, Python. `contract._decoded_once` keeps one decoded object per
+  exact raw value (marshal bytes, the argument already used for tile lists)
+  for own armies and their stacks, displayed armies, heroes, towns, town and
+  capability panels. `policy._semantic` builds the tree of such an object once
+  and keeps it as `_Kept`, a tuple subclass that remembers its hash, its repr
+  (used to sort sets) and whether equality is identity inside it; bindings of
+  two kept trees are kept as well. `_encode_tree` visits a kept tree once per
+  version of the weights and adds the stored cache entries at later meetings;
+  the recipe compiler's arena does the same once per game while the frame has
+  added no leaf whose equality is not identity. The argument for exactness is
+  in the docstrings: under the memo every cache entry is the exact encoding of
+  its tree and the cache holds the subtrees of whatever it holds, so a visit
+  leaves the cache with the tree's subtrees added.
+- `1219d1d`, three small memos from the new profile: the guard's sort of all
+  tiles per observation, the bounds check of a new tile tuple, and
+  `army_operation_choices` asked several times about the same armies.
+
+Runtime `local-v8-changed-map-v1`, built in `~/Projects/Heroes-fast/vcmi`
+(`prepare_vcmi.py --check` passes) and frozen with `tools/freeze_runtime.py`;
+it is now the default in `heroes/config.py`. An older runtime ignores the new
+switch and an older reader never sets it, so the pairs still play.
+
+**Tests.** 77 scripted tests pass (72 before). New in `tests/test_env.py`: a
+view without a map keeps the tuples of the view before; an engine that repeats
+the map plays the same game with an equal recipe digest; a first view without
+a map, and a view with only one of the two parts, are refused; a checked tile
+tuple is checked again for another map size. New `tests/test_policy_reuse.py`,
+on hand-built observations of two heroes exchanging stacks with a town and
+passive statistics, because the scripted engine shows no armies: unchanged
+parts are the same objects; a kept tree equals, hashes and prints as the tuple
+it was built as; a pass with all reuse gives bit for bit the states, values,
+sampled actions, log-probabilities and per-decision cache entries of a pass
+with autograd on and no reuse at all, while walking less than half the trees
+of the earlier memo; kept encodings do not outlive the weights; the compiled
+recipe is the same with and without reuse.
+
+**Measured**, 2026-11-20 16:27 to 17:10 local. Charger 140 W, battery 100% and
+not falling. The user's training run (PID 42215, `heroes train 1000` in
+`~/Projects/Heroes`) was in its PPO update throughout, about 55% of one core
+and the GPU; every figure is from a Mac that was doing that as well. Old
+engine: `local-v8-play-switches-v1`.
+
+One seeded game to day 60 per call (`profile_game.py`), in turns:
+
+| seed, decisions | | PR 35 (`cb5fe99`) | PR 35 code, new engine | map (`7b39cfd`) | reuse (`ad363c0`) | memos (`1219d1d`) |
+| --- | --- | --- | --- | --- | --- | --- |
+| 4, 14,208 | play, compile | 90.5 s, 11.6 s | 74.6 s, 11.4 s | 66.3 s, 11.8 s | 48.6 s, 8.2 s | 47.2 s, 7.6 s |
+| 9, 11,658 | play, compile | 66.5 s, 8.2 s | 54.9 s, 8.4 s | 44.4 s, 8.3 s | 35.5 s, 6.3 s | 34.9 s, 5.6 s |
+
+The memos were measured in a later round against `ad363c0` again (51.6 s and
+37.1 s that time), so their step is 9% and 6%, not the difference of the two
+columns. Digests `fec36b04…` (seed 4) and `f154a6e3…` (seed 9) in every cell:
+the same games. For seed 4 the wait for the engine went 42.6 s, 17.3 s, 15.6 s
+(PR 35, map, reuse), the forward pass 25.8 s, 28.8 s, 15.4 s, decoding 10.6 s,
+8.0 s, 6.6 s.
+
+Fourteen actors on the same fourteen seeded games to day 60
+(`bench_play.py --workers 14 --games 14 --seed 3`; 132,920 decisions, 61,734
+samples): PR 35 139.9 s and 151.2 s, `ad363c0` 82.4 s and 89.5 s in turns,
+`1219d1d` 79.6 s afterwards. All fourteen digests are equal in all five runs.
+One actor's time per decision, compilation included: 8.55 and 9.38 ms, 5.17
+and 5.56 ms, 4.89 ms.
+
+Fourteen actors kept busy for 130 s after a 20 s warm-up, games to day 365
+(`--seconds 130 --seed 7`), in turns: PR 35 1,209 and 1,145 decisions per
+second, `ad363c0` 1,993 and 1,697. A 77 s run of the scripted tests overlapped
+the first PR 35 window; the second was undisturbed. With the mean game of the
+user's 421-game log (33,566 decisions), 100 games are about 48 minutes at
+1,177 per second and about 30 at 1,845. That is derived, not a played batch.
+
+**The replay check on the real engine** (`tools/check_replay.py`, 3-day game,
+7,429 records): a capture of the new engine, whose views after the first leave
+unchanged maps out, verifies with the new `vcmireplay`; so does a capture of
+the old engine, which repeats the map; both reject the changed answer at
+record 3768 after the change at 3763.
+
+**Where the time is now.** CPU sample of the new engine during the seed 4 game
+(`results/engine-sample-map.txt`, 20 s, with `7b39cfd`): the captures are 12%
+of the game's wall time (over a third of that in `ownArmyDetails`, a fifth in
+the tile visibility scan), writing JSON 5%. Python profile of the same game
+with `ad363c0` (`results/reuse-seed4.prof`; cProfile inflates Python): the
+walk that samples or evaluates an action is the largest block (about 56
+`Action` objects are built and checked per decision, and the guard's `permits`
+is asked about 30 times); tiles of views that did change the map (8,301 of
+22,016 observations) cost a decode and a bounds check per tile; compiling the
+recipe evaluates every trained decision's walk a second time. Each of these is
+a few percent. No further change is claimed here.
+
+**A training change, measured and not adopted.** The same fourteen seeds with
+the guard's daily stack-management budget lowered from 32 per hero and town,
+in copies of `ad363c0` with the constant edited (`src-limit8`, `src-limit4`):
+budget 8 gave 83,702 decisions over 634 game days, 66.0 per seat and day
+against 99.8; budget 4 gave 69,974 over 631, 55.4 per seat and day. These are
+other games (the policy samples from another support), so only the counts
+compare. With budget 4 the learner seats' actions are 71% opening and closing
+windows and 7% moves. From the 421 games of the user's log, a day limit of 180
+instead of 365 would keep about 72% of the decisions, and 66% of the games end
+before it against 85%. The guard and the limits are unchanged; these numbers
+were given to the user with two further options, training on both seats and
+playing the next batch during the update.
+
+**Limitations.** Timings are from a Mac that was also running a PPO update,
+one sitting, two seeds for single games and one seed for the pool. The
+exactness evidence is the digests of 16 seeded games to day 60, the scripted
+tests and the argument in the code; no full-length game and no training run
+was made with this code. The decoded-value cache and the kept trees hold up to
+4,096 and 8,192 entries per actor process and the kept encodings 2,048; their
+memory was not measured.
+
 ### 2026-11-20 — User stopped the 1,000-game run after update 1791
 
 The terminal run in `~/Projects/Heroes-artifacts/training-trial` resumed
@@ -8894,3 +9051,327 @@ ending at main commit `2363a6a`. Its tree matches reviewed head `cb5fe99`.
 A separate main worktree at `~/Projects/Heroes-main` passed
 `./train.command check --state ~/Projects/Heroes-artifacts/training-trial`
 with the play-switches runtime, MLX and the saved progress for update 1791.
+
+### 2026-11-20 — Play speed, third round: the settings that change training, a hero's step as two tiles, and what is left
+
+The user's answer to the options of the entry above was "exhaust all choices,
+try everything". Read as: build every training change as a setting, measure
+each on real games, and continue with the pure speedups. During the work he
+withdrew one: no shorter day limit, "with enough training games will become
+shorter by themselves". A real training run was not started by the assistant,
+also not in a scratch folder; that launch stays with the user. Same branch,
+clone and state folder as the entry above; queues `measure-5.sh` to
+`measure-7.sh`.
+
+**Built** (`61bd38b`, then `ff5a2f9` removed the day-limit flag again). All
+off unless given; a run without them plays and trains as before.
+
+- `--both-seats`: `actor.play` also builds the opponent seat's trajectory
+  (`Game.other`); the actor compiles both recipes and the update gets both.
+  A seat whose history gives no trajectory is left out and the game counts
+  with one.
+- `--stack-moves N`, `--windows N`, `--decisions N`: daily budgets of the
+  interaction guard, set through its name (`guard.version`,
+  `VERSION+stack-moves-4+windows-6`). The name travels with every trajectory,
+  so the recipe compiler and the reference update build the same tracker.
+  `stack-moves` replaces the constant 32. `windows` counts a hero's or town's
+  optional window navigation of the day (the same actions the existing
+  repeat limit counts) and closes further navigation for that subject.
+  `decisions` counts a seat's answers of the day; past it only closing,
+  mandatory answers and ending the turn are permitted. The standard guard
+  keeps its name and its behaviour; only one spelling of a name is accepted.
+- `--play-during-update`: collection became a `Batch` that can be stepped; the
+  update's progress callback steps the next batch with the weights the update
+  started from, and after the update the rest of that batch is played with the
+  new weights.
+
+**Tests.** 86 scripted tests pass. New: guard names and their refusals, the
+window budget closing one hero for one day and no other, the decision budget
+leaving only the end of the turn until the next day; both seats giving two
+trajectories with opposite rewards and twice the samples in the log; the next
+batch's games handed out before the previous update is logged, and after it
+without the setting; the flags reaching the run. The play-during-update path
+has only run against the scripted engine and the reference update.
+
+**Measured**, 17:15 to 18:47 local, 140 W, battery full. The user's training
+run was in its PPO update until 18:32 and has been playing its own ten games
+since; what was timed after 18:32 is marked. Trees `src-61bd38b` (settings)
+and `src-a608dff` (round 2), runtimes `local-v8-changed-map-v1` and
+`local-v8-tile-changes-v1`.
+
+Both seats, the same 14 seeded games to day 60 with 14 actors, in turns
+(`results/seats.jsonl`): one seat 74.3 s and 72.8 s, both seats 88.4 s and
+89.4 s; one actor's time per decision 4.51 and 4.45 ms against 4.93 and
+5.00 ms; recipe compilation 54 s and 52 s against 116 s and 116 s; samples
+61,734 against 132,911. The learner seats' digests are the same in all four
+runs: 2.15 times the samples for 11% more actor time.
+
+Actor counts, 130 s windows after a 20 s warm-up, in turns
+(`results/workers.jsonl`): 14 actors 2,055 and 2,191 decisions per second, 16
+actors 2,027 and 2,186, 18 actors 2,204 and 2,287.
+
+Daily budgets, each on the same 14 seeds to day 60 (`results/budgets.jsonl`).
+Another support means other games, so these are counts. Decisions are of both
+seats per seat and game day; moves per learner seat and day; the last columns
+count the learner seats' recruitments, buildings and hirings in the 14 games.
+
+| guard | decisions | moves | recruit | build | hire |
+| --- | --- | --- | --- | --- | --- |
+| standard (stack moves 32) | 99.8 | 4.15 | 44 | 16 | 61 |
+| stack moves 8 | 66.0 | 4.23 | 48 | 19 | 60 |
+| stack moves 4 | 55.4 | 3.52 | 37 | 17 | 45 |
+| windows 12 | 81.1 | 3.96 | 41 | 13 | 48 |
+| windows 6 | 73.8 | 3.86 | 38 | 13 | 45 |
+| stack moves 8, windows 8 | 53.9 | 3.44 | 55 | 19 | 59 |
+| stack moves 4, windows 6 | 43.2 | 4.37 | 41 | 21 | 63 |
+| stack moves 4, windows 4 | 27.6 | 3.80 | 22 | 10 | 37 |
+| stack moves 4, windows 3 | 29.2 | 4.12 | 24 | 4 | 43 |
+| stack moves 2, windows 6 | 32.0 | 3.62 | 33 | 8 | 40 |
+| stack moves 2, windows 4 | 25.3 | 4.09 | 30 | 11 | 43 |
+| stack moves 2, windows 3 | 18.4 | 3.02 | 27 | 5 | 37 |
+| stack moves 1, windows 3 | 19.5 | 3.14 | 26 | 5 | 43 |
+| decisions 60 | 48.7 | 3.02 | 29 | 11 | 32 |
+| decisions 40 | 33.4 | 2.00 | 7 | 7 | 15 |
+| decisions 25 | 24.4 | 1.48 | 12 | 3 | 15 |
+
+Read with care: 14 games per row, one seed, the first 60 days, and the small
+counts move by chance (16, 19, 17 and 21 buildings in four rows that should
+not differ). What the table supports: stack moves 4 with windows 6 removes
+57% of the decisions with the useful actions where they were; a window budget
+below 6 costs recruitments and buildings, which need three window steps each
+in a town; the flat decision cap removes useful actions in proportion (at 40,
+half the moves and a sixth of the recruitments), because a policy that samples
+free actions at random reaches the cap before it moves. The stack-8 and
+stack-4 rows repeat the counts of the edited copies of the entry above (83,702
+decisions; 69,975 against 69,974, one answer of the opponent at the end of a
+six-day game), so the setting does what the edited constant did.
+
+Day limits on 14 whole games, seed 5 (`results/days.jsonl`, before the limit
+was withdrawn): to day 365 539,195 decisions, 12 natural endings, 535 s; to
+day 180 347,763 decisions (64%), 9 natural endings, 323 s; to day 120 261,996
+(49%), 8 natural endings, 190 s. The estimate from the user's log in the entry
+above (72% at 180) was too high: it assumed a game's decisions spread evenly
+over its days, and later days hold more.
+
+**Whole games match.** The same 14 games to day 365 with PR 35's tree and
+engine: 980 s, and all 14 digests, statuses and decision counts equal those
+of `61bd38b` with `local-v8-changed-map-v1`. One actor's time per decision
+8.73 ms against 4.48 ms. This is the first evidence beyond day 60 that the
+reuse of the entry above, with its bounded caches, changes nothing.
+
+**Engine, round 2** (`a608dff`, runtime `local-v8-tile-changes-v1`, now the
+default).
+
+- A view that changed the map while the same tiles stayed visible carries
+  `tile_changes`, the tiles that differ, and its objects
+  (`EXPLORER_RL_TILE_CHANGES=1`); the reader replaces them in the previous
+  view's tiles and refuses a change that fits no tile, repeats one, or changes
+  nothing. A hero's step changes two tiles and is a view for each player who
+  sees it: 8,301 of the 22,016 observations of the seed 4 game changed the
+  map. `vcmireplay` reads this form from the capture as well.
+- The policy socket's line is written straight from the JsonNode.
+  `JsonNode::toCompactString` pretty-prints through a stream (the old lines
+  carried the tabs); the new writer emits the values alone and escapes strings
+  with JsonWriter's own rule. Checked with a temporary build that parsed every
+  line back and compared it with its message: both seeded games ran to day 60
+  with their digests; that build was not kept.
+- The tile scan asks `getTile` alone, which tests visibility itself.
+- In Python, displayed army slots are indexed once per tuple of armies.
+
+In turns with `61bd38b` on its runtime, the user's run still in its update:
+seed 4 43.8 s play to 37.1 s, seed 9 34.1 s to 27.8 s, digests equal; the
+wait for the engine went 14.9 s to 9.8 s and decoding 5.4 s to 3.8 s (seed 4).
+14 actors on the 14 games to day 60: 75.2 s and 77.3 s against 69.1 s and
+62.5 s, all digests equal; one actor's time per decision 4.59 and 4.78 ms
+against 4.33 and 3.83 ms. The four 130 s windows that followed ran after
+18:32 beside the user's ten games (1,613 to 2,758 decisions per second with
+no order between the versions) and say nothing. Against PR 35 the seed 4 game
+is now 90.5 s to 37.1 s of play and 102.2 s to 43.9 s with compilation.
+
+The replay check passes for the new runtime's `vcmireplay` on captures of all
+three engines (changed tiles, unchanged maps left out, maps repeated): each
+verifies from either environment and rejects the changed answer.
+
+**Not built, with the reason.** Reusing the play-time encoded frames in the
+recipe compiler (about 3% with both seats) and recording the sampling walk's
+filtered choices for the compiler's second walk (about 3%): both add state
+that must not be pickled or mistaken. Caching the passive army statistics in
+the engine (about 4%): they come from bonus-system queries whose inputs have
+no cheap version stamp, so a cache could not be shown exact. Batched or GPU
+inference: the policy is a 64-unit GRU over trees encoded node by node; its
+time is Python and small-tensor overhead, not arithmetic a GPU would take. A
+compiled Python (mypyc, Cython) was not tried.
+
+**What it adds up to, derived.** At about 2,120 decisions per second with 14
+actors (measured before round 2) and the 33,566 decisions of the mean game in
+the user's log, 100 games are about 26 minutes of play against 48 at PR 35's
+rate; round 2 is about 15% on top by the 14-game batches. If the 57% fewer
+decisions of stack moves 4 with windows 6 held over whole games, 100 games
+would be about 10 minutes, and with both seats 1000 trajectories would come
+from 500 games in under an hour of play. That is arithmetic on a 60-day
+count, not a played batch, and says nothing about what a policy learns under
+those budgets.
+
+**Limitations.** No training run was made with any of these settings; the
+update with two trajectories per game and the play-during-update path have not
+met the real engine or the MLX update. Budget rows are single 14-game batches.
+The last engine change was timed on two single games and two batch pairs only,
+because the Mac was no longer free.
+
+### 2026-11-20 — Review of the third play-speed round: three findings and the suggested launch, corrected
+
+The user reviewed PR 36 at `de0720e`. He confirmed the collection speedup on
+the saved measurements and reproduced three faults with the scripted engine.
+All three were real.
+
+1. **Play during the update stops the second MLX update.** Games begun during
+   update N are played by the weights from before it. Before its first step
+   the MLX update compares what it computes for the first minibatch with the
+   log-probabilities and values recorded during play, and stops when they
+   differ ("Initial MLX prediction sanity limits exceeded"). The tests of the
+   entry above ran the reference update, which has no such check, so this went
+   unseen, and the launch suggested in the PR would have failed at its second
+   update. Fixed the small way: `train` refuses `--play-during-update` with
+   the MLX backend before anything is played. The setting now works with the
+   reference update only, which is too slow for training; supporting MLX
+   needs each trajectory to name its behaviour checkpoint and the check to be
+   made against those weights. Not built.
+2. **A failing next batch lost the update that was running.** `Batch.step`
+   raised from inside the update's progress callback, which unwound the update
+   before `checkpoint.save`. The callback now keeps the error and stops
+   stepping; the update finishes, is saved and logged, and the error is raised
+   after that. A restart continues from the saved update.
+3. **The two-seat benchmark hashed one seat.** `bench_play.py --both-seats`
+   counted both seats' samples but its `digests` covered the learner seat
+   only, so a changed or missing opponent trajectory was invisible. The report
+   now also carries `seat_digests`, one per colour and game, `null` for a
+   missing trajectory; `digests` is unchanged, so earlier runs still compare.
+   The two-seat rows of the entry above therefore show that the learner seats
+   were unchanged and say nothing about the opponent trajectories beyond their
+   sample count.
+
+**The suggested launch was wrong** in two ways besides the overlap flag. Its
+state folder did not exist, so `restore` would have imported the earlier
+pipeline's checkpoint 1785 instead of 1791; and it mixed the new settings into
+what was meant as a speed comparison. Corrected in the PR description: copy
+`update-001791.pt` into a new folder, write a `latest.json` that names it, and
+read `./train.command check --state` before playing. Tried without playing:
+the check prints `continues {'updates': 1791, 'games': 10342, 'decisions':
+20791899, 'optimizer_steps': 652799}`, and the copied file has the SHA-256 the
+entry of the pause records (`ca190c8a…`). The comparison run keeps the usual
+settings.
+
+**Tests.** 89 scripted tests pass (86 before): the refusal with the MLX
+backend through `train` and through the command line, with no state folder
+created; a first batch of two good games, every later game failing while a
+slowed reference update runs, ending with update 1 saved, the failure raised,
+and a restart reaching update 2 (without the fix the same test leaves only the
+initial checkpoint); `seat_digests` equal across two runs, the learner's equal
+to the one-seat digests, and a dropped opponent trajectory shown as `null`.
+
+**Not run.** The two-seat benchmark was not repeated on real games with the
+new digests: the user's 100-game baseline run on main was in progress and a
+14-actor benchmark beside it would have spoiled its timing. A full 100-game
+cycle including the PPO update has still not been measured with this branch;
+the 26 minutes of the entry above are collection only.
+
+### 2026-11-21 — Review of PR 36, continued: either seat admits a game; the two-seat benchmark on real games; one racy ending
+
+**A fourth review finding**, posted after the entry above and seen only when
+the user asked the thread to continue. With `--both-seats` the learner seat's
+trajectory was built first, and a learner without one made the whole game
+`failed` / `unusable_trajectory` before the other seat was looked at. He
+showed it with the scripted engine and `Limits(max_days=1)`: the same game,
+weights and seeds were kept with red as designated learner (one trajectory,
+red's) and thrown away with blue. Real: the opponent's trajectory was treated
+as an extra, not as an equal.
+
+Fixed in `35ba545`. `actor.play` builds each seat's trajectory on its own;
+`Game.trajectory` stays the designated learner's and `Game.other` the
+opponent's, and either may be missing. The game is `failed` only when neither
+exists, and the collector asks whether a game has any trajectory. The game's
+`detail` names the seat that gave none (`blue: this seat completed no
+action`). With one seat the rule is as before. `bench_play.py --both-seats`
+counts such a game, lists `red` then `blue` in `seat_digests` whoever the
+learner was, and exits 1 only when a game has no trajectory at all.
+
+Tests, 90 scripted (89 before): the reviewer's case in both assignments, both
+`truncated`, the same red trajectory by digest after compiling, as the
+learner's in one game and as the opponent's in the other; one seat still fails
+with blue as learner; the training loop over two such games admits both with 0
+failed; the benchmark's report and exit status for the same games with one seat
+and with both, and with both seats crashing.
+
+**The two-seat benchmark on real games**, which the entry above left open.
+2026-11-21 01:14 to 01:43 local, 140 W, battery full, no training run on the
+Mac (the user's baseline cycle had ended at 01:02). Tree `src-35ba545`,
+runtime `local-v8-tile-changes-v1`, the 14 games of seed 3 to day 60, queues
+`measure-8.sh` and `measure-9.sh`, reports `results/seats2.jsonl` and
+`seats3.jsonl`.
+
+- Standard guard, 14 actors, one seat and both seats in turns: 70.3 s and
+  66.3 s against 82.1 s and 83.2 s; one actor's time per decision 4.32 and
+  3.99 ms against 4.52 and 4.54 ms; compilation 53 s and 52 s against 115 s and
+  114 s; samples 61,734 against 132,911. The learner seats' digests are those
+  of the one-seat runs and of the runs of 2026-11-20.
+- All 28 seat digests are equal in seven two-seat runs with the standard
+  guard, one of them on 7 actors; every game has both colours and the 28
+  digests are distinct.
+- With stack moves 4 and windows 6, ten two-seat runs: 27 of the 28 seat
+  digests are equal in all ten. The blue seat of game 9, a natural ending on
+  day 8 in which blue is the designated learner, has three digests: 7, 2 and 1
+  times. Its game answers 161 and 210 decisions in eight runs and 161 and 211
+  in two. The samples (61,204), statuses, days and the learner seats' actions
+  by kind (30,452 actions) are the same in all ten runs. The one-seat run of
+  2026-11-20 with this guard had the third of these digests for that game.
+
+**Why that seat differs, from the code.** `ExplorerRL::gameOver` runs on the
+network thread: it sets `terminal` and then writes the terminal under
+`sendMutex`. The AI thread of the player who moved last reports the move's
+result and then asks the next decision through `buildAndSend`, which takes the
+same mutex and builds nothing once `terminal` is set. So the terminal comes
+before the result, after it, or after the next decision, which it withdraws:
+three ends of one history, as the comment in `buildAndSend` says the design
+allows. `actor.learner_samples` gives the same samples for all three: the last
+action owns the reward with a result or closed by the terminal, and a decision
+withdrawn before its answer was used is no sample. The digest covers every
+frame of the seat, so it has three values. This is the engine's behaviour from
+before this branch; it shows here because this game's last move returns close
+to the end of the game, not because of the budgets or the second seat. Not
+confirmed by looking at the three histories: a script that would have printed
+the last frames of this game was not run. `tools/perf/README.md` now says how
+to tell this difference from a change of play.
+
+**The user's baseline cycle, read from his log** (`training-trial/log.jsonl`,
+update 1792 on main `c1c96ce`, 14 actors, `--windows-per-minibatch 16
+--windows-per-game 8 --learning-rate 8.5e-4`, started 18:50 local on
+2026-11-20, seven minutes after this branch's last benchmark ended; four runs
+of its scripted tests, about a minute each, fell into the first 25 minutes):
+100 games collected in 6,273 s, 6,890,878 decisions of both seats, 1,098 per
+second; the update took 16,005 s for 3,467,583 samples
+and 13,574 steps, 4,452 s of it building plans. 51 of the 100 games ran to
+day 365; the batches of updates 1788 to 1791 had 4, 18, 15 and 24. A game had
+68,900 decisions on average against 28,000 to 38,600 in those batches, lasted
+253 days on average against 139 to 170, and a seat answered 136 decisions per
+game day against 101 to 120. The cycle was
+6 h 11 min and the update 72% of it. This branch changes the collection only:
+at about 2,100 decisions per second the same decisions are about 55 minutes
+instead of 105, which would make the cycle about 5 h 20 min. Derived, not
+played.
+
+Two more things the same log shows, noted here because they bear on what a
+cycle costs and were reported to the user; neither was investigated.
+
+- The games stopped at day 365 hold most of what is trained on: 12%, 45%, 39%,
+  52% and 73% of the samples of the batches of updates 1788 to 1792. Such a
+  game has no result. Its return is the policy's own value estimate at the
+  learner's next decision (`build_trajectory`), and returns are undiscounted
+  (`gae`), so nothing in the targets makes a shorter game better than a longer
+  one, and for the side that would have lost, reaching the limit scores its
+  own estimate instead of -1. The user's expectation was that games become
+  shorter with training; over these five batches they became longer. Five
+  batches of one run, with a large policy change per update (approximate KL
+  0.06 to 0.16), do not show a cause.
+- Blue wins most decided games in every batch: 73 to 23, 60 to 22, 63 to 22,
+  48 to 28 and 31 to 18. Both seats play with the same weights, so this is the
+  map, the turn order or the policy's play of the two seats.

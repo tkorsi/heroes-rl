@@ -15,12 +15,23 @@ The script is the JSON in ``FAKE_VCMI``:
            terminal instead of a result), "endless" (never ends), "crash"
            (exits with an error on day 2), "hang" (goes silent on day 2 until
            the policy side hangs up) or "abort" (fails before connecting)
+  still    true for a map whose objects stay where they are, so only the
+           resources change from day to day (default false)
+  abort_from  game number from which every game fails before connecting, like
+           "abort" (default: none)
   repeat   true for an engine that ignores EXPLORER_RL_DECISION_OBSERVATION=0
            and sends the observation again in every decision (default false)
+  flicker  true for a map on which two tiles change from day to day (default false)
+  repeat_map  true for an engine that ignores EXPLORER_RL_REPEATED_MAP=0 and
+           EXPLORER_RL_TILE_CHANGES=1 and sends tiles and objects in every
+           view (default false)
 
 Like the engine it sends a view whenever what the seat sees has changed, and
 then the decision; told EXPLORER_RL_DECISION_OBSERVATION=0, the decision
-carries no second copy of that observation.
+carries no second copy of that observation. Told EXPLORER_RL_REPEATED_MAP=0, a
+view whose tiles and objects are those of the seat's previous view carries
+neither; told EXPLORER_RL_TILE_CHANGES=1 as well, a view that changed the map
+on the same tiles carries its objects and only the tiles that changed.
 
 Like the engine it runs in its own folder, so it finds its profile only when
 the paths it was given are absolute.
@@ -45,6 +56,10 @@ OBSERVATION = c.Observation((2, 2, 1), (c.Tile((0, 0, 0), 1, 0, False, False),),
                             army_information=ARMIES, own_armies=() if ARMIES else None)
 SIDE = SCRIPT.get("map")
 REPEAT = SCRIPT.get("repeat", False) or os.environ.get("EXPLORER_RL_DECISION_OBSERVATION") != "0"
+REPEAT_MAP = SCRIPT.get("repeat_map", False) or os.environ.get("EXPLORER_RL_REPEATED_MAP") != "0"
+TILE_CHANGES = not REPEAT_MAP and os.environ.get("EXPLORER_RL_TILE_CHANGES") == "1"
+STILL = SCRIPT.get("still", False)
+FLICKER = SCRIPT.get("flicker", False)
 TILES = SIDE and tuple(c.Tile((x, y, 0), 1 + (x * 7 + y * 3) % 5, int((x + 2 * y) % 5 == 0), (x * y) % 11 == 3, False)
                        for y in range(SIDE) for x in range(SIDE))
 
@@ -53,12 +68,18 @@ def observation(day, player):
     """What the seat sees on ``day``: the fixed view, or a full map with wandering objects."""
     if not SIDE:
         return OBSERVATION
-    objects = tuple(c.ObjectView(f"object-{index}", ((index * 5 + day * (index % 3) + player) % SIDE,
-                                                      (index * 11 + (day * (index % 4)) // 2) % SIDE, 0),
+    moved = 0 if STILL else day
+    objects = tuple(c.ObjectView(f"object-{index}", ((index * 5 + moved * (index % 3) + player) % SIDE,
+                                                      (index * 11 + (moved * (index % 4)) // 2) % SIDE, 0),
                                  10 + index % 7, index % 4, ("self", "opponent", "neutral")[index % 3])
                     for index in range(14))
     resources = (1000 * day % 20011, day % 17, day % 13, (day + player) % 11, day % 7, day % 5, day % 3)
-    return c.Observation((SIDE, SIDE, 1), TILES, objects, resources, (), (),
+    tiles = TILES
+    if FLICKER:  # the tiles at two places that move with the day are blocked
+        marked = {(day * 3 + player) % len(TILES), (day * 5 + 1) % len(TILES)}
+        tiles = tuple(c.Tile(tile.position, tile.terrain, tile.road, True, tile.visitable) if place in marked else tile
+                      for place, tile in enumerate(TILES))
+    return c.Observation((SIDE, SIDE, 1), tiles, objects, resources, (), (),
                          army_information=ARMIES, own_armies=() if ARMIES else None)
 
 
@@ -100,6 +121,15 @@ class Seat:
         seen = observation(day, self.player)
         if self.seen != (seen, day):
             self.emit("view", day=day, observation=seen)
+            wire = self.batch[-1]["observation"]
+            if REPEAT_MAP or self.seen is None:
+                pass
+            elif (seen.tiles, seen.objects) == (self.seen[0].tiles, self.seen[0].objects):
+                self.batch[-1]["observation"] = {name: wire[name] for name in wire if name not in ("tiles", "objects")}
+            elif TILE_CHANGES and [tile.position for tile in seen.tiles] == [tile.position for tile in self.seen[0].tiles]:
+                self.batch[-1]["observation"] = {name: wire[name] for name in wire if name != "tiles"} | {
+                    "tile_changes": [item for item, tile, before in zip(wire["tiles"], seen.tiles, self.seen[0].tiles)
+                                     if tile != before]}
             self.seen = seen, day
         offers = c.Offers.from_observation(seen, schema=PROFILE.action_schema)
         decision = self.history.emit("decision", day=day, observation=seen, offers=offers,
@@ -120,7 +150,7 @@ class Seat:
 def main():
     if not (CONFIG / "settings.json").is_file() or not Path(sys.argv[sys.argv.index("--logLocation") + 1]).is_dir():
         sys.exit("Headless game start failed: no profile at " + str(CONFIG))
-    if SCRIPT["end"] == "abort":
+    if SCRIPT["end"] == "abort" or "abort_from" in SCRIPT and int(EPISODE) >= SCRIPT["abort_from"]:
         print("Headless game start failed: scripted", flush=True)
         sys.exit(134)
     seats = [Seat(0), Seat(1)]

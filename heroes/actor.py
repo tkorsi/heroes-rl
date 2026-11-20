@@ -2,7 +2,9 @@
 
 Both seats are played by the same weights. Each seat has its own recurrent
 state, its own view of the game and its own random generator; one of the two is
-the learner whose experience is trained on, the other is its opponent.
+the learner whose experience is trained on, the other is its opponent. With
+``both_seats`` the opponent's experience is trained on as well: the same game
+then gives two trajectories, one that ends in a win and one that ends in a loss.
 """
 from __future__ import annotations
 
@@ -12,7 +14,7 @@ import time
 
 import torch
 
-from .engine.env import Request
+from .engine.env import COLORS, Request
 from .learner.ppo import Trajectory
 from .model.policy import ContextualEncoder
 
@@ -35,8 +37,14 @@ class Game:
     day: int  # last game day reached
     choices: tuple  # decisions answered by each seat
     seconds: float
-    trajectory: Trajectory | None  # None when the game cannot be trained on
-    compile_seconds: float = 0.0  # time spent compiling the trajectory's recipe
+    trajectory: Trajectory | None  # the learner seat's; None when that seat cannot be trained on
+    compile_seconds: float = 0.0  # time spent compiling the recipes
+    other: Trajectory | None = None  # the opponent seat's trajectory, when both seats are trained on
+
+    @property
+    def trajectories(self):
+        """What the game gives the update: the learner seat's trajectory, then the opponent's, each if there is one."""
+        return tuple(item for item in (self.trajectory, self.other) if item is not None)
 
 
 class Seat:
@@ -128,10 +136,10 @@ def build_trajectory(frames, seat, *, natural, outcome, guard):
         while samples and samples[-1][1] not in seat.values:
             samples.pop()
     if not samples:
-        raise Unusable("the learner completed no action")
+        raise Unusable("this seat completed no action")
     for (_, successor), (following, _) in zip(samples, samples[1:]):
         if successor != following:
-            raise Unusable("the learner's actions do not form one unbroken sequence")
+            raise Unusable("this seat's actions do not form one unbroken sequence")
     decisions = tuple(decision for decision, _ in samples)
     if any(decision not in seat.choices for decision in decisions):
         raise Unusable("an action in the history was not sampled by this policy")
@@ -155,8 +163,14 @@ def compile_recipe(model, trajectory):
     return trajectory
 
 
-def play(env, model, job, directory, *, guard, on_progress=None):
-    """Play one game to its end and return it with the learner's trajectory."""
+def play(env, model, job, directory, *, guard, on_progress=None, both_seats=False):
+    """Play one game to its end and return it with the learner's trajectory.
+
+    A game whose learner seat gives no trajectory is a failed game. With
+    ``both_seats`` each seat's trajectory is built on its own and stays with
+    its seat: the game counts as long as one of the two gives a trajectory, and
+    ``detail`` then says why the other gave none.
+    """
     started = time.monotonic()
     seats = [Seat(model, seed, guard=guard) for seed in job.policy_seeds]
     state = env.reset(directory, job.number, job.engine_seed)
@@ -169,13 +183,21 @@ def play(env, model, job, directory, *, guard, on_progress=None):
         state = env.step(seat.act())
         if on_progress is not None:
             on_progress(env.day, tuple(len(item.choices) for item in seats))
-    trajectory, status, reason, detail = None, state.status, state.reason, state.detail
+    status, reason, detail = state.status, state.reason, state.detail
+    built = {}  # seat -> its trajectory
     if status in ("completed", "truncated"):
-        try:
-            trajectory = build_trajectory(
-                env.frames(job.learner), seats[job.learner], natural=status == "completed",
-                outcome=state.outcomes[job.learner] if state.outcomes else None, guard=guard)
-        except Unusable as error:
-            status, reason, detail = "failed", "unusable_trajectory", str(error)
+        unusable = []
+        for seat in (job.learner, 1 - job.learner) if both_seats else (job.learner,):
+            try:
+                built[seat] = build_trajectory(
+                    env.frames(seat), seats[seat], natural=status == "completed",
+                    outcome=state.outcomes[seat] if state.outcomes else None, guard=guard)
+            except Unusable as error:
+                unusable.append(f"{COLORS[seat]}: {error}" if both_seats else str(error))
+        if not built:
+            status, reason = "failed", "unusable_trajectory"
+        if unusable:
+            detail = "; ".join(unusable)
     return Game(job, status, reason, state.outcomes, detail, env.day,
-                tuple(len(item.choices) for item in seats), time.monotonic() - started, trajectory)
+                tuple(len(item.choices) for item in seats), time.monotonic() - started,
+                built.get(job.learner), other=built.get(1 - job.learner))

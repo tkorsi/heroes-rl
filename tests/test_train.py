@@ -125,6 +125,143 @@ def test_the_minibatch_settings_reach_the_update_and_the_log(config):
     assert [restore(item).optimizer.param_groups[0]["lr"] for item in (config, faster)] == [3e-4, 8.5e-4]
 
 
+def test_both_seats_of_a_game_are_trained_on(config, play_fake, fake_engine, tmp_path):
+    from heroes import actor
+    from heroes.engine.env import Env
+    from heroes.game import guard
+    env = Env(fake_engine(days=3, winner=1))
+    try:
+        game = actor.play(env, play_fake.model, Job(1, 7, 0, (1, 2)), tmp_path / "both", guard=guard.VERSION,
+                          both_seats=True)
+    finally:
+        env.close()
+    assert len(game.trajectories) == 2 and (game.trajectory.reward, game.other.reward) == (-1, 1)
+    assert len(game.trajectory.decisions) == len(game.other.decisions) == 3
+    assert play_fake(days=3).other is None  # one seat unless asked
+    fake_engine(days=3)
+    state = train(replace(config, both_seats=True), 2, fresh=True, out=io.StringIO())
+    records = _log(config)
+    assert records[0]["both_seats"] is True
+    assert [record["samples"] for record in records if record["event"] == "game"] == [6, 6]
+    assert state.progress["games"] == 2 and state.progress["decisions"] == 12
+
+
+def test_with_both_seats_a_game_counts_when_either_seat_has_a_trajectory(config, play_fake, fake_engine, tmp_path):
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools" / "perf"))
+    from profile_game import digest
+    from heroes import actor
+    from heroes.engine.env import Env, Limits
+    from heroes.game import guard
+    count = iter(range(100))
+
+    def play(learner, both_seats):
+        # Stopped at red's decision of day 2. Red finished one action and saw what followed it;
+        # blue's one action has no decision after it, so blue gives no trajectory.
+        env = Env(fake_engine(days=4), Limits(max_days=1))
+        try:
+            return actor.play(env, play_fake.model, Job(5, 7, learner, (1, 2)), tmp_path / f"either-{next(count)}",
+                              guard=guard.VERSION, both_seats=both_seats)
+        finally:
+            env.close()
+
+    as_red, as_blue = play(0, True), play(1, True)
+    for game in (as_red, as_blue):
+        assert (game.status, game.reason, game.choices) == ("truncated", "game_day_limit", (1, 1))
+        assert len(game.trajectories) == 1 and game.detail == "blue: this seat completed no action"
+    # Red's trajectory stays red's: it is the learner's in one game and the opponent's in the other.
+    assert as_red.other is None and as_blue.trajectory is None
+    assert as_red.trajectory.actions == as_blue.other.actions and len(as_red.trajectory.decisions) == 1
+    assert (digest(actor.compile_recipe(play_fake.model, as_red.trajectory))
+            == digest(actor.compile_recipe(play_fake.model, as_blue.other)))
+    # With one seat the rule is what it was: a learner without a trajectory is a failed game.
+    alone = play(1, False)
+    assert (alone.status, alone.reason, alone.detail, alone.trajectories) == (
+        "failed", "unusable_trajectory", "this seat completed no action", ())
+    assert play(0, False).status == "truncated"
+
+    # The training loop takes such games: every second one has blue as its learner.
+    fake_engine(days=4)
+    state = train(replace(config, both_seats=True, limits=Limits(max_days=1)), 2, fresh=True, out=io.StringIO())
+    records = _log(config)
+    games = [record for record in records if record["event"] == "game"]
+    assert [(record["number"], record["learner"], record["status"], record["samples"]) for record in sorted(
+        games, key=lambda record: record["number"])] == [(1, "blue", "truncated", 1), (2, "red", "truncated", 1)]
+    update = next(record for record in records if record["event"] == "update")
+    assert (update["games"], update["truncated"], update["failed"], update["samples"]) == (2, 2, 0, 2)
+    assert state.progress["games"] == 2 and state.progress["decisions"] == 2
+
+
+def test_the_next_batch_is_begun_while_the_update_runs(config):
+    def order(play_during_update, state):
+        train(replace(config, state=state, play_during_update=play_during_update), 6, fresh=True, out=io.StringIO())
+        records = [json.loads(line) for line in (state / "log.jsonl").read_text().splitlines()]
+        games = [record for record in records if record["event"] == "game"]
+        assert sorted(record["number"] for record in games) == [1, 2, 3, 4, 5, 6]
+        assert [record["update"] for record in sorted(games, key=lambda record: record["number"])] == [1, 1, 2, 2, 3, 3]
+        assert [record["progress"]["games"] for record in records if record["event"] == "update"] == [2, 4, 6]
+        events = [(record["event"], record.get("number", record.get("update"))) for record in records]
+        return events.index(("job", 3)) < events.index(("update", 1)), events.index(("job", 5)) < events.index(("update", 2))
+
+    assert order(False, config.state) == (False, False)
+    assert order(True, config.state.with_name("overlapped")) == (True, True)
+
+
+def test_playing_during_the_update_is_refused_with_the_mlx_update(config):
+    # The MLX update checks its first minibatch against the weights it starts from; games begun during the
+    # previous update were played by older ones, and the second update would stop there.
+    with pytest.raises(SystemExit, match="--backend torch only"):
+        train(replace(config, backend="mlx", play_during_update=True), 4, fresh=True, out=io.StringIO())
+    assert not config.state.exists()
+    with pytest.raises(SystemExit, match="--backend torch only"):
+        main(["train", "4", "--fresh", "--play-during-update", "--state", str(config.state), "--vcmi", str(config.vcmi),
+              "--game-data", str(config.game_data)])
+    assert not config.state.exists()
+
+
+def test_a_failing_next_batch_does_not_cost_the_update_that_was_running(config, fake_engine, monkeypatch):
+    from heroes.learner import ppo
+    fake_engine(days=3, abort_from=3)  # the two games of the first batch are fine, every later one fails
+    reference = ppo.update
+
+    def slow_update(*arguments, progress, **options):
+        # This update "runs" until the next batch was handed out and failed three times, and a little longer.
+        deadline, after = time.monotonic() + 30, 0
+        while time.monotonic() < deadline and after < 10:
+            progress(0, 1)
+            time.sleep(0.05)
+            after += sum(record["event"] == "game" and record["status"] == "failed" for record in _log(config)) >= 3
+        return reference(*arguments, progress=progress, **options)
+
+    monkeypatch.setattr(ppo, "update", slow_update)
+    with pytest.raises(RuntimeError, match="games failed"):
+        train(replace(config, play_during_update=True), 4, fresh=True, out=io.StringIO())
+    # The update that was running finished and was saved before the failure was reported.
+    assert checkpoint.latest(config.state).name == "update-000001.pt"
+    records = _log(config)
+    assert [record["update"] for record in records if record["event"] == "update"] == [1]
+    assert sum(record["event"] == "game" and record["status"] == "failed" for record in records) >= 3
+    # A restart finds it.
+    fake_engine(days=3)
+    assert train(config, 2, out=io.StringIO()).progress["updates"] == 2
+
+
+def test_the_training_changes_are_settings_of_a_run(config):
+    from heroes.game import guard
+    main(["train", "2", "--fresh", "--games-per-update", "2", "--workers", "2", "--both-seats", "--play-during-update",
+          "--stack-moves", "8", "--windows", "6", "--decisions", "40",
+          "--state", str(config.state), "--legacy", str(config.legacy), "--vcmi", str(config.vcmi),
+          "--game-data", str(config.game_data), "--backend", "torch"])
+    records = _log(config)
+    assert records[0]["guard"] == guard.VERSION + "+stack-moves-8+windows-6+decisions-40"
+    assert records[0]["limits"]["max_days"] == 365 and records[0]["both_seats"] is True
+    assert [record["samples"] for record in records if record["event"] == "game"] == [6, 6]
+    with pytest.raises(SystemExit) as refused:
+        main(["train", "2", "--decisions", "0", "--state", str(config.state.with_name("unused"))])
+    assert refused.value.code == 2
+
+
 def test_a_game_number_is_never_handed_out_twice(tmp_path):
     log = Log(tmp_path / "log.jsonl")
     assert log.last_game == 0

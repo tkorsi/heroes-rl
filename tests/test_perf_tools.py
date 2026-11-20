@@ -122,10 +122,43 @@ def test_the_play_benchmark_reports_games_and_a_window(fake_engine, tmp_path):
     # The same seeded games on another number of actors are the same games.
     again = bench_play.measure(replace(config, workers=1), games=3)
     assert again["digests"] == report["digests"] and again["choices"] == report["choices"]
+    assert "seat_digests" not in report  # one seat: the report is what it was
+    # Both seats: the learner seat's digests are those of the one-seat run, and every colour has its own.
+    both = bench_play.measure(replace(config, both_seats=True), games=3)
+    assert both["digests"] == report["digests"] and both["samples"] == 24
+    assert [sorted(seats) for seats in both["seat_digests"]] == [["blue", "red"]] * 3
+    assert [seats[("red", "blue")[number % 2]] for number, seats in enumerate(both["seat_digests"], 1)] == both["digests"]
+    assert all(len(set(seats.values())) == 2 and all(seats.values()) for seats in both["seat_digests"])
+    assert bench_play.measure(replace(config, both_seats=True), games=3)["seat_digests"] == both["seat_digests"]
     window = bench_play.measure(config, seconds=1.5, warmup=0.5)
     assert window["mode"] == "window" and window["decisions"] > 0 and window["games_failed"] == 0
     # Every call played in a folder of its own and took it away again.
     assert sorted(item.name for item in config.state.iterdir()) == ["checkpoints", "latest.json"]
+
+
+def test_a_seat_without_a_trajectory_shows_in_the_two_seat_digests(fake_engine, tmp_path, monkeypatch):
+    import bench_play
+    from heroes import checkpoint
+    from heroes.config import Config
+    engine = fake_engine(days=4, map=8)
+    config = Config(vcmi=engine.binary, game_data=engine.data, game_map=engine.game_map, state=tmp_path / "state",
+                    workers=1, both_seats=True)
+    checkpoint.save(config.state, checkpoint.fresh(learning_rate=3e-4))
+    whole = bench_play.measure(config, games=2)
+    original = bench_play.Pool.next
+
+    def next_without_the_opponent(self, *arguments):  # digests are taken here, after an actor handed its game back
+        message = original(self, *arguments)
+        if message is not None and message[0] == "game":
+            message[2].other = None
+        return message
+
+    monkeypatch.setattr(bench_play.Pool, "next", next_without_the_opponent)
+    partial = bench_play.measure(config, games=2)
+    assert partial["digests"] == whole["digests"]
+    for learner, seats, complete in zip(("blue", "red"), partial["seat_digests"], whole["seat_digests"]):
+        opponent = "red" if learner == "blue" else "blue"
+        assert seats == {learner: complete[learner], opponent: None} and complete[opponent]
 
 
 def test_two_play_benchmarks_on_one_state_folder_leave_each_other_alone(fake_engine, tmp_path):
@@ -167,11 +200,25 @@ def test_the_play_benchmark_fails_when_a_game_gives_no_trajectory(fake_engine, t
     # A game stopped at the day limit can be trained on and compared: it counts.
     status, report = run("--games", "2", "--max-days", "2", days=4)
     assert status == 0 and report["statuses"] == ["truncated:game_day_limit"] * 2 and all(report["digests"])
+    # With both seats a game counts when either seat gives a trajectory. Stopped at red's decision of day 2,
+    # blue's one action has no decision after it: red's digest and null for blue, whoever the learner was.
+    status, report = run("--games", "2", "--max-days", "1", "--both-seats", days=4)
+    assert status == 0 and report["statuses"] == ["truncated:game_day_limit"] * 2 and report["samples"] == 2
+    assert [list(seats) for seats in report["seat_digests"]] == [["red", "blue"]] * 2
+    assert all(seats["red"] and seats["blue"] is None for seats in report["seat_digests"])
+    assert report["digests"] == [None, report["seat_digests"][1]["red"]]  # the learner seats: blue, then red
+    # The same games with one seat: the game whose learner is blue gives nothing, as before.
+    status, report = run("--games", "2", "--max-days", "1", days=4)
+    assert isinstance(status, str) and status.startswith("1 of 2 games gave no trajectory")
+    assert report["statuses"] == ["failed:unusable_trajectory", "truncated:game_day_limit"] and "seat_digests" not in report
     # Two engines that die early are a fast batch and no comparison.
     status, report = run("--games", "2", days=4, end="crash")
     assert isinstance(status, str) and status.startswith("2 of 2 games gave no trajectory")
     assert report["digests"] == [None, None] and len(report["failures"]) == 2
     assert all(entry.startswith("failed:") for entry in report["statuses"])
+    status, report = run("--games", "2", "--both-seats", days=4, end="crash")  # nor with both seats
+    assert isinstance(status, str) and status.startswith("2 of 2 games gave no trajectory")
+    assert report["seat_digests"] == [{"red": None, "blue": None}] * 2
     # The report was written all the same, for the diagnosis.
     assert json.loads((tmp_path / "play.jsonl").read_text().splitlines()[-1]) == report
     # A window counts decisions, not games; its report carries the failures and the rate stands.

@@ -122,6 +122,116 @@ def test_an_engine_that_repeats_the_observation_plays_the_same_game(play_fake):
     assert len({digest(actor.compile_recipe(play_fake.model, game.trajectory)) for game in games}) == 1
 
 
+def test_a_view_that_left_the_map_as_it_was_keeps_the_map_of_the_view_before(play_fake):
+    # Only the resources change from day to day, so every view after the first arrives without tiles and objects.
+    frames = play_fake(days=5, map=8, still=True).trajectory.frames
+    views = [frame.observation for frame in frames if frame.kind == "view"]
+    assert len(views) == 5 and len({view.resources for view in views}) == 5
+    assert all(view.tiles is views[0].tiles and view.objects is views[0].objects for view in views)
+    assert len(views[0].tiles) == 64 and len(views[0].objects) == 14
+
+
+@pytest.mark.parametrize("still", (True, False))
+def test_an_engine_that_repeats_the_map_plays_the_same_game(play_fake, still):
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools" / "perf"))
+    from profile_game import digest
+    from heroes import actor
+    games = [play_fake(days=6, map=8, still=still, repeat_map=repeat) for repeat in (False, True)]
+    for game in games:
+        assert game.status == "completed" and len(game.trajectory.decisions) == 6
+    told = [[(frame.kind, frame.day, frame.observation, frame.action) for frame in game.trajectory.frames] for game in games]
+    assert told[0] == told[1]
+    repeated = [frame.observation for frame in games[1].trajectory.frames if frame.kind == "view"]
+    assert repeated[1].objects == repeated[0].objects or not still
+    assert repeated[1].objects is not repeated[0].objects  # each view of this engine brought its own copy
+    # Everything the learner reads is the same: actions, probabilities, values and the compiled recipe.
+    assert len({digest(actor.compile_recipe(play_fake.model, game.trajectory)) for game in games}) == 1
+
+
+@pytest.mark.parametrize("still", (True, False))
+def test_a_view_that_changed_some_tiles_brings_only_those(play_fake, still):
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools" / "perf"))
+    from profile_game import digest
+    from heroes import actor
+    games = [play_fake(days=6, map=8, still=still, flicker=True, repeat_map=repeat) for repeat in (False, True)]
+    told = [[(frame.kind, frame.day, frame.observation, frame.action) for frame in game.trajectory.frames] for game in games]
+    assert told[0] == told[1]
+    changed, whole = ([frame.observation for frame in game.trajectory.frames if frame.kind == "view"] for game in games)
+    assert len({view.tiles for view in changed}) == 6  # the map differs every day
+    # Sixty-two or more of the sixty-four tiles of a view are the objects of the view before; a whole map brings its own.
+    assert all(sum(a is b for a, b in zip(view.tiles, before.tiles)) >= 60 for before, view in zip(changed, changed[1:]))
+    assert len({digest(actor.compile_recipe(play_fake.model, game.trajectory)) for game in games}) == 1
+
+
+def test_tile_changes_must_fit_the_previous_view(fake_engine):
+    producer, envelope = _ready(fake_engine)
+    tiles = tuple(contract.Tile((x, 0, 0), 1, 0, False, False) for x in range(2))
+    observation = contract.Observation((2, 2, 1), tiles, (), (0,) * 7, (), (),
+                                       army_information=producer.army_information, own_armies=())
+    whole = contract.encode_observation(observation, schema=producer.profile.history_schema)
+    bare = {name: value for name, value in whole.items() if name != "tiles"}
+    blocked = {**whole["tiles"][1], "blocked": True}
+
+    def view(day, **parts):
+        return producer.ingest({**envelope, "records": [{"kind": "view", "day": day, "observation": {**bare, **parts}}]})[0]
+
+    with pytest.raises(ValueError, match="need the previous view"):  # nothing to change yet
+        view(1, tile_changes=[blocked])
+    first = view(1, tiles=whole["tiles"])
+    second = view(2, tile_changes=[blocked])
+    assert second.observation.tiles == (tiles[0], contract.Tile((1, 0, 0), 1, 0, True, False))
+    assert second.observation.tiles[0] is first.observation.tiles[0]
+    assert view(3, tile_changes=[]).observation.tiles is second.observation.tiles  # only the objects could differ
+    for bad in ([{**blocked, "position": [1, 1, 0]}], [blocked, whole["tiles"][1]], [{**blocked, "terrain": True}], {}):
+        with pytest.raises(ValueError):
+            view(4, tile_changes=bad)
+    with pytest.raises(ValueError, match="need the previous view"):
+        view(4, tile_changes=[blocked], tiles=whole["tiles"])
+    with pytest.raises(ValueError, match="need the previous view"):
+        producer.ingest({**envelope, "records": [{"kind": "view", "day": 4, "observation": {
+            name: value for name, value in {**bare, "tile_changes": [blocked]}.items() if name != "objects"}}]})
+
+
+def _ready(fake_engine):
+    from heroes.engine.protocol import Producer
+    engine = fake_engine()
+    producer = Producer("1", 0, interface=engine.interface, army_information=engine.army_information)
+    envelope = {"protocol_version": producer.profile.protocol, "episode": "1", "player": 0}
+    producer.ingest({**envelope, "type": "ready", "interface": producer.profile.environment,
+                     "history_schema": producer.profile.history_schema, "action_schema": producer.profile.action_schema,
+                     "army_information": engine.army_information})
+    return producer, {**envelope, "type": "contextual"}
+
+
+def test_a_view_without_a_map_needs_an_earlier_view_and_leaves_out_both_parts(fake_engine):
+    producer, envelope = _ready(fake_engine)
+    observation = contract.Observation((2, 2, 1), (contract.Tile((0, 0, 0), 1, 0, False, False),), (), (0,) * 7, (), (),
+                                       army_information=producer.army_information, own_armies=())
+    whole = contract.encode_observation(observation, schema=producer.profile.history_schema)
+    bare = {name: value for name, value in whole.items() if name not in ("tiles", "objects")}
+    with pytest.raises(ValueError, match="Incomplete observation"):  # the first view has nothing to keep
+        producer.ingest({**envelope, "records": [{"kind": "view", "day": 1, "observation": bare}]})
+    first, = producer.ingest({**envelope, "records": [{"kind": "view", "day": 1, "observation": whole}]})
+    for part in ("tiles", "objects"):  # one part alone is no unchanged map
+        with pytest.raises(ValueError, match="Incomplete observation"):
+            producer.ingest({**envelope, "records": [{"kind": "view", "day": 1, "observation": {**bare, part: whole[part]}}]})
+    second, = producer.ingest({**envelope, "records": [{"kind": "view", "day": 2, "observation": bare}]})
+    assert second.observation == first.observation and second.observation.tiles is first.observation.tiles
+
+
+def test_a_checked_tile_tuple_is_checked_again_for_another_map_size():
+    tiles = (contract.Tile((0, 0, 0), 1, 0, False, False), contract.Tile((3, 3, 0), 1, 0, False, False))
+    contract.Observation((4, 4, 1), tiles, (), (0,) * 7, (), ())
+    contract.Observation((4, 4, 1), tiles, (), (0,) * 7, (), ())  # the same tuple again: checked once
+    with pytest.raises(ValueError, match="outside public map bounds"):
+        contract.Observation((3, 3, 1), tiles, (), (0,) * 7, (), ())
+    with pytest.raises(ValueError, match="visible tile"):  # an object beside the checked tiles is still found
+        contract.Observation((4, 4, 1), tiles, (contract.ObjectView("object-0", (1, 1, 0), 5, 0, "neutral"),),
+                             (0,) * 7, (), ())
+
+
 def test_a_decision_without_an_observation_needs_a_view(fake_engine):
     from heroes.engine.protocol import Producer
     engine = fake_engine()

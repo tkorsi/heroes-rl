@@ -29,11 +29,6 @@ JsonNode coordinates(const int3 & position)
 	return node;
 }
 
-std::string relativeOwner(PlayerColor owner, PlayerColor player)
-{
-	return owner == player ? "self" : owner.isValidPlayer() ? "opponent" : "neutral";
-}
-
 JsonNode army(const CArmedInstance & object)
 {
 	JsonNode node;
@@ -177,17 +172,78 @@ void ContextualState::supersede(int day, const char * reason)
 }
 }
 
-JsonNode ExplorerRL::contextualObservation()
+namespace
+{
+JsonNode tileJson(const explorer_rl::VisibleMap::Tile & tile)
+{
+	JsonNode item;
+	item["position"] = coordinates(int3(tile.x, tile.y, 0));
+	item["terrain"].Integer() = tile.terrain;
+	item["road"].Integer() = tile.road;
+	item["blocked"].Bool() = tile.blocked;
+	item["visitable"].Bool() = tile.visitable;
+	return item;
+}
+
+void writeObjects(JsonNode & observation, const explorer_rl::VisibleMap & map, explorer_rl::ContextualState & state)
+{
+	auto & objects = observation["objects"].Vector();
+	objects.reserve(map.objects.size());
+	for(const auto & object : map.objects)
+	{
+		JsonNode entry;
+		entry["handle"].String() = state.handle(object.id);
+		entry["position"] = coordinates(int3(object.x, object.y, 0));
+		entry["kind"].Integer() = object.kind;
+		entry["subtype"].Integer() = object.subtype;
+		entry["owner"].String() = object.owner == 0 ? "self" : object.owner == 1 ? "opponent" : "neutral";
+		objects.push_back(std::move(entry));
+	}
+}
+
+/// The "tiles" and "objects" of an observation, written from the map they describe.
+void writeVisibleMap(JsonNode & observation, const explorer_rl::VisibleMap & map, explorer_rl::ContextualState & state)
+{
+	auto & tiles = observation["tiles"].Vector();
+	tiles.reserve(map.tiles.size());
+	for(const auto & tile : map.tiles)
+		tiles.push_back(tileJson(tile));
+	writeObjects(observation, map, state);
+}
+
+/// A changed map as its difference from the map of the previous view: the
+/// objects, and under "tile_changes" the tiles that are not what they were.
+/// False, with nothing written, when another set of tiles is visible now.
+bool writeMapChange(JsonNode & observation, const explorer_rl::VisibleMap & previous, const explorer_rl::VisibleMap & map,
+	explorer_rl::ContextualState & state)
+{
+	if(previous.tiles.size() != map.tiles.size())
+		return false;
+	for(size_t index = 0; index < map.tiles.size(); ++index)
+		if(previous.tiles[index].x != map.tiles[index].x || previous.tiles[index].y != map.tiles[index].y)
+			return false;
+	auto & changes = observation["tile_changes"].Vector();
+	for(size_t index = 0; index < map.tiles.size(); ++index)
+		if(!(previous.tiles[index] == map.tiles[index]))
+			changes.push_back(tileJson(map.tiles[index]));
+	writeObjects(observation, map, state);
+	return true;
+}
+}
+
+JsonNode ExplorerRL::contextualObservation(explorer_rl::VisibleMap & map)
 {
 	// Caller holds a stable engine view and stateMutex. Historical observations
 	// still require opened windows for armies; only the explicit owned-army
 	// extension adds passive composition and popup statistics on the map path.
+	// The tiles and objects go to ``map`` as numbers; writeVisibleMap turns
+	// them into the observation's "tiles" and "objects" when a view needs them.
 	const auto size = callback->getMapSize();
 	if(size.z != 1 || size.x <= 0 || size.y <= 0)
 		throw std::runtime_error("Contextual interface requires one map level");
 	JsonNode observation;
 	observation["size"] = coordinates(size);
-	for(const char * key : {"tiles", "objects", "resources", "heroes", "towns"})
+	for(const char * key : {"resources", "heroes", "towns"})
 		observation[key].Vector();
 	observation["window"] = JsonNode();
 	if(ownArmyInformation)
@@ -242,32 +298,28 @@ JsonNode ExplorerRL::contextualObservation()
 		for(int x = 0; x < size.x; ++x)
 		{
 			const int3 position(x, y, 0);
-			if(!callback->isVisible(position))
-				continue;
+			// getTile answers for a visible tile only; it tests what isVisible tests.
 			const auto * tile = callback->getTile(position, false);
 			if(!tile)
-				throw std::runtime_error("Visible contextual tile is unavailable");
+			{
+				if(callback->isVisible(position))
+					throw std::runtime_error("Visible contextual tile is unavailable");
+				continue;
+			}
 			const auto facts = explorer_rl::visibleTileFacts(*callback, *tile);
-			JsonNode item;
-			item["position"] = coordinates(position);
-			item["terrain"].Integer() = facts.terrain;
-			item["road"].Integer() = tile->getRoadID().getNum();
-			item["blocked"].Bool() = facts.blocked;
-			item["visitable"].Bool() = facts.visitable;
-			observation["tiles"].Vector().push_back(std::move(item));
+			map.tiles.push_back({x, y, facts.terrain, tile->getRoadID().getNum(), facts.blocked, facts.visitable});
 			for(const auto id : tile->visitableObjects)
 			{
 				const auto * object = explorer_rl::playerVisibleObject(*callback, id);
 				if(!object || !seen.insert(id.getNum()).second)
 					continue;
-				JsonNode entry;
-				entry["handle"].String() = contextState.handle(id.getNum());
+				// Handles are numbered in the order objects are first met, so
+				// each one is taken here, not when the JSON is written.
+				contextState.handle(id.getNum());
+				const auto owner = object->getOwner();
 				// This is a visible visitable tile, never an unseen footprint anchor.
-				entry["position"] = coordinates(position);
-				entry["kind"].Integer() = object->ID.getNum();
-				entry["subtype"].Integer() = object->subID.getNum();
-				entry["owner"].String() = relativeOwner(object->getOwner(), playerID);
-				observation["objects"].Vector().push_back(std::move(entry));
+				map.objects.push_back({id.getNum(), x, y, object->ID.getNum(), object->subID.getNum(),
+					owner == playerID ? 0 : owner.isValidPlayer() ? 1 : 2});
 			}
 		}
 	const bool dialogModal = adventureDialogs && contextState.context == "dialog";
@@ -361,8 +413,11 @@ void ExplorerRL::captureContextualLocked()
 	const int day = callback->getDate(Date::DAY);
 	if(day < 1)
 		return;
-	auto observation = contextualObservation();
-	if(observation == contextState.lastObservation && day == contextState.lastDay)
+	explorer_rl::VisibleMap map;
+	auto observation = contextualObservation(map);
+	// No view was sent yet while lastObservation is null: the first one always carries its map.
+	const bool sameMap = !contextState.lastObservation.isNull() && map == contextState.lastMap;
+	if(sameMap && observation == contextState.lastObservation && day == contextState.lastDay)
 		return;
 	if(!contextState.executing)
 		contextState.supersede(day, "visible_state_changed");
@@ -380,8 +435,17 @@ void ExplorerRL::captureContextualLocked()
 		}
 	auto record = contextState.record("view", day);
 	record["observation"] = observation;
+	// Told EXPLORER_RL_REPEATED_MAP=0, a view whose tiles and objects are those
+	// of this player's previous view leaves both out; the reader keeps them.
+	// Told EXPLORER_RL_TILE_CHANGES=1 as well, a view that changed the map
+	// without revealing or hiding a tile carries only the tiles that changed.
+	if(repeatedMap || contextState.lastObservation.isNull())
+		writeVisibleMap(record["observation"], map, contextState);
+	else if(!sameMap && !(tileChanges && writeMapChange(record["observation"], contextState.lastMap, map, contextState)))
+		writeVisibleMap(record["observation"], map, contextState);
 	contextState.records.push_back(std::move(record));
 	contextState.lastObservation = std::move(observation);
+	contextState.lastMap = std::move(map);
 	contextState.lastDay = day;
 }
 
@@ -509,7 +573,10 @@ void ExplorerRL::runContextualTurn(QueryID queryID, bool modalOnly)
 				// The observation of a decision is always that of this player's
 				// latest view record, which is in this message or an earlier one.
 				if(decisionObservation)
+				{
 					record["observation"] = contextState.lastObservation;
+					writeVisibleMap(record["observation"], contextState.lastMap, contextState);
+				}
 				contextState.records.push_back(std::move(record));
 			}
 			return takeContextualRecords();

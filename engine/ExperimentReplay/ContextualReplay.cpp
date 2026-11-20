@@ -120,6 +120,33 @@ bool decisionsRepeatObservation(const std::vector<JsonNode> & tape)
 					return record.Struct().count("observation") != 0;
 	return true; // no decision was recorded, so none is regenerated before the tape ends
 }
+
+/// An engine told EXPLORER_RL_REPEATED_MAP=0 leaves the tiles and objects out
+/// of a view when they are those of the same player's previous view. A
+/// capture with such a view was made that way. One without was made the other
+/// way, or its map changed with every view, and then both ways regenerate it.
+/// And one with a view that lists its changed tiles was made with
+/// EXPLORER_RL_TILE_CHANGES=1; without such a view both ways regenerate it,
+/// unless a view repeats a whole map that only changed, which shows it was not.
+bool viewsListTileChanges(const std::vector<JsonNode> & tape)
+{
+	for(const auto & item : tape)
+		if(item["kind"].String() == "message")
+			for(const auto & record : item["message"]["records"].Vector())
+				if(record["kind"].String() == "view" && record["observation"].Struct().count("tile_changes"))
+					return true;
+	return false;
+}
+
+bool viewsRepeatMap(const std::vector<JsonNode> & tape)
+{
+	for(const auto & item : tape)
+		if(item["kind"].String() == "message")
+			for(const auto & record : item["message"]["records"].Vector())
+				if(record["kind"].String() == "view" && !record["observation"].Struct().count("tiles"))
+					return false;
+	return true;
+}
 }
 
 void ContextualReplay::configureControllers(const JsonNode & header)
@@ -207,6 +234,9 @@ JsonNode ContextualReplay::run(const std::vector<JsonNode> & tape, bool prefix)
 	// without the variable and an older one from a shell that still has it.
 	const bool repeatedObservation = decisionsRepeatObservation(tape);
 	setenv("EXPLORER_RL_DECISION_OBSERVATION", repeatedObservation ? "1" : "0", 1);
+	const bool repeatedMap = viewsRepeatMap(tape);
+	setenv("EXPLORER_RL_REPEATED_MAP", repeatedMap ? "1" : "0", 1);
+	setenv("EXPLORER_RL_TILE_CHANGES", viewsListTileChanges(tape) ? "1" : "0", 1);
 	unsetenv("VCMI_EXPERIMENT_REPLAY");
 	setExperimentEvidenceHooks(evidence);
 	{
@@ -252,6 +282,7 @@ JsonNode ContextualReplay::run(const std::vector<JsonNode> & tape, bool prefix)
 		for(const auto & [color, interface] : interfaces) interface->finish();
 		auto result = evidence->summary(packets.size());
 		result["decisions_repeat_observation"].Bool() = repeatedObservation;
+		result["views_repeat_map"].Bool() = repeatedMap;
 		if(learner >= 0) result["request_accounting"] = accounting;
 		GAME.reset();
 		setExperimentEvidenceHooks(nullptr);
