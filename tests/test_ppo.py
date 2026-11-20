@@ -115,38 +115,6 @@ def test_encodings_reused_while_acting_never_outlive_the_weights(play_fake):
     assert torch.equal(values(model), expected)
 
 
-def test_games_used_often_enough_keep_their_window_states():
-    def game(decisions):
-        return Trajectory(decisions=tuple(range(0, 2 * decisions, 2)), log_probs=(0.0,) * decisions,
-                          values=(0.0,) * decisions, reward=1, bootstrap=0.0)
-
-    config = PPOConfig(decisions_per_window=2, windows_per_minibatch=2)
-    batch = prepare([game(40), game(4), game(2)], config)  # 20, 2 and 1 windows
-    assert batch.starts[1] == [0, 3] and len(batch.starts[0]) == 20
-    # Replaying at every step keeps nothing: every state is computed with the current weights.
-    assert batch.kept(config) == frozenset()
-    # A game is kept once it is expected in a minibatch again before its states expire.
-    assert batch.kept(replace(config, state_refresh_steps=2)) == {0}
-    assert batch.kept(replace(config, state_refresh_steps=6)) == {0, 1}
-    # A game of one window starts from the initial state and has nothing to keep.
-    assert batch.kept(replace(config, state_refresh_steps=10**9)) == {0, 1}
-    with pytest.raises(ValueError):
-        PPOConfig(state_refresh_steps=0)
-
-
-def test_reused_states_are_exact_while_the_weights_stand_still(play_fake):
-    trajectories = [play_fake(learner=0, days=12).trajectory, play_fake(learner=1, days=2).trajectory]
-    model = play_fake.model
-    reports = []
-    for refresh in (1, 2, 10**9):
-        optimizer = _optimizer(model)
-        optimizer.param_groups[0]["lr"] = 0.0
-        reports.append(update(model, optimizer, trajectories, generator=torch.Generator().manual_seed(0),
-                              config=PPOConfig(decisions_per_window=2, state_refresh_steps=refresh)))
-    assert [report.game_replays for report in reports] == [0, 2, 1]  # four steps; the short game is never kept
-    assert reports[0].value_loss == reports[1].value_loss == reports[2].value_loss
-
-
 def test_grouped_minibatches_use_every_window_once_and_few_games(play_fake):
     def game(decisions):
         return Trajectory(decisions=tuple(range(0, 2 * decisions, 2)), log_probs=(0.0,) * decisions,

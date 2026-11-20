@@ -29,6 +29,7 @@ class Engine:
     interface: str = contract.EXPANDED_ENVIRONMENT
     army_information: str | None = contract.OWN_ARMY_INFORMATION
     equipment_policy: str | None = "no-artifacts-v1"
+    replay_ledger: bool = False  # let the engine write its replay ledger: 130 KB per decision that training never reads
 
     def check(self):
         """Fail early, with the path, when the runtime is not where the configuration says."""
@@ -79,11 +80,16 @@ class Engine:
             "EXPLORER_RL_PROFILE": "0", "EXPLORER_RL_INTERFACE": self.interface,
             # Evidence mode selects the engine's orderly end-of-game shutdown,
             # which the outcome check relies on. That shutdown is built on the
-            # replay recorder, so the engine cannot finish a game without it,
-            # although training never reads the gigabytes of logs it writes.
+            # replay recorder, so the recorder stays on; the next switch stops
+            # it from writing its ledger.
             "VCMI_EXPERIMENT_CONTEXTUAL_EVIDENCE": "1", "VCMI_EXPERIMENT_REPLAY": "1",
+            # A decision is always about the observation of the seat's latest
+            # view, so the engine need not send it a second time.
+            "EXPLORER_RL_DECISION_OBSERVATION": "0",
             "EXPLORER_RL_PORT_0": str(ports[0]), "EXPLORER_RL_PORT_1": str(ports[1]),
         })
+        if not self.replay_ledger:
+            environment["VCMI_EXPERIMENT_LEDGER"] = "0"
         if self.army_information is not None:
             environment["EXPLORER_RL_ARMY_INFORMATION"] = self.army_information
         inherited = {key: value for key, value in os.environ.items() if not key.startswith(_OWNED_VARIABLES)}

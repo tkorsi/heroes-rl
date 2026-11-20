@@ -5,9 +5,8 @@ optimizer state are copied into MLX, every optimizer step runs there, and the
 result is copied back only after the whole update finished and is finite.
 Weight-independent plans are cached, and the plan of a minibatch is built on a
 helper thread while the GPU runs the steps before it. The recurrent state
-before a loss window is recomputed with the current weights at every step, or,
-for the games ``Batch.kept`` names, taken from the game's last replay, which is
-at most ``state_refresh_steps`` optimizer steps old.
+before a loss window is recomputed with the current weights at every step, by
+one replay of each game the minibatch draws on.
 """
 from __future__ import annotations
 
@@ -145,8 +144,6 @@ def update(model, optimizer, trajectories, *, config, generator, progress=None):
 
     backend = None
     prepared_prefixes = None
-    kept, tables = batch.kept(config), {}  # game -> (step of its last replay, the states before its windows)
-    replays = 0
     weighted = [0.0] * 4
     count_seen = completed = 0
     planner = ThreadPoolExecutor(max_workers=1, thread_name_prefix="ppo-plans")
@@ -169,18 +166,7 @@ def update(model, optimizer, trajectories, *, config, generator, progress=None):
                 prefixes = [prefix(index, sorted(set(stops))) for index, stops in boundaries.items()]
                 plan_seconds += time.perf_counter() - plan_started
                 # A replay runs on the GPU while the CPU does the rest. Its states are used once and dropped.
-                prepared_prefixes = backend.prefix_states(
-                    [spec for spec in prefixes if spec["history"] not in kept], synchronize=False)
-                for spec in prefixes:
-                    index = spec["history"]
-                    if index not in kept:
-                        continue
-                    if index not in tables or completed - tables[index][0] >= config.state_refresh_steps:
-                        tables[index] = (completed, backend.prefix_table(prefix(index, batch.starts[index])))
-                        replays += 1
-                    for entry in spec["states"]:
-                        row = bisect_left(batch.starts[index], entry["stop"])
-                        prepared_prefixes[(index, entry["stop"])] = tables[index][1][row:row + 1]
+                prepared_prefixes = backend.prefix_states(prefixes, synchronize=False)
                 step, seconds = ahead.popleft().result()
                 plan_seconds += seconds
                 step["prefixes"] = prefixes
@@ -225,7 +211,6 @@ def update(model, optimizer, trajectories, *, config, generator, progress=None):
         validation_seconds = backend.state_validation_seconds
     finally:
         planner.shutdown(wait=True, cancel_futures=True)
-        tables.clear()
         if prepared_prefixes is not None:
             prepared_prefixes.clear()
         for history in histories:
@@ -245,4 +230,4 @@ def update(model, optimizer, trajectories, *, config, generator, progress=None):
         "plan_build": plan_seconds, "cpu_restore": restored - updated,
         "state_validation": validation_seconds, "cleanup": finished - restored,
         "full_update": finished - started,
-    }, game_replays=replays)
+    })

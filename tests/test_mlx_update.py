@@ -49,47 +49,13 @@ def test_the_mlx_update_follows_the_reference(play_fake):
     assert any(not torch.equal(value, play_fake.model.state_dict()[name]) for name, value in model.state_dict().items())
 
 
-def _frozen(update, model, trajectories, config):
-    """Run ``update`` with a learning rate of zero, so every step sees the same weights."""
-    twin, optimizer = _copy(model)
-    optimizer.param_groups[0]["lr"] = 0.0
-    return update(twin, optimizer, trajectories, config=config, generator=torch.Generator().manual_seed(0))
-
-
-def test_kept_states_are_the_states_a_replay_gives(play_fake):
-    from heroes.learner.mlx.update import update as mlx_update
-    pairs = [_pair(play_fake, learner=0, days=24, winner=0), _pair(play_fake, learner=1, days=5, winner=1)]
-    compiled = [recipe for _, recipe in pairs]
-    every_step = PPOConfig(decisions_per_window=2, windows_per_minibatch=2)
-    once = replace(every_step, state_refresh_steps=10**9)
-    # While the weights stand still, a state kept from an earlier replay is the state a new replay gives.
-    replayed, reused = _frozen(mlx_update, play_fake.model, compiled, every_step), _frozen(
-        mlx_update, play_fake.model, compiled, once)
-    assert (replayed.game_replays, reused.game_replays) == (0, 2)  # each game once
-    assert _metrics(reused) == pytest.approx(_metrics(replayed), rel=1e-5, abs=1e-7)
-
-
-def test_kept_states_follow_the_reference(play_fake):
-    from heroes.learner.mlx.update import update as mlx_update
-    pairs = [_pair(play_fake, learner=0, days=24, winner=0), _pair(play_fake, learner=1, days=3, winner=1)]
-    config = PPOConfig(decisions_per_window=2, windows_per_minibatch=2, state_refresh_steps=3)
-    _, expected = _run(reference_update, play_fake.model, [typed for typed, _ in pairs], config)
-    _, report = _run(mlx_update, play_fake.model, [compiled for _, compiled in pairs], config)
-    # 14 windows in 7 steps. The long game is in nearly every step and is replayed every third
-    # one; the short game is used too rarely to be worth keeping and is replayed at each use.
-    assert (report.optimizer_steps, expected.optimizer_steps) == (7, 7)
-    assert report.game_replays == expected.game_replays == 3
-    assert _metrics(report) == pytest.approx(_metrics(expected), rel=2e-2, abs=2e-4)
-
-
 def test_a_changing_map_takes_the_sparse_prefix_path(play_fake):
     from heroes.learner.mlx.update import update as mlx_update
     typed, compiled = _pair(play_fake, days=12, map=20)
     assert compiled.recipe.plan(0, compiled.recipe.frame_count)["maps"]["delta"] is not None
-    config = PPOConfig(decisions_per_window=2, windows_per_minibatch=2, state_refresh_steps=2)
+    config = PPOConfig(decisions_per_window=2, windows_per_minibatch=2)
     _, expected = _run(reference_update, play_fake.model, [typed], config)
     _, report = _run(mlx_update, play_fake.model, [compiled], config)
-    assert report.game_replays == expected.game_replays == 2
     assert _metrics(report) == pytest.approx(_metrics(expected), rel=2e-2, abs=2e-4)
 
 

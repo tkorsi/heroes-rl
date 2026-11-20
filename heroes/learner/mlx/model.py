@@ -280,21 +280,6 @@ class MLXBackend(MLXModel):
             mx.async_eval(list(result.values()))
         return result
 
-    def prefix_table(self, spec):
-        """One replay of a game: a ``(len(spec["states"]), 64)`` array, one row per requested state.
-
-        Only this small table outlives the call; it is what a game's windows
-        start from until the game is replayed again.
-        """
-        mx = self.mx
-        parameters = {key: mx.stop_gradient(value) for key, value in self.p.items()}
-        initial, states = self._replay(parameters, spec)
-        rows = mx.array([entry["state_index"] + 1 for entry in spec["states"]], dtype=mx.int32)
-        table = initial if states is None else mx.concatenate((initial, states), axis=0)
-        table = mx.stop_gradient(table[rows])
-        mx.async_eval(table)
-        return table
-
     def forward(self, p, step, plan, prefixes):
         mx = self.mx
         vectors, table, cells = self.encode(p, plan)

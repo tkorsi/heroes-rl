@@ -3,14 +3,12 @@
 A trajectory is one game seen from the learner's seat. A loss window starts
 from the recurrent state the learner's own weights give for everything before
 it, and only the window itself is differentiated; hidden states stored during
-play are never reused. With ``state_refresh_steps`` 1 that state is rebuilt
-from the start of the game with the current weights at every optimizer step,
-which costs time quadratic in the length of a game. A larger value replays a
-game once, keeps the state before each of its windows and reuses them for that
-many optimizer steps before replaying the game again, so a window can start
-from a state that is at most that many steps old. The MLX backend in
-``heroes.learner.mlx`` runs the same update on Apple GPUs. ``update`` below is
-the slow, plain-autograd reference.
+play are never reused, and neither is a state computed with earlier weights:
+at every optimizer step the state is rebuilt from the start of the game with
+the current weights, which costs time quadratic in the length of a game.
+``windows_per_game`` lets the windows a minibatch takes from one game share
+that replay. The MLX backend in ``heroes.learner.mlx`` runs the same update on
+Apple GPUs. ``update`` below is the slow, plain-autograd reference.
 """
 from __future__ import annotations
 
@@ -37,17 +35,14 @@ class PPOConfig:
     # of it. 1 draws every window from all games alike; it must divide
     # windows_per_minibatch.
     windows_per_game: int = 1
-    # Optimizer steps for which the states before a game's windows are reused
-    # once the game was replayed. 1 replays the game at every step it is used.
-    state_refresh_steps: int = 1
 
     def __post_init__(self):
         if not (0 <= self.gae_lambda <= 1 and 0 < self.clip_ratio < 1 and self.value_coefficient >= 0
                 and self.max_grad_norm > 0 and self.learning_rate > 0
                 and (self.value_clip is None or self.value_clip > 0)
-                and type(self.state_refresh_steps) is int and type(self.windows_per_game) is int
+                and type(self.windows_per_game) is int
                 and min(self.epochs, self.decisions_per_window, self.windows_per_minibatch,
-                        self.state_refresh_steps, self.windows_per_game) >= 1
+                        self.windows_per_game) >= 1
                 and self.windows_per_minibatch % self.windows_per_game == 0):
             raise ValueError("Invalid PPO configuration")
 
@@ -152,19 +147,6 @@ class Batch:
         return [[window for group in order[left:left + count] for window in groups[group]]
                 for left in range(0, len(order), count)]
 
-    def kept(self, config):
-        """Trajectories whose window states are kept for ``state_refresh_steps`` optimizer steps.
-
-        Keeping pays once a game is expected to be used again before its
-        states expire: replaying it to the end costs about twice the average
-        replay up to one window. Every other game is replayed up to the window
-        at each use, with the current weights.
-        """
-        if config.state_refresh_steps == 1:
-            return frozenset()
-        return frozenset(index for index, starts in enumerate(self.starts) if len(starts) > 1 and
-                         config.state_refresh_steps * config.windows_per_minibatch * len(starts) >= len(self.windows))
-
 
 def prepare(trajectories, config):
     targets = [gae((0.0,) * (len(item.values) - 1) + (float(item.reward),), item.values,
@@ -215,7 +197,6 @@ class PPOReport:
     approximate_kl: float
     clip_fraction: float
     timings_seconds: dict = field(default_factory=dict)
-    game_replays: int = 0  # whole-game replays that refreshed kept window states
 
 
 def _states_before(model, frames, starts):
@@ -237,22 +218,18 @@ def update(model, optimizer, trajectories, *, config, generator, progress=None):
     started = time.perf_counter()
     batch = prepare(trajectories, config)
     inputs = [encode_history(item.frames, guard=item.guard) for item in trajectories]
-    kept, saved = batch.kept(config), {}  # trajectory -> (step its states were computed at, the states)
-    totals, count_seen, steps, replays = [0.0] * 4, 0, 0, 0
+    totals, count_seen, steps = [0.0] * 4, 0, 0
     for _ in range(config.epochs):
         for selected in batch.minibatches(config, generator):
             new_logs, new_values, old_logs, old_values, advantages, returns = [], [], [], [], [], []
+            # One replay of each game of the minibatch, with the current weights.
+            stops = {}
+            for window in (batch.windows[index] for index in selected):
+                stops.setdefault(window.rollout_index, set()).add(window.start_seq)
+            states = {index: _states_before(model, inputs[index], sorted(starts)) for index, starts in stops.items()}
             for window in (batch.windows[index] for index in selected):
                 item, frames = trajectories[window.rollout_index], inputs[window.rollout_index]
-                if window.rollout_index in kept:
-                    if (window.rollout_index not in saved
-                            or steps - saved[window.rollout_index][0] >= config.state_refresh_steps):
-                        saved[window.rollout_index] = (steps, _states_before(
-                            model, frames, batch.starts[window.rollout_index]))
-                        replays += 1
-                    state = saved[window.rollout_index][1][window.start_seq]
-                else:
-                    state = _states_before(model, frames, [window.start_seq])[window.start_seq]
+                state = states[window.rollout_index][window.start_seq]
                 wanted = {item.decisions[index]: index for index in window.sample_indices}
                 for seq in range(window.start_seq, window.end_seq + 1):
                     output = model.forward_step(frames[seq], state)
@@ -280,4 +257,4 @@ def update(model, optimizer, trajectories, *, config, generator, progress=None):
             if progress is not None:
                 progress(steps, batch.planned_steps(config))
     return PPOReport(batch.samples, steps, *(value / count_seen for value in totals),
-                     timings_seconds={"full_update": time.perf_counter() - started}, game_replays=replays)
+                     timings_seconds={"full_update": time.perf_counter() - started})

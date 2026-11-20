@@ -506,7 +506,10 @@ void ExplorerRL::runContextualTurn(QueryID queryID, bool modalOnly)
 				auto record = contextState.record("decision", callback->getDate(Date::DAY));
 				record["decision_id"].Integer() = decision;
 				record["revision"].Integer() = revision;
-				record["observation"] = contextState.lastObservation;
+				// The observation of a decision is always that of this player's
+				// latest view record, which is in this message or an earlier one.
+				if(decisionObservation)
+					record["observation"] = contextState.lastObservation;
 				contextState.records.push_back(std::move(record));
 			}
 			return takeContextualRecords();

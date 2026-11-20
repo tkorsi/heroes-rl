@@ -92,3 +92,44 @@ def test_an_action_the_decision_does_not_offer_is_refused(fake_engine, tmp_path)
         assert isinstance(following, Request) and following.player == 1
     finally:
         env.close()
+
+
+def _latest_view(frames, decision):
+    return next(frame for frame in reversed(frames[:decision.seq]) if frame.kind == "view")
+
+
+def test_a_decision_shares_the_observation_of_its_view(play_fake):
+    # The engine sends what a seat sees once, as a view. The decision after it carries no copy.
+    frames = play_fake(days=4, map=8).trajectory.frames
+    decisions = [frame for frame in frames if frame.kind == "decision"]
+    assert len(decisions) == 4
+    assert all(decision.observation is _latest_view(frames, decision).observation for decision in decisions)
+
+
+def test_an_engine_that_repeats_the_observation_plays_the_same_game(play_fake):
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools" / "perf"))
+    from profile_game import digest
+    from heroes import actor
+    games = [play_fake(days=6, map=8, repeat=repeat) for repeat in (False, True)]
+    for game in games:
+        assert game.status == "completed" and len(game.trajectory.decisions) == 6
+    repeated = games[1].trajectory.frames
+    decision = next(frame for frame in repeated if frame.kind == "decision")
+    view = _latest_view(repeated, decision)
+    assert decision.observation == view.observation and decision.observation is not view.observation
+    # Everything the learner reads is the same: actions, probabilities, values and the compiled recipe.
+    assert len({digest(actor.compile_recipe(play_fake.model, game.trajectory)) for game in games}) == 1
+
+
+def test_a_decision_without_an_observation_needs_a_view(fake_engine):
+    from heroes.engine.protocol import Producer
+    engine = fake_engine()
+    producer = Producer("1", 0, interface=engine.interface, army_information=engine.army_information)
+    envelope = {"protocol_version": producer.profile.protocol, "episode": "1", "player": 0}
+    producer.ingest({**envelope, "type": "ready", "interface": producer.profile.environment,
+                     "history_schema": producer.profile.history_schema, "action_schema": producer.profile.action_schema,
+                     "army_information": engine.army_information})
+    with pytest.raises(ValueError, match="needs an earlier view"):
+        producer.ingest({**envelope, "type": "contextual",
+                         "records": [{"kind": "decision", "day": 1, "decision_id": 0, "revision": 0}]})
