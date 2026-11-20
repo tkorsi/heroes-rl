@@ -198,18 +198,46 @@ games of another run, so every figure is lower than on a free machine:
 | ten actors, the same seeded games, decisions per second of all games | 650 | 1,030 |
 | engine folder of that one game | 2.2 GB | 5 MB |
 
+On 2026-11-20 two more changes of the same kind. After every applied packet,
+for both players, the plugin rebuilt all 400 map tiles as JSON to find that
+nothing had changed, and sent them again with every view; it now compares
+plain numbers and sends the map only when it changed (runtime
+`local-v8-changed-map-v1`, which is the default). And an army, hero, town or
+panel that stayed as it was from one view to the next is decoded, turned into
+its semantic tree and encoded once instead of every time. Again the games are
+the same games, by digest, on 2 single games and on 14 games played by 14
+actors. Measured while the Mac ran a PPO update:
+
+| | PR 35 | Now |
+| --- | --- | --- |
+| one seeded game to day 60, 14,208 decisions: play, then compile | 90.5 s, 11.6 s | 47.2 s, 7.6 s |
+| 14 actors, the same 14 seeded games to day 60 | 140 s and 151 s | 82 s, 90 s and 80 s |
+| 14 actors kept busy, decisions per second | 1,210 and 1,150 | 1,990 and 1,700 |
+
+A hundred games of the present length (33,600 decisions on average) then take
+about 30 minutes instead of 48.
+
 - `--workers`. On the same evening 14 actors answered about 1,220 decisions per
   second against 1,060 for ten, in windows taken in turns, and 16 gave no more:
   a game keeps about 0.8 of a core busy and the Mac has 16. 14 is the default.
   An actor holds its game's frames until the game ends, up to about 3.5 GB for
   a game of 365 days.
-- **What is left.** A decision costs about 6 ms of CPU. About 2 ms are the
-  engine's: after every applied network packet, and again before every result
-  and decision, it rebuilds each player's whole observation to see whether it
-  changed. That needs the plugin to build its observation in a form that is
-  cheap to compare; nothing in Python can remove it. The policy's forward pass
-  takes 1.9 ms, decoding and checking a view 0.8 ms, sampling 0.5 ms, and
-  compiling the recipe after the game another 0.8 ms per decision.
+- **What is left.** A decision costs about 3.3 ms of one actor's time plus
+  0.5 ms for compiling the recipe after the game: 1.1 ms waiting for the
+  engine, 1.1 ms in the policy's forward pass, 0.45 ms sampling, 0.4 ms
+  decoding. No single item stands out any more. In the engine about 12% of a
+  game's time is still spent rebuilding the non-map half of each observation
+  (over a third of that the passive army statistics) and 5% writing JSON. In Python
+  the largest pieces are the walk that samples an action, which builds and
+  checks about 56 candidate actions per decision, and the 400 tiles of every
+  view that did change the map. Each is worth 1 to 7%.
+- **Fewer decisions per game is the larger lever, and it changes training.**
+  A seat answers about 100 decisions per game day, most of them stack moves
+  and opening or closing windows. On 14 seeded games to day 60, a daily
+  stack-management budget of 8 per hero and town instead of 32 gave 66
+  decisions per seat and day instead of 100, and a budget of 4 gave 55; those
+  are other games, so the comparison is of counts, not of play. Not adopted:
+  the guard is unchanged.
 - **Game length is the larger lever, and it is not code.** A seat answers about
   100 decisions per game day, most of them stack moves within the guard's daily
   budget of 32 per hero and town, and a game averages 32,000 decisions. The 13%

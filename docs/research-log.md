@@ -8872,3 +8872,160 @@ with the corrected script. What they recorded satisfies the new rule (the two
 lines in `replay-check/check-replay.jsonl` carry "Contextual replay differs at
 record 3768", changed record 3763, and `vcmireplay` ends with status 3 on that
 error), but that is read from their output, not observed by a new run.
+
+### 2026-11-20 — Faster game play, second round: the engine compares numbers, Python keeps what did not change
+
+The user asked for the largest possible speedup of play, trying several ideas,
+toward a 1000-game cycle in under an hour, and wrote "run it" in the thread for
+measurements on the Mac. Branch `claude/project-thread-r4x7mn` on top of the
+play-speed branch at `cb5fe99`, worked on in a clone of its own,
+`~/Projects/Heroes-fast`; the training checkout was not touched. State folder
+`~/Projects/Heroes-artifacts/fast-r4x7mn` (checkpoint 1789 copied from the
+play-speed folder; `src-<commit>/` are the frozen trees every measurement ran
+from, `measure-1.sh` to `measure-4.sh` the queues, `results/*.jsonl` the
+reports, `logs/` the times of every start and end).
+
+**Starting point and hypotheses, written before the measurements.** The entry
+of 2026-11-19 left two large items: the engine rebuilt each player's whole
+observation as JSON after every applied pack to see whether it had changed
+(about 2 ms of a 6 ms decision), and the policy's forward pass (1.9 ms). The
+map is 20 by 20, so each observation carries up to 400 tiles, about 30 KB of
+its JSON, and the old CPU sample put more than two thirds of the capture's time
+into the tile loop. Hypothesis 1: collecting tiles and objects as plain numbers
+and comparing those finds the unchanged map without JSON, and a view that did
+not change the map need not carry it; the engine's share should about halve.
+Hypothesis 2: a view costs about 0.9 ms in Python because the passive army
+statistics (17 fields for each of up to seven stacks of every hero and town)
+are decoded, rebuilt as a semantic tree and walked for every view although one
+army at most changed; doing that once per unchanged value should remove most
+of it. Acceptance for both: the digest of everything the learner reads stays
+the same on seeded real games, single and with the actor pool, versions
+measured in turns from frozen trees.
+
+**Implemented.**
+
+- `7b39cfd`, engine and reader. `ExplorerRL::contextualObservation` fills a
+  `VisibleMap` (per tile: position, terrain, road, blocked, visitable; per
+  object: engine id, position, kind, subtype and the relative owner the policy
+  is told) and builds JSON for everything else as before. Two maps are equal
+  exactly when the JSON written from them is: object ids and handles
+  correspond one to one, and the owner is stored as the relation, so two
+  different neutral owner values still compare equal as they did. Handles are
+  still taken while the tiles are scanned, so their numbering is unchanged.
+  `captureContextualLocked` compares map and rest and returns as before when
+  neither changed. `EXPLORER_RL_REPEATED_MAP=0`, which the launcher now sets,
+  leaves `tiles` and `objects` out of a view when they are those of the
+  player's previous view; the first view always carries them, and a decision
+  that repeats its observation (the older form) is still complete.
+  `Producer` hands `decode_observation` the previous view's tuples for such a
+  view. `vcmireplay` reads the form from the capture (a view without tiles),
+  as it does for decisions. `Observation.__post_init__` runs its tile checks
+  once per tile tuple and map size.
+- `ad363c0`, Python. `contract._decoded_once` keeps one decoded object per
+  exact raw value (marshal bytes, the argument already used for tile lists)
+  for own armies and their stacks, displayed armies, heroes, towns, town and
+  capability panels. `policy._semantic` builds the tree of such an object once
+  and keeps it as `_Kept`, a tuple subclass that remembers its hash, its repr
+  (used to sort sets) and whether equality is identity inside it; bindings of
+  two kept trees are kept as well. `_encode_tree` visits a kept tree once per
+  version of the weights and adds the stored cache entries at later meetings;
+  the recipe compiler's arena does the same once per game while the frame has
+  added no leaf whose equality is not identity. The argument for exactness is
+  in the docstrings: under the memo every cache entry is the exact encoding of
+  its tree and the cache holds the subtrees of whatever it holds, so a visit
+  leaves the cache with the tree's subtrees added.
+- `1219d1d`, three small memos from the new profile: the guard's sort of all
+  tiles per observation, the bounds check of a new tile tuple, and
+  `army_operation_choices` asked several times about the same armies.
+
+Runtime `local-v8-changed-map-v1`, built in `~/Projects/Heroes-fast/vcmi`
+(`prepare_vcmi.py --check` passes) and frozen with `tools/freeze_runtime.py`;
+it is now the default in `heroes/config.py`. An older runtime ignores the new
+switch and an older reader never sets it, so the pairs still play.
+
+**Tests.** 77 scripted tests pass (72 before). New in `tests/test_env.py`: a
+view without a map keeps the tuples of the view before; an engine that repeats
+the map plays the same game with an equal recipe digest; a first view without
+a map, and a view with only one of the two parts, are refused; a checked tile
+tuple is checked again for another map size. New `tests/test_policy_reuse.py`,
+on hand-built observations of two heroes exchanging stacks with a town and
+passive statistics, because the scripted engine shows no armies: unchanged
+parts are the same objects; a kept tree equals, hashes and prints as the tuple
+it was built as; a pass with all reuse gives bit for bit the states, values,
+sampled actions, log-probabilities and per-decision cache entries of a pass
+with autograd on and no reuse at all, while walking less than half the trees
+of the earlier memo; kept encodings do not outlive the weights; the compiled
+recipe is the same with and without reuse.
+
+**Measured**, 2026-11-20 16:27 to 17:10 local. Charger 140 W, battery 100% and
+not falling. The user's training run (PID 42215, `heroes train 1000` in
+`~/Projects/Heroes`) was in its PPO update throughout, about 55% of one core
+and the GPU; every figure is from a Mac that was doing that as well. Old
+engine: `local-v8-play-switches-v1`.
+
+One seeded game to day 60 per call (`profile_game.py`), in turns:
+
+| seed, decisions | | PR 35 (`cb5fe99`) | PR 35 code, new engine | map (`7b39cfd`) | reuse (`ad363c0`) | memos (`1219d1d`) |
+| --- | --- | --- | --- | --- | --- | --- |
+| 4, 14,208 | play, compile | 90.5 s, 11.6 s | 74.6 s, 11.4 s | 66.3 s, 11.8 s | 48.6 s, 8.2 s | 47.2 s, 7.6 s |
+| 9, 11,658 | play, compile | 66.5 s, 8.2 s | 54.9 s, 8.4 s | 44.4 s, 8.3 s | 35.5 s, 6.3 s | 34.9 s, 5.6 s |
+
+The memos were measured in a later round against `ad363c0` again (51.6 s and
+37.1 s that time), so their step is 9% and 6%, not the difference of the two
+columns. Digests `fec36b04…` (seed 4) and `f154a6e3…` (seed 9) in every cell:
+the same games. For seed 4 the wait for the engine went 42.6 s, 17.3 s, 15.6 s
+(PR 35, map, reuse), the forward pass 25.8 s, 28.8 s, 15.4 s, decoding 10.6 s,
+8.0 s, 6.6 s.
+
+Fourteen actors on the same fourteen seeded games to day 60
+(`bench_play.py --workers 14 --games 14 --seed 3`; 132,920 decisions, 61,734
+samples): PR 35 139.9 s and 151.2 s, `ad363c0` 82.4 s and 89.5 s in turns,
+`1219d1d` 79.6 s afterwards. All fourteen digests are equal in all five runs.
+One actor's time per decision, compilation included: 8.55 and 9.38 ms, 5.17
+and 5.56 ms, 4.89 ms.
+
+Fourteen actors kept busy for 130 s after a 20 s warm-up, games to day 365
+(`--seconds 130 --seed 7`), in turns: PR 35 1,209 and 1,145 decisions per
+second, `ad363c0` 1,993 and 1,697. A 77 s run of the scripted tests overlapped
+the first PR 35 window; the second was undisturbed. With the mean game of the
+user's 421-game log (33,566 decisions), 100 games are about 48 minutes at
+1,177 per second and about 30 at 1,845. That is derived, not a played batch.
+
+**The replay check on the real engine** (`tools/check_replay.py`, 3-day game,
+7,429 records): a capture of the new engine, whose views after the first leave
+unchanged maps out, verifies with the new `vcmireplay`; so does a capture of
+the old engine, which repeats the map; both reject the changed answer at
+record 3768 after the change at 3763.
+
+**Where the time is now.** CPU sample of the new engine during the seed 4 game
+(`results/engine-sample-map.txt`, 20 s, with `7b39cfd`): the captures are 12%
+of the game's wall time (over a third of that in `ownArmyDetails`, a fifth in
+the tile visibility scan), writing JSON 5%. Python profile of the same game
+with `ad363c0` (`results/reuse-seed4.prof`; cProfile inflates Python): the
+walk that samples or evaluates an action is the largest block (about 56
+`Action` objects are built and checked per decision, and the guard's `permits`
+is asked about 30 times); tiles of views that did change the map (8,301 of
+22,016 observations) cost a decode and a bounds check per tile; compiling the
+recipe evaluates every trained decision's walk a second time. Each of these is
+a few percent. No further change is claimed here.
+
+**A training change, measured and not adopted.** The same fourteen seeds with
+the guard's daily stack-management budget lowered from 32 per hero and town,
+in copies of `ad363c0` with the constant edited (`src-limit8`, `src-limit4`):
+budget 8 gave 83,702 decisions over 634 game days, 66.0 per seat and day
+against 99.8; budget 4 gave 69,974 over 631, 55.4 per seat and day. These are
+other games (the policy samples from another support), so only the counts
+compare. With budget 4 the learner seats' actions are 71% opening and closing
+windows and 7% moves. From the 421 games of the user's log, a day limit of 180
+instead of 365 would keep about 72% of the decisions, and 66% of the games end
+before it against 85%. The guard and the limits are unchanged; these numbers
+were given to the user with two further options, training on both seats and
+playing the next batch during the update.
+
+**Limitations.** Timings are from a Mac that was also running a PPO update,
+one sitting, two seeds for single games and one seed for the pool. The
+exactness evidence is the digests of 16 seeded games to day 60, the scripted
+tests and the argument in the code; no full-length game and no training run
+was made with this code. The decoded-value cache and the kept trees hold up to
+4,096 and 8,192 entries per actor process and the kept encodings 2,048; their
+memory was not measured.

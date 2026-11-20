@@ -56,6 +56,22 @@ observation, the same Python object. The policy and the recipe compiler
 recognise it by identity and do its work once. An engine that still repeats the
 observation is read as before and gives equal frames.
 
+Most views change a window and leave the map as it was. The plugin collects
+tiles and objects as plain numbers and compares those, so finding that nothing
+changed builds no JSON, and the launcher tells it to send a view's tiles and
+objects only when they differ from the player's previous view
+(`EXPLORER_RL_REPEATED_MAP=0`); the reader gives such a view the previous
+view's tuples. The rest of an observation is treated the same way in Python:
+[`contract._decoded_once`](../heroes/game/contract.py) decodes an army, a
+stack, a hero, a town or a panel once per exact raw value and hands out the
+same frozen object, the policy keeps the semantic tree of such a value
+(`_Kept` in [`policy.py`](../heroes/model/policy.py)), encodes it once per
+version of the weights, and the recipe compiler walks it once per game. All of
+it is reuse of equal work: a seeded game gives the same digest with and
+without it, and [`tests/test_policy_reuse.py`](../tests/test_policy_reuse.py)
+compares every state, value, action, probability and cache entry with a pass
+that reuses nothing.
+
 ## One game
 
 [`heroes/engine/process.py`](../heroes/engine/process.py) starts a fresh
@@ -231,7 +247,7 @@ A build finds its library through the path of the build folder. To use it for
 training, copy it into a runtime folder that stands on its own:
 
 ```sh
-python3 tools/freeze_runtime.py ~/Projects/Heroes-artifacts/runtime/local-v8-play-switches-v1
+python3 tools/freeze_runtime.py ~/Projects/Heroes-artifacts/runtime/local-v8-changed-map-v1
 ```
 
 The runtime is put together beside its final place and renamed into it when
@@ -248,6 +264,8 @@ games of an engine built before that switch carry it again in every decision.
 The verifier reads which of the two a capture has from its first recorded
 decision and regenerates that form, whatever its own environment says, so both
 kinds verify from any shell; everything else is compared exactly as before.
+It reads the form of the views the same way: a capture with a view that
+carries no tiles was made with `EXPLORER_RL_REPEATED_MAP=0`.
 
 `tools/check_replay.py` shows this on a real game. It plays one short game with
 the ledger, replays it three times, and passes only if the capture verifies
@@ -270,8 +288,7 @@ $P tools/check_replay.py $S --replay $R \
 Each call takes about five seconds with the default three days and prints one
 JSON line. The `vcmireplay` inside `local-v8-play-switches-v1` was frozen
 before the verifier learned this and rejects compact captures at their first
-decision. The programs that play are not affected, so that runtime stays the
-default; verify with a `vcmireplay` built from this code.
+decision; the one inside `local-v8-changed-map-v1` reads both forms.
 
 `prepare_vcmi.py` does not update a checkout it prepared earlier. After a
 change to a file under `engine/`, copy that file to its place in `vcmi/` (the
@@ -279,11 +296,11 @@ places are in `dependencies/vcmi.json`), confirm with `--check`, and build the
 target that owns it: `cmake --build vcmi/build --target vcmireplay`.
 
 The Python side expects the client at `HEROES_VCMI`, by default
-`~/Projects/Heroes-artifacts/runtime/local-v8-play-switches-v1/bin/vcmiclient`,
+`~/Projects/Heroes-artifacts/runtime/local-v8-changed-map-v1/bin/vcmiclient`,
 and the original game's `Data` folder under `~/Projects/Heroes-artifacts/game-data`.
-That runtime is the engine of `local-v8-sleep-resume-v1` plus the two switches
-above. Both are off unless the launcher sets them, and an older runtime ignores
-them: it plays the same games, slower, and writes its ledger.
+That runtime is the engine of `local-v8-sleep-resume-v1` plus the three
+switches above. All are off unless the launcher sets them, and an older runtime
+ignores the ones it does not know: it plays the same games, slower.
 Python dependencies are pinned in [dependencies/](../dependencies/):
 Torch 2.9.1, NumPy 2.3.5 and MLX 0.31.1 on CPython 3.13.
 
