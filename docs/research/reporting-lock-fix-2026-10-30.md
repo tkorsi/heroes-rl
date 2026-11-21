@@ -4,7 +4,7 @@
 
 The user requested that descriptive reporting stop blocking new runs, that the
 existing launcher be safely unblocked, and that the one-game doubled-choice test
-remain a manual launch. All changes are made in `/Users/orsi/Projects/Heroes`.
+remain a manual launch. All changes were made in the main checkout.
 
 The continuation completed 92 new games and 23 updates at 19:15:13 UTC, bringing
 the separate self-play experiment to 100 admitted games and checkpoint 1753.
@@ -77,12 +77,12 @@ The map, policy, PPO, rewards, revealed movement support and collection budgets
 are unchanged. The user alone launches the one-game evaluation:
 
 ```sh
-cd /Users/orsi/Projects/Heroes
+# Run from the repository root.
 ./play-one-selfplay-2x.sh --run
 ```
 
 The [compact validation](../../validation/reporting-lock-fix-2026-10-30.json)
-records final checks. The actual launcher check in `/Users/orsi/Projects/Heroes`
+records final checks. The actual launcher check in the main checkout
 passed with exact checkpoint 1753 model/Adam/RNG/progress/sampler/pool restoration,
 the accepted runtime identities, all 128 protected files unchanged, and both
 campaign locks available. It reserved no seeds and performed no gameplay or

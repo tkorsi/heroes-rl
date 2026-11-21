@@ -62,13 +62,10 @@ the excluded evaluation. Current closure checks found no matching old processes.
 
 ## Private preservation
 
-The private repository `tkorsi/heroes-rl-training-state`, branch
-`codex/checkpoint1229-handoff`, preserves a 45-file, 5,486,028-byte restore-only
-snapshot at `ae985b40afec212aca0f2164016033f0e895283b`. A fresh network download
-matched every file and restored the same complete state. Commit
-`9f812e5d2b8ae85de42ce631e1df38840ad54d36` separately adds the recovery receipt
-and readback evidence; its six new files also passed independent download and
-hash comparison. Raw captures and checkpoints remain private.
+A private backup preserves a 45-file, 5,486,028-byte restore-only snapshot.
+A fresh download matched every file and restored the same complete state. The
+six files containing the separate recovery receipt and readback evidence also
+passed independent download and hash comparison. Raw captures and checkpoints remain private.
 
 This compact snapshot is not the full approximately 8.7 GiB raw run or complete
 ancestry archive. Historical paths remain intact. Full lineage availability,
@@ -99,7 +96,7 @@ Keep the Mac awake with its lid open. The existing idle-sleep assertion does not
 prevent the observed lid-close sleep. Run either duration from the main checkout:
 
 ```sh
-cd /Users/orsi/Projects/Heroes
+# Run from the repository root.
 ./continue-original-1229.sh --hours 1
 ```
 

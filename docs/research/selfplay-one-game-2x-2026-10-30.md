@@ -66,7 +66,7 @@ commit; the original checkpoint ancestry and all runtime checks remain exact.
 ## Manual command
 
 ```sh
-cd /Users/orsi/Projects/Heroes
+# Run from the repository root.
 ./play-one-selfplay-2x.sh --check
 ./play-one-selfplay-2x.sh --run
 ```

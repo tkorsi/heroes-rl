@@ -130,7 +130,7 @@ No gameplay, PPO update or official seed reservation occurred.
 The existing Nullkiller continuation remains manual:
 
 ```sh
-cd /Users/orsi/Projects/Heroes
+# Run from the repository root.
 ./continue-1585.sh --hours 10
 ```
 

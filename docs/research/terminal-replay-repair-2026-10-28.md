@@ -104,7 +104,7 @@ its existing permission tests are offline only. No strategic improvement is
 claimed.
 
 Release `terminal-replay-v1` binds runtime
-`/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-terminal-replay-repair1`.
+`$HEROES_ARTIFACTS/runtime/local-v8-terminal-replay-repair1`.
 Accepted descriptor SHA256:
 `fffce8b1ee74c010f235b97a88547adc6ada3dce65251ac959a4b6dbe6e032b8`.
 The acceptance gate requires the preserved-failure diagnostic, full native proof,
@@ -164,10 +164,8 @@ the five reviewed concrete types under the unchanged terminal constraints.
 
 ## Complete private preservation
 
-Private branch `codex/local-script-final916-checkpoint` preserves the complete
-checkpoint and run package at `78d793355b17a099eb906870a3368e7972bceb7c`, the
-excluded diagnostics at `f481857133b49b48e6bd83215d7bfaaf9e015554`, and final
-read-back receipts at `0082b8317f386e443af55d84d48534ddc47e405b`.
+A private archive preserves the complete checkpoint and run package, the
+excluded diagnostics and the final readback receipts.
 Independent remote bytes restored the exact 916 model, Adam, Python/Torch/minibatch
 RNG, sampler, progress and pool: 3,664 cumulative rollouts, 526,188 decisions and
 17,676 Adam steps. All 146 successful batches and the unique consumed-seed

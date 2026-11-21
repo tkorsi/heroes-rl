@@ -125,7 +125,7 @@ complete eight-game admission, and a small synthetic eight-game PPO update.
 The isolated generated engine also passed the exact canonical-recipe check.
 See the [compact result](../../validation/parallel-eight-collection-2026-10-27.json).
 Raw captures and guard records remain outside Git under
-`/Users/orsi/Projects/Heroes-bench/parallel-eight/run-20261027-preflight-fixed/`.
+`parallel-eight/run-20261027-preflight-fixed/`.
 
 The initial diagnostic at implementation `8af8d98` stopped after its first
 serial game with `missing_source_identity`: this isolated checkout lacked the
@@ -133,7 +133,7 @@ generated `vcmi/` source checkout required by finalization. The game is an
 unscored technical failure, seven serial slots and all eight parallel slots
 remain unstarted, and the independent guard verified all owned processes closed.
 No receipt was admitted and no optimizer ran. Evidence is retained under
-`/Users/orsi/Projects/Heroes-bench/parallel-eight/run-20261027-8af8d98/`.
+`parallel-eight/run-20261027-8af8d98/`.
 
 Preparation now checks the generated engine recipe before launching any native
 process. The corrected study uses its own prepared dependency, new diagnostic
@@ -146,11 +146,11 @@ is neither retried nor substituted into the corrected cohort.
 From the committed experimental checkout, using the locked macOS interpreter:
 
 ```sh
-/Users/orsi/Projects/Heroes/.venv/bin/python tools/benchmark_parallel_collection.py
+.venv/bin/python tools/benchmark_parallel_collection.py
 ```
 
 The command allocates a fresh output directory under
-`/Users/orsi/Projects/Heroes-bench/parallel-eight/` and reserves new diagnostic
+`parallel-eight/` and reserves new diagnostic
 seeds. It requires checkpoint 699 and the accepted runtime at the bound local
 paths. Use `--seat blue` only for an explicitly requested separate Blue study.
 The source checkout must stay unchanged until both arms have finished.

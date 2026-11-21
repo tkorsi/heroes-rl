@@ -10,7 +10,7 @@ The earlier request to run a game was interrupted before any game or seed
 reservation started. This preparation launches no gameplay or training.
 
 ```sh
-cd /Users/orsi/Projects/Heroes
+# Run from the repository root.
 ./play-one-tiny-selfplay.sh --check
 ./play-one-tiny-selfplay.sh --run
 ```

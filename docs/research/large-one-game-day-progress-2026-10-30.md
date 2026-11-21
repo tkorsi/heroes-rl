@@ -7,7 +7,7 @@ The tiny initialization, completed capture and consumed seeds remain preserved.
 No model is resized, reinitialized, retrained or replaced in checkpoint storage.
 
 ```sh
-cd /Users/orsi/Projects/Heroes
+# Run from the repository root.
 ./play-one-selfplay.sh --check
 ./play-one-selfplay.sh --run
 ```

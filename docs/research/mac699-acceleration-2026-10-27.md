@@ -184,11 +184,8 @@ copied checkpoints and compact bound verification evidence, not a full new
 remote capture archive. See the [compact result](../../validation/mac699-acceleration-results-2026-10-27.json)
 and [manual continuation](../operations/original699-continuation.md).
 
-The [private preservation receipt](../../validation/mac699-preservation-2026-10-27.json)
-binds package commit `c83d311fc27f6396011e28582fdcd4c692527c7b` and
-receipt commit `f697c31bdd45174f5b74a1bab1b53879d558409b` on private
-`tkorsi/heroes-rl-training-state`, branch `codex/mac699-acceleration-20261027`,
-path `benchmarks/mac699-20261027`. All298 package blobs were
+The private preservation receipt ties the archive to its verification record.
+All 298 package blobs were
 acknowledged remotely; eight checkpoint files were independently downloaded and
 full700/701 states restored exactly. These states are explicitly ineligible for
 the official continuation.

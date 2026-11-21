@@ -71,7 +71,7 @@ These changes depend on validated PyTorch 2.9.1 internals, revision `5811a8d7da8
 
 The canonical engine check passed: generated `vcmi` exactly matches the pinned upstream, root patches and owned engine sources. No engine source or runtime was changed. The full-suite and real-main receipts are recorded in the [validation report](../../validation/native-mac-utilization-2026-10-29.json). The previous acceptance remains available in [its archived record](../../validation/native-mac-learner-initial-2026-10-29.json); the current native gate binds the new build and reviewed source hashes.
 
-Official checkpoint/run pointers and both `0444` ownership locks retain their recorded values. The local pointer is not evidence of the latest cloud checkpoint. Cloud closure and latest-state import must be independently verified before releasing Mac ownership; this repair neither changes those fences nor starts training. Evidence root: `/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-29-native-utilization/`.
+Official checkpoint/run pointers and both `0444` ownership locks retain their recorded values. The local pointer is not evidence of the latest cloud checkpoint. Cloud closure and latest-state import must be independently verified before releasing Mac ownership; this repair neither changes those fences nor starts training. Evidence root: `$HEROES_ARTIFACTS/run-investigations/2026-10-29-native-utilization/`.
 
 Run the bounded, isolated load check from the synchronized main checkout:
 
@@ -84,7 +84,7 @@ It verifies the accepted source and actual binary, compares disposable archived 
 
 ```sh
 ./continue-original-native.sh --check --hours 10 \
-  --native-learner /Users/orsi/Projects/Heroes-artifacts/native-learner-builds/mac-utilization-v1-attempt6/manifest.json \
+  --native-learner "$HEROES_ARTIFACTS/native-learner-builds/mac-utilization-v1-attempt6/manifest.json" \
   --native-sha256 919951d970eefa356ed19c901ddc3441e108035da186957b5cbe107b00ace623
 ```
 

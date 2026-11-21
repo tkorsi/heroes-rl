@@ -136,9 +136,7 @@ visible interaction budget, architecture, PPO settings and terminal-only rewards
 are unchanged. No official training was launched. Main-checkout readiness is
 recorded separately after configuration activation.
 
-Private commit `000897d9ec410173fc315aa00f98a0844635116e` on
-`tkorsi/heroes-rl-training-state`, branch `codex/local-script-final770-checkpoint`,
-preserves all1,816 diagnostic evidence/receipt files in a16.5MB archive. An
+A private 16.5 MB archive preserves all 1,816 diagnostic files and receipts. An
 independent remote read-back verified every member hash. External game-data
 symlinks and runtime binaries are excluded. Checkpoint770 has its separate
 full-state restoration receipt. See the compact results for immutable hashes.

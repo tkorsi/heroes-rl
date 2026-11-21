@@ -198,7 +198,7 @@ remain private in the durable artifacts directory.
 To repeat a short load check without starting an official campaign:
 
 ```sh
-cd /Users/orsi/Projects/Heroes
+# Run from the repository root.
 ./test-native-load.sh
 ```
 
@@ -230,9 +230,9 @@ fence or resume the older local checkpoint as part of this optimization.
 After that handoff, the exact check command from the main checkout is:
 
 ```sh
-cd /Users/orsi/Projects/Heroes
+# Run from the repository root.
 ./continue-original-native.sh --check --hours 10 \
-  --native-learner /Users/orsi/Projects/Heroes-artifacts/native-learner-builds/mac-native-v1-attempt6/manifest.json \
+  --native-learner "$HEROES_ARTIFACTS/native-learner-builds/mac-native-v1-attempt6/manifest.json" \
   --native-sha256 5a575c084479ac163ad152890ef58ef9e4cb4f842eca23d9f330f8733ddc477a
 ```
 

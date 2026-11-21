@@ -21,14 +21,16 @@ Preparing the dependency does not change their ownership or licenses.
 
 ## Heroes III and HotA
 
-Original Heroes III game data, HotA installations, installers, artwork, sound,
-music and other third-party game content are not redistributed here. Users must
-provide their own compatible game installation locally. HotA is not needed for
-the current baseline experiment.
+Users supply their own compatible Heroes III installation. The repository does
+not distribute game installers, resource archives, sprite sheets, sound or
+music. HotA is optional for the adventure-map training scenario.
 
 The tracked `.vmap` archives contain authored JSON map definitions and asset
 references only. They do not contain game artwork or other original game data.
-Gameplay recordings and screenshots remain local outputs outside Git.
+The [README screenshot](docs/media/heroes-self-play.webp) shows a player-controlled
+*Heroes of Might and Magic III: Horn of the Abyss* battle beside two terminal
+summaries of a separate VCMI training run. The underlying game artwork and
+marks belong to their respective rights holders.
 
 ## Scope
 

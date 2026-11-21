@@ -141,16 +141,14 @@ this run. The exact post-terminal AI caller remains unknown.
 
 ## Private preservation and manual continuation
 
-Private commit `a489c0e4ae133616bf69569db740a57c0e4c63cb` on
-`codex/checkpoint1392-repair` contains the verified checkpoint package and failed
+The private backup contains the verified checkpoint package and failed
 batch evidence. Fresh remote readback verified all 24 files and restored the full
 checkpoint in 17.81 seconds. The failed archive covers 130 regular files
 (150,677,409 uncompressed bytes) and four undereferenced Data symlinks; a separate
 archive contains 1,378 run metadata files. Successful official-game raw histories
 and intermediate checkpoint tensors remain intact locally and are explicitly
-excluded from this package. The separate final diagnostic transaction, commit
-`375b61c2f22f99c65552aabd654e3ca53e82948f`, passed fresh remote readback in 21.54
-seconds on the same branch. It covers 1,694 regular files (407,726,793 bytes),
+excluded from this package. The separate final diagnostic archive passed fresh remote readback in 21.54
+seconds. It covers 1,694 regular files (407,726,793 bytes),
 52 undereferenced symlinks, all new diagnostic captures, accepted runtime
 descriptors, source reviews, failed test-selection logs and final main readiness
 proofs. Its 15,588,658-byte archive excludes runtime binaries and game data.

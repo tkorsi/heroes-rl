@@ -104,7 +104,7 @@ The affected module and launcher/native focused regressions were then rerun.
 ## Manual use and limits
 
 ```sh
-cd /Users/orsi/Projects/Heroes
+# Run from the repository root.
 ./play-one-tiny-selfplay.sh --check
 ./play-one-tiny-selfplay.sh --run
 ```

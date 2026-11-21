@@ -4,9 +4,14 @@ __pycache__/
 .venv/
 # Local credentials and machine-specific configuration.
 /AGENTS.md
+/AGENT.md
 .env
 .env.*
 !.env.example
+*.key
+*.p12
+*.pfx
+*.pem
 # Unrelated local projects and installed games; preserve them outside Git.
 /HotA/
 /HotA.app/
@@ -16,6 +21,7 @@ __pycache__/
 /build-logs/
 /INSTALLATION-REPORT.txt
 # Generated experiment outputs and the prepared external engine dependency.
+/.experiment/
 /runs/
 /videos/
 /reports/

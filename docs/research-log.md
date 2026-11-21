@@ -7,7 +7,8 @@ index and laboratory notebook, not a replacement for the authoritative
 The historical entries below were reconstructed **retrospectively** from saved
 reports. They were not preregistered hypotheses. Exact run timestamps, source
 identities, settings and evidence bindings remain in the linked reports. Report
-filenames sometimes use the Kyiv date while their timestamps use UTC.
+filenames sometimes use the Kyiv date while their timestamps use UTC. In archived
+commands, `$HEROES_ARTIFACTS` denotes the external directory used for run data.
 
 Machine-readable stage records are in
 [research-experiment-index.jsonl](../validation/research-experiment-index.jsonl).
@@ -293,9 +294,8 @@ for 146. All three lost all 32 original-scenario games. This supports transfer
 between the tested easy positions, not success on the original board or a
 demonstrated recruit-then-attack strategy.
 
-The final report binds raw captures to private commit
-`d00675305595e62078f8c9bab85b22d67b990504` and independent audit/stop evidence to
-`24ae5b2ecb9ef035484887eb1ac9df47682ce347`. It records unchanged checkpoint
+The final report ties the privately archived captures to independent audit and
+shutdown records. It records unchanged checkpoint
 bytes, exact full-state restoration, zero PPO/Adam/sample admission and no live
 owned workers. Root reviewed these published receipts; no gameplay or fresh
 cloud runtime audit was performed for this import.
@@ -448,10 +448,7 @@ started by this synchronization.
 
 The full archive was subsequently published successfully without force pushes
 or omitted evidence. Eight bounded metadata/chunk stages retained remote
-acknowledgements; the original complete package commit is
-`87e814e6d2de8a0690fed7e158d2e50f87b59267`, with publication receipt
-`78afd6f27b589a71414f143f6f866d6ded0cca49` on the private branch
-`codex/local-script-final629`. All 13 archive-part Git blobs match the locally
+acknowledgements for the complete private package. All 13 archive-part Git blobs match the locally
 verified SHA256-bound archive of 38,337 regular files. Game-data symlinks were
 recorded without copying their targets. The full archive was not redownloaded;
 the smaller final checkpoint was downloaded and restored independently.
@@ -610,7 +607,7 @@ cloud work was launched by this repair.
 Checkpoint916 and all failed-run evidence are now privately published and
 independently restored. All 19,536 archived run files and 1,707 diagnostic files
 passed remote read-back; Adam, all RNG state, sampler, progress and pool matched
-exactly. Final private receipt commit is `0082b8317f386e443af55d84d48534ddc47e405b`.
+exactly.
 The intermittent publication/read-back transport failures are recorded separately
 from the native replay rejection and supplied no training data.
 
@@ -728,9 +725,7 @@ started. No new strategic improvement or throughput claim is made.
 ## 29 October 2026 — authorized ten-hour cloud launch blocked during setup
 
 The user explicitly authorized a new cloud chat and a ten-hour official script.
-The new chat `Setup blocked report` (conversation
-`6ae2a223-538c-83eb-9bcc-b55cb9f7df99`) stopped before any repository download or
-launch. Its executor again lacked the required managed status tool and
+The session stopped during setup before any repository download or training launch. Its executor again lacked the required managed status tool and
 network-policy snapshot; credential readiness remained unverified. An attempt
 to inspect cloud setup through Computer Use was denied by the app-access policy.
 No settings were changed and the ten-hour window never started. This is a setup
@@ -954,12 +949,11 @@ path-normalization mismatch are retained and disclosed.
 An inherited acceptance annotation was separately corrected with a supersedes
 binding, preserving the original descriptor and all native/policy evidence.
 
-Private commit `a489c0e4ae133616bf69569db740a57c0e4c63cb` passed fresh remote
+The private checkpoint archive passed fresh remote
 readback and full checkpoint restoration. It preserves 130 failed-batch regular
 files, undereferenced Data links and 1,378 run metadata files. Successful official
 raw histories and intermediate checkpoint pairs remain durable locally and are
-explicitly outside that package. Final private commit
-`375b61c2f22f99c65552aabd654e3ca53e82948f` separately passed fresh readback in
+explicitly outside that package. The separate diagnostic archive passed fresh readback in
 21.54 seconds for 1,694 diagnostic/proof files and 52 undereferenced symlinks.
 It contains both acceptance descriptors and the final source/main-readiness
 proofs, without runtime binaries or game data.
@@ -1784,7 +1778,7 @@ and its manually launched fixed-count frozen run was still active. The candidate
 therefore remains isolated on `codex/selfplay-batch-learning`; merging it into
 main while that run owns the source would invalidate the run. After the current
 run finishes, manual integration is `git merge --ff-only codex/selfplay-batch-learning`
-from `/Users/orsi/Projects/Heroes`, followed by the read-only preflight above and
+from the repository root, followed by the read-only preflight above and
 the corresponding `--run` command. Do not merge while the run is active.
 
 The corrected code at `4c87a3f` passed the same real preflight in 5.55 seconds:
@@ -2099,7 +2093,7 @@ and outside the committed diff.
 
 The real main-checkout continuation preflight passed at commit `88e2461`:
 `./continue-selfplay.sh --cycle --check --run-dir
-/Users/orsi/Projects/Heroes-artifacts/selfplay-ten-then-check/run-20261105T111051Z-4911fcaa
+"$HEROES_ARTIFACTS/selfplay-ten-then-check/run-20261105T111051Z-4911fcaa"
 --cycles 1 --hours 10`. It restored checkpoint 1,753 with exact complete
 model/Adam/RNG/progress/sampler/pool agreement, performed zero gameplay and zero
 optimizer updates, and retained all eleven previously consumed slots. The next
@@ -2664,7 +2658,7 @@ Both shutdown reports record owned cleanup complete; campaign shutdown has
 return code 1 and protected inputs unchanged. No matching active game/training
 process was observed during the status review. Evidence is `launch.json`,
 `report.json`, both `shutdown.json` files and `coordinator-deadline.jsonl` under
-`/Users/orsi/Projects/Heroes-artifacts/selfplay-ten-then-check/` followed by the
+`$HEROES_ARTIFACTS/selfplay-ten-then-check/` followed by the
 run ID above, plus that namespace's `latest-checkpoint.json` and
 `seed-reservations.json`. This review did not reproduce or establish the root
 cause of the registration error. The next engineering step is to investigate
@@ -2746,9 +2740,9 @@ directly. No seeds or gameplay were involved in these checks.
 The clean `e4a593d` continuation preflight passed exact restoration of checkpoint
 1,756 and previewed offset 136 without reserving. The agent launched
 `./continue-selfplay.sh --cycle --resume --run-dir
-/Users/orsi/Projects/Heroes-artifacts/selfplay-ten-then-check/run-20261105T190107Z-9321e3b1
+"$HEROES_ARTIFACTS/selfplay-ten-then-check/run-20261105T190107Z-9321e3b1"
 --cycles 1 --hours 10 --output
-/Users/orsi/Projects/Heroes-artifacts/selfplay-ten-then-check/run-20261107-registration-retry1`
+"$HEROES_ARTIFACTS/selfplay-ten-then-check/run-20261107-registration-retry1"`
 at 13:35:01 UTC. It consumed 51 slots at offset 136 (engine base 1,980,000,136,
 policy base 1,982,000,272), using the same engine/native learner and configuration.
 All fifty actors registered and completed capture. Forty-nine preparations
@@ -2803,7 +2797,7 @@ The final source was `70373d3` on `codex/fix-capture-registration`. Its read-onl
 preflight passed exact restoration of checkpoint 1,756. The agent then invoked
 the same cycle launcher with `--resume`, `--cycles 1 --hours 10`, latest run
 `run-20261107-registration-retry1` and fresh output
-`/Users/orsi/Projects/Heroes-artifacts/selfplay-ten-then-check/run-20261107-registration-retry2`.
+`$HEROES_ARTIFACTS/selfplay-ten-then-check/run-20261107-registration-retry2`.
 Launch time was 13:51:43 UTC. The 51-slot reservation consumed offset 187 through
 237, starting at engine 1,980,000,187 and policy 1,982,000,374. Source/runtime,
 configuration and parent identities are bound in that run's `launch.json`.
@@ -3540,7 +3534,7 @@ evaluation campaign is authorized here. Preserve the new run until analysis.
 The planned November 9 attempt actually ran via
 `./run-100-games.command --run`, with source pinned to clean commit
 `3c859137dfc1ccee7496a3871e139ca61373da1f`. Private evidence is under
-`/Users/orsi/Projects/Heroes-artifacts/selfplay-ten-then-check/run-20261109T141819Z-14d160b4`:
+`$HEROES_ARTIFACTS/selfplay-ten-then-check/run-20261109T141819Z-14d160b4`:
 `launch.json`, `batch-train-000/plan.json`, `report.json`, `shutdown.json`,
 `coordinator-deadline.jsonl`, `progress/ppo-batch-train-000.json`,
 `power-sleep-evidence.log` and `post-stop-preflight.log`. The existing reusable
@@ -3652,7 +3646,7 @@ run ends; compare diagnostic behavior with the preserved 1,758 journal analysis.
 The authorized retry completed using `./run-100-games.command --run`, source
 `68e36c0d1ca6d1c8bcbf1f8b4decdace8df1bc38`, unchanged v3 map/runtime and all
 restrictions/configuration from the plan above. Private run:
-`/Users/orsi/Projects/Heroes-artifacts/selfplay-ten-then-check/run-20261110T113903Z-94c3b975`.
+`$HEROES_ARTIFACTS/selfplay-ten-then-check/run-20261110T113903Z-94c3b975`.
 The launcher retired the analyzed interrupted run only after preserving and
 restoring the complete parent 1,758 pair. Actual reservation was offset 541,
 width/count 101: training engine seeds 1,980,000,541–1,980,000,640, diagnostic
@@ -3801,7 +3795,7 @@ diagnostic supports behavioral inspection rather than a strength claim.
 Question: did the prepared cycle complete, and how does the fresh diagnostic
 compare with 1,759? Acceptance is the preceding plan's 100 admitted captures,
 one exact-restored update and independently verified diagnostic. Actual run:
-`/Users/orsi/Projects/Heroes-artifacts/selfplay-ten-then-check/run-20261111T115614Z-5c919e30`,
+`$HEROES_ARTIFACTS/selfplay-ten-then-check/run-20261111T115614Z-5c919e30`,
 source `d6127c277f1e7d710223ad5586a1475d9f2d651b`. The user launched the existing
 script. v3 map/runtime, starting Taverns, disabled calendar neutral spawning,
 artifact/army rules, horizons, PPO/Adam, ten rolling actors and resource/deadline
@@ -4380,7 +4374,7 @@ not a measured conclusion. The second training batch continued throughout this
 investigation and reached 100 engine outcomes without reported capture failures.
 
 Private evidence root:
-`/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-11-13-ppo-profile`.
+`$HEROES_ARTIFACTS/run-investigations/2026-11-13-ppo-profile`.
 `plan.json`, `plan-long.json`, `research-log.md`, `summary.json`, per-trial result
 JSONs, state digests, cProfile data, native OS samples and ownership receipts
 remain local. Source was archived from 9ca85df; production checkpoints/captures
@@ -5299,7 +5293,7 @@ require evidence of a material local improvement; the original policy failure
 remains in force.
 
 **Private evidence.** All paths below are relative to
-`/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-11-14-metal-memory`:
+`$HEROES_ARTIFACTS/run-investigations/2026-11-14-metal-memory`:
 `cohort-manifest.json`, `failure-minibatch.json`, the append-only private journals,
 `metal-full-100-{a,b,c}`, `cpu-full-100-a`,
 `comparison-full-100-{b,c}/comparison.json`, `full-b-versus-c-state.json`,
@@ -5924,7 +5918,7 @@ Question: does the observed Metal timing advantage reflect equivalent PPO work,
 and which implementation differences could explain it? This analysis reads
 existing artifacts and source only; no new game, replay, probe or PPO workload
 was authorized or launched. Evidence is under
-`/Users/orsi/Projects/Heroes-artifacts/framework-comparison/study-20261114T225228Z-f35d0fb9`:
+`$HEROES_ARTIFACTS/framework-comparison/study-20261114T225228Z-f35d0fb9`:
 `launch.json`, `report.json`, `bundle/manifest.json`, `results/*/trial.json`,
 `results/*/backend/result.json`, and `comparison.json`. All trial source commits
 are `8d502e0ec26f13960cd6063b56699214468b3e7c`. The common manifest SHA256 is
@@ -6096,7 +6090,7 @@ compiler products and raw evidence are excluded from the staged change.
 Executed the authorized protocol from clean local commit
 `8da9caac68904c2c616948eaf961c6f854879e7f` on
 `codex/ppo-framework-comparison`. No merge or push occurred. Preparation command:
-`./prepare-ppo-comparison.command --two --study /Users/orsi/Projects/Heroes-artifacts/framework-comparison/study-20261114T225228Z-f35d0fb9`.
+`./prepare-ppo-comparison.command --two --study "$HEROES_ARTIFACTS/framework-comparison/study-20261114T225228Z-f35d0fb9"`.
 Derived study `study-20261114T234306Z-1e6adbe7` preserves original indices [0,1],
 balanced learner colors and parent 1,765; no new game, seed or admission was
 created. Its manifest SHA-256 is
@@ -9523,7 +9517,7 @@ Actual commands and reproducibility evidence below the Heroes-codex checkout:
 run-training.sh, run-evaluation.sh, seed-plan.json, provenance.json,
 training-audit.json and state/log.jsonl in .experiment/. The missing matched
 five-plus-five old-main baseline can be collected with
-`bash /Users/orsi/Projects/Heroes-codex/.experiment/reproduce-old.sh` (prepared,
+`bash ./.experiment/reproduce-old.sh` (prepared,
 not executed). Check completion order and the second-round workloads before
 interpreting its wall ratio. Historical results are in .experiment/baseline.md.
 
@@ -9713,8 +9707,8 @@ two cutoffs each. This is favorable head-to-head evidence on this map and
 horizon, with only two independent seeds separating the checkpoints. The
 previous games on seed 20261121 are excluded. Detailed results, seed plan
 and ten sets of wire records are in .experiment/paired-1791-1793/results.json,
-plan.json and game-*/town-captures.json. Actual invocation from Heroes-codex:
-`/usr/bin/caffeinate -is /Users/orsi/Projects/Heroes-artifacts/python/mlx-v1/venv/bin/python -u .experiment/paired-1791-1793/launch.py`.
+plan.json and game-*/town-captures.json. Command from the repository root, with the artifact path abbreviated:
+`/usr/bin/caffeinate -is "$HEROES_ARTIFACTS/python/mlx-v1/venv/bin/python" -u .experiment/paired-1791-1793/launch.py`.
 
 ## 2026-11-21 — What interrupted enemy-town approaches in the paired cutoffs?
 
@@ -9806,11 +9800,11 @@ Playing strength will be assessed separately against frozen 1797 on fresh seeds 
 
 The user started the 100-game continuation at 18:52:57 Europe/Kyiv. Its production log records a start at 10,372 saved games with checkpoint 1797 and five CPU actors. The first five assignments were 10521–10525. Two games had recorded natural outcomes by 18:54:10. The process continued in its original state directory throughout the workspace cleanup.
 
-For earlier entries from the 1791–1797 experiments, the historical `.experiment/<relative path>` evidence now lives under `/Users/orsi/Projects/Heroes-artifacts/codex-archive/2026-11-21-through-1797/<relative path>`. This substitution also applies to historical paths embedded inside the saved reports. The archive holds the training and evaluation results, original manifests, scoring scripts, all eight checkpoint files, and all four recorded streams (wire, states, actions and events) for each of 32 evaluations. The 1793–1797 paired outcomes and attack report are under `continue-1793-20/evaluation/`. Both frozen copies of the 1797 checkpoint matched file digest `0cfe103f381ac7533549d6c097009bda497b006d2fd2cf4daee8d97f1ea1fb01` after the move.
+The 1791–1797 evidence was moved into a local archive with its original directory structure. The archive held the training and evaluation results, original manifests, scoring scripts, all eight checkpoint files, and all four recorded streams (wire, states, actions and events) for each of 32 evaluations. The 1793–1797 paired outcomes and attack report are under `continue-1793-20/evaluation/`. Both frozen copies of the 1797 checkpoint matched file digest `0cfe103f381ac7533549d6c097009bda497b006d2fd2cf4daee8d97f1ea1fb01` after the move.
 
 Cleanup removed 32 old engine replay logs, 64 empty observation files, generated game profiles, duplicate outcome printouts verified against their JSON, inactive lock files and Python bytecode. These accounted for 859,920,352 logical bytes across 357 files and links. The active state remains at `.experiment/continue-1797-100/state/`. The evaluation observer stays at its original path for the upcoming comparison.
 
-The user subsequently requested permanent removal of the completed experiment archive. The directory `/Users/orsi/Projects/Heroes-artifacts/codex-archive/2026-11-21-through-1797` and its contents, including the 32 historical game traces, were deleted. Historical links into that archive have expired. The user-launched 100-game continuation from its separate checkpoint 1797 was still running after deletion.
+The completed experiment archive, including the 32 historical game traces, was subsequently deleted. Historical links into that archive have expired. The user-launched 100-game continuation from its separate checkpoint 1797 was still running after deletion.
 
 ## 2026-11-21 — Main-branch handoff during the 1797 continuation
 
@@ -9893,3 +9887,11 @@ The user requested one evaluation. A random color draw assigned Codex 1801 to Re
 The game lasted 514.38 seconds. Both policies logged the expected weights, CPU evaluation mode and zero optimizer steps. Both sides played 365 days. At the request for day 366 the actor stopped at its deadline. The raw ownership stream showed no town changed hands. Red (1801) assaulted the enemy town on days 31, 220, 303, 329 and 360. Blue (1800) assaulted on day 191. All six attackers lost the battle and the hero. On day 303 Red attacked with five creatures against a garrison of 306, while another Red hero led 260 and another 210 were in Red's garrison (action 115676, state IDs Red 372530 and Blue 498917).
 
 Red made 68,123 decisions, recruited 938 creatures and built six buildings. Blue made 70,333 decisions, recruited 891 creatures and built three buildings. Production empty-window counts were 1,276 for Red and 1,426 for Blue (18.73 and 20.27 per 1,000 decisions). For example, Red opened and closed the same artifact window twice on day 1 (orders 42–45), but on day 3 opened recruitment and bought 14 creatures (orders 311–313). Separately, uninterrupted runs of at least two accepted army manipulations that restored the exact prior disposition of every friendly army consumed 6,820 decisions (10.01%) for Red and 6,226 (8.85%) for Blue, counting without overlap. On day 1 Red moved 24 creatures across three other slots and back (orders 3–6). See `.experiment/eval-1801-vs-1800-653266288/game-analysis.json` for the counts, definitions and trace references. Red had fewer empty window repeats per decision and attempted more assaults in this game. The single color assignment and seed cannot establish an improvement in strength or a causal effect of the penalties.
+
+## 2026-11-22 — Public project overview
+
+The README pairs a screenshot from a manually played game with two terminal
+windows summarizing the recorded self-play batch and PPO update that produced
+checkpoint 1800. The caption identifies both sources. The research notes now
+use portable path references and omit private workspace identifiers. The
+recorded results and experimental settings are preserved.

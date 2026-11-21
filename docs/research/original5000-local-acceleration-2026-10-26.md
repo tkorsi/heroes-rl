@@ -389,7 +389,7 @@ games equal m1-CH's batch 267 games on every observation and decision frame alth
 differ by up to 0.37%: with the same seeds the sampled actions happened to coincide; that is not
 guaranteed and later batches may diverge.
 
-Host reboot. At about 23:15 UTC the host restarted (boot id 3b357b50 to b9c386f7) while the
+Host reboot. At about 23:15 UTC the host restarted while the
 schedule wrote m1-XH's summary; every process died. Nothing of m1-XH was lost (the runner had
 finished, returncode 0); I reran its summary and lossless compression by hand on CPU 0. The
 watchdog refused to start on a new boot, as written. I changed it to keep the recorded UTC
@@ -406,7 +406,7 @@ batch 267 from update 630 (C267, B267, and PR30 as P267), each compared with m1-
 
 ### O13. A second host restart, and an exact cut of the repeated text-leaf forward (23:45 to 00:00 UTC)
 
-The host restarted again at about 23:48:50 UTC (boot b9c386f7 to 72fdd1aa), 26 minutes into
+The host restarted again at about 23:48:50 UTC, 26 minutes into
 m1-F (fast path with serial verification and no helpers, the macOS default) and 26 minutes into
 the second attempt of the optimizer-only PR30 job. The watchdog restarted through the same
 reboot path (UTC deadlines unchanged; five registrations of the previous boot retired). m1-F is
@@ -701,8 +701,7 @@ on the rest of the graph (tree nodes, frame recurrence, heads) is, at roughly 68
 backward of batch 266 with two replay threads. A further exact cut would have to replay repeated
 internal subtrees as well, which is not attempted tonight.
 
-At about 03:25 UTC the host restarted a third time (boot 72fdd1aa -> 3eb80ab8; the session resumed
-at 04:05). Lost: m6-RBH during the PPO of training batch 268, and the CPU 0 job RBN267. Batches 266 and
+At about 03:25 UTC the host restarted a third time (the session resumed at 04:05). Lost: m6-RBH during the PPO of training batch 268, and the CPU 0 job RBN267. Batches 266 and
 267 of m6-RBH had been admitted in 1209.4 s and 350.6 s (baselines 96.7 s and 209.1 s, cold start
 315.2 s). Their games are not all the same as the other campaigns': in batch 266 the fourth game again
 saw two asynchronous notices in the other order (the game in which two accepted runs also differed,
@@ -913,7 +912,7 @@ execution), not 3,780 s (no stated ratio changes at its precision except the mac
 This section corrects the final receipt of 10:50:37 UTC and records the preservation of the raw
 evidence. No game, PPO update, benchmark or test ran after the deadline.
 
-- The hard-stop receipt is null and stays null. The session host of boot 3eb80ab8 was shut down
+- The hard-stop receipt is null and stays null. The session host was shut down
   about 4 minutes before the 11:00:00 hard stop. The idle session process received SIGTERM at
   10:55:54.081, the environment recorded its exit (code 143) at 10:55:54.316 and the end of the task
   run at 10:55:54.318. That record is the last durable write on the disk (its file's coarse mtime
@@ -921,7 +920,7 @@ evidence. No game, PPO update, benchmark or test ran after the deadline.
   10:55:30.040, and the next was due by about 10:56:00. So the host stopped writing between 10:55:54
   and about 10:56:00, and the watchdog never reached its hard-stop branch. Its heavy-work receipt at
   10:50:00.005 had found no registered root alive, sent no signal and left nothing running. The next
-  boot (f1754ffc) started at 11:06:55.
+  boot started at 11:06:55.
 - After the new boot, read-only scans at 11:11:36 and 11:29:10 checked all 92 registrations:
   - 19 still in `owned/`, registered in the boot that ended at 10:55:54;
   - 62 retired by the watchdog at the three earlier reboots;
@@ -931,11 +930,9 @@ evidence. No game, PPO update, benchmark or test ran after the deadline.
   92; the 25 registered before 23:00 UTC on 26 October carry none). None is alive, none of their pids
   is in use on the new boot, and no benchmark or game process exists. Nothing was signalled. The
   watchdog was not restarted, because a restart would retire registrations and run its stop branch.
-- The raw evidence that the receipt kept only on the host is now also in the private repository
-  tkorsi/heroes-rl-training-state, which is verified private. It is on the branch
-  `claude/original5000-benchmark-evidence-20261027`, head f5a9a3b (tree 10a5cb89). The branch has
-  19 commits: 16 bounded stages of at most 200 MiB of new unique content each, a preservation receipt
-  (941cdba), a shutdown addendum with the post-push recheck (8bb6082), and a README update.
+- The raw evidence was copied from the host to a private backup in 19 commits.
+  Sixteen stages each transferred at most 200 MiB of new content. The remaining
+  commits recorded preservation, shutdown verification and usage notes.
   - It holds 7,057 host files, 3.93 GB (3.05 GB unique), plus seven root records (7,064 files in
     the tree). That covers `overnight/` with the watchdog state and every registration, plus
     `bench/`, `bench2/`, `bench3/` and `bench3c/`: every campaign, including the failed and

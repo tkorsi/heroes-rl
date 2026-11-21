@@ -6,7 +6,7 @@ the dated README chronology moved here on November 14, 2026. Statements labeled
 milestones, not the current project state. See the [root README](../README.md)
 for the authoritative scope, status, source layout, and operating constraints.
 
-Paths inside commands are relative to the repository root.
+Commands use paths relative to the repository root. `$HEROES_ARTIFACTS` denotes the external directory for run data and checkpoints.
 
 An experimental environment for learning Heroes III adventure-map strategy with
 reinforcement learning, using the real [VCMI engine](https://github.com/vcmi/vcmi).
@@ -74,7 +74,7 @@ This is the canonical project document. Last agreement: **25 October 2026**.
 The user explicitly authorized a new recovery experiment from the original v7
 baseline after the trained pilot checkpoints and ignored runtime were lost during
 managed-worktree cleanup. The preserved baseline at
-`/Users/orsi/Projects/Heroes-artifacts/checkpoints/baseline-v7/fixed-policy.pt`
+`$HEROES_ARTIFACTS/checkpoints/baseline-v7/fixed-policy.pt`
 has SHA256 `4043b58bb3dc4eb6169514ca1ed7c1be0b373a5139efe04b95dfeda1832232c1`.
 The lost one-update trained state is not reconstructed. Recovery uses fresh
 real games and new plan/report/checkpoint provenance through the existing pilot
@@ -91,10 +91,10 @@ and town-loss timing are diagnostics only. No demonstrations, shaping, hidden
 information, strategic filtering, paid compute or PR merges are authorized.
 
 Canonical plans, reports, histories, replay captures and checkpoints now go
-directly under `/Users/orsi/Projects/Heroes-artifacts/runs/<run-id>/`, outside all
+directly under `$HEROES_ARTIFACTS/runs/<run-id>/`, outside all
 managed worktrees. `experiments.learner.builtin_preservation` verifies the completed
 plan/report and checkpoint pair, atomically publishes a second copy under
-`/Users/orsi/Projects/Heroes-artifacts/checkpoints/<run-id>/`, and restore-tests
+`$HEROES_ARTIFACTS/checkpoints/<run-id>/`, and restore-tests
 model, Adam, RNG, progress and archived pool before continuation. Absolute evidence
 bindings are retained. The baseline is never overwritten. Heavy work is coordinated
 with Claude through issue #4 in short concrete windows.
@@ -211,7 +211,7 @@ held-out results do not demonstrate repeatable strategic improvement. No reward,
 policy, feature or PPO configuration was changed during these batches.
 
 The latest resumable parent is
-`/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-021/plan.json`.
+`$HEROES_ARTIFACTS/runs/continuation-2026-10-25-021/plan.json`.
 Its canonical `execution/after-resume.pt` and `after-policy.pt` have a second copy
 under `Heroes-artifacts/checkpoints/continuation-2026-10-25-021/`, with an exact
 model/Adam/RNG/progress/pool restoration receipt. The policy weights digest is
@@ -3479,12 +3479,8 @@ The root repository has no submodules.
 | `tests/` | Protocol, recording, map and shutdown checks |
 | `validation/` | Compact experiment evidence without game assets |
 
-Breakout, HotA, installed applications, installation reports and unrelated
-learning material are outside this repository's scope. Existing local copies
-are ignored and remain available on disk. Only the clean `main` snapshot starts
-the public history; earlier local development and editor checkpoint refs are
-not published. Publish named branches explicitly, never a mirror of all local
-refs.
+The published history begins with the clean `main` snapshot. Original game
+assets, third-party installers and workspace files are stored outside Git.
 
 VCMI is an external dependency pinned in `dependencies/vcmi.json` to upstream
 1.7.5 / `6901839ae9760dfcd1d5ff2c4aa4ef6968fee752`. Its generated local checkout is

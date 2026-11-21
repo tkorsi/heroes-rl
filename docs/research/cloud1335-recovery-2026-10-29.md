@@ -19,9 +19,8 @@ separates the original failed campaign from this certified recovery.
 ## Confirmed failure and retained evidence
 
 The cloud session used frozen source
-`c6ebc8327e8dfe65dfa384a3fe77da709343a4dd`. Its immutable private closure is
-commit `89550dba6c481653ffc38cd78997438e846947f2`, under the original
-`checkpoint1229-cloud-a08f55ff0c7548f58ff9d50ef5af8ba7` handoff. It originally
+`c6ebc8327e8dfe65dfa384a3fe77da709343a4dd`. The original checkpoint 1229
+handoff retains a private copy of the final state. The run originally
 admitted 105 complete updates and 420 games, advancing checkpoint 1229 to 1334.
 Batch 974 completed another four games and one PPO update, producing checkpoint
 1335, but the campaign did not admit that candidate.
@@ -75,8 +74,7 @@ published and read back in **8.75 seconds**. That certificate-only publication
 contains no new checkpoint pair; its receipt does not claim a second checkpoint
 roundtrip. The final Mac receipts, selected pointers, runtime acceptance and all
 new diagnostic captures were also published and freshly read back in 19.64
-seconds on private commit `5ae4c57e4de91cfd1f9d80478ebb65d996024835`.
-That branch retains the original verified checkpoint transaction in its ancestry.
+seconds. The private archive retains the original verified checkpoint transaction.
 
 ## Recovered state and accounting
 
