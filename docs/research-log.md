@@ -9453,3 +9453,365 @@ s before the PR changes and 65.80 s on the final runtime (2.21 times as fast).
 The separate 539,195-decision full-length benchmark was 979.6 versus 534.6 s
 (1.83 times as fast) before the last runtime optimization. Neither measurement
 included an optimizer step.
+
+The trainer saved isolated update 1792 at 02:26:23 Kyiv. Collection took 432.0 s
+and MLX PPO took 788.9 s for 222,510 samples in 871 steps. The model digest
+changed from 2c7c8e0185bb86bff090eeabfca4f7e3497d043eeed28b31990abb238d3ec10d
+to efbdf177e79d9d713ff30c321b2047553f5ac653bc7b5765f3234f297e74f4c1.
+Both actual seat objects in job 10378 bore that new digest. Its day-23 Red win
+differed from the historical cutoff for the same job, whose seats still used
+1791. Comparing the second five raw game times would conflate policy and
+implementation effects. The isolated update 1792 and historical production
+update 1792 are different files with different model digests.
+
+Timing condition observed during round two: an unrelated 100-game head-to-head
+match started its ten actor workers at 02:19:04 Kyiv, after round-one collection
+and during its MLX update. At about 02:35 the other pool had ten engine
+processes in its own work directory. This overlaps round-two collection and
+confounds round-to-round throughput; the other job was left running. Private
+evidence: .experiment/concurrent-load.json.
+
+### Ten-game training result
+
+The normal trainer exited 0. It admitted exactly ten games, with six natural
+endings and four day cutoffs, zero failures and zero replacements. With one
+learner per game, Blue trained on odd job numbers and Red on even job numbers.
+Both seats used a frozen CPU ContextualActorCritic for every adventure-map
+decision; independent seat generators and recurrent states fed one loaded
+model per actor. VCMI BattleAI resolved tactical battles. Ten per-game files
+in .experiment/state/evidence identify both seat objects and match one sampled
+action from each seat per game to submission, engine consumption, native command acknowledgement and
+the resulting typed operation. Excerpts from the real engine logs identify
+both adventure seats as ExplorerRL in every game.
+
+| Round | CPU collection, s | MLX PPO, s | Phase sum, s | Both-seat decisions | Decisions/collection s | Samples | Steps |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Jobs 10373–10377 | 432.0 | 788.9 | 1,220.9 | 431,014 | 997.7 | 222,510 | 871 |
+| Jobs 10378–10382 | 655.9 | 313.2 | 969.1 | 241,670 | 368.5 | 111,202 | 436 |
+| Both rounds | 1,087.9 | 1,102.1 | 2,190.0 | 672,684 | 618.3 | 333,712 | 1,307 |
+
+Training alone took 2,194.00 s on the external process clock, including Python
+startup, checkpoint saves and worker shutdown (CLI timer 2,193.095 s). PPO
+occupied 50.2% of process wall time. Collection includes play, compiling the
+learner recipes and returning them to the trainer. In round two the first four
+results were in by 02:31:58 Kyiv; the fifth arrived 321 s later. That final
+game provided 58,142 of 111,202 samples in its round. Across the run the four
+day cutoffs provided 215,410 of 333,712 samples (64.5%), which bootstrap from
+the policy value at the cutoff. These are observable sources of compute cost.
+
+| Round | Model read by both seats → model saved | Red / Blue decisions | Red / Blue PPO samples | Tensors changed |
+| --- | --- | ---: | ---: | ---: |
+| 1 | 1791 → 1792 | 207,567 / 223,447 | 82,336 / 140,174 | 39/39 |
+| 2 | 1792 → 1793 | 128,791 / 112,879 | 46,753 / 64,449 | 39/39 |
+
+Recomputed model SHA-256, which covers configuration and named tensor bytes:
+
+- 1791: 2c7c8e0185bb86bff090eeabfca4f7e3497d043eeed28b31990abb238d3ec10d
+- 1792: efbdf177e79d9d713ff30c321b2047553f5ac653bc7b5765f3234f297e74f4c1
+- 1793: 5f3ff08591acebdbfbac47154070dd638e47db7eb0543c6b724c06bcbdffa927
+
+Examples on day 1 from each round: in job 10374 Red swapped slots 4 and 0
+(engine ack frame 25) and Blue reached (10,8,0) (acks through frame 19).
+In 10378 Red split one creature from slot 0 to slot 2 (ack 25) and Blue
+reached (17,9,0) (acks through 10). For all ten games the counts recorded by
+the observer agreed with the trainer, including zero PPO samples on each
+opponent seat. Each update's optimizer-step and sample totals agree with the
+checkpoint counter differences. Rehashing verified the source checkpoint and
+the historical latest pointer remained intact.
+
+Actual commands and reproducibility evidence below the Heroes-codex checkout:
+run-training.sh, run-evaluation.sh, seed-plan.json, provenance.json,
+training-audit.json and state/log.jsonl in .experiment/. The missing matched
+five-plus-five old-main baseline can be collected with
+`bash /Users/orsi/Projects/Heroes-codex/.experiment/reproduce-old.sh` (prepared,
+not executed). Check completion order and the second-round workloads before
+interpreting its wall ratio. Historical results are in .experiment/baseline.md.
+
+### Held-out evaluation on checkpoint 1793
+
+Episode 10383 ran once with the preregistered engine and sampling seeds. Both
+actual seat objects reported the same loaded model, hash 5f3ff08591ac…fa927,
+with separate sampling streams, frozen CPU parameters and zero optimizer steps.
+The final checkpoint file's SHA-256 still matched the pre-evaluation audit.
+VCMI reported complementary terminals, a completed terminal barrier and clean
+shutdown. The actor took 355.1 s; the command including its trace export took
+373.73 s, separate from all training times.
+
+Red won on day 299 after 51,219 Red and 48,793 Blue decisions. On day 293 Red
+hero object-14 reached (15,7) and captured Blue's only town; Red already held
+(4,7). The state following the visit records both towns for Red and none for
+Blue. That day Red also won a defensive battle and Blue lost its attacking
+hero. Blue still had four heroes before the terminal and never recovered a
+town. The engine delivered the explicit seven-days-without-a-town loss notice
+to Blue and all-opponents-defeated notice to Red. This one self-play game
+measures the behavior of the final policy; it supplies no estimate of whether
+the update increased playing strength.
+
+| Held-out game | Red | Blue |
+| --- | ---: | ---: |
+| Recruited creatures / hires / new buildings | 628 / 25 / 4 | 498 / 40 / 3 |
+| Battles won / battles observed | 32 / 51 | 20 / 57 |
+| Explicit accepted window opens / closes (includes subpanels) | 10,254 / 10,219 | 9,485 / 9,440 |
+| Next same-seat action reopened the same semantic window | 1,573 | 1,443 |
+| Of those, the whole observed state was also identical | 1,573 | 1,442 |
+| Accepted stack rearrangements | 28,207 | 27,675 |
+| Consecutive stack actions after the first in each same-day run | 22,731 | 22,807 |
+| Stack actions belonging to runs that restored an earlier exact layout | 9,808 | 6,975 |
+| Distinct actions in identical-state close/reopen pairs or exact stack-layout cycles | 12,954 | 9,859 |
+
+Window and stack operations accounted for 95,280 of 100,012 choices. The
+narrow unchanged-reopen or exact-stack-cycle count covers 22,813 distinct
+choices (22.81%). The broader union of same-day navigation/stack sequences
+that returned to the same visible state covers 57,931 choices (57.92%).
+These are shares of decisions; the trace does not time individual actions or
+measure whether viewing information changed the model's recurrent memory.
+Explicit commands, automatic UI openings, and selection changes are separate
+in the analysis. Blue's last end-turn was consumed and followed by terminal
+closure; 100,011 of 100,012 decisions have the normal accepted result.
+
+Three examples, with seat-local decision frame numbers:
+
+- Blue, day 1, frames 149 and 156: split 22 of 25 pikemen from slot 5 to slot
+  3, then split all 22 back. The resulting army was identical to the start.
+- Blue, day 2, frames 492 and 498: closed the hero's artifact panel and
+  immediately reopened it. The panel and material state matched, including
+  6,375 gold and 25 pikemen.
+- Red, day 2, frames 538, 544, 550 and 555: opened the town and the recruitment
+  panel, selected pikemen and recruited 14. Gold fell from 5,875 to 5,035
+  and the empty garrison gained 14 pikemen.
+
+Private verification under .experiment/evaluation/: outcome.json,
+game/logs/VCMI_Client_log.txt, actions.jsonl.gz, states.jsonl.gz, events.jsonl.gz,
+wire.jsonl.gz, behavior-analysis.json and selected-trace.json. The selected
+trace includes the three pairs/sequences above, the capture and the terminal
+notices, with before/after state identifiers.
+
+### Proposed next experiment
+
+Test a one-decision extension of the existing stack-cycle guard. On the same
+seat and day, mask only an immediately reversing split or merge between the
+same two slots of one army when it would reconstruct the previous layout.
+In the evaluation there were 2,332 such second decisions (Red 1,201; Blue
+1,131), or 23.3 per 1,000 choices. Both actions together cover 4,533 unique
+decisions after deduplicating overlapping pairs. Every counted pair also
+restored the full observed state. Those counts establish an opportunity, not
+a prediction for the resulting game. Keep the first split, lasting formations,
+cross-army transfers, and the town recruitment sequence available. Compare
+the same final checkpoint on paired held-out seeds with and without the mask,
+tracking reversals per 1,000 decisions, decisions per seat-day and collection
+seconds alongside completed moves, recruiting and successful transfers per
+seat-day. The current experiment changed no action restriction or policy code.
+
+## 2026-11-21 — One parent-versus-final evaluation, planned
+
+Question: did the two five-game PPO rounds change policy decisions, and how
+does final checkpoint 1793 fare head to head against parent 1791? Play exactly
+one real game with PPO off. Fix the final model in Blue, which lost the earlier
+final/final game, and put the parent in Red. Retain the same map, restrictions,
+365-day limit, engine seed 20261121 and Red/Blue seeds 2026112101/2026112102.
+Use a fresh episode, 10384, and directory .experiment/parent-v-final in
+Heroes-codex; keep both checkpoints frozen. Source ff6e02cb003e85ae23553ec3bbbb8590daa1e6e8
+has the same heroes/ and maps/ trees as f86c647 used for the previous game.
+The map, engine binary/libraries, and both checkpoint file digests were
+rechecked before launch. A private copy of the previous trace observer binds
+each seat to its designated model before recurrent state initialization.
+Record engine termination, actual seat model digests, matched opening decisions,
+and state-changing play vs repeated actions. A single color assignment and
+seed cannot establish a win rate. No training or additional game is planned.
+
+### Result of game 10384
+
+One game ran with no PPO steps. The launch command was
+`/bin/sh .experiment/run-parent-v-final.sh`. Outcome and tensor checks confirmed
+Red 1791 (2c7c8e0185bb…) and Blue 1793 (5f3ff08591ac…), each on CPU. Both
+checkpoint file digests matched the pre-game audit after the command finished.
+The actor took 340.1 s and the process including trace export took 360.59 s.
+Both seats played through day 365. The request on day 366 triggered the
+configured cutoff with no winner and no engine terminal result. Each side
+held its starting town throughout the recorded decisions: Red (4,7), Blue
+(15,7). At their final observed states Red had six heroes and Blue four.
+
+| Game 10384 | Parent 1791, Red | Final 1793, Blue |
+| --- | ---: | ---: |
+| Policy decisions | 64,342 | 52,872 |
+| Creatures recruited / hiring actions / structures built | 834 / 24 / 4 | 742 / 40 / 3 |
+| Battle results observed, wins / total | 39 / 58 | 20 / 57 |
+| Distinct decisions in unchanged panel-reopen pairs or exact stack-layout cycles | 9,573 (14.88%) | 10,098 (19.10%) |
+| Immediate inverse splits/merges per 1,000 choices | 11.36 | 22.85 |
+
+On the common Red opening, engine observations, legal offers, prior submitted
+actions and sampling seed matched through the first divergent decision. The
+first move to (0,7) had sampled-action probability 5.6832% from the parent and
+5.1680% from the final checkpoint. Their first 13 actions were the same.
+At decision 14, before Blue had acted, the parent opened a stack of 25
+pikemen; the trained model moved 22 of them to empty slot 4. VCMI accepted
+both actions in their respective games. This is direct evidence of changed
+action selection on a common input. It does not establish that this split was
+a better action or that it caused the eventual capture.
+
+Held-fixed comparison to episode 10383: final Blue, both sampling seeds,
+the engine seed, map and guard were identical. Final Red captured Blue's
+town on day 293 and won on day 299 in 10383. Parent Red never took it in
+10384. This observed result favors the final checkpoint as Red for this one
+seed and opponent. Across the two games, trained Blue's rate of immediate
+inverse splits/merges was 23.18 then 22.85 per 1,000 choices; the recurring
+army-management behavior persists. Across the same Red seat, the final
+checkpoint made 23.45 immediate inverses per 1,000 on its own game path,
+versus 11.36 with the parent. One seed and asymmetric colors are insufficient
+to establish overall playing-strength improvement. A future comparison across
+fresh seeds with checkpoints swapping colors in each pair would measure it.
+
+All new raw evidence is under .experiment/parent-v-final/: launch.json,
+outcome.json, actions.jsonl.gz, states.jsonl.gz, events.jsonl.gz, wire.jsonl.gz,
+behavior-analysis.json and match-opening.json. The earlier evaluation remains
+under .experiment/evaluation/. No bot behavior was changed.
+
+## 2026-11-21 — Five fresh color-swapped seed pairs, planned
+
+Question: does 1793 win more games or capture more towns than its parent 1791 on fresh seeds? The user authorized exactly ten evaluation games, with no PPO. Five random engine/Red sampling/Blue sampling seed triples were reserved before play; each is used twice, with the weights swapping colors and the random streams fixed to the board colors. This balances the map side, turn order and sampling assignment. No previous hand-picked game is in this cohort.
+
+Source ff6e02cb003e85ae23553ec3bbbb8590daa1e6e8, same Heroes-codex map, runtime local-v8-tile-changes-v1, default guard and limits, CPU frozen actors. The previous private mixed-policy observer preserves the full wire trace, outcomes and actual seat model hashes. Starting and final checkpoint file digests and map/runtime digests verified before launch. Games 10385–10394 run once each, without optimizer or replacement. Primary measures are verified wins, losses and cutoffs; secondary measures are all observed transfers of town ownership to each checkpoint, including recaptures. Look at outcomes within seed pairs and by color; count failed verification separately.
+
+| Pair | Engine seed | Red sampling seed | Blue sampling seed | Games (1791 Red, then 1793 Red) |
+| --- | ---: | ---: | ---: | --- |
+| 1 | 1504226144 | 2969948508249130043 | 246677394516988079 | 10385, 10386 |
+| 2 | 1306076575 | 295307837226720474 | 804258519179903026 | 10387, 10388 |
+| 3 | 676869226 | 532481952887953086 | 3535108876171093552 | 10389, 10390 |
+| 4 | 561725263 | 4270442976461242428 | 3138178233842390685 | 10391, 10392 |
+| 5 | 375094629 | 2656508073155015017 | 1817350972876744202 | 10393, 10394 |
+
+Private pregame manifest and actual command arguments are in .experiment/paired-1791-1793/plan.json and each game’s launch.json.
+
+### Paired results
+
+All ten games exited successfully. The per-seat CPU weight digests matched the
+allocated checkpoints in all twenty seats, all sampling assignments matched the
+pregame manifest, and every evaluation recorded zero optimizer steps. Both
+frozen checkpoint files and the map/runtime artifacts still matched the
+pre-launch hashes. Across the cohort the bots made 888,748 policy decisions.
+
+| Engine seed | 1793 as Red | 1793 as Blue |
+| --- | --- | --- |
+| 1504226144 | Cutoff, no capture | Cutoff, no capture |
+| 1306076575 | Cutoff, no capture | Cutoff, no capture |
+| 676869226 | Captured day 324, won day 330 | Captured day 152, won day 159 |
+| 561725263 | Cutoff, no capture | Cutoff, no capture |
+| 375094629 | Captured day 297, won day 303 | Captured day 132, won day 139 |
+
+1793 won four games (two Red, two Blue) and lost none. 1791 won none. Six
+games reached the day limit after 365 playable days; each retained its
+original town owners throughout. Four enemy-town captures for 1793 and zero for
+1791, no recaptures. Capture counts use the complete per-player owned-town
+rosters from the native wire views, joining by map coordinate. In every case
+the new owner's gain and former owner's loss were observed on the same day
+before either terminal. In all four decisive games the engine issued the
+townless-seven-days defeat notice and complementary terminal outcomes. No
+failed games or unresolved capture evidence.
+
+The newer checkpoint swept both colors on two seeds. Three seed pairs produced
+two cutoffs each. This is favorable head-to-head evidence on this map and
+horizon, with only two independent seeds separating the checkpoints. The
+previous games on seed 20261121 are excluded. Detailed results, seed plan
+and ten sets of wire records are in .experiment/paired-1791-1793/results.json,
+plan.json and game-*/town-captures.json. Actual invocation from Heroes-codex:
+`/usr/bin/caffeinate -is /Users/orsi/Projects/Heroes-artifacts/python/mlx-v1/venv/bin/python -u .experiment/paired-1791-1793/launch.py`.
+
+## 2026-11-21 — What interrupted enemy-town approaches in the paired cutoffs?
+
+Read-only follow-up to the five color-swapped seed pairs. Question: in the
+six cutoff games, did checkpoint 1793 ever select the enemy town as its
+movement destination, and did the same hero request it again the next day
+when daily movement ran out? Read only 1793's existing actions.jsonl.gz
+records for episodes 10385, 10386, 10387, 10388, 10391 and 10392 under
+.experiment/paired-1791-1793. Match move_to destination against the other
+seat's known starting town entrance, (4,7) for Blue or (15,7) for Red.
+Ownership remained unchanged throughout these six games.
+
+1793 requested the enemy entrance in all six games, 18 times total. Eleven
+actions reported movement_limit (zero movement left), six hero_unavailable,
+and one no_route_known. After all eleven movement-limited requests, the
+same hero issued another move_to on the next game day. Only one of those
+eleven heroes' next-day action sequences explicitly requested the same
+town coordinate again. This counts exact destination selection, not
+underlying intent; a different destination can be a waypoint or a sensible
+response to changed conditions. In each of the six games at least one
+movement result placed a 1793 hero within one tile (Chebyshev distance) of
+the enemy entrance. These observations motivate testing multi-day approaches
+and capture conversion. They do not identify the cause of any cutoff.
+No new games, inference, or updates were run for this analysis.
+
+## 2026-11-21 — Ordinary PPO continuation from 1793 and paired evaluation, planned
+
+Question: do twenty additional self-play games with the existing restrictions and PPO improve head-to-head results and conversion of attempted attacks? Copy the complete 1793 checkpoint including optimizer, shuffle RNG and counters into a fresh private state. Four rounds, five usable games each, five CPU actors, one alternating learner, MLX, one epoch, 16 windows per minibatch, eight per game, learning rate 0.00085, ordinary day/action limits and guard. No action budgets, two-seat training or collection during updates. The unchanged map and runtime artifacts were rehashed against the earlier experiment. Source ff6e02cb003e85ae23553ec3bbbb8590daa1e6e8. Training episodes start at 10395. Forty distinct seed triples are reserved, including any necessary replacement attempts. Keep the prior checkpoint intact.
+
+Evaluation: pre-registered ten fresh seed triples before training. With the same engine and color-specific sampling seeds in each pair, play both 1797-Red/1793-Blue and the reverse, 20 frozen games, no PPO. IDs 10501–10520 leave room for any failed training attempts. Measure checkpoint wins, cutoffs, and coordinate-level town gains/losses and recaptures using both owners’ native views. Exclude earlier head-to-head results from this cohort.
+
+Attack follow-through: denominator is a move_to the currently enemy-owned town entrance that resolved with movement_limit. Primary success is acquisition of that specific town by the attacker’s side after the action, through day d+7 inclusive. Flag terminal outcomes and qualify truncated observation windows; report unique resulting captures because multiple attempts may precede one gain. Secondary measure is whether the same hero explicitly targets that town again the next day. This describes action sequences and cannot identify unobserved intent. Raw pre-registered assignments: .experiment/continue-1793-20/evaluation/assignments.json; training seeds: training-seeds.json in the parent directory.
+
+### Training results
+
+Training ran locally from 16:27 to 18:22 Europe/Kyiv. The normal trainer received the preassigned seeds and preserved the original 1793 file and its latest-checkpoint pointer. The four rounds admitted episodes 10395–10414 in order, five per round, with zero failed or replaced games. Both CPU seats loaded the expected starting weights for every game and submitted actions the engine accepted. The alternating learner provided 444,546 Red and 369,993 Blue PPO samples. Across both seats the actors made 1,638,802 decisions.
+
+| Checkpoints | Both seats’ decisions | Learner samples | Optimizer steps | Collection (s) | PPO (s) | Red wins / Blue wins / cutoffs | Saved model SHA-256 prefix |
+| --- | ---: | ---: | ---: | ---: | ---: | --- | --- |
+| 1793 → 1794 | 332,461 | 186,698 | 731 | 851.4 | 658.1 | 1 / 3 / 1 | 93f4d6a19059 |
+| 1794 → 1795 | 516,229 | 225,415 | 882 | 1,027.4 | 851.2 | 1 / 0 / 4 | c8db477a9c38 |
+| 1795 → 1796 | 356,047 | 229,578 | 898 | 1,011.7 | 952.8 | 1 / 1 / 3 | 208214a3a97f |
+| 1796 → 1797 | 434,065 | 172,848 | 677 | 925.3 | 614.5 | 2 / 1 / 2 | 7175f582da6b |
+| Total | 1,638,802 | 814,539 | 3,188 | 3,815.8 | 3,076.6 | 5 / 5 / 10 | |
+
+All 39 model tensors and both Adam moment arrays for each tensor changed in each round. The CLI measured 6,898.96 seconds through worker shutdown. External elapsed time was 6,900.13 seconds. Private evidence in `.experiment/continue-1793-20/` includes the exact command in `run-training.sh`, runtime and input digests in `evaluation/assignments.json` and `input-hashes.json`, production events in `state/log.jsonl`, and per-game checkpoint loads, accepted actions and full weight hashes in `training-audit.json`. The frozen final model hash is `7175f582da6b28710ce757c262ced50b2b92f66fcc08ae0123b6dad90678d730`.
+
+### Paired evaluation results
+
+All 20 games used the frozen 1797 and original 1793 checkpoints on the ten preassigned fresh seed triples. Every pair reversed colors with the same world seed and the same sampling seed for a given color. Every game logged zero PPO steps. The evaluation batch took 1,544.77 seconds. Thirteen games ended naturally and the other seven reached the 365-day limit. No game failed or required replacement. All ten pairs had a winner in at least one game.
+
+| Pair | Engine seed | 1797 as Red | 1797 as Blue | Captures, 1797 / 1793 |
+| ---: | ---: | --- | --- | ---: |
+| 1 | 158565427 | 1793 won on day 155 | 1797 won on day 181 | 1 / 1 |
+| 2 | 1908910568 | 1797 won on day 84 | 1797 won on day 71 | 2 / 0 |
+| 3 | 494502968 | 1797 won on day 78 | Day limit | 1 / 0 |
+| 4 | 828146405 | Day limit | 1793 won on day 70 | 0 / 1 |
+| 5 | 493961708 | 1793 won on day 21 | 1797 won on day 86 | 1 / 1 |
+| 6 | 546640632 | Day limit | 1793 won on day 100 | 1 / 2 |
+| 7 | 692767641 | Day limit | 1797 won on day 31 | 1 / 0 |
+| 8 | 1503700246 | Day limit | 1797 won on day 195 | 1 / 0 |
+| 9 | 1194299123 | 1797 won on day 14 | Day limit | 1 / 0 |
+| 10 | 1561175450 | Day limit | 1793 won on day 136 | 0 / 1 |
+
+Checkpoint 1797 won eight games (three Red, five Blue) and took the enemy home town in nine games. Checkpoint 1793 won five games (three Red, two Blue), took the enemy home town in five, and recovered its own once. Each of the thirteen winners captured the enemy town. In game 10512, 1797 Red captured Blue’s town on day 281, 1793 Blue reclaimed it on day 286, and the game reached the day limit with each side owning its original town. The other six cutoffs had no transfers. Both owners’ complete native observations corroborated all fifteen transfers, with zero warnings. Grouping by seed, 1797 won more games on five seeds, 1793 on three, and two seed pairs split 1–1. Pair 2 was the only sweep.
+
+### Attack follow-through
+
+An eligible approach was an engine-consumed move directly to a currently enemy-owned town entrance that stopped because the hero ran out of movement. Counts below use individual attempts. All 35 attempts could be resolved, with no observation windows censored by the day limit and no ambiguous target ownership.
+
+| Checkpoint | Eligible attempts | Games / distinct seeds with attempts | Same side took that town by day +7 | Same hero moved on day +1 | Same hero explicitly retargeted on day +1 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1797 | 13 | 8 / 7 | 1/13 (7.7%) | 13/13 | 0/13 |
+| 1793 | 22 | 12 / 8 | 0/22 | 18/22 | 0/22 |
+
+The single side-level conversion occurred in episode 10502 (seed pair 1). On day 171 Blue 1797’s hero object-32 targeted Red’s town at (4,7) and exhausted its movement at (5,8), one tile away. The next day it went to (0,19) and then set (18,16) as its destination. On day 174 a different Blue hero, object-23, targeted (4,7), visited the town, won the attacking battle, and captured it. Blue won the game on day 181. Eight of 1797’s nine captures and all six of 1793’s captures occurred without a qualifying stalled attack by that side in the preceding window. Exact-destination matching measures explicit retargeting and admits no inference about unobserved intent.
+
+1797 led on wins and enemy-town captures in this ten-seed cohort. Thirteen games had a natural outcome, and games sharing a seed form one comparison pair. The advantage in this cohort is consistent with improvement, but ten pairs and a single side-level conversion give little evidence about repeatability or better same-hero pursuit. Private evidence in `.experiment/continue-1793-20/evaluation/` includes frozen digests and seeds in `plan.json`, color and pair totals in `results.json`, individual attempts in `attack-followthrough.json`, and native transcripts and ownership evidence under each game directory. Raw traces and checkpoints remain private.
+
+## 2026-11-21 — User launch prepared for 100 further self-play games from 1797
+
+The question is whether another 100 games of ordinary self-play improve on checkpoint 1797. The user will launch `./train-1797-100.command` from the Heroes-codex checkout. The planned run admits 100 games in twenty batches of five with five CPU actors, one alternating learner seat, the same interaction guard and map, and the same MLX PPO settings (one epoch, 16 windows per minibatch, eight windows per game, learning rate 0.00085). The source at preparation was `ff6e02cb003e85ae23553ec3bbbb8590daa1e6e8`, with the same `local-v8-tile-changes-v1` runtime.
+
+The isolated state under `.experiment/continue-1797-100/state/` starts with a byte-verified copy of the full 1797 checkpoint (file SHA-256 `0cfe103f381ac7533549d6c097009bda497b006d2fd2cf4daee8d97f1ea1fb01`) and its pointer at 10,372 saved games. The original remains available for comparison. Prior evaluation episode 10520 sets the allocation watermark. The production trainer draws engine and seat seeds per game and records them in `log.jsonl`. Completion means checkpoint 1817 at 10,472 saved games. Running the launcher again uses only the number of games still needed. The shell syntax and argument handling for start, restart and completion were checked with an inert substitute for the trainer. No game or PPO update was launched during preparation.
+
+Playing strength will be assessed separately against frozen 1797 on fresh seeds with colors swapped, recording wins, day-limit cutoffs, town captures and the same seven-day follow-through measure used above. Training outcomes alone do not establish improved play.
+
+## 2026-11-21 — User launch from 1797 and completed experiment archive
+
+The user started the 100-game continuation at 18:52:57 Europe/Kyiv. Its production log records a start at 10,372 saved games with checkpoint 1797 and five CPU actors. The first five assignments were 10521–10525. Two games had recorded natural outcomes by 18:54:10. The process continued in its original state directory throughout the workspace cleanup.
+
+For earlier entries from the 1791–1797 experiments, the historical `.experiment/<relative path>` evidence now lives under `/Users/orsi/Projects/Heroes-artifacts/codex-archive/2026-11-21-through-1797/<relative path>`. This substitution also applies to historical paths embedded inside the saved reports. The archive holds the training and evaluation results, original manifests, scoring scripts, all eight checkpoint files, and all four recorded streams (wire, states, actions and events) for each of 32 evaluations. The 1793–1797 paired outcomes and attack report are under `continue-1793-20/evaluation/`. Both frozen copies of the 1797 checkpoint matched file digest `0cfe103f381ac7533549d6c097009bda497b006d2fd2cf4daee8d97f1ea1fb01` after the move.
+
+Cleanup removed 32 old engine replay logs, 64 empty observation files, generated game profiles, duplicate outcome printouts verified against their JSON, inactive lock files and Python bytecode. These accounted for 859,920,352 logical bytes across 357 files and links. The active state remains at `.experiment/continue-1797-100/state/`. The evaluation observer stays at its original path for the upcoming comparison.
+
+The user subsequently requested permanent removal of the completed experiment archive. The directory `/Users/orsi/Projects/Heroes-artifacts/codex-archive/2026-11-21-through-1797` and its contents, including the 32 historical game traces, were deleted. Historical links into that archive have expired. The user-launched 100-game continuation from its separate checkpoint 1797 was still running after deletion.
+
+## 2026-11-21 — Main-branch handoff during the 1797 continuation
+
+The README now identifies the single user-launched campaign, its live progress files on the training Mac and the planned 1817 versus 1797 evaluation. The campaign launcher accepts the existing state directory as its optional argument so the user can resume from another checkout after an interruption. Shell syntax and argument forwarding were checked with an inert trainer in a second temporary checkout. The checks covered initial start, partial progress, completion, missing state and out-of-range counters. The active trainer continued running with the original settings.

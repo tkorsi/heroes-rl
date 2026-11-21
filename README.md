@@ -97,6 +97,35 @@ The state folder holds everything:
 
 ## Status
 
+### Current run from checkpoint 1797
+
+On 2026-11-21 at 18:52 Kyiv time, the user launched 100 more self-play games
+from 1797 in the Codex checkout. Five CPU actors collect five games per MLX
+PPO update. The target is **1817**, at **10,472 saved games**. The starting
+checkpoint has 10,372 saved games. Training runs independently of either chat.
+
+From either checkout on the training Mac, read the current run directly:
+
+```sh
+state="$HOME/Projects/Heroes-codex/.experiment/continue-1797-100/state"
+cat "$state/latest.json"       # last saved checkpoint and cumulative game count
+tail -n 5 "$state/log.jsonl"   # newest games and updates
+```
+
+If the run is interrupted, the user can resume from either checkout with
+`./train-1797-100.command "$state"`. The launcher counts only the games still
+needed. The training lock belongs to this state directory.
+
+After 1817 is saved, compare `checkpoints/update-001817.pt` against
+`checkpoints/update-001797.pt` in that directory. Use ten fresh world seeds,
+play each with colors swapped, and disable PPO. Record wins, day-limit cutoffs,
+town captures and seven-day attack follow-through. The prior comparison gave
+1797 eight wins against 1793's five, with seven cutoffs. The historical game
+archive was deleted at the user's request. The aggregate results and scoring
+definition are in the [research journal](docs/research-log.md#attack-follow-through).
+
+### Earlier pipeline verification
+
 The last checkpoint of the previous pipeline is update **1,785** (9,922 games,
 13.7 million decisions). This pipeline continues from it.
 
