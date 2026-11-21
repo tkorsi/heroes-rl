@@ -1,0 +1,127 @@
+"""Recognize successive empty visits to the same optional window in one seat's history."""
+from collections import deque
+from itertools import chain
+from typing import NamedTuple
+
+from . import contract, guard
+
+
+_OPEN = {"open_hero", "open_town", "open_panel", "open_building", "open_stack", "open_capability"}
+_CLOSE = {"close", "back", "close_capability"}
+
+
+def _same_window(left, right):
+    if left == right:
+        return True
+    # On reopening, control IDs can change. Compare all displayed fields and
+    # require every use of a control ID to refer to the same corresponding control.
+    forward, reverse = {}, {}
+
+    def equal(a, b):
+        if type(a) is not type(b):
+            return False
+        if isinstance(a, tuple):
+            return len(a) == len(b) and all(equal(x, y) for x, y in zip(a, b))
+        if not hasattr(a, "__dataclass_fields__"):
+            return a == b
+        for name in contract._field_names(type(a)):
+            x, y = getattr(a, name), getattr(b, name)
+            binding = (name == "ref" or name.endswith("_ref")
+                       or name == "selection" and isinstance(a, contract.Context) and a.kind != "exchange")
+            if binding and isinstance(x, str) and isinstance(y, str):
+                if forward.setdefault(x, y) != y or reverse.setdefault(y, x) != x:
+                    return False
+            elif not equal(x, y):
+                return False
+        return True
+
+    return equal(left, right)
+
+
+def _same_members(left, right):
+    # A map refresh can reorder its uniquely identified objects. Most adjacent
+    # frames share the original immutable tuples and need no hashing at all.
+    return left == right or (left is not None and right is not None and set(left) == set(right))
+
+
+def _same_view(left, right):
+    if left.day != right.day:
+        return False
+    a, b = left.observation, right.observation
+    return a is b or (a.size == b.size and a.resources == b.resources and a.heroes == b.heroes
+                      and a.towns == b.towns and a.army_information == b.army_information
+                      and _same_members(a.own_armies, b.own_armies) and _same_members(a.tiles, b.tiles)
+                      and _same_members(a.objects, b.objects) and _same_window(a.window, b.window))
+
+
+class _Step(NamedTuple):
+    before: contract.Frame
+    after: contract.Frame
+    target: tuple | None  # semantic target for an open, None for a close
+
+
+def _navigation_step(frames, start, stop):
+    before = frames[start]
+    action = after = None
+    context = before.observation.context
+    for i in range(start + 1, stop):
+        frame = frames[i]
+        if frame.kind == "submitted":
+            if frame.decision_seq != start:
+                return None
+            action = frame.action
+            if action.kind not in _OPEN and action.kind not in _CLOSE:
+                return None
+        elif frame.kind == "context":
+            context = frame.context
+        elif frame.kind == "view":
+            after = frame
+        elif frame.kind == "result":
+            if action is None or frame.decision_seq != start or not frame.result.accepted:
+                return None
+            if action.kind in _OPEN and frame.result.status == "opened":
+                target = guard.nav_key(action, before.observation, before.offers)
+                if target is None:  # mandatory navigation
+                    return None
+            elif action.kind in _CLOSE and frame.result.status == "closed":
+                target = None
+            else:
+                return None
+            # Engines can deliver the updated view on either side of the result.
+            # An unanswered next decision can supply it as well.
+            if after is None or after.observation.context != context:
+                after = next((frames[j] for j in range(i + 1, min(stop + 1, len(frames)))
+                              if frames[j].kind in ("view", "decision")), None)
+            if after is not None and after.observation.context == context:
+                return _Step(before, after, target)
+            return None
+    return None
+
+
+def repeated_empty_opens(frames):
+    """Return the second OPEN's decision seq for each confirmed OPEN/CLOSE/OPEN/CLOSE.
+
+    Each visit must return to its original parent view and both visits must
+    show identical content. Adjacent pairs overlap when a bot keeps cycling.
+    """
+    decisions = (frame.seq for frame in frames if frame.kind == "decision")
+    start = next(decisions, None)
+    if start is None:
+        return ()
+    recent = deque(maxlen=4)
+    repeats = []
+    for stop in chain(decisions, (len(frames),)):
+        step = _navigation_step(frames, start, stop)
+        start = stop
+        if step is None:
+            recent.clear()
+            continue
+        recent.append(step)
+        if len(recent) == 4:
+            a, b, c, d = recent
+            if (a.target is not None and a.target == c.target and b.target is None and d.target is None
+                    and a.before.day == d.after.day
+                    and all(_same_view(a.before, view) for view in (b.after, c.before, d.after))
+                    and all(_same_view(a.after, view) for view in (b.before, c.after, d.before))):
+                repeats.append(c.before.seq)
+    return tuple(repeats)

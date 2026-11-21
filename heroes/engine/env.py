@@ -30,6 +30,7 @@ from . import process as engine_process
 from .protocol import NativeFailure, Producer, loads
 
 COLORS = ("red", "blue")
+TRAINING_DAY_LIMIT = 365
 MAX_MESSAGE_BYTES = 16 * 1024 * 1024
 READER_DRAIN_SECONDS = 5.0  # after the engine exits, for both readers to reach the end of their streams
 # Lines the patched engine logs when it gives up on a game.
@@ -43,7 +44,7 @@ ENGINE_FAILURE_MARKERS = (
 
 @dataclass(frozen=True)
 class Limits:
-    max_days: int = 365  # a decision on a later game day ends the game
+    max_days: int = TRAINING_DAY_LIMIT  # a decision on a later game day ends the game
     max_actions: int = 163840  # answered decisions per seat
     idle_seconds: float | None = None  # longest engine silence; None waits forever
 

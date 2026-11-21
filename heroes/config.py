@@ -27,13 +27,19 @@ def _vcmi():
     return Path(os.environ.get("HEROES_VCMI", _artifacts() / "runtime/local-v8-tile-changes-v1/bin/vcmiclient")).expanduser()
 
 
+def _training_state():
+    # Claude keeps the original training directory and its checkpoint history.
+    directory = "training-codex" if REPOSITORY.name == "Heroes-codex" else "training"
+    return _artifacts() / directory
+
+
 @dataclass(frozen=True)
 class Config:
     # Where things are.
     vcmi: Path = field(default_factory=_vcmi)  # the patched vcmiclient, built by tools/prepare_vcmi.py
     game_data: Path = field(default_factory=lambda: _artifacts() / "game-data")  # holds the original game's Data
     game_map: Path = REPOSITORY / "maps" / "hero-management-v4.vmap"
-    state: Path = field(default_factory=lambda: _artifacts() / "training")  # checkpoints, log, running games
+    state: Path = field(default_factory=_training_state)  # checkpoints, log, running games
     legacy: Path = field(default_factory=lambda: _artifacts() / "selfplay-ten-then-check")  # imported once
 
     # How games are played.

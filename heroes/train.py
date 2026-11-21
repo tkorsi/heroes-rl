@@ -343,9 +343,15 @@ class Batch:
         _, index, game = message
         self.display.playing.pop(index, None)
         samples = sum(len(trajectory.decisions) for trajectory in game.trajectories)
+        seat_trajectories = {COLORS[seat]: trajectory for seat, trajectory in
+                             ((game.job.learner, game.trajectory), (1 - game.job.learner, game.other))
+                             if trajectory is not None}
         self.log.write("game", number=game.job.number, engine_seed=game.job.engine_seed,
                        policy_seeds=list(game.job.policy_seeds), learner=COLORS[game.job.learner],
                        status=game.status, reason=game.reason, outcomes=game.outcomes, day=game.day,
+                       training_rewards={seat: t.reward for seat, t in seat_trajectories.items()},
+                       window_repeats={seat: len(t.window_repeat_indices) for seat, t in seat_trajectories.items()},
+                       window_penalties={seat: t.window_penalty for seat, t in seat_trajectories.items()},
                        choices=list(game.choices), samples=samples, seconds=round(game.seconds, 1),
                        compile_seconds=round(game.compile_seconds, 1), update=self.update, detail=game.detail)
         self.display.game(game, samples)

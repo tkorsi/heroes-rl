@@ -19,6 +19,10 @@ import time
 import torch
 
 
+WINDOW_REPEAT_PENALTY = -0.0001
+MAX_PENALIZED_WINDOW_REPEATS = 2000  # per seat per game, for a total of -0.2
+
+
 @dataclass(frozen=True)
 class PPOConfig:
     gae_lambda: float = 1.0
@@ -54,20 +58,20 @@ class PPOConfig:
 class Trajectory:
     """One finished game from the learner's seat.
 
-    Rewards are undiscounted and terminal only: every action scores zero except
-    the last one of a naturally finished game, which scores +1 or -1. A game
-    stopped at a limit instead bootstraps from the value of the learner's next
-    decision.
+    Rewards are undiscounted. The last action scores +1 for a win or -1 for a
+    loss or a 365-day draw. Technical cutoffs bootstrap from the next decision.
+    Confirmed repeated empty window visits also score on their opening actions.
     """
     decisions: tuple[int, ...]  # frame index of each trained decision, ascending
     log_probs: tuple[float, ...]  # behaviour log-probability of the action taken there
     values: tuple[float, ...]  # behaviour value estimate there
-    reward: float  # +1 or -1 after the last action of a natural game, else 0
-    bootstrap: float  # value after the last action: 0 for a natural game
+    reward: float  # terminal training reward, or zero for a technical cutoff
+    bootstrap: float  # next decision's value for a technical cutoff, otherwise zero
     actions: tuple = ()  # the actions taken, aligned with ``decisions``
     frames: tuple | None = None  # the seat's typed frames (torch reference backend)
     guard: str | None = None  # interaction-guard version the behaviour policy used
     recipe: object = None  # compiled ``heroes.learner.plan.History`` (MLX backend)
+    window_repeat_indices: tuple[int, ...] = ()  # indices into decisions, in play order
 
     def __post_init__(self):
         count = len(self.decisions)
@@ -77,6 +81,21 @@ class Trajectory:
             raise ValueError("Trajectory decisions must be strictly ascending")
         if self.reward not in (-1, 0, 1) or (self.reward and self.bootstrap):
             raise ValueError("A trajectory ends with a terminal reward or a bootstrap value, not both")
+        indices = self.window_repeat_indices
+        if indices and (indices[0] < 0 or indices[-1] >= count or
+                        any(a >= b for a, b in zip(indices, indices[1:]))):
+            raise ValueError("Window repeat indices must be distinct, ascending and within the trajectory")
+
+    @property
+    def window_penalty(self):
+        return min(len(self.window_repeat_indices), MAX_PENALIZED_WINDOW_REPEATS) * WINDOW_REPEAT_PENALTY
+
+    def step_rewards(self):
+        rewards = [0.0] * len(self.decisions)
+        rewards[-1] = self.reward
+        for index in self.window_repeat_indices[:MAX_PENALIZED_WINDOW_REPEATS]:
+            rewards[index] += WINDOW_REPEAT_PENALTY
+        return rewards
 
 
 @dataclass(frozen=True)
@@ -149,7 +168,7 @@ class Batch:
 
 
 def prepare(trajectories, config):
-    targets = [gae((0.0,) * (len(item.values) - 1) + (float(item.reward),), item.values,
+    targets = [gae(item.step_rewards(), item.values,
                    item.values[1:] + (float(item.bootstrap),), gae_lambda=config.gae_lambda)
                for item in trajectories]
     advantages = [value for target in targets for value in target.advantages]

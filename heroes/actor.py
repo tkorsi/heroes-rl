@@ -1,10 +1,8 @@
-"""Play one self-play game and turn the learner's seat into a PPO trajectory.
+"""Play self-play games and collect trajectories for PPO.
 
-Both seats are played by the same weights. Each seat has its own recurrent
-state, its own view of the game and its own random generator; one of the two is
-the learner whose experience is trained on, the other is its opponent. With
-``both_seats`` the opponent's experience is trained on as well: the same game
-then gives two trajectories, one that ends in a win and one that ends in a loss.
+Both seats use the same weights with separate recurrent states and sampling.
+The designated learner alternates by game. A 365-day draw trains both seats
+with a final reward of -1 each. ``both_seats`` also collects both in other games.
 """
 from __future__ import annotations
 
@@ -14,7 +12,8 @@ import time
 
 import torch
 
-from .engine.env import COLORS, Request
+from .engine.env import COLORS, TRAINING_DAY_LIMIT, Request
+from .game.window_repeats import repeated_empty_opens
 from .learner.ppo import Trajectory
 from .model.policy import ContextualEncoder
 
@@ -127,12 +126,14 @@ def learner_samples(frames, *, natural):
     return samples
 
 
-def build_trajectory(frames, seat, *, natural, outcome, guard):
+def build_trajectory(frames, seat, *, natural, outcome, guard, day_limit_draw=False):
     """Join the seat's resolved actions with what its policy recorded while playing."""
     samples = learner_samples(frames, natural=natural)
-    if not natural:
-        # A stopped game ends at the last action whose following decision the
-        # policy saw; that decision's value stands in for the rest of the game.
+    reward = 0
+    if natural or day_limit_draw:
+        reward = 1 if outcome == "win" else -1
+    else:
+        # A technical cutoff needs a following decision for its bootstrap.
         while samples and samples[-1][1] not in seat.values:
             samples.pop()
     if not samples:
@@ -143,14 +144,15 @@ def build_trajectory(frames, seat, *, natural, outcome, guard):
     decisions = tuple(decision for decision, _ in samples)
     if any(decision not in seat.choices for decision in decisions):
         raise Unusable("an action in the history was not sampled by this policy")
+    repeat_opens = set(repeated_empty_opens(frames))
     return Trajectory(
         decisions=decisions,
         log_probs=tuple(seat.choices[decision][1] for decision in decisions),
         values=tuple(seat.values[decision] for decision in decisions),
-        reward=(1 if outcome == "win" else -1) if natural else 0,
-        bootstrap=0.0 if natural else seat.values[samples[-1][1]],
+        reward=reward, bootstrap=0.0 if reward else seat.values[samples[-1][1]],
         actions=tuple(seat.choices[decision][0] for decision in decisions),
-        frames=tuple(frames), guard=guard)
+        frames=tuple(frames), guard=guard,
+        window_repeat_indices=tuple(i for i, seq in enumerate(decisions) if seq in repeat_opens))
 
 
 def compile_recipe(model, trajectory):
@@ -166,10 +168,8 @@ def compile_recipe(model, trajectory):
 def play(env, model, job, directory, *, guard, on_progress=None, both_seats=False):
     """Play one game to its end and return it with the learner's trajectory.
 
-    A game whose learner seat gives no trajectory is a failed game. With
-    ``both_seats`` each seat's trajectory is built on its own and stays with
-    its seat: the game counts as long as one of the two gives a trajectory, and
-    ``detail`` then says why the other gave none.
+    A 365-day draw requires a usable trajectory from each seat. For other
+    games, one usable learner trajectory suffices (either seat with ``both_seats``).
     """
     started = time.monotonic()
     seats = [Seat(model, seed, guard=guard) for seed in job.policy_seeds]
@@ -186,14 +186,19 @@ def play(env, model, job, directory, *, guard, on_progress=None, both_seats=Fals
     status, reason, detail = state.status, state.reason, state.detail
     built = {}  # seat -> its trajectory
     if status in ("completed", "truncated"):
+        day_limit_draw = reason == "game_day_limit" and env.limits.max_days == TRAINING_DAY_LIMIT
+        collect_both = both_seats or day_limit_draw
         unusable = []
-        for seat in (job.learner, 1 - job.learner) if both_seats else (job.learner,):
+        for seat in (job.learner, 1 - job.learner) if collect_both else (job.learner,):
             try:
                 built[seat] = build_trajectory(
                     env.frames(seat), seats[seat], natural=status == "completed",
-                    outcome=state.outcomes[seat] if state.outcomes else None, guard=guard)
+                    outcome=state.outcomes[seat] if state.outcomes else None, guard=guard,
+                    day_limit_draw=day_limit_draw)
             except Unusable as error:
-                unusable.append(f"{COLORS[seat]}: {error}" if both_seats else str(error))
+                unusable.append(f"{COLORS[seat]}: {error}" if collect_both else str(error))
+        if day_limit_draw and unusable:
+            built.clear()
         if not built:
             status, reason = "failed", "unusable_trajectory"
         if unusable:

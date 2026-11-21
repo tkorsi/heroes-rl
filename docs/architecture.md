@@ -6,7 +6,7 @@ game from the engine to a weight update and names the code at each step.
 ```text
 heroes/train.py          restore → [ collect 100 games → update → save ] …
    └ Pool                14 actor processes (heroes/train.py: worker)
-       └ actor.play      one game, both seats, the learner's trajectory
+       └ actor.play      one game, both seats, one or two training trajectories
            ├ engine/     vcmiclient process, two sockets, typed frames
            ├ model/      frames → GRU state → action distribution, value
            └ game/       what may be offered, done and sampled
@@ -97,7 +97,8 @@ the decision to answer. The game ends in one of three ways:
 | End | When | Trained on |
 | --- | --- | --- |
 | `completed` | The engine finished. Both seats got complementary win and loss terminals, the engine log agrees with the sockets and the process exited cleanly. | yes, with reward +1 or −1 |
-| `truncated` | A decision arrived after day 365, or a seat had answered 163,840 decisions. The game is stopped there. | yes, without reward |
+| `truncated` | A decision arrived past the 365-day training deadline without a winner. | both seats, with reward −1 each |
+| `truncated` | A seat reached its action limit, or a diagnostic applied a shorter day limit. | yes, with a bootstrap value |
 | `failed` | Anything else: a crash, a protocol error, an engine that reports its own failure. | no |
 
 [`heroes/actor.py`](../heroes/actor.py) plays the game. Both seats use the same
@@ -108,10 +109,19 @@ with the frames:
 
 - A decision is trained on once its action was resolved, by a `result` or, for
   the very last action of a finished game, by the terminal.
-- Only the last action of a completed game has a reward. The game is
-  undiscounted, so every earlier advantage is the final outcome minus the value.
-- A truncated game ends at the last action whose following decision the policy
+- Natural endings score the last action of each trained seat. A 365-day draw
+  scores each seat's last resolved action −1, including a seat that never got
+  another decision. Both trajectories must be usable for the draw to enter PPO.
+  The final bootstrap value is zero in both cases.
+- A technical cutoff ends at the last action whose following decision the policy
   saw. That decision's value stands in for the rest of the game.
+- The actor marks repeated empty visits in each seat's confirmed action history.
+  A visit begins with a voluntary open and ends with an immediate close. Two
+  consecutive visits on the same day must show the same window for the same
+  target and return to the same parent view and visible game state. The final
+  close confirms the repeat. PPO assigns −0.0001 to the second opening. Each
+  seat can be charged for its first 2,000 repeats per game. Both PPO backends
+  use these per-decision rewards in the advantage and value targets.
 
 ## Many games at once
 

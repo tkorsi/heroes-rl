@@ -16,7 +16,7 @@ lines, of which 3,200 are the typed game contract.
 ## Train
 
 On the training Mac, open Terminal in your own checkout (`Heroes-claude` or
-`Heroes-codex`). Both use the same saved checkpoint. To choose a game count:
+`Heroes-codex`). Each continues its own saved model. To choose a game count:
 
 ```sh
 ./train.command
@@ -39,7 +39,7 @@ batch and saves the next checkpoint. The launcher keeps the Mac awake.
 | `--windows-per-minibatch N` | loss windows of 16 decisions per optimizer step | 16 in the grouped MLX preset |
 | `--windows-per-game N` | windows from the same game sharing one replay | 8 in the grouped MLX preset |
 | `--learning-rate X` | Adam step size | 8.5e-4 in the grouped MLX preset |
-| `--state DIR` | where checkpoints and the log go | `~/Projects/Heroes-artifacts/training` |
+| `--state DIR` | where checkpoints, logs and game work directories go | `training-codex/` for Heroes-codex, `training/` for Heroes-claude, under `~/Projects/Heroes-artifacts/` |
 | `--fresh` | start from a random policy when the state folder is empty | off |
 
 The MLX preset is the one used for the recent self-play experiments. The
@@ -68,10 +68,16 @@ chosen number of games  ──►  one PPO update using every game  ──►  n
    folder imports the last checkpoint of the previous pipeline once (weights,
    Adam, shuffle generator and counters) and saves it as its first file.
 2. **Play.** Each actor starts a headless `vcmiclient`, and the policy answers
-   every decision of both seats. One seat is the learner, alternating by game.
+   every decision of both seats. Normally one seat trains, alternating by game.
    A game counts when the engine finished it with a verified win and loss, or
    when it was stopped at day 365. A crashed or inconsistent game is logged,
-   never trained on, and replaced by another one.
+   never trained on, and replaced by another one. If neither side wins within
+   365 days, both seats train on that game. Each gets −1 on its last resolved
+   action. The game counts once and is recorded as a cutoff.
+   If a seat opens and immediately closes the same unchanged window twice in
+   succession on one day, PPO assigns −0.0001 to the second opening. The first
+   inspection is free. Opening the town to recruit or build is also free.
+   The total window penalty is capped at −0.2 per trained seat per game.
 3. **Update.** After the chosen number of usable games, one PPO epoch over all of them. The
    update recomputes the recurrent state from the start of each game with the
    current weights; nothing stored during play is reused except the action
@@ -86,7 +92,7 @@ The state folder holds everything:
 | --- | --- |
 | `checkpoints/update-NNNNNN.pt` | model, Adam state, shuffle generator and counters after that update |
 | `latest.json` | which checkpoint is newest; switched last, so a crash never leaves a half state |
-| `log.jsonl` | one line when a game is handed out, one when it ends and one per update: outcome, days, samples, losses, timings |
+| `log.jsonl` | game assignments, outcomes, days, samples, terminal rewards (`training_rewards`), repeat counts (`window_repeats`) and applied costs (`window_penalties`) by trained seat, update losses and timings |
 | `games/` | engine folders of games in play, deleted as each game ends and emptied when a run starts |
 | `lock` | held by the running trainer, so two runs cannot share one state folder |
 
@@ -113,13 +119,13 @@ It stopped after two five-game updates at 1799 (10,382 saved games).
 The next run played 20 games and saved [checkpoint **1800**](checkpoints/update-001800.pt)
 after one PPO update (10,402 saved games). The file includes the weights
 and optimizer state for resuming training.
-The training Mac uses one shared state directory for both checkouts:
-
-```sh
-state="$HOME/Projects/Heroes-artifacts/training"
-cat "$state/latest.json"       # last saved checkpoint and cumulative game count
-tail -n 5 "$state/log.jsonl"   # newest games and updates
-```
+Heroes-codex forked from checkpoint 1800 with the full optimizer state. Its
+log contains the history through that update. Heroes-claude continued its
+own line to 1801 in the original directory. Future checkpoint numbers can
+coincide across directories. Identify a model by its checkout and update.
+Run `./train.command check` in the chosen checkout to see its state path and
+checkpoint. Each trainer owns its own state lock and game work directories.
+Both use the same CPU, Metal GPU and unified memory.
 
 For the next strength comparison, play the selected checkpoint against
 frozen 1797 on ten fresh world seeds. Play each with colors swapped and
@@ -291,7 +297,7 @@ training run yet; what is known is what they do to a batch of games.
 
 | Flag | What it does | Measured on 14 seeded games to day 60 |
 | --- | --- | --- |
-| `--both-seats` | trains on the opponent seat's experience as well: every game gives two trajectories, one ending in a win and one in a loss | 2.15 times the samples per game for 11% more actor time (the second recipe) |
+| `--both-seats` | also trains on the opponent seat in decisive games and technical cutoffs. Both seats already train on 365-day draws | 2.15 times the samples per game for 11% more actor time (the second recipe) |
 | `--stack-moves N` | stack rearrangements a hero or town may do per game day; 32 without the flag | 8: 66 decisions per seat and day instead of 100. 4: 55 |
 | `--windows N` | windows a hero or town may open per game day; no daily budget without the flag | 6: 74 decisions per seat and day |
 | `--decisions N` | decisions a seat may take per game day before it can only close windows and end its turn | 40: 33 decisions per seat and day, but half the moves and a sixth of the recruiting |
@@ -309,12 +315,9 @@ training run yet; what is known is what they do to a batch of games.
   every trajectory carries, so the recipe compiler and the reference update
   rebuild the same support. A budget changes the support a policy samples
   from: these are other games, and the comparison above is of counts.
-- **Both seats** makes a batch of 100 games 200 trajectories, so the update
-  takes about twice as long per game; `--games-per-update 50` keeps the
-  update's size. Each seat's trajectory is built on its own and a game counts
-  as soon as one of them gives a trajectory; the game's `detail` in the log
-  then names the seat that gave none. Without the flag a game whose learner
-  seat gives no trajectory is a failed game, as before.
+- **Both seats.** A 365-day draw requires two usable trajectories. For other
+  endings the default uses the designated learner. With `--both-seats`, either
+  seat can supply a usable trajectory and the log identifies any unusable seat.
 - **Play during the update** makes the first games of each batch one update
   old: PPO's ratio is then taken against the weights that played them, as it
   is for every game, but those are no longer the weights the update starts
