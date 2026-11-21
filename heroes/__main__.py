@@ -15,7 +15,7 @@ def _path(text):
 def _config(arguments):
     config = Config()
     changes = {name: getattr(arguments, name) for name in ("state", "legacy", "vcmi", "game_data", "game_map",
-                                                           "workers", "games_per_update", "backend")
+                                                           "workers", "games_per_update", "backend", "reference")
                if getattr(arguments, name, None) is not None}
     for name in ("keep_game_files", "both_seats", "play_during_update"):
         if getattr(arguments, name, False):
@@ -67,6 +67,9 @@ def main(argv=None):
             command.add_argument("--play-during-update", action="store_true",
                                  help="play the next batch while the update runs; its first games use the weights "
                                       "from before that update (with --backend torch only)")
+            command.add_argument("--reference", type=_path,
+                                 help="a checkpoint the learner also plays against, in every second pair of games; "
+                                      "the log counts the learner's results against it")
             command.add_argument("--stopped-game-reward", type=int, choices=(-1, 0),
                                  help="what a game stopped at the day limit is worth to a seat: -1 a loss for both "
                                       "seats, 0 a draw (default: scored with the policy's own value estimate)")

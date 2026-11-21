@@ -47,6 +47,10 @@ class Config:
     # None scores it with the policy's own value estimate at the stop.
     stopped_game_reward: int | None = None
     play_during_update: bool = False  # collect the next batch while the update runs, one update behind; torch backend only
+    # A checkpoint the learner also plays against: in every second pair of games it
+    # holds the opponent's seat in place of the learner's own weights, and the log
+    # counts the learner's results against it. None plays every game against itself.
+    reference: Path | None = None
 
     # How the policy learns.
     games_per_update: int = 100  # all played with the same weights, then one PPO update

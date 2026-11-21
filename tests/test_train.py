@@ -143,6 +143,47 @@ def test_the_kl_limit_and_the_epochs_reach_the_update_and_the_log(config, monkey
         assert refused.value.code == 2 and not config.state.with_name("unused").exists()
 
 
+def test_every_second_pair_of_games_is_played_against_the_reference(config, fake_engine, tmp_path):
+    from heroes import train as loop
+    reference = checkpoint.save(tmp_path / "earlier", checkpoint.fresh(learning_rate=3e-4, seed=5))
+    fake_engine(days=3, winner=0)  # red wins every game
+    main(["train", "8", "--fresh", "--games-per-update", "8", "--workers", "2", "--both-seats", "--reference",
+          str(reference), "--state", str(config.state), "--legacy", str(config.legacy), "--vcmi", str(config.vcmi),
+          "--game-data", str(config.game_data), "--backend", "torch"])
+    records = _log(config)
+    assert records[0]["reference"] == str(reference)
+    games = sorted((record for record in records if record["event"] == "game"), key=lambda record: record["number"])
+    assert [record["number"] for record in games] == list(range(1, 9))
+    assert [record["opponent"] for record in games] == ["reference", "self", "self", "reference", "reference", "self", "self", "reference"]
+    # The learner meets the reference from both colours, and only its own seat of those games is trained on.
+    assert [record["learner"] for record in games if record["opponent"] == "reference"] == ["blue", "red", "blue", "red"]
+    assert [record["samples"] for record in games] == [3, 6, 6, 3, 3, 6, 6, 3]
+    update = next(record for record in records if record["event"] == "update")
+    assert (update["reference_wins"], update["reference_losses"], update["reference_stopped"]) == (2, 2, 0)
+    assert (update["red"], update["blue"], update["samples"]) == (8, 0, 36)
+    # A run without a reference logs none of this, and a reference that is not there stops the run before any game.
+    assert not loop.against_reference(config, 4) and loop.against_reference(replace(config, reference=reference), 4)
+    with pytest.raises(SystemExit, match="No reference checkpoint"):
+        loop.train(replace(config, state=tmp_path / "unused", reference=tmp_path / "missing.pt"), 2, fresh=True)
+    assert not (tmp_path / "unused").exists()
+
+
+def test_a_game_against_the_reference_is_trained_on_from_the_learners_seat_only(config, fake_engine, tmp_path):
+    from heroes import train as loop
+    from heroes.engine.env import Env
+    newer, older = (checkpoint.fresh(learning_rate=3e-4, seed=seed).model.eval() for seed in (1, 2))
+    for backend in ("torch", "mlx"):
+        setting = replace(config, both_seats=True, backend=backend, state=tmp_path / backend)
+        env = Env(fake_engine(days=3, winner=1), setting.limits)
+        game = loop._play_job(env, (older, newer), Job(7, 7, 1, (1, 2)), setting, lambda day, choices: None)
+        assert (game.status, game.outcomes) == ("completed", ("loss", "win"))
+        assert game.other is None and len(game.trajectory.decisions) == 3  # blue's, the learner's
+        assert (game.trajectory.recipe is not None) == (backend == "mlx")
+        # With one policy on both seats the same setting trains on both.
+        env = Env(fake_engine(days=3, winner=1), setting.limits)
+        assert len(loop._play_job(env, newer, Job(8, 7, 1, (1, 2)), setting, lambda day, choices: None).trajectories) == 2
+
+
 def test_both_seats_of_a_game_are_trained_on(config, play_fake, fake_engine, tmp_path):
     from heroes import actor
     from heroes.engine.env import Env

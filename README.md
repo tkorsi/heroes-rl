@@ -327,6 +327,7 @@ training run yet; what is known is what they do to a batch of games.
 | `--play-during-update` | the actors start on the next batch while the update runs, with the weights from before it; with `--backend torch` only | not measured: it needs a training run |
 | `--stopped-game-reward -1` | a game stopped at the day limit is a game both seats lost: every action of it gets the return -1 instead of the policy's own estimate at the stop. `0` makes it a draw | not measured: what it does is to what the policy learns, which only training runs show |
 | `--max-kl X`, `--epochs N` | the update stops once the policy has moved X from the one that played the games; N passes over the batch. See [What an update does to the weights](#what-an-update-does-to-the-weights) | not measured |
+| `--reference FILE` | in every second pair of games the opponent's seat is played by this checkpoint instead of the learner's own weights, and the log counts the learner's results against it | not measured |
 
 - **The two targeted budgets together are the useful ones.** A seat answers
   about 100 decisions per game day and the learner seats' actions are 47%
@@ -370,6 +371,19 @@ training run yet; what is known is what they do to a batch of games.
   lose. The setting gives no reason to win on day 50 instead of day 300; a
   cost per game day would, and is not built. The same actions are trained on
   either way; only their returns differ.
+- **A reference opponent makes the log show strength.** With both seats on
+  the same weights every decided game has one win and one loss, so a log says
+  nothing about whether the policy improves. With `--reference
+  update-001788.pt`, say, games come in pairs of two against the learner's own
+  weights and two against that file, the learner once red and once blue in
+  each. A game against the reference is trained on from the learner's seat
+  only, also with `--both-seats`, because the update can only train on what
+  its own weights played. Every game's log line names its `opponent`, and
+  every update's line has `reference_wins`, `reference_losses` and
+  `reference_stopped`: the learner's results in that batch, about 50 games of
+  100. If training works, the wins grow from update to update while the
+  reference stays what it was. Half of the experience then comes from play
+  against one fixed opponent, which is a change of what is trained on.
 - A day limit below 365 was measured (on 14 whole games, 180 keeps 64% of the
   decisions and 9 of the 12 natural endings) and not made a setting: with
   enough training, games become shorter by themselves.

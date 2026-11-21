@@ -37,6 +37,15 @@ from .actor import Game, Job, compile_recipe, play
 from .engine.env import COLORS, Env
 
 
+def against_reference(config, number):
+    """Whether game ``number`` has the reference checkpoint in the opponent's seat: every second pair of games.
+
+    The learner's seat alternates by game number, so the pairs give the
+    learner both colours against either opponent.
+    """
+    return config.reference is not None and number // 2 % 2 == 0
+
+
 def restore(config, *, fresh=False, save=True):
     """The newest training state: this pipeline's own, else the legacy one, else a new policy.
 
@@ -90,12 +99,14 @@ def _play_job(env, model, job, config, report):
     started = time.monotonic()
     try:
         try:
+            # Against another checkpoint only the learner's seat was played by the weights the update trains.
+            learner = model[job.learner] if isinstance(model, tuple) and job.learner is not None else model
             game = play(env, model, job, directory, guard=config.guard, on_progress=report,
-                        both_seats=config.both_seats, stopped_reward=config.stopped_game_reward)
+                        both_seats=config.both_seats and learner is model, stopped_reward=config.stopped_game_reward)
             if config.backend == "mlx":
                 compiling = time.monotonic()
                 for trajectory in game.trajectories:
-                    compile_recipe(model, trajectory)
+                    compile_recipe(learner, trajectory)
                 game.compile_seconds = time.monotonic() - compiling
         except Exception:
             game = Game(job, "failed", "actor_error", None, traceback.format_exc(limit=8), 0, (0, 0),
@@ -320,6 +331,8 @@ class Batch:
         self.pool, self.config, self.target, self.numbers, self.update = pool, config, target, numbers, update
         self.display, self.log = display, log
         self.games, self.tally, self.started = [], {"red": 0, "blue": 0, "truncated": 0, "failed": 0}, time.monotonic()
+        if config.reference is not None:  # the learner's results in its games against the reference
+            self.tally.update(reference_wins=0, reference_losses=0, reference_stopped=0)
 
     @property
     def done(self):
@@ -334,8 +347,11 @@ class Batch:
         while pool.idle and len(games) + len(pool.busy) < self.target:
             number = next(self.numbers)
             self.log.write("job", number=number)  # before the game exists, so its number is never handed out twice
-            pool.submit(path, Job(number, secrets.randbelow(2**31 - 1) + 1, number % 2,
-                                  (secrets.randbits(62), secrets.randbits(62))))
+            job = Job(number, secrets.randbelow(2**31 - 1) + 1, number % 2, (secrets.randbits(62), secrets.randbits(62)))
+            if against_reference(self.config, number):  # red's weights, then blue's
+                pool.submit((path, self.config.reference) if job.learner == 0 else (self.config.reference, path), job)
+            else:
+                pool.submit(path, job)
         message = pool.next(timeout)
         if message is None:
             return False
@@ -345,8 +361,10 @@ class Batch:
         _, index, game = message
         self.display.playing.pop(index, None)
         samples = sum(len(trajectory.decisions) for trajectory in game.trajectories)
+        reference = against_reference(self.config, game.job.number)
         self.log.write("game", number=game.job.number, engine_seed=game.job.engine_seed,
                        policy_seeds=list(game.job.policy_seeds), learner=COLORS[game.job.learner],
+                       opponent="reference" if reference else "self",
                        status=game.status, reason=game.reason, outcomes=game.outcomes, day=game.day,
                        choices=list(game.choices), samples=samples, seconds=round(game.seconds, 1),
                        compile_seconds=round(game.compile_seconds, 1), update=self.update, detail=game.detail)
@@ -358,6 +376,9 @@ class Batch:
                                    f"Every failed game is in {self.config.state / 'log.jsonl'}.")
         else:
             tally["truncated" if game.status == "truncated" else COLORS[game.outcomes.index("win")]] += 1
+            if reference:
+                tally["reference_stopped" if game.status == "truncated" else
+                      "reference_wins" if game.outcomes[game.job.learner] == "win" else "reference_losses"] += 1
             games.append(game)
         return True
 
@@ -380,6 +401,8 @@ def train(config, games, *, fresh=False, out=sys.stderr):
     if config.stopped_game_reward not in (None, -1, 0):
         raise SystemExit("A game stopped at a limit is worth -1 (both seats lost) or 0 (a draw) to a seat, "
                          f"not {config.stopped_game_reward!r}.")
+    if config.reference is not None and not config.reference.is_file():
+        raise SystemExit(f"No reference checkpoint at {config.reference}")
     if config.play_during_update and config.backend == "mlx":
         # Before its first step the MLX update compares what it computes for a
         # minibatch with what was recorded while playing, and stops if they
@@ -407,7 +430,8 @@ def _train(config, games, update_policy, fresh, out):
                  f"{state.progress['decisions']} decisions) in {config.state}")
     log.write("start", games=games, backend=config.backend, workers=config.workers, progress=state.progress,
               ppo=config.ppo.to_dict(), limits=asdict(config.limits), guard=config.guard,
-              both_seats=config.both_seats, stopped_game_reward=config.stopped_game_reward)
+              both_seats=config.both_seats, stopped_game_reward=config.stopped_game_reward,
+              reference=None if config.reference is None else str(config.reference))
     # Failed and discarded games keep their numbers, so a number never names two games.
     numbers = itertools.count(max(state.progress["games"], log.last_game) + 1)
     pool, saved_update = Pool(config), state.updates
@@ -456,6 +480,9 @@ def _train(config, games, update_policy, fresh, out):
                       checkpoint=saved.name, progress=state.progress)
             steps = (f"{report.optimizer_steps} steps" if report.optimizer_steps >= report.planned_steps else
                      f"{report.optimizer_steps} of {report.planned_steps} steps (stopped at the KL limit)")
+            if config.reference is not None:
+                steps += (f"  against the reference {tally['reference_wins']} won, {tally['reference_losses']} lost, "
+                          f"{tally['reference_stopped']} stopped")
             display.line(f"update {update} saved  {report.samples} samples  {steps}  "
                          f"policy loss {report.policy_loss:+.4f}  value loss {report.value_loss:.4f}  "
                          f"KL {report.approximate_kl:.5f}  games {_clock(collected - started)}  "

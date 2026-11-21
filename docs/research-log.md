@@ -9914,3 +9914,42 @@ exactly; that it is 0.03 to 0.10 while two shuffles of one batch give 0.54
 says the batch, not the direction of improvement, decides where an update
 goes. The cost figures for larger steps are derived from the log. One match
 and one seed stand behind "play got worse".
+
+### 2026-11-21 — A reference opponent in training, so that a log can show strength
+
+**Why.** Until the match of this morning nothing in the project could say
+whether an update made play better: both seats of a training game use the same
+weights, so a batch always has as many wins as losses. A match after every
+update answers it, at about half an hour for 100 games. Playing part of every
+batch against one fixed checkpoint answers it inside the run, with games that
+are trained on anyway.
+
+**Change, off unless asked for.** `Config.reference`, `--reference FILE`.
+Games are numbered in pairs; in every second pair the opponent's seat is
+played by the reference instead of the learner's own weights
+(`heroes.train.against_reference`). The learner's seat alternates by game
+number as before, so it meets each opponent from both colours. Only the
+learner's seat of such a game is trained on, also with `--both-seats`: the
+other seat was played by weights the update does not train, and the MLX update
+would refuse it. The log's `start` line names the reference, every `game` line
+its `opponent` (`self` or `reference`), and every `update` line the learner's
+`reference_wins`, `reference_losses` and `reference_stopped` of that batch.
+The actors load the reference once, like the match tool does.
+
+**What this is and is not.** The counts are the learner's sampled play against
+one opponent under the training settings, about 50 games per batch of 100: a
+share of 50% has a 95% interval of roughly 36 to 64%, so single updates say
+little and a run of them says more. Half of the experience now comes from play
+against a fixed opponent; that changes what is trained on and is not known to
+help or to harm.
+
+**Tests.** 106 pass (104 before): eight scripted games in which red always
+wins give the opponents in the order reference, self, self, reference and so
+on, the learner blue and red in turn against the reference, two wins and two
+losses in the update's line, one trajectory from a game against the reference
+and two from a game against itself with both seats on; a game played by a pair
+of policies compiles the learner's recipe for the MLX update; a reference file
+that is not there stops the run before any game.
+
+**Not run.** No real game has been played with it.
+
