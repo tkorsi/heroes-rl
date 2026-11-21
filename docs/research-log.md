@@ -9600,3 +9600,60 @@ and are counted as independent. Blue won 63 to 76% of the decided self-play
 games of these checkpoints, so the result is read from pairs, and the wins by
 colour are reported next to it. A match measures strength against this one
 opponent, not against other policies.
+
+### 2026-11-21 — First match, result: checkpoint 1792 loses to 1788
+
+What ran is what the entry above fixed: `tools/match.py` from the frozen copy
+of `6b1a162`, `update-001792.pt` first against `update-001788.pt` second, 100
+games in 50 pairs, seed 1, standard guard, day limit 365, ten actors, runtime
+`local-v8-tile-changes-v1`, 02:19 to 02:53 local on 2026-11-21, on AC with a
+full battery. Codex's ten-game experiment with five actors ran beside it for
+part of that time. No game failed; 5,208,497 decisions. Report:
+`match-r4x7mn/results/match-1792-1788.jsonl`.
+
+| | games |
+| --- | --- |
+| won by 1792 | 13 |
+| won by 1788 | 62 |
+| reached day 365, no winner | 25 |
+
+Of the 75 decided games 1792 won 17.3%, Wilson 95% interval 10.4% to 27.4%.
+The interval lies wholly below one half, which the entry above fixed as: the
+four updates 1789 to 1792 made play worse, against this opponent.
+
+- **By colour.** 1792 as red: 7 wins, 39 losses, 4 stopped. 1792 as blue: 6
+  wins, 23 losses, 21 stopped. So 1788 wins from both colours, and 21 of the
+  25 games without a winner are those in which 1792 held the colour that wins
+  more often. Blue won 45 of the 75 decided games.
+- **By pair.** Both games to 1788 in 18 pairs, both to 1792 in 2, one each in
+  6; 24 pairs hold a stopped game.
+- **Length.** The games 1788 won ended on day 129 on average (median 100);
+  the 13 that 1792 won ended between day 14 and day 358. All games: 187 days.
+- **A check of the bookkeeping.** Each checkpoint shows its own habit in both
+  colours: 1788 answered 144 decisions per game day as blue and 164 as red,
+  1792 answered 123 and 119. Had the two been confused with their colours,
+  the numbers would group by colour.
+
+**What this supports.** Under the rules both were trained with, the policy
+after update 1792 is clearly weaker than the policy four updates earlier,
+when the two meet. Those four updates used 400 games, 8.9 million samples and
+about 32 hours of update time.
+
+**What it does not show.** Why, or which update did it. Three things changed
+or grew over these updates and none was tested here: the size of an update
+(approximate KL 0.12, 0.09, 0.14 and 0.16, against 0.06 for update 1788); the
+share of samples from games stopped at the day limit, whose returns are the
+policy's own estimates (45%, 39%, 52% and 73% of the batches); and the
+grouped update with its larger learning rate, used for update 1792 only. A
+match measures strength against one opponent, sampled actions included; it is
+one match with one seed, and the games of a pair are counted as independent.
+Whether 1788 itself is better than what came before it is not known either.
+
+**Consequence for the comparison planned above.** The two runs prepared for
+the stopped-game setting start from checkpoint 1792. They would start from the
+weaker policy; which checkpoint to continue from is the user's decision.
+
+**Next, proposed and not run.** Matches of neighbouring checkpoints (1789
+against 1788, 1790 against 1789, 1791 against 1790, 1792 against 1791) would
+show whether every update lost strength or one did, and 1788 against 1785
+whether the earlier training gained any.
