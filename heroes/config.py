@@ -16,6 +16,7 @@ from .game import guard
 from .learner.ppo import PPOConfig
 
 REPOSITORY = Path(__file__).resolve().parents[1]
+GROUPED_MLX_PPO = PPOConfig(windows_per_minibatch=16, windows_per_game=8, learning_rate=8.5e-4)
 
 
 def _artifacts():
@@ -46,7 +47,7 @@ class Config:
     play_during_update: bool = False  # collect the next batch while the update runs, one update behind; torch backend only
 
     # How the policy learns.
-    games_per_update: int = 100  # all played with the same weights, then one PPO update
+    games_per_update: int | None = None  # one update after all requested games unless a batch size is set
     backend: str = "mlx"  # "mlx" on Apple GPUs, "torch" for the slow reference
     ppo: PPOConfig = PPOConfig()
 

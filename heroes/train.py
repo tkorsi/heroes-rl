@@ -13,7 +13,7 @@ weights it starts from did not play.
 """
 from __future__ import annotations
 
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from datetime import datetime, timezone
 import fcntl
 import itertools
@@ -375,6 +375,8 @@ def collect(pool, config, path, target, numbers, update, display, log, batch=Non
 
 def train(config, games, *, fresh=False, out=sys.stderr):
     """Play ``games`` games in batches of ``config.games_per_update`` and update after each batch."""
+    batch_size = games if config.games_per_update is None else min(games, config.games_per_update)
+    config = replace(config, games_per_update=batch_size, workers=min(config.workers, batch_size))
     if config.play_during_update and config.backend == "mlx":
         # Before its first step the MLX update compares what it computes for a
         # minibatch with what was recorded while playing, and stops if they
@@ -400,7 +402,8 @@ def _train(config, games, update_policy, fresh, out):
     display, log = Display(out), Log(config.state / "log.jsonl")
     display.line(f"Continuing from update {state.updates} ({state.progress['games']} games, "
                  f"{state.progress['decisions']} decisions) in {config.state}")
-    log.write("start", games=games, backend=config.backend, workers=config.workers, progress=state.progress,
+    log.write("start", games=games, games_per_update=config.games_per_update,
+              backend=config.backend, workers=config.workers, progress=state.progress,
               ppo=config.ppo.to_dict(), limits=asdict(config.limits), guard=config.guard,
               both_seats=config.both_seats)
     # Failed and discarded games keep their numbers, so a number never names two games.

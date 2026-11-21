@@ -5,7 +5,7 @@ import argparse
 from dataclasses import replace
 from pathlib import Path
 
-from .config import Config
+from .config import Config, GROUPED_MLX_PPO
 
 
 def _path(text):
@@ -26,8 +26,10 @@ def _config(arguments):
         changes["guard"] = guard.version(**budgets)
     ppo = {name: getattr(arguments, name) for name in ("windows_per_minibatch", "windows_per_game", "learning_rate")
            if getattr(arguments, name, None) is not None}
-    if ppo:
-        changes["ppo"] = replace(config.ppo, **ppo)
+    defaults = config.ppo
+    if changes.get("backend", config.backend) == "mlx" and not any(name.startswith("windows_") for name in ppo):
+        defaults = GROUPED_MLX_PPO
+    changes["ppo"] = replace(defaults, **ppo)
     return replace(config, **changes)
 
 
@@ -56,7 +58,7 @@ def main(argv=None):
             command.add_argument("games", type=int, help="number of games to play in this run")
             command.add_argument("--fresh", action="store_true",
                                  help="start from a random policy when the state folder is empty")
-            command.add_argument("--games-per-update", type=int, help="games per PPO update (default 100)")
+            command.add_argument("--games-per-update", type=int, help="games per PPO update (default: all requested games)")
             command.add_argument("--workers", type=int, help="games in play at once (default 14)")
             command.add_argument("--keep-game-files", action="store_true", help="keep every game's engine folder")
             command.add_argument("--both-seats", action="store_true",
@@ -72,13 +74,12 @@ def main(argv=None):
                                  help="decisions a seat may take per game day before it can only close windows "
                                       "and end its turn (default: no budget)")
             command.add_argument("--windows-per-minibatch", type=int,
-                                 help="loss windows of 16 decisions per optimizer step (default 2)")
+                                 help="loss windows of 16 decisions per optimizer step (grouped MLX preset: 16)")
             command.add_argument("--windows-per-game", type=int,
-                                 help="windows of a minibatch drawn from the same game, sharing one replay of it "
-                                      "(default 1; must divide --windows-per-minibatch)")
+                                 help="windows drawn from the same game per minibatch "
+                                      "(grouped MLX preset: 8; must divide --windows-per-minibatch)")
             command.add_argument("--learning-rate", type=float,
-                                 help="Adam step size (default 3e-4, for 2 windows per optimizer step; "
-                                      "8.5e-4 goes with 16)")
+                                 help="Adam step size (grouped MLX preset: 8.5e-4)")
         command.add_argument("--backend", choices=("mlx", "torch"), help="PPO backend (default mlx)")
         command.add_argument("--state", type=_path, help="folder for checkpoints and the log")
         command.add_argument("--legacy", type=_path, help="folder of the previous pipeline, imported once")
@@ -94,7 +95,7 @@ def main(argv=None):
                      "budgets --stack-moves, --windows and --decisions at least 1")
     if arguments.command == "train" and arguments.games < 1:
         parser.error("games must be positive")
-    if config.workers < 1 or config.games_per_update < 1:
+    if config.workers < 1 or (config.games_per_update is not None and config.games_per_update < 1):
         parser.error("--workers and --games-per-update must be at least 1")
     try:
         if arguments.command == "check":

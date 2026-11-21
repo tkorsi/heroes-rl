@@ -15,45 +15,53 @@ lines, of which 3,200 are the typed game contract.
 
 ## Train
 
-You run training yourself, in Terminal, on the Mac that has the prepared VCMI
-runtime and your Heroes III data. Reading or editing this project never starts it.
+On the training Mac, open Terminal in your own checkout (`Heroes-claude` or
+`Heroes-codex`). Both use the same saved checkpoint. To choose a game count:
 
 ```sh
-cd ~/Projects/Heroes
-./train.command 1000          # play 1,000 more games, one PPO update per 100
-./train.command check         # show what a run would start from; plays nothing
+./train.command
 ```
 
-`train.command` uses the training Python, keeps the Mac awake and passes every
-other argument on:
+Enter 10, 20, 40, 100, 1000 or another positive count. You can also supply
+the count directly, for example `./train.command 100`. To see which checkpoint
+would be used without playing, run `./train.command check`.
+
+The selected count is the number of new usable games. All of them use the
+latest saved policy. Once all games finish, one PPO update uses the entire
+batch and saves the next checkpoint. The launcher keeps the Mac awake.
 
 | Option | Meaning | Default |
 | --- | --- | --- |
-| `--games-per-update N` | games played with the same weights before one update | 100 |
-| `--workers N` | games in play at once, one process each | 14 |
+| `--games-per-update N` | explicitly split a run into smaller batches | all requested games |
+| `--workers N` | games in play at once, one process each | up to 14, limited to the batch size |
 | `--keep-game-files` | keep each game's engine folder and logs, in `kept-games/`, and have the engine write its replay ledger, about 130 KB per decision | deleted, no ledger |
 | `--backend torch` | slow reference update without MLX | `mlx` |
-| `--windows-per-minibatch N` | loss windows of 16 decisions per optimizer step | 2 |
-| `--windows-per-game N` | windows of a minibatch that come from the same game and share one replay of it; see [Making it faster](#making-it-faster) | 1 |
-| `--learning-rate X` | Adam step size; 8.5e-4 goes with 16 windows per step, see the same section | 3e-4 |
+| `--windows-per-minibatch N` | loss windows of 16 decisions per optimizer step | 16 in the grouped MLX preset |
+| `--windows-per-game N` | windows from the same game sharing one replay | 8 in the grouped MLX preset |
+| `--learning-rate X` | Adam step size | 8.5e-4 in the grouped MLX preset |
 | `--state DIR` | where checkpoints and the log go | `~/Projects/Heroes-artifacts/training` |
 | `--fresh` | start from a random policy when the state folder is empty | off |
 
-Every default lives in [`heroes/config.py`](heroes/config.py). Paths follow
+The MLX preset is the one used for the recent self-play experiments. The
+Torch reference and runs with explicit window settings use 2 windows per
+minibatch, 1 per game and a learning rate of 3e-4 for unspecified fields.
+Paths follow
 `HEROES_ARTIFACTS`, `HEROES_VCMI` and `HEROES_PYTHON` when those are set.
 
 Press Ctrl-C to stop. Games of the unfinished batch are discarded and the next
 run continues from the last saved update.
 
+The trainer keeps the batch's learning data in memory until PPO finishes.
+A single 1,000-game batch of full-length VCMI games has yet to be measured
+on the training Mac.
+
 ## What a run does
 
 ```text
 newest checkpoint
-   │  14 actor processes, each one game at a time, both seats the same weights
+   │  up to 14 actor processes, one game each, both seats use the same weights
    ▼
-100 games  ──►  one PPO update on the learner seat of each  ──►  next checkpoint
-   ▲                                                                  │
-   └──────────────────────────────────────────────────────────────────┘
+chosen number of games  ──►  one PPO update using every game  ──►  next checkpoint
 ```
 
 1. **Restore.** The newest checkpoint in the state folder. An empty state
@@ -64,12 +72,13 @@ newest checkpoint
    A game counts when the engine finished it with a verified win and loss, or
    when it was stopped at day 365. A crashed or inconsistent game is logged,
    never trained on, and replaced by another one.
-3. **Update.** After 100 usable games, one PPO epoch over all of them. The
+3. **Update.** After the chosen number of usable games, one PPO epoch over all of them. The
    update recomputes the recurrent state from the start of each game with the
    current weights; nothing stored during play is reused except the action
    taken, its probability and the value estimate. This replay is most of an
    update's time; see [Making it faster](#making-it-faster).
-4. **Save.** One file per update, then back to step 2.
+4. **Save.** Write the checkpoint and finish. An explicit smaller batch size
+   repeats steps 2–4 until the requested total is reached.
 
 The state folder holds everything:
 
@@ -97,29 +106,23 @@ The state folder holds everything:
 
 ## Status
 
-### Current run from checkpoint 1797
+### Current training state
 
-On 2026-11-21 at 18:52 Kyiv time, the user launched 100 more self-play games
-from 1797 in the Codex checkout. Five CPU actors collect five games per MLX
-PPO update. The target is **1817**, at **10,472 saved games**. The starting
-checkpoint has 10,372 saved games. Training runs independently of either chat.
-
-From either checkout on the training Mac, read the current run directly:
+The 2026-11-21 campaign started at checkpoint 1797 with 10,372 saved games.
+It stopped after two five-game updates at **1799** (10,382 saved games).
+The next user-selected run starts from those weights and optimizer state.
+The training Mac uses one shared state directory for both checkouts:
 
 ```sh
-state="$HOME/Projects/Heroes-codex/.experiment/continue-1797-100/state"
+state="$HOME/Projects/Heroes-artifacts/training"
 cat "$state/latest.json"       # last saved checkpoint and cumulative game count
 tail -n 5 "$state/log.jsonl"   # newest games and updates
 ```
 
-If the run is interrupted, the user can resume from either checkout with
-`./train-1797-100.command "$state"`. The launcher counts only the games still
-needed. The training lock belongs to this state directory.
-
-After 1817 is saved, compare `checkpoints/update-001817.pt` against
-`checkpoints/update-001797.pt` in that directory. Use ten fresh world seeds,
-play each with colors swapped, and disable PPO. Record wins, day-limit cutoffs,
-town captures and seven-day attack follow-through. The prior comparison gave
+For the next strength comparison, play the selected checkpoint against
+frozen 1797 on ten fresh world seeds. Play each with colors swapped and
+disable PPO. Record wins, day-limit cutoffs, town captures and seven-day
+attack follow-through. The prior comparison gave
 1797 eight wins against 1793's five, with seven cutoffs. The historical game
 archive was deleted at the user's request. The aggregate results and scoring
 definition are in the [research journal](docs/research-log.md#attack-follow-through).
@@ -199,8 +202,8 @@ the [journal](docs/research-log.md) say:
   weights less than half as far as the default update, and at 8.5e-4 as far.
   Judged on 12 games no update saw, the update then moved the policy no further
   than the default and fitted the value at least as well. Which setting wins
-  more games per game played is a question for long training runs, so the
-  defaults are unchanged.
+  more games per game played is a question for long training runs. The
+  current Mac launcher uses the grouped MLX settings.
 - **A batch no larger than the number of actors takes as long as its longest
   game.** With 100 games per update the actors stay busy and this evens out.
 - `--games-per-update`. Fewer games per update means more frequent updates on
