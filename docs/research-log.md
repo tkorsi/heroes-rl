@@ -9375,3 +9375,81 @@ cycle costs and were reported to the user; neither was investigated.
 - Blue wins most decided games in every batch: 73 to 23, 60 to 22, 63 to 22,
   48 to 28 and 31 to 18. Both seats play with the same weights, so this is the
   map, the turn order or the policy's play of the two seats.
+
+### 2026-11-21 — Timing one full game on merged main
+
+The user requested one game and an estimate for collecting 100. Time one CPU
+self-play game at checkpoint 1792 on main `f86c647`, with the standard guard,
+the 365-day limit, and one actor. Use the training map, runtime
+`local-v8-tile-changes-v1`, and benchmark seed 1. Accept a verified terminal or
+a usable day-limit cutoff. Record play, recipe compilation and collection wall
+time. Estimate a 14-actor batch from measured throughput and observed batch
+lengths. Use the most recent grouped MLX update as the separate PPO reference.
+
+**Observed.** On AC power, `tools/perf/bench_play.py` ran with
+`training-trial --workers 1 --games 1 --seed 1`. Game 801001 used engine
+seed 288545019 and policy seeds 3908098321120974922 and 3522288737136492080.
+It reached the first decision of day 366, where the 365-day limit stopped it.
+The actor returned a usable trajectory with 68,712 samples and no failure.
+Red and Blue answered 38,641 and 68,713 decisions respectively. Play took
+313.3 s and recipe compilation 59.0 s. Collection wall time was 408.0 s
+including 35.7 s outside those two actor timers. Checkpoint 1792 remained the
+latest after the measurement. The private report is
+`Heroes-artifacts/main-game-timings.jsonl`, label `main-f86c647-update-1792`.
+
+**Estimate.** The latest completed 100-game batch had 6,890,878 decisions
+and 51 day-limit cutoffs. Earlier measurements with 14 busy actors reached
+2,055 and 2,191 decisions/s (`fast-r4x7mn/results/workers.jsonl`). Assigning
+the last 100 observed game lengths in submission order to the first free of
+14 actors, at a uniform cost per decision, yields 89.3% utilization and
+59–63 minutes for collection. The prior grouped MLX update (16 windows per
+minibatch, 8 per game) took 16,004.6 s. With a comparable workload the whole
+cycle therefore comes to about 5 h 25 min. The next 100 games can have a
+different length distribution and PPO cost.
+
+## 2026-11-21 — Isolated ten-game replication on PR 36 main, planned
+
+The user authorized exactly ten usable games in two five-game PPO rounds followed
+by one no-update evaluation game, in a separate Heroes-codex checkout. The
+question is whether play is faster for identical workloads, how much of the
+full cycle is PPO, whether both seats use the actual frozen policy, and which
+observable action loops waste decisions. Acceptance requires model hashes at
+each handoff, per-seat sampled decisions and engine confirmations, two admitted
+five-game batches, recorded optimizer work, an ordered evaluation trace and a
+comparison whose denominators and limitations are explicit. No behavior change.
+
+Pinned source f86c64771d533acccb75f1b7161240cdac70bd02 includes PR 36.
+GitHub main at 23:59:59 on November 19 (Europe/Kyiv) was 10ddb9f94586e99beb9d9032efeb8f691fe0a0fe.
+November 20's main used for the existing baseline was c1c96ce7675a9caadc77e10aa8fa88395aca5411.
+The former predates the grouped PPO interface. Both versions are recorded to
+avoid attributing the newer baseline to the wrong commit.
+
+In the private .experiment/state below this checkout, start from a byte copy of
+training-trial/checkpoints/update-001791.pt (file SHA-256
+ca190c8a51257559c1243761420e68d6c26ef6dff8eb0bb0bbaf8879a0261fe9).
+Use job numbers 10373–10382 and their historical engine and Red/Blue policy
+seeds, in numeric order, from training-trial/log.jsonl. The preceding historical
+job marker is copied solely to restore numbering. Additional seed triples are
+reserved if games fail. Five parallel CPU actors, one learner seat alternating
+by job number, MLX, one epoch, 16 windows per minibatch, eight per game and
+learning rate 0.00085. Default map, limits and guard. No additional action
+budgets, second training seat, replay ledger, or interleaved play. For the
+one held-out evaluation after PPO use engine seed 20261121 and Red/Blue policy
+seeds 2026112101 and 2026112102, fixed before the first training game. Use the
+unchanged production policy with sampling and no optimization. The old run
+had 14 active workers and did not update until 100 games; check identical
+trajectories by observables before comparing per-game collection costs.
+
+Round one collected five usable games. For all five, engine and policy seeds,
+day, terminal outcome or cutoff, counts for each seat, and admitted samples
+match the old game log exactly. Jobs 10374 and 10375 ended naturally on days
+233 and 241; 10373, 10376 and 10377 reached the day limit. Together the actors
+answered 431,014 decisions and supplied 222,510 samples. Summed actor play time
+was 1,410.6 s (old 4,686.9 s), recipe compilation 191.0 s (old 355.9 s).
+These times overlap across actors. The old run had 14 active actors versus
+five here, so these ratios include contention. In historical, 14-actor paired
+measurements, 132,920 identical decisions and 61,734 samples took a mean 145.55
+s before the PR changes and 65.80 s on the final runtime (2.21 times as fast).
+The separate 539,195-decision full-length benchmark was 979.6 versus 534.6 s
+(1.83 times as fast) before the last runtime optimization. Neither measurement
+included an optimizer step.

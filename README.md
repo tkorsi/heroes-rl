@@ -320,7 +320,7 @@ To rebuild the engine see [the architecture guide](docs/architecture.md#engine).
 
 ## Rules of the project
 
-- Read [AGENTS.md](AGENTS.md) before changing or publishing anything. The user
+- Read the local `AGENTS.md` before changing or publishing anything. The user
   launches all training.
 - Record meaningful steps in the [research journal](docs/research-log.md).
 - Weights, captures, runtime builds and game data stay in private storage.

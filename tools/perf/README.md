@@ -1,7 +1,7 @@
 # Measuring training speed
 
-These scripts start the real engine or time the GPU update. By rule 1 of
-[AGENTS.md](../../AGENTS.md) the user launches them. They write only to the
+These scripts start the real engine or time the GPU update. The user launches
+them as described in the local `AGENTS.md`. They write only to the
 state folder they are given and never train or save a checkpoint. Use a folder
 of its own, never the one a training run is using.
 
