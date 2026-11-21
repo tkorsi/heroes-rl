@@ -1,28 +1,22 @@
 # Heroes RL
 
-Can a policy learn to take an enemy town in *Heroes of Might and Magic III*? It has to recruit an army, choose a route through fog of war and keep pursuing its objective across turns. Heroes RL studies those decisions by putting a recurrent policy in control of both players on a VCMI adventure map.
+Should a hero attack an enemy town today or wait a turn for reinforcements? Waiting gives the defender time to recruit, too. The value of that decision may only become clear days later, when the town changes hands. Heroes RL explores how a policy can learn to make those choices by playing *Heroes of Might and Magic III* against itself.
 
-![A snowy Heroes III battlefield beside two Terminal windows showing a 20-game self-play batch and its 3,869 PPO optimizer steps.](docs/media/heroes-self-play.webp)
+![A Heroes III battle beside terminal windows showing self-play and policy training.](docs/media/heroes-self-play.webp)
 
-## What has the policy learned?
+## Learning through self-play
 
-In a head-to-head evaluation, two frozen policies played **ten fresh seeds twice**, swapping Red and Blue on each seed. Both played the same scenario, with learning switched off. The engine recorded who owned each town after every transfer.
+A fresh policy starts with randomly initialized weights. Two copies of the same network play Red and Blue in the VCMI engine. Each sees its own side of the map and remembers what it has seen across turns. The policy chooses where to move, when to recruit, what to build and when to attack. VCMI’s BattleAI resolves the tactical battles.
 
-| Across 20 games | Checkpoint 1797 | Checkpoint 1793 |
-| --- | ---: | ---: |
-| Games won | 8 | 5 |
-| Games in which it captured the enemy home town | 9 | 5 |
-| Stalled approaches followed by a capture within seven days | 1 of 13 | 0 of 22 |
+We design the reward and let the policy work out how to earn it. A win earns a positive reward, a loss earns a penalty, and both sides receive a penalty if time runs out. A smaller penalty discourages repeatedly opening and closing an unchanged window. Opening a town to recruit is free. The reward leaves the choice of army, route and timing to the policy.
 
-Seven games reached the 365-day limit. The most revealing moment came one tile from a town. The attacking hero ran out of movement, then headed elsewhere the next day. A teammate captured the town three days later. Across all 35 stalled approaches, the same hero never explicitly targeted that town again on the following day. Checkpoint 1797 led on wins in this sample. Sustaining an attack across turns remains an open problem. [Results by seed](docs/research-log.md#paired-evaluation-results) · [Attack traces and scoring](docs/research-log.md#attack-follow-through)
+After each batch of games, Proximal Policy Optimization (PPO) uses the rewards to estimate how to adjust the network’s weights. Choices that led to better outcomes than expected tend to become more likely in similar situations. Both sides use the updated policy in the next batch, so a successful opening can eventually face an opponent that knows how to answer it.
 
-## How self-play works
+## What strategies can emerge?
 
-1. **Observe.** Each seat receives its own visible map, heroes, armies, resources and currently available actions from the engine. A recurrent network carries information from one decision to the next.
-2. **Act.** The policy chooses where to move, what to recruit or build, how to arrange armies and when to end the turn. The engine reports whether it accepted the action.
-3. **Learn.** Up to 14 CPU actors collect games with the same frozen weights. Once the requested batch is complete, PPO updates the network using MLX on Apple silicon. A checkpoint saves the weights, Adam optimizer, shuffle state and counters together.
+Hiring a second hero to scout costs gold that could have bought troops for the first. Under fog of war, when is the extra information worth fielding a smaller army? By letting the policy try different answers across many games, we can look for openings, army compositions and attack timings that even experienced players might overlook.
 
-The published **checkpoint 1800** records **10,402 self-play games** and **23,338,478 learner decisions** across its training history. Its final batch contained 20 games and 988,768 training samples. The current experiments use one authored adventure map. Playing strength on other maps is still unmeasured. [Download checkpoint 1800](checkpoints/update-001800.pt) · [Architecture](docs/architecture.md) · [Scenario and action restrictions](docs/temporary-restrictions.md)
+We test a new policy against a frozen earlier version on fresh seeds, playing each seed from both colors. The engine records the actions and changes in town ownership, so we can trace a win back to the turns that set it up. [Research journal](docs/research-log.md) · [Architecture](docs/architecture.md) · [Scenario and action restrictions](docs/temporary-restrictions.md)
 
 ## Run it
 
@@ -33,4 +27,4 @@ On a configured training machine with an initialized state, these commands inspe
 ./train.command 20
 ```
 
-For a new checkout, the training guide covers building the patched engine, supplying your own game data, and starting from the published checkpoint or random weights. [Training guide](docs/training.md) · [Research journal](docs/research-log.md) · [Third-party notices](THIRD_PARTY_NOTICES.md)
+For a new checkout, the training guide covers building the patched engine, supplying your own game data, and starting from the published checkpoint or random weights. [Training guide](docs/training.md) · [Third-party notices](THIRD_PARTY_NOTICES.md)
