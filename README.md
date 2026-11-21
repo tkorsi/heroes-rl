@@ -109,8 +109,10 @@ The state folder holds everything:
 ### Current training state
 
 The 2026-11-21 campaign started at checkpoint 1797 with 10,372 saved games.
-It stopped after two five-game updates at **1799** (10,382 saved games).
-The next user-selected run starts from those weights and optimizer state.
+It stopped after two five-game updates at 1799 (10,382 saved games).
+The next run played 20 games and saved [checkpoint **1800**](checkpoints/update-001800.pt)
+after one PPO update (10,402 saved games). The file includes the weights
+and optimizer state for resuming training.
 The training Mac uses one shared state directory for both checkouts:
 
 ```sh
