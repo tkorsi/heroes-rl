@@ -9482,3 +9482,43 @@ between shows neither. The share of stopped games in the match is reported
 with it, since a match that mostly reaches the limit decides little. The tool
 has not been run on real checkpoints; a match is the user's to launch or to
 allow.
+
+### 2026-11-21 — First match: checkpoint 1792 against 1788. Question and what counts, before the result
+
+The user allowed a first use of `tools/match.py` and decided the same night
+that Claude works in `~/Projects/Heroes-claude` and Codex in
+`~/Projects/Heroes-codex`, with pull requests between them. This run is the
+first from the new folder: the code is a frozen copy of `6b1a162` exported
+from it, and the run has a folder of its own,
+`~/Projects/Heroes-artifacts/match-r4x7mn` (copies of the two checkpoints,
+`match-1.sh`, `results/`, `logs/`).
+
+**Question.** Did the four updates 1789 to 1792 make the policy play better?
+They trained on 400 games and 8.9 million samples and took about 32 hours of
+update time; the logs of those runs cannot answer it, because both seats of a
+training game play with the same weights.
+
+**Design.** `update-001792.pt` (first, SHA-256 `8663440f…`) against
+`update-001788.pt` (second, `a0319a68…`), copied from `training-trial`. 100
+games in 50 pairs, seed 1; a pair shares the engine seed and swaps the
+colours. Standard interaction guard, day limit 365, runtime
+`local-v8-tile-changes-v1`. Ten actors instead of fourteen, because Codex was
+running a timed ten-game training experiment with five actors from its own
+folder at the same time; the result of a match does not depend on its speed.
+Two games to day 5 were played first to see the tool work on the real engine:
+both ran to their limit with each seat on its own checkpoint, no failure.
+
+**What counts, fixed now.** Of the decided games, the share won by 1792 with
+its Wilson 95% interval. Wholly above one half: 1792 is the stronger policy
+under these rules. Wholly below: the four updates made play worse. An
+interval that contains one half shows neither, and with few decided games that
+is the likely reading; it is not evidence that the two are equal. The number of
+games that reach day 365 is part of the result: such games have no winner, and
+a match that mostly ends there says that these policies do not finish games
+against each other, whichever is "stronger".
+
+**Known limits.** One seed and 100 games. Games of a pair share their start
+and are counted as independent. Blue won 63 to 76% of the decided self-play
+games of these checkpoints, so the result is read from pairs, and the wins by
+colour are reported next to it. A match measures strength against this one
+opponent, not against other policies.
