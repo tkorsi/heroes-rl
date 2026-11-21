@@ -9441,3 +9441,44 @@ source, so the two runs play different games. The clipped value loss pulls
 an estimate at most 0.2 away from what it was during play in one update, so
 six updates may be too few for it to reach -1 at late days. The budgets and the second seat may change the trend by
 themselves, which is what the run without the flag is for.
+
+### 2026-11-21 — A match between two checkpoints, to answer whether a setting weakens play
+
+The user's objection to the entry above: would a loss for both seats at the
+day limit not cripple the search for long-lasting strategies? What was
+answered: a win keeps its full value on any day, since nothing is discounted,
+so slow strategies that win within the limit lose nothing; what loses its
+credit is being ahead on day 365 without having won, which today is worth the
+value head's own estimate; and two risks are real, a push to gamble near the
+deadline and, while the policy cannot yet finish long games, a drift toward
+quick wins. The cost per game day proposed as a later step was withdrawn: it
+would make every slow win worth less.
+
+Neither the log of a run nor the comparison planned above can settle this:
+both seats of a training game play with the same weights. So
+`tools/match.py` plays two checkpoints against each other. `actor.play` takes
+a pair of policies, red's and blue's, and a job without a learner gives no
+trajectory; an actor loads the checkpoints of the game in hand. Games come in
+pairs with one engine seed and swapped colours, each checkpoint keeping its
+own sampling seed, because blue won 63 to 76% of the decided games of updates
+1788 to 1792. The report has each checkpoint's wins, by colour, and the first
+one's share of the decided games with a Wilson 95% interval; a stopped game
+counts for neither.
+
+Tests, 97 scripted (93 before), with the scripted engine, whose script names
+the winning seat: a game played by two policies has its result and no
+trajectory, and each seat answers from its own policy; a match of four games
+swaps the colours, shares the engine seed within a pair, counts two wins each
+when red always wins, and is the same match when repeated; stopped games give
+no winner and no share; the command writes its report and refuses an odd
+number of games, a missing checkpoint and an unknown guard.
+
+**What it is for, written before any use.** After the two runs of the entry
+above, 100 games between their last checkpoints under the guard both were
+trained with. The objection is supported if the policy trained with the flag
+wins a share of the decided games whose interval lies wholly below one half,
+and refuted for these six updates if the interval lies wholly above; anything
+between shows neither. The share of stopped games in the match is reported
+with it, since a match that mostly reaches the limit decides little. The tool
+has not been run on real checkpoints; a match is the user's to launch or to
+allow.

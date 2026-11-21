@@ -28,7 +28,7 @@ from .model.policy import ContextualEncoder
 class Job:
     number: int  # game number; also the engine's episode id
     engine_seed: int  # 1 .. 2**31 - 1
-    learner: int  # 0 plays red, 1 plays blue
+    learner: int | None  # 0 plays red, 1 plays blue; None when the game is only played, as in a match
     policy_seeds: tuple  # sampling seed of each seat
 
 
@@ -186,9 +186,14 @@ def play(env, model, job, directory, *, guard, on_progress=None, both_seats=Fals
     ``both_seats`` each seat's trajectory is built on its own and stays with
     its seat: the game counts as long as one of the two gives a trajectory, and
     ``detail`` then says why the other gave none.
+
+    ``model`` is the policy of both seats, or a pair: red's policy and blue's.
+    A job without a learner is played for its result alone and gives no
+    trajectory.
     """
     started = time.monotonic()
-    seats = [Seat(model, seed, guard=guard) for seed in job.policy_seeds]
+    policies = model if isinstance(model, tuple) else (model, model)
+    seats = [Seat(policy, seed, guard=guard) for policy, seed in zip(policies, job.policy_seeds, strict=True)]
     state = env.reset(directory, job.number, job.engine_seed)
     while isinstance(state, Request):
         seat = seats[state.player]
@@ -201,9 +206,10 @@ def play(env, model, job, directory, *, guard, on_progress=None, both_seats=Fals
             on_progress(env.day, tuple(len(item.choices) for item in seats))
     status, reason, detail = state.status, state.reason, state.detail
     built = {}  # seat -> its trajectory
-    if status in ("completed", "truncated"):
+    trained = () if job.learner is None else (job.learner, 1 - job.learner) if both_seats else (job.learner,)
+    if status in ("completed", "truncated") and trained:
         unusable = []
-        for seat in (job.learner, 1 - job.learner) if both_seats else (job.learner,):
+        for seat in trained:
             try:
                 built[seat] = build_trajectory(
                     env.frames(seat), seats[seat], natural=status == "completed",
@@ -217,4 +223,4 @@ def play(env, model, job, directory, *, guard, on_progress=None, both_seats=Fals
             detail = "; ".join(unusable)
     return Game(job, status, reason, state.outcomes, detail, env.day,
                 tuple(len(item.choices) for item in seats), time.monotonic() - started,
-                built.get(job.learner), other=built.get(1 - job.learner))
+                built.get(job.learner), other=built.get(trained[1]) if len(trained) == 2 else None)

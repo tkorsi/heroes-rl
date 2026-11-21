@@ -318,6 +318,29 @@ training run yet; what is known is what they do to a batch of games.
   play and update time alike. That is a question of the guard and the action
   space.
 
+### Which of two checkpoints plays better
+
+A training log cannot say whether a policy got better: both seats play with
+the same weights, so every decided game has one win and one loss.
+[`tools/match.py`](tools/match.py) lets two checkpoints play each other:
+
+```sh
+P=~/Projects/Heroes-artifacts/python/mlx-v1/venv/bin/python
+$P tools/match.py ~/Projects/Heroes-artifacts/match --first A.pt --second B.pt --games 100
+```
+
+Games come in pairs that share the engine seed and swap the colours, and each
+checkpoint keeps its own sampling seed in both. That matters on this map: blue
+won 63 to 76% of the decided self-play games of updates 1788 to 1792, so games
+of one colour say more about the colour than about the policy. A game that
+reaches the day limit has no winner and counts for neither. The report gives
+each checkpoint's wins, by the colour the first one played, and the first
+one's share of the decided games with a 95% interval. Both seats play under
+one interaction guard: `--guard` names it when the checkpoints were trained
+with budgets. Nothing is trained and nothing is written but the report. It
+starts the real engine, so the user launches it. It has not been run on real
+checkpoints yet.
+
 ## Develop
 
 ```sh

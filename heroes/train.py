@@ -133,7 +133,7 @@ def worker(config, pipe, trainer):
     signal.signal(signal.SIGTERM, _stop_actor)
     threading.Thread(target=_end_with_trainer, args=(trainer,), daemon=True).start()
     env = Env(config.engine(), config.limits)
-    model = loaded = None
+    policies = {}  # checkpoint path -> its policy, for the checkpoints of the game in hand
 
     def send(kind, payload):
         # Plain pickle keeps tensors inside the message instead of in shared memory files.
@@ -144,9 +144,10 @@ def worker(config, pipe, trainer):
             item = pipe.recv()
             if item is None:
                 return
-            path, job = item
-            if path != loaded:
-                model, loaded = checkpoint.load_model(path), path
+            path, job = item  # one checkpoint for both seats, or a pair: red's and blue's
+            paths = path if isinstance(path, tuple) else (path,)
+            policies = {part: policies[part] if part in policies else checkpoint.load_model(part) for part in paths}
+            model = tuple(policies[part] for part in paths) if isinstance(path, tuple) else policies[path]
             last = [time.monotonic()]
 
             def report(day, choices, job=job):
@@ -188,10 +189,11 @@ class Pool:
         self.pipes[index], self.processes[index] = ours, process
 
     def submit(self, path, job):
+        """Hand ``job`` to an idle actor. ``path`` is the checkpoint both seats play with, or a pair of them."""
         index = self.idle.pop()
         self.busy[index] = job
         try:
-            self.pipes[index].send((str(path), job))
+            self.pipes[index].send((tuple(map(str, path)) if isinstance(path, tuple) else str(path), job))
         except OSError:
             pass  # the actor is gone; next() replaces it and reports the game as failed
 
