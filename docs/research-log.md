@@ -9981,3 +9981,75 @@ common direction, a cosine of 0.1 to 0.4; whether that is learning or drift is
 not known. A step's cosine with the weights it starts from is 0.01 to 0.06
 over all weights and between -0.02 and 0.05 in the recurrent cell, so the
 growth of the norms is the growth of a walk and not a push outward.
+
+### 2026-11-21 — Run A: an update of few large steps is 8.6 times faster and moves the policy a twentieth as far
+
+**Authorization.** The user wrote in the project chat at 14:02 local "I have
+updated the permissions so you can run whatever runs you need. Work in your
+folder", and in the thread at 15:15 "run the tests". Both prepared runs were
+started at 15:15:43 as one queue, the timing first.
+
+**What ran.** `fast-r4x7mn/measure-10.sh` as prepared: `tools/perf/
+update_quality.py` from the frozen copy of `68d45cb`, the 12 games from
+checkpoint 1789 (`8838ed67…`, 336,649 decisions), settings `128:128`,
+`512:512` and `2048:512` at 3e-4, seed 0, each one whole update from the
+checkpoint with its Adam state, then judged with forward passes on the same
+games; the saved weights of the three updates of 2026-11-20 were judged again
+by the same code. 15:15:43 to 15:52:06 local, mains power, battery full, no
+game engine or other job running, swap-outs unchanged from start to end. Both
+calls exited with 0 and wrote nothing to stderr. Results:
+`fast-r4x7mn/results/quality1789-large.jsonl`, weights and verdicts in
+`fast-r4x7mn/quality1789/`. No checkpoint was written.
+
+| Windows per step / per game | Steps | Whole update | Of it, plan building | Weight change | KL judged | Clipped | Gain on the trained games | Value error |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| checkpoint 1789, no update | | | | | | | | 0.763 |
+| 2 / 1 at 3e-4 (2026-11-20) | 10,524 | 6,133 s | 142 s | 8.07 | 0.155 | 19.7% | 0.078 | 0.363 |
+| 16 / 8 at 8.5e-4 (2026-11-20) | 1,318 | 1,129 s | 116 s | 6.67 | 0.194 | 20.3% | 0.086 | 0.420 |
+| 16 / 8 at 3e-4 (2026-11-20) | 1,318 | 1,127 s | 114 s | 3.03 | 0.094 | 10.9% | 0.054 | 0.438 |
+| 128 / 128 at 3e-4 | 170 | 177 s | 93 s | 0.69 | 0.012 | 1.5% | 0.0012 | 0.581 |
+| 512 / 512 at 3e-4 | 46 | 131 s | 110 s | 0.38 | 0.009 | 1.5% | 0.0013 | 0.631 |
+| 2,048 / 512 at 3e-4 | 12 | 142 s | 115 s | 0.18 | 0.004 | 1.0% | 0.0013 | 0.686 |
+
+The judged figures of the three earlier updates equal those of 2026-11-20 to
+six digits, so the judging code gives what it gave then. The timings of the
+earlier three are from 2026-11-20, beside nothing else on the GPU as well.
+
+**By the hypotheses fixed beforehand.**
+
+1. *Cost: holds.* `512:512` took 131 s against 1,127 s, 8.6 times faster,
+   where less than a third was asked. Every step fitted in memory, the one of
+   32,768 decisions included.
+2. *Size: holds.* 46 steps, weight change 0.38 (below 1.5), KL 0.009 (below
+   0.03). The policy ends a tenth to a twentieth as far from the one that
+   played as after the other updates, by KL.
+3. *Holds.* `128:128` made 170 steps and lies between the two in weight
+   change (0.69) and KL (0.012); `2048:512` made 12 steps and fitted.
+
+**What else the table says.**
+
+- *Plan building is now the update.* 110 of the 131 s of `512:512` are the
+  CPU's building of the steps' plans, on one helper thread; the replays and
+  all GPU work are the remaining 21 s. In the grouped update the same plan
+  building was a tenth of the time. It is weight-independent work that can
+  be spread over cores or done once per game; that is not built.
+- *The weight change follows the number of steps.* 0.18, 0.38, 0.69, 3.03 for
+  12, 46, 170 and 1,318 steps at 3e-4: close to the square root of the steps
+  times 0.05 to 0.08, as a walk of Adam steps would give.
+- *Fewer steps fit the batch less, value and policy alike.* The value error
+  on the trained games falls from 0.763 to 0.63 with 46 steps and to 0.36 to
+  0.44 with thousands. The first-order gain on the trained games is 0.0013
+  against 0.05 to 0.09. Without games no update saw, neither says which
+  update learned more: on 2026-11-19 the gain on unseen games was about zero
+  for every update measured, and what an update gains on its own games is
+  mostly the fitting of those games.
+
+**Derived, not measured.** At the rates of `512:512` here (0.33 ms of plan
+building and 0.06 ms of everything else per decision) the batch of update
+1792, 3.47 million decisions, would take about 22 minutes instead of 4 h 27
+min. A batch of that size holds plans beyond the GPU plan cache, which this
+run did not exercise.
+
+**Limitations.** One batch of 12 games, one checkpoint, one shuffle seed per
+setting. Nothing here measured play.
+

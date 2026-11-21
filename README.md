@@ -303,8 +303,24 @@ Two settings follow from it, both off unless given:
   up to 8,192 decisions of one game, a batch like that of update 1792 is about
   480 steps, and its longest games are replayed 9 times in an update instead
   of 540. By the log's figures that replay is about 60% of the update's time.
-  Not measured yet: the time, the memory such a step needs, and how far such
-  an update moves the policy.
+  Measured on 2026-11-21 on 12 games from checkpoint 1789 (336,649 decisions),
+  one whole update each, the Mac otherwise idle:
+
+  | Windows per step / per game | Steps | Seconds | Change of the weights | KL from the policy that played | Value error after |
+  | --- | --- | --- | --- | --- | --- |
+  | 2 / 1 at 3e-4 (2026-11-20) | 10,524 | 6,133 | 8.07 | 0.155 | 0.36 |
+  | 16 / 8 at 8.5e-4 (2026-11-20) | 1,318 | 1,129 | 6.67 | 0.194 | 0.42 |
+  | 16 / 8 at 3e-4 (2026-11-20) | 1,318 | 1,127 | 3.03 | 0.094 | 0.44 |
+  | 128 / 128 at 3e-4 | 170 | 177 | 0.69 | 0.012 | 0.58 |
+  | 512 / 512 at 3e-4 | 46 | 131 | 0.38 | 0.009 | 0.63 |
+  | 2,048 / 512 at 3e-4 | 12 | 142 | 0.18 | 0.004 | 0.69 |
+
+  The update is 8.6 times faster than the grouped one and stays where PPO is
+  meant to work. A step of 32,768 decisions fits in memory. Of the 131 s, 110
+  are the building of the steps' plans on one CPU thread; the GPU is no
+  longer what an update waits for. The value error before any update was
+  0.76: fewer steps also fit the value less. Whether such updates make the
+  policy play better is not known; that takes training runs and matches.
 - **`--max-kl X`** stops an update once its latest steps (at least 8 steps and
   16,384 decisions) find the policy further than X from the one that played
   the games; the rest of the batch is then not trained on, and the log's
