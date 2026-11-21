@@ -9953,3 +9953,31 @@ that is not there stops the run before any game.
 
 **Not run.** No real game has been played with it.
 
+
+### 2026-11-21 — Addition to "What the updates do to the weights": the cosines by module
+
+The entry above gives one cosine per pair of consecutive updates, over all
+weights. Read from the same files, by module, in the order (1753 to 1784 with
+1784 to 1785), then each later pair up to (1790 to 1791 with 1791 to 1792):
+
+| Module | Cosine between consecutive changes |
+| --- | --- |
+| all weights | 0.06, 0.03, 0.06, 0.07, 0.08, 0.10 |
+| recurrent cell | 0.02, 0.02, 0.04, 0.05, 0.06, 0.06 |
+| value head | -0.25, -0.31, -0.19, -0.26, -0.16, -0.05 |
+| policy query | 0.12, -0.06, 0.01, 0.18, -0.01, 0.06 |
+| tree encoder | 0.18, 0.11, 0.28, 0.40, 0.34, 0.26 |
+| text encoder | 0.22, 0.00, 0.16, 0.30, 0.39, 0.37 |
+| map CNN | 0.21, 0.13, -0.01, 0.08, 0.10, 0.15 |
+| ordered encoder | 0.08, 0.04, 0.06, 0.02, 0.13, 0.09 |
+
+This sharpens the statement, it does not reverse it. The recurrent cell, where
+most of every change lies (13 to 14 of about 19), moves in unrelated
+directions from one update to the next. The value head's consecutive changes
+point partly against each other: an update takes back part of what the one
+before did to it, which is what fitting one batch's results and then the next
+batch's looks like. The encoders of the semantic trees and of text do keep a
+common direction, a cosine of 0.1 to 0.4; whether that is learning or drift is
+not known. A step's cosine with the weights it starts from is 0.01 to 0.06
+over all weights and between -0.02 and 0.05 in the recurrent cell, so the
+growth of the norms is the growth of a walk and not a push outward.
