@@ -143,3 +143,46 @@ def test_grouped_minibatches_use_every_window_once_and_few_games(play_fake):
     report = update(play_fake.model, _optimizer(play_fake.model), trajectories, generator=torch.Generator().manual_seed(0),
                     config=PPOConfig(decisions_per_window=2, windows_per_minibatch=4, windows_per_game=2))
     assert (report.samples, report.optimizer_steps) == (14, 3)  # 5 and 3 windows: 3 and 2 groups
+
+
+def test_a_kl_limit_reads_the_latest_steps_and_needs_enough_of_them(monkeypatch):
+    from heroes.learner import ppo
+    monkeypatch.setattr(ppo, "KL_STEPS", 2)
+    monkeypatch.setattr(ppo, "KL_DECISIONS", 10)
+    assert not any(ppo.KLLimit(None).passed(9.0, 100) for _ in range(5))  # without a limit nothing stops
+    limit = ppo.KLLimit(0.02)
+    assert not limit.passed(0.5, 6)  # one step is not enough, however far it finds the policy
+    assert limit.passed(0.0, 6)  # two steps, twelve decisions: their mean of 0.25 is over the limit
+    limit = ppo.KLLimit(0.02)
+    assert [limit.passed(kl, 6) for kl in (0.0, 0.03)] == [False, False]  # mean 0.015
+    assert limit.passed(0.05, 6)  # the oldest step is no longer read: mean 0.04
+    assert not limit.passed(0.0, 60)  # weighted by decisions: the two latest steps give 0.05 * 6 / 66
+    limit = ppo.KLLimit(0.02)
+    assert [limit.passed(1.0, 2) for _ in range(4)] == [False] * 4  # eight decisions are too few to judge
+    assert limit.passed(1.0, 2)
+    with pytest.raises(ValueError):
+        PPOConfig(max_kl=0)
+
+
+def test_the_reference_update_stops_where_the_kl_limit_says(play_fake, monkeypatch):
+    from heroes.learner import ppo
+    trajectories = [play_fake(learner=0, days=9, winner=0).trajectory, play_fake(learner=1, days=7, winner=0).trajectory]
+    config = PPOConfig(decisions_per_window=2, windows_per_minibatch=2, epochs=2, max_kl=0.01)
+    seen = []
+
+    def third(self, kl, count):  # the scripted games offer one action, so their KL is zero: say when to stop instead
+        seen.append((self.max_kl, kl, count))
+        return len(seen) == 3
+
+    monkeypatch.setattr(ppo.KLLimit, "passed", third)
+    model = ContextualActorCritic(play_fake.model.config)
+    model.load_state_dict(play_fake.model.state_dict())
+    for parameter in model.parameters():
+        parameter.requires_grad_(True)
+    report = update(model, torch.optim.Adam(model.parameters(), lr=3e-4), trajectories, config=config,
+                    generator=torch.Generator().manual_seed(0))
+    assert (report.optimizer_steps, report.planned_steps) == (3, 10)  # five steps an epoch, two epochs planned
+    assert report.samples == sum(count for _, _, count in seen) < 16 and {limit for limit, _, _ in seen} == {0.01}
+    whole = update(model, torch.optim.Adam(model.parameters(), lr=3e-4), trajectories,
+                   config=replace(config, max_kl=None), generator=torch.Generator().manual_seed(0))
+    assert (whole.optimizer_steps, whole.planned_steps, whole.samples) == (10, 10, 16)

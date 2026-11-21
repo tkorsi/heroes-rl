@@ -84,6 +84,32 @@ def test_grouped_minibatches_follow_the_reference(play_fake):
     assert _metrics(report) == pytest.approx(_metrics(expected), rel=2e-2, abs=2e-4)
 
 
+def test_the_mlx_update_stops_where_the_kl_limit_says_as_the_reference_does(play_fake, monkeypatch):
+    from heroes.learner import ppo
+    from heroes.learner.mlx.update import update as mlx_update
+    pairs = [_pair(play_fake, learner=0, days=9, winner=0), _pair(play_fake, learner=1, days=7, winner=0)]
+    config = PPOConfig(decisions_per_window=2, windows_per_minibatch=2, max_kl=0.01)
+    reports = []
+    for update, trajectories in ((reference_update, [typed for typed, _ in pairs]),
+                                 (mlx_update, [compiled for _, compiled in pairs])):
+        calls = []
+
+        def third(self, kl, count, calls=calls):  # one legal action: the KL is zero, so the test says when to stop
+            calls.append(kl)
+            return len(calls) == 3
+
+        monkeypatch.setattr(ppo.KLLimit, "passed", third)
+        model, report = _run(update, play_fake.model, trajectories, config)
+        assert calls == pytest.approx([0.0] * 3, abs=1e-6)
+        assert all(torch.isfinite(value).all() for value in model.state_dict().values())
+        assert any(not torch.equal(value, play_fake.model.state_dict()[name]) for name, value in model.state_dict().items())
+        reports.append(report)
+    expected, report = reports
+    assert (report.optimizer_steps, report.planned_steps) == (expected.optimizer_steps, expected.planned_steps) == (3, 5)
+    assert report.samples == expected.samples < 16
+    assert _metrics(report) == pytest.approx(_metrics(expected), rel=2e-2, abs=2e-4)
+
+
 def test_a_plans_gpu_bytes_count_every_array_and_no_cpu_sequence(play_fake):
     import numpy as np
     from heroes.learner.mlx.model import plan_bytes

@@ -125,6 +125,24 @@ def test_the_minibatch_settings_reach_the_update_and_the_log(config):
     assert [restore(item).optimizer.param_groups[0]["lr"] for item in (config, faster)] == [3e-4, 8.5e-4]
 
 
+def test_the_kl_limit_and_the_epochs_reach_the_update_and_the_log(config, monkeypatch):
+    from heroes.learner import ppo
+    paths = ["--state", str(config.state), "--legacy", str(config.legacy), "--vcmi", str(config.vcmi),
+             "--game-data", str(config.game_data), "--backend", "torch"]
+    monkeypatch.setattr(ppo.KLLimit, "passed", lambda self, kl, count: self.max_kl == 0.02)  # stop at the first step
+    main(["train", "2", "--fresh", "--games-per-update", "2", "--workers", "2", "--epochs", "3", "--max-kl", "0.02",
+          "--windows-per-minibatch", "1", *paths])
+    records = _log(config)
+    assert (records[0]["ppo"]["epochs"], records[0]["ppo"]["max_kl"]) == (3, 0.02)
+    update = next(record for record in records if record["event"] == "update")
+    # Two games of one window each, three passes: six steps planned, one made, on one game's three decisions.
+    assert (update["optimizer_steps"], update["planned_steps"], update["samples"]) == (1, 6, 3)
+    for bad in (["--max-kl", "0"], ["--epochs", "0"]):
+        with pytest.raises(SystemExit) as refused:
+            main(["train", "2", *bad, "--state", str(config.state.with_name("unused"))])
+        assert refused.value.code == 2 and not config.state.with_name("unused").exists()
+
+
 def test_both_seats_of_a_game_are_trained_on(config, play_fake, fake_engine, tmp_path):
     from heroes import actor
     from heroes.engine.env import Env

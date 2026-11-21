@@ -36,6 +36,8 @@ other argument on:
 | `--windows-per-minibatch N` | loss windows of 16 decisions per optimizer step | 2 |
 | `--windows-per-game N` | windows of a minibatch that come from the same game and share one replay of it; see [Making it faster](#making-it-faster) | 1 |
 | `--learning-rate X` | Adam step size; 8.5e-4 goes with 16 windows per step, see the same section | 3e-4 |
+| `--epochs N` | passes of an update over its games | 1 |
+| `--max-kl X` | stop an update once the policy has moved this far from the one that played the games; see [What an update does to the weights](#what-an-update-does-to-the-weights) | never |
 | `--state DIR` | where checkpoints and the log go | `~/Projects/Heroes-artifacts/training` |
 | `--fresh` | start from a random policy when the state folder is empty | off |
 
@@ -111,6 +113,16 @@ one PPO update each, into a scratch folder. All 20 games ended naturally, both
 updates were saved, and the second run resumed from the first. A game stopped
 at a limit, a failed game and an interrupted run have not been seen with the
 real engine yet, and nothing has run in the real state folder.
+
+On 2026-11-21 two checkpoints played each other for the first time, and the
+newer one lost: update 1792 won 13 and update 1788 won 62 of 100 games, with 25
+stopped at day 365. Until then nothing had compared the play of two
+checkpoints; the training log cannot. The saved weights show the updates
+between them as steps in unrelated directions, each about a fifth of the
+weights' size. Both are in [Which of two checkpoints plays
+better](#which-of-two-checkpoints-plays-better) and [What an update does to the
+weights](#what-an-update-does-to-the-weights). No setting has yet been shown to
+make a checkpoint play better than the one before it.
 
 To try a change without touching the real state, use a scratch folder:
 
@@ -248,6 +260,57 @@ length of the games that decides how long a cycle takes.
   checks about 56 candidate actions per decision, and compiling the recipe
   walks every trained decision a second time. Each is worth 1 to 5%.
 
+### What an update does to the weights
+
+Read from the log and from the saved checkpoints on 2026-11-21; nothing was
+played or trained for it.
+
+An update of 100 games is one pass of 13,574 optimizer steps of 256 decisions
+(update 1792) or of 42,930 to 58,991 steps of 32 decisions (1788 to 1791), each
+step on windows of two games. The log's mean KL between the policy during the
+update and the one that played the games is 0.06 to 0.16 and 10.5 to 22% of
+the decisions leave PPO's clip range; the two 10-game updates before them reported
+0.003 and 0.005.
+
+| Checkpoint | Size of all weights | Of the recurrent cell | Change since the checkpoint before | As a share of the weights | Cosine with the change before |
+| --- | --- | --- | --- | --- | --- |
+| 1785 | 96.6 | 44.3 | | | |
+| 1788 | 99.2 | 46.4 | 20.1 | 21% | 0.03 |
+| 1789 | 101.2 | 48.2 | 19.1 | 19% | 0.06 |
+| 1790 | 103.5 | 50.1 | 18.1 | 18% | 0.07 |
+| 1791 | 105.7 | 51.9 | 17.6 | 17% | 0.08 |
+| 1792 | 108.4 | 54.2 | 19.0 | 18% | 0.10 |
+
+Sizes are Euclidean norms over the 74,344 weights. Each update moves the
+weights by about a fifth of their size, and almost at a right angle to the
+update before it. After the five steps the weights are 46 away from 1785; had
+every update pushed the same way it would be 94, and steps in unrelated
+directions give 42. The weights also grow: the recurrent cell by 22% over these
+updates, and from 18.0 to 43.1 between updates 1753 and 1784 of the previous
+pipeline, which lie 55 apart after 31 updates.
+
+What this supports: an update's change of the weights is mostly not repeated by
+the next one. Adam takes a step of about the learning rate in every weight
+whatever the size of the gradient, so tens of thousands of steps on a few
+games each add up to a long walk, and PPO's clip does not hold the policy near
+the one that played. What it does not show is which part of an update helps
+play; only matches between checkpoints do.
+
+Two settings follow from it, both off unless given:
+
+- **Fewer, larger steps.** `--windows-per-game` can be as large as a game, for
+  example `--windows-per-minibatch 512 --windows-per-game 512`: a step is then
+  up to 8,192 decisions of one game, a batch like that of update 1792 is about
+  480 steps, and its longest games are replayed 9 times in an update instead
+  of 540. By the log's figures that replay is about 60% of the update's time.
+  Not measured yet: the time, the memory such a step needs, and how far such
+  an update moves the policy.
+- **`--max-kl X`** stops an update once its latest steps (at least 8 steps and
+  16,384 decisions) find the policy further than X from the one that played
+  the games; the rest of the batch is then not trained on, and the log's
+  `optimizer_steps` is below its `planned_steps`. `--epochs N` passes over the
+  batch N times, which is how PPO is usually run once its steps are few.
+
 ### Settings that change training
 
 Everything above plays the same games faster. What follows changes what is
@@ -263,6 +326,7 @@ training run yet; what is known is what they do to a batch of games.
 | `--decisions N` | decisions a seat may take per game day before it can only close windows and end its turn | 40: 33 decisions per seat and day, but half the moves and a sixth of the recruiting |
 | `--play-during-update` | the actors start on the next batch while the update runs, with the weights from before it; with `--backend torch` only | not measured: it needs a training run |
 | `--stopped-game-reward -1` | a game stopped at the day limit is a game both seats lost: every action of it gets the return -1 instead of the policy's own estimate at the stop. `0` makes it a draw | not measured: what it does is to what the policy learns, which only training runs show |
+| `--max-kl X`, `--epochs N` | the update stops once the policy has moved X from the one that played the games; N passes over the batch. See [What an update does to the weights](#what-an-update-does-to-the-weights) | not measured |
 
 - **The two targeted budgets together are the useful ones.** A seat answers
   about 100 decisions per game day and the learner seats' actions are 47%
@@ -338,8 +402,26 @@ each checkpoint's wins, by the colour the first one played, and the first
 one's share of the decided games with a 95% interval. Both seats play under
 one interaction guard: `--guard` names it when the checkpoints were trained
 with budgets. Nothing is trained and nothing is written but the report. It
-starts the real engine, so the user launches it. It has not been run on real
-checkpoints yet.
+starts the real engine, so the user launches it.
+
+The first match, on 2026-11-21: update 1792 against update 1788, 100 games.
+1792 won 13 and 1788 won 62, from both colours (39 to 7 as blue, 23 to 6 as
+red); 25 games reached day 365, 21 of them with 1792 as blue. 1792's share of
+the decided games is 17%, with a 95% interval of 10 to 27%. The four updates
+between them made play worse against the earlier policy.
+
+Two more things a match reports:
+
+- **What each seat expected.** Every game lists, for red and for blue, the
+  policy's own estimate of the result at the seat's first decision of each
+  game day. Set against who won, they show how much the value estimate knows
+  and from which day on.
+- **A shorter memory.** `--first-memory-days N` (and `--second-memory-days`)
+  lets a checkpoint remember N game days only: its recurrent state starts anew
+  whenever it ends its turn on a day that N divides. With the same file on
+  both sides this asks whether the policy plays any worse without its memory
+  of the whole game, the memory that makes an update replay every game from
+  its first frame. Training has no such setting.
 
 ## Develop
 

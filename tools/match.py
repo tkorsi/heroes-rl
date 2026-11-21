@@ -3,6 +3,7 @@
 
     python tools/match.py WORK --first A.pt --second B.pt [--games 100] [--workers 14]
                                [--guard NAME] [--max-days 365] [--seed 1] [--out FILE]
+                               [--first-memory-days N] [--second-memory-days N]
 
 WORK is a folder for the games in play; every call uses a folder of its own
 inside it and removes it at the end. This starts the real engine, so by rule 1
@@ -19,6 +20,15 @@ One JSON line reports every game and the totals: the wins of each checkpoint,
 by the colour the first one played, and the first checkpoint's share of the
 decided games with a 95% interval. Both seats play under the same interaction
 guard; give the one the checkpoints were trained with.
+
+Every game also reports ``values``: for red and for blue, the policy's own
+estimate of the game's result at the seat's first decision of each game day.
+Set against who won, they show how much the value estimate knows.
+
+``--first-memory-days N`` lets the first checkpoint remember N game days only:
+its recurrent state starts anew whenever it ends its turn on a day that N
+divides. With the same file on both sides this asks whether the policy plays
+any worse without its memory of the whole game. Training has no such setting.
 """
 from __future__ import annotations
 
@@ -41,15 +51,19 @@ from heroes.game import guard  # noqa: E402
 from heroes.train import Pool  # noqa: E402
 
 
-def pairs(seed):
-    """The endless list of seeded games as ``(job, seat of the first checkpoint)``, two games per start."""
+def pairs(seed, memory=(None, None)):
+    """The endless list of seeded games as ``(job, seat of the first checkpoint)``, two games per start.
+
+    ``memory`` is the game days the first and the second checkpoint remember.
+    """
     rng, number = random.Random(seed), 0
     while True:
         engine, first, second = rng.randrange(1, 2**31 - 1), rng.getrandbits(62), rng.getrandbits(62)
         for seat in (0, 1):
             number += 1
             # No learner: nothing is trained on. Each checkpoint keeps its sampling seed in both games.
-            yield Job(600000 + 1000 * seed + number, engine, None, (first, second) if seat == 0 else (second, first)), seat
+            seeds, days = ((first, second), tuple(memory)) if seat == 0 else ((second, first), tuple(memory)[::-1])
+            yield Job(600000 + 1000 * seed + number, engine, None, seeds, days), seat
 
 
 def interval(wins, decided):
@@ -62,7 +76,7 @@ def interval(wins, decided):
     return [round(centre - half, 3), round(centre + half, 3)]
 
 
-def measure(config, first, second, *, games, seed=1):
+def measure(config, first, second, *, games, seed=1, memory=(None, None)):
     """Play ``games`` games between the checkpoints at ``first`` and ``second`` and return the report."""
     config.engine().check()
     for path in (first, second):
@@ -72,7 +86,7 @@ def measure(config, first, second, *, games, seed=1):
     config.state.mkdir(parents=True, exist_ok=True)
     # The actors name a game's folder by its number alone. Give this call its own place.
     folder = Path(tempfile.mkdtemp(prefix="match-", dir=config.state))
-    source, pool = pairs(seed), Pool(replace(config, state=folder, both_seats=False))
+    source, pool = pairs(seed, memory), Pool(replace(config, state=folder, both_seats=False))
     finished, seats, handed = [], {}, 0  # seats: game number -> the seat the first checkpoint plays
     try:
         while len(finished) < games:
@@ -91,14 +105,18 @@ def measure(config, first, second, *, games, seed=1):
     rows = [{"number": game.job.number, "engine_seed": game.job.engine_seed, "first_plays": COLORS[seats[game.job.number]],
              "status": game.status, "reason": game.reason,
              "first": game.outcomes[seats[game.job.number]] if game.outcomes else None,
-             "day": game.day, "choices": list(game.choices), "seconds": round(game.seconds, 1)} for game in finished]
+             "day": game.day, "choices": list(game.choices), "seconds": round(game.seconds, 1),
+             # By seat, red then blue: the value estimate at the first decision of each game day.
+             "values": [[None if value is None else round(value, 3) for value in seat]
+                        for seat in game.daily_values or ((), ())]} for game in finished]
     won = {colour: sum(row["first"] == "win" and row["first_plays"] == colour for row in rows) for colour in COLORS}
     lost = {colour: sum(row["first"] == "loss" and row["first_plays"] == colour for row in rows) for colour in COLORS}
     first_wins, second_wins = sum(won.values()), sum(lost.values())
     decided = first_wins + second_wins
     return {
         "first": str(first), "second": str(second), "guard": config.guard, "max_days": config.limits.max_days,
-        "workers": config.workers, "vcmi": str(config.vcmi), "seed": seed, "games": len(rows),
+        "workers": config.workers, "vcmi": str(config.vcmi), "seed": seed,
+        "memory_days": {"first": memory[0], "second": memory[1]}, "games": len(rows),
         "first_wins": first_wins, "second_wins": second_wins,
         "stopped": sum(row["status"] == "truncated" for row in rows),
         "failed": sum(row["status"] == "failed" for row in rows),
@@ -124,18 +142,25 @@ def main():
     parser.add_argument("--guard", help="interaction guard both seats play under (default: the standard one)")
     parser.add_argument("--max-days", type=int, help="stop a game after this game day (default: the training limit)")
     parser.add_argument("--seed", type=int, default=1)
+    parser.add_argument("--first-memory-days", type=int,
+                        help="game days the first checkpoint remembers (default: the whole game)")
+    parser.add_argument("--second-memory-days", type=int, help="the same for the second checkpoint")
     parser.add_argument("--vcmi", type=lambda text: Path(text).expanduser().resolve(), help="another vcmiclient")
     parser.add_argument("--out", type=Path, help="append the JSON report to this file")
     arguments = parser.parse_args()
     if arguments.games < 2 or arguments.games % 2:
         parser.error("--games must be a positive even number")
+    memory = (arguments.first_memory_days, arguments.second_memory_days)
+    if any(days is not None and days < 1 for days in memory):
+        parser.error("a memory lasts at least one game day")
     config = replace(Config(), state=arguments.work)
     for name in ("workers", "guard", "vcmi"):
         if getattr(arguments, name) is not None:
             config = replace(config, **{name: getattr(arguments, name)})
     if arguments.max_days is not None:
         config = replace(config, limits=replace(config.limits, max_days=arguments.max_days))
-    report = measure(config, arguments.first, arguments.second, games=arguments.games, seed=arguments.seed)
+    report = measure(config, arguments.first, arguments.second, games=arguments.games, seed=arguments.seed,
+                     memory=memory)
     line = json.dumps(report)
     print(line, flush=True)
     if arguments.out is not None:

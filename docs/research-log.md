@@ -9657,3 +9657,260 @@ weaker policy; which checkpoint to continue from is the user's decision.
 against 1788, 1790 against 1789, 1791 against 1790, 1792 against 1791) would
 show whether every update lost strength or one did, and 1788 against 1785
 whether the earlier training gained any.
+
+### 2026-11-21 — What the updates do to the weights: a fifth of their size each time, in unrelated directions
+
+**Question.** The match of the entry above left open why four updates made
+play worse. Before any further game: what do the training log and the saved
+checkpoints themselves say about what an update does?
+
+**What ran.** Reading only. No game was played, no update was run, no
+benchmark was timed and no checkpoint was written. The assistant read
+`training-trial/log.jsonl`; the checkpoint files of updates 1785 and 1788 to
+1792 (the copies in `~/Projects/Heroes-artifacts/match-r4x7mn/checkpoints`,
+SHA-256 `4405b57f…`, `a0319a68…`, `8838ed67…`, `2f943bfc…`, `ca190c8a…`,
+`8663440f…`) and the two policy files the previous pipeline retained in
+`selfplay-ten-then-check/retained`, update 1753 (`d8e39346…`) and update 1784
+(`36eee90e…`), copied beside them as `legacy-001753.pt` and
+`legacy-001784.pt`; and the saved results of the update comparisons of
+2026-11-19 and 2026-11-20 in `ppo-rounds-aclj7d/` (`results/quality*.jsonl`,
+`quality/` and `quality1789/verdict-*.json`). The weights were compared with
+`match-r4x7mn/weights_table.py` (output `results/weights-table.txt`): norms and
+differences of tensors read from the files, with the training Python, nothing
+of the project's code.
+
+**The log: how many steps an update takes and how far it reports moving.**
+
+| Update | Games | Stopped at day 365 | Samples | Optimizer steps | Decisions per step | Mean KL in the update | Clipped |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 1786 | 10 | 0 | 105,875 | 3,311 | 32 | 0.003 | 2% |
+| 1787 | 10 | 0 | 172,718 | 5,400 | 32 | 0.005 | 3% |
+| 1788 | 100 | 4 | 1,372,976 | 42,930 | 32 | 0.064 | 11% |
+| 1789 | 100 | 18 | 1,710,118 | 53,465 | 32 | 0.116 | 16% |
+| 1790 | 100 | 15 | 1,830,222 | 57,216 | 32 | 0.089 | 16% |
+| 1791 | 100 | 24 | 1,886,949 | 58,991 | 32 | 0.143 | 21% |
+| 1792 | 100 | 51 | 3,467,583 | 13,574 | 256 | 0.158 | 22% |
+
+The KL is the mean over the update's one pass of (ratio - 1) - log ratio, each
+minibatch measured with the weights of that moment, so the policy at the end of
+an update is further away than this mean. The steps of the previous pipeline:
+431,486 by update 1785, of which 364,979 in the 31 updates 1754 to 1784 (about
+11,800 an update on about 91 games) and 24,602 in update 1785.
+
+**The weights.** 74,344 of them (hidden size 64, feature size 32). Norms are
+Euclidean over all weights or over one module.
+
+| Checkpoint | All weights | Recurrent cell | Value head | Change since the one before | Share of the weights | Of the recurrent cell | Of the value head | Cosine with the change before |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1753 | 76.4 | 18.0 | 0.40 | | | | | |
+| 1784 | 95.3 | 43.1 | 0.90 | 55.4 (31 updates) | | | | |
+| 1785 | 96.6 | 44.3 | 0.89 | 12.4 | 13% | 23% | 28% | 0.06 |
+| 1788 | 99.2 | 46.4 | 0.84 | 20.1 (updates 1786 to 1788) | 21% | 31% | 52% | 0.03 |
+| 1789 | 101.2 | 48.2 | 0.78 | 19.1 | 19% | 30% | 63% | 0.06 |
+| 1790 | 103.5 | 50.1 | 0.75 | 18.1 | 18% | 28% | 51% | 0.07 |
+| 1791 | 105.7 | 51.9 | 0.65 | 17.6 | 17% | 27% | 43% | 0.08 |
+| 1792 | 108.4 | 54.2 | 0.58 | 19.0 | 18% | 28% | 57% | 0.10 |
+
+- *Each update moves the weights by about a fifth of their size.* The
+  recurrent cell changes by 27 to 31% of its norm in every 100-game update of
+  this pipeline and the value head by 43 to 63%.
+- *Consecutive updates point in unrelated directions.* The cosine between one
+  update's change of all weights and the next one's is 0.03 to 0.10. Two
+  random directions among 74,344 weights would give about ±0.004, so there is
+  a small common part and little else.
+- *The distance covered is that of a walk, not of a path.* From 1785 the
+  weights are 20.1, 28.6, 35.0, 40.3 and 46.1 away after the five steps of the
+  table. Five steps of these lengths in one direction give 93.8; in mutually
+  perpendicular directions, 42.0.
+- *The same over the previous pipeline's last campaign.* 1784 is 55.4 from
+  1753 after 31 updates. No file between them is on disk, so the length of
+  those updates is not measured; scaled from updates 1785 and 1788 by the
+  square root of the step counts it is about 9 each, which gives about 50 for
+  perpendicular steps and about 280 for steps in one direction.
+- *The weights grow.* All weights by 12% from 1785 to 1792 and the recurrent
+  cell by 22%; the recurrent cell from 18.0 to 43.1 between 1753 and 1784.
+  The mean singular value of the cell's three recurrent blocks rose from 1.51
+  to 1.71 at 1785 to 1.91 to 2.08 at 1792, and the mean bias of its update
+  gate from 0.40 to 0.64. A sum of perpendicular steps makes a norm grow in
+  just this way; the growth is a little more than that sum predicts (108.4
+  against 105.4).
+- Adam's settings in every file: learning rate 3e-4 as saved, betas 0.9 and
+  0.999, epsilon 1e-8, no weight decay.
+
+**What earlier measurements add** (entries of 2026-11-19; results in
+`ppo-rounds-aclj7d`, read again for this entry).
+
+- Two exact updates on the same 12 games from checkpoint 1787 that differ only
+  in the order of their minibatches change the weights by 4.57 and 4.38 with a
+  cosine of 0.54 between the two changes. About half of what an update does to
+  the weights is decided by the shuffle; across two different batches almost
+  none of it carries over (the cosines above).
+- On those 12 games and on 12 games no update saw, the first-order estimate of
+  the policy's gain was between -0.016 and +0.0007 on the trained games and
+  between -0.0022 and +0.0006 on the unseen ones, for all thirteen updates
+  measured, the since withdrawn modes among them. The value error on the
+  unseen games did fall, from 0.464 to between 0.23 and 0.34: the value
+  estimate takes something from an update that holds on other games, the
+  policy's change does not show it.
+- From checkpoint 1789, on 12 games of 336,649 decisions (no unseen games
+  were collected for it): the default update made 10,524 steps, changed the
+  weights by 8.07 and left the policy at a KL of 0.155 from the one that
+  played; 16 windows a step at 3e-4 made 1,318 steps, 3.03 and 0.094; at
+  8.5e-4, 6.67 and 0.194. From 1787 a change of 4.5 gave a KL of 0.007 to
+  0.014. Per unit of squared distance the policy moves about 4.5 times
+  further from 1789, on games 2.5 times as long; the two were not separated.
+- The value estimate of checkpoint 1789 on those 12 games is wrong by more
+  than a constant zero would be: half the mean squared error against the
+  games' returns is 0.763 over all decisions, and 1.05 to 1.81 in four of the
+  games. There the estimate was 1.4 to 1.9 from the game's return in the root
+  mean square, where a return lies between -1 and +1: as far as an estimate
+  of +0.4 to +0.9 held through a game that ended at -1. Whether it had the
+  wrong sign or overshot the right one was not looked at. For checkpoint 1787
+  the same figure was 0.396 on its trained and 0.464 on its unseen games,
+  with single games up to 1.53.
+- A 100-game update at 8.5e-4 reports no larger a mean KL (0.158 over 13,574
+  steps) than the 12-game update with the same settings from 1789 (0.228 over
+  1,318 steps). Read with caution, two different checkpoints: the policy
+  seems to reach the distance the clip allows within the first tenth of a
+  large update, while the weights keep moving for the other nine tenths.
+
+**What the evidence supports.**
+
+1. An update's change of the weights is large and is mostly not repeated by
+   the next update. That is what tens of thousands of Adam steps on small
+   minibatches do when the gradient of a minibatch is mostly noise: Adam moves
+   every weight by about the learning rate per step whatever the size of the
+   gradient, so the distance grows with the square root of the number of steps
+   and has little to do with what the batch says. A minibatch here is windows
+   of two games, so its advantages carry two results.
+2. PPO's clip does not keep these updates near the policy that played. A KL of
+   0.1 to 0.2 per update with a fifth of the decisions outside the clip range
+   is ten times what the method is usually run at, and nothing in the update
+   limits it.
+3. The value estimate that the advantages are measured against, and that
+   scores every game stopped at day 365, was further from the result than a
+   constant zero in a third of the games at checkpoint 1789. In the batches
+   of updates 1789 to 1792 the stopped games hold 39 to 73% of the samples;
+   their returns are that estimate.
+4. The match of the entry above, 13 wins to 62, is what one would expect of a
+   policy after four such steps. This is consistency, not proof of cause.
+
+**What it does not show.** That smaller or steadier updates would learn: no
+update with other settings has been followed by a match. Whether the training
+of the previous pipeline improved play at any time: no two checkpoints had met
+before 2026-11-21, and the journal's entry of 2026-11-16 already withdrew the
+earlier claims about adjacent checkpoints. Which of the three points above
+costs most. And one alternative is not excluded by weights: in self-play a
+newer policy can beat its predecessor and still lose to an older one, a cycle.
+The matches of neighbouring checkpoints prepared below would show that as a
+newer side that wins every neighbouring match.
+
+**How many steps an update needs for its replay, from the same log.** A step
+replays each of its games once, to the latest of that game's windows in the
+step. Counted from the lengths of the games of each batch:
+
+| Batch of update | Samples | Windows per game in a step: 1 | 8 | 64 | 512 | 4,096 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1791 | 1,886,949 | 117,981 replays, 2,043 M decisions replayed | 14,789, 455 M | 1,892, 64 M | 287, 9 M | 101, 2 M |
+| 1792 | 3,467,583 | 216,772, 5,364 M | 27,147, 1,194 M | 3,440, 167 M | 479, 23 M | 110, 4 M |
+
+Update 1792 ran with 8 windows per game: 27,147 replays of a game and 1.19
+billion replayed decisions for 3.47 million trained ones. At the 8.4 µs per
+replayed decision estimated on 2026-11-19 from two updates, that is about
+10,000 of its 16,005 s. This is an estimate from an estimate, not a
+measurement. With 512 windows of a game in a step the replay all but
+disappears (23 million decisions) and an update of that batch is about 480
+steps of up to 8,192 decisions instead of 13,574 steps of 256. What then
+remains is the differentiated windows and the building of their plans, 4,452 s
+of CPU time on one helper thread in update 1792.
+
+**Changes, all off unless asked for.**
+
+- `PPOConfig.max_kl`, `--max-kl X`: both updates stop once the latest steps
+  find the policy further than X from the one that played the games
+  (`heroes.learner.ppo.KLLimit`: the mean KL of the latest steps, at least 8 of
+  them and at least 16,384 decisions). The decisions not yet met are then not
+  trained on. `PPOReport.planned_steps` and the log's `planned_steps` say how
+  many steps the update would have made.
+- `--epochs N` on the command line; the setting existed.
+- `tools/match.py` reports, for every game and seat, the value estimate at
+  the seat's first decision of each game day (`values`), and takes
+  `--first-memory-days N` and `--second-memory-days N`: that side's recurrent
+  state starts anew whenever it ends its turn on a day that N divides
+  (`Job.memory_days`, `Seat`). A game with a learner refuses a shortened
+  memory, because the update replays whole games.
+
+**Tests.** 104 pass (97 before): the limit's rule on numbers; both updates
+stopping at the step the rule names, with equal steps, samples and losses; the
+flags reaching the update and the log; the daily values of a match; a seat
+that forgets after each of its turns, every second day, or never; the same
+checkpoint on both sides with one side's memory shortened. In the scripted
+games a seat has one legal action, so their KL is exactly zero and the limit
+never trips there by itself: the tests replace the rule to make it trip. The
+limit has not met a real update.
+
+**Prepared, not run. Questions and rules, fixed before any of it runs.**
+
+*A. An update of few large steps, measured.* `tools/perf/update_quality.py` on
+the 12 games from checkpoint 1789 (`ppo-rounds-aclj7d/from1789/batch`, 336,649
+decisions), settings `128:128`, `512:512` and `2048:512` at 3e-4, one update
+each, judged on the same games with forward passes; the three updates of
+2026-11-20 (`2:1`, `16:8`, `16:8` at 8.5e-4) are judged again beside them from
+their saved weights. On a Mac that plays no games meanwhile. Hypotheses:
+
+1. *Cost.* The `512:512` update of these games takes less than a third of the
+   1,127 s the `16:8` update took, and each step fits in memory.
+2. *Size.* It makes 46 steps, changes the weights by less than 1.5 (against
+   3.03, 6.67 and 8.07) and leaves the policy at a KL below 0.03 from the one
+   that played (against 0.094, 0.194 and 0.155).
+3. `128:128` makes 170 steps and lands between `512:512` and `16:8` in both.
+   `2048:512` is the same update in 12 steps; whether a step of 32,768
+   decisions fits in memory is part of the question.
+
+If 1 fails, sharing the replay further is not where the time is. If 2 fails,
+the number of steps is not what sets the size of an update, and the limit
+`--max-kl` is the way to bound it. Either way the gain on the trained games is
+reported and not judged: without unseen games it measures fitting.
+
+*B. Matches.* `tools/match.py` from a frozen copy of this commit, 100 games
+each in 50 pairs, seed 1, standard guard, day limit 365, 14 actors when
+nothing else plays. The newer checkpoint is "first". Rule for every match, as
+on 2026-11-21: the first side is weaker if the Wilson 95% interval of its
+share of the decided games lies wholly below one half, stronger if wholly
+above, and otherwise the match shows neither.
+
+- 1792 against 1791, 1791 against 1790, 1790 against 1789, 1789 against 1788:
+  which update lost the strength. If updates are steps in unrelated
+  directions, no newer side should come out stronger, and the losses should
+  be spread over the four. A newer side that wins each of them, with 1792
+  still losing to 1788, would be a cycle instead.
+- 1788 against 1785: the three updates before them, two of ten games and the
+  first of 100.
+- 1785 against 1753: the 32 updates and about 2,900 games of the previous
+  pipeline's last campaign. Checkpoint 1753 was trained before troop
+  management was restored and under an older guard, so it meets actions and
+  army details it never trained with. A win of 1785 is therefore weak
+  evidence that those updates taught anything; a 1785 that is not stronger
+  would be strong evidence that they did not.
+- 1788 with `--first-memory-days 1` against 1788 as it is: does the policy
+  play worse when it forgets everything each time it ends its turn? If the
+  forgetting side is not weaker, the memory of the whole game is not what
+  this policy plays with, and an update that rebuilds a state from the
+  current turn only becomes an option: no replay of whole games, and no
+  recurrent state that a small change of the weights moves by 40%. If it is
+  weaker, either the memory is useful or these weights merely lean on it;
+  seven days would be the next question.
+
+From every match the daily value estimates are read against the results: for
+each checkpoint, how often the side that goes on to win holds the higher
+estimate on days 1, 8, 29, 57 and 113, and the two seats' estimates in games
+that reach day 365. This is a description, with no rule attached.
+
+**Limitations.** Norms and cosines of weights say how an update moves the
+weights, not what the policy then does; the function a recurrent network
+computes can change much or little for the same distance. The cosine between
+two updates measures repetition, and a learning signal need not repeat
+exactly; that it is 0.03 to 0.10 while two shuffles of one batch give 0.54
+says the batch, not the direction of improvement, decides where an update
+goes. The cost figures for larger steps are derived from the log. One match
+and one seed stand behind "play got worse".

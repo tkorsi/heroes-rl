@@ -7,11 +7,14 @@ play are never reused, and neither is a state computed with earlier weights:
 at every optimizer step the state is rebuilt from the start of the game with
 the current weights, which costs time quadratic in the length of a game.
 ``windows_per_game`` lets the windows a minibatch takes from one game share
-that replay. The MLX backend in ``heroes.learner.mlx`` runs the same update on
-Apple GPUs. ``update`` below is the slow, plain-autograd reference.
+that replay. ``max_kl`` ends an update once the policy has moved that far from
+the one that played the games. The MLX backend in ``heroes.learner.mlx`` runs
+the same update on Apple GPUs. ``update`` below is the slow, plain-autograd
+reference.
 """
 from __future__ import annotations
 
+from collections import deque
 from dataclasses import asdict, dataclass, field
 import math
 import time
@@ -35,11 +38,15 @@ class PPOConfig:
     # of it. 1 draws every window from all games alike; it must divide
     # windows_per_minibatch.
     windows_per_game: int = 1
+    # The update stops once its latest steps find the policy this far from the
+    # one that played the games (see ``KLLimit``). None never stops it early.
+    max_kl: float | None = None
 
     def __post_init__(self):
         if not (0 <= self.gae_lambda <= 1 and 0 < self.clip_ratio < 1 and self.value_coefficient >= 0
                 and self.max_grad_norm > 0 and self.learning_rate > 0
                 and (self.value_clip is None or self.value_clip > 0)
+                and (self.max_kl is None or self.max_kl > 0)
                 and type(self.windows_per_game) is int
                 and min(self.epochs, self.decisions_per_window, self.windows_per_minibatch,
                         self.windows_per_game) >= 1
@@ -189,15 +196,45 @@ def clipped_losses(log_probs, values, old_log_probs, old_values, advantages, ret
     return total, policy_loss, value_loss, ((ratio - 1) - log_ratio).mean(), ((ratio - 1).abs() > config.clip_ratio).float().mean()
 
 
+KL_STEPS, KL_DECISIONS = 8, 16384  # what a KL limit judges: the latest steps, at least this many of each
+
+
+class KLLimit:
+    """Whether the latest steps of an update found the policy further than ``max_kl`` from the one that played.
+
+    Every step reports the mean of (ratio - 1) - log ratio over its decisions,
+    taken before the step changes the weights: how far the policy has moved
+    from the behaviour policy on those decisions. One step is a few games and
+    that mean is noisy, so the limit reads the latest ``KL_STEPS`` steps, or
+    as many more as it takes to hold ``KL_DECISIONS`` decisions.
+    """
+
+    def __init__(self, max_kl):
+        self.max_kl, self.steps, self.decisions = max_kl, deque(), 0
+
+    def passed(self, kl, count):
+        """Take one step's mean KL over its ``count`` decisions; True when the update should stop here."""
+        if self.max_kl is None:
+            return False
+        self.steps.append((kl, count))
+        self.decisions += count
+        while len(self.steps) > KL_STEPS and self.decisions - self.steps[0][1] >= KL_DECISIONS:
+            self.decisions -= self.steps.popleft()[1]
+        if len(self.steps) < KL_STEPS or self.decisions < KL_DECISIONS:
+            return False
+        return sum(value * weight for value, weight in self.steps) / self.decisions > self.max_kl
+
+
 @dataclass(frozen=True)
 class PPOReport:
-    samples: int
+    samples: int  # decisions trained on: all of the batch, or those met before the KL limit stopped the update
     optimizer_steps: int
     policy_loss: float
     value_loss: float
     approximate_kl: float
     clip_fraction: float
     timings_seconds: dict = field(default_factory=dict)
+    planned_steps: int = 0  # more than ``optimizer_steps`` when the KL limit stopped the update
 
 
 def _states_before(model, frames, starts):
@@ -219,7 +256,7 @@ def update(model, optimizer, trajectories, *, config, generator, progress=None):
     started = time.perf_counter()
     batch = prepare(trajectories, config)
     inputs = [encode_history(item.frames, guard=item.guard) for item in trajectories]
-    totals, count_seen, steps = [0.0] * 4, 0, 0
+    totals, count_seen, steps, limit, stopped = [0.0] * 4, 0, 0, KLLimit(config.max_kl), False
     for _ in range(config.epochs):
         for selected in batch.minibatches(config, generator):
             new_logs, new_values, old_logs, old_values, advantages, returns = [], [], [], [], [], []
@@ -257,5 +294,11 @@ def update(model, optimizer, trajectories, *, config, generator, progress=None):
             steps += 1
             if progress is not None:
                 progress(steps, batch.planned_steps(config))
-    return PPOReport(batch.samples, steps, *(value / count_seen for value in totals),
-                     timings_seconds={"full_update": time.perf_counter() - started})
+            if limit.passed(metrics[2].detach().item(), len(old_logs)):
+                stopped = True
+                break
+        if stopped:
+            break
+    return PPOReport(min(count_seen, batch.samples), steps, *(value / count_seen for value in totals),
+                     timings_seconds={"full_update": time.perf_counter() - started},
+                     planned_steps=batch.planned_steps(config))

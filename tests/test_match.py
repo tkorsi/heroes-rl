@@ -1,5 +1,6 @@
 """Two checkpoints against each other on the scripted engine, where the script decides who wins."""
 from dataclasses import replace
+from itertools import islice
 import json
 from pathlib import Path
 import sys
@@ -76,6 +77,85 @@ def test_a_match_swaps_the_colours_and_counts_each_checkpoints_wins(fake_engine,
     again = match.measure(_config(fake_engine, tmp_path, days=3, winner=0), first, second, games=4)
     assert [(row["number"], row["engine_seed"], row["first"]) for row in again["results"]] == [
         (row["number"], row["engine_seed"], row["first"]) for row in rows]
+
+
+def test_a_match_reports_what_each_seat_expected_day_by_day(fake_engine, checkpoints, tmp_path):
+    import match
+    first, second = checkpoints
+    report = match.measure(_config(fake_engine, tmp_path, days=3, winner=0), first, second, games=2)
+    assert report["memory_days"] == {"first": None, "second": None}
+    one, two = report["results"]
+    assert all(len(seat) == 3 and all(isinstance(value, float) for value in seat) for row in (one, two) for seat in row["values"])
+    # A policy's estimate at its first decision is the same from either colour here: the scripted seats see the same.
+    assert one["values"][0][0] == two["values"][1][0] != one["values"][1][0] == two["values"][0][0]
+    # A game that is trained on carries no such list.
+    env = Env(fake_engine(days=3, winner=1))
+    try:
+        game = actor.play(env, checkpoint.load_model(first), actor.Job(9, 7, 0, (1, 2)), tmp_path / "trained",
+                          guard=guard.VERSION)
+    finally:
+        env.close()
+    assert game.trajectory is not None and game.daily_values is None
+
+
+def test_a_seat_with_a_short_memory_starts_anew_when_it_ends_its_turn(fake_engine, checkpoints, tmp_path, monkeypatch):
+    model = checkpoint.load_model(checkpoints[0])
+    sizes = {}  # a seat's memory -> how much state it held before each of its observations
+    original = actor.Seat.observe
+
+    def watched(self, frames):
+        sizes.setdefault(self.memory_days, []).append(float(self.state.abs().sum()))
+        original(self, frames)
+
+    monkeypatch.setattr(actor.Seat, "observe", watched)
+
+    def play(number, memory, learner=None):
+        sizes.clear()
+        env = Env(fake_engine(days=4, winner=1))
+        try:
+            return actor.play(env, model, actor.Job(number, 7, learner, (1, 2), memory), tmp_path / f"game-{number}",
+                              guard=guard.VERSION)
+        finally:
+            env.close()
+
+    whole = play(1, (None, None))
+    assert [size > 0 for size in sizes[None][::2]] == [False, True, True, True]  # red's four days
+    daily = play(2, (1, None))
+    # Red ends its turn once a day and forgets each time; blue remembers the whole game.
+    assert sizes[1] == [0.0] * 4 and [size > 0 for size in sizes[None]] == [False, True, True, True]
+    assert daily.daily_values[1] == whole.daily_values[1]  # blue sees and answers as before
+    assert daily.daily_values[0][0] == whole.daily_values[0][0] and daily.daily_values[0][1:] != whole.daily_values[0][1:]
+    play(3, (2, 1))
+    assert [size > 0 for size in sizes[2]] == [False, True, False, True] and sizes[1] == [0.0] * 4
+    with pytest.raises(ValueError, match="shortened memory"):  # the update replays whole games
+        play(4, (1, None), learner=0)
+
+
+def test_a_match_gives_each_checkpoint_its_memory_in_both_colours(fake_engine, checkpoints, tmp_path, monkeypatch, capsys):
+    import match
+    first, second = checkpoints
+    assert [job.memory_days for job, _ in islice(match.pairs(1, (1, None)), 2)] == [(1, None), (None, 1)]
+    assert [job.memory_days for job, _ in islice(match.pairs(1), 2)] == [(None, None)] * 2
+    config = _config(fake_engine, tmp_path, days=3, winner=1)
+    plain = match.measure(config, first, first, games=2)
+    short = match.measure(config, first, first, games=2, memory=(1, None))
+    assert short["memory_days"] == {"first": 1, "second": None}
+    for before, after in zip(plain["results"], short["results"]):
+        seat = ("red", "blue").index(after["first_plays"])
+        # The side that remembers answers as in the plain match; the other one's later estimates differ.
+        assert after["values"][1 - seat] == before["values"][1 - seat]
+        assert after["values"][seat][0] == before["values"][seat][0] and after["values"][seat][1:] != before["values"][seat][1:]
+    monkeypatch.setattr(match, "Config", lambda: config)
+    monkeypatch.setattr(sys, "argv", ["match.py", str(tmp_path / "work"), "--first", str(first), "--second", str(first),
+                                      "--games", "2", "--first-memory-days", "7", "--second-memory-days", "1"])
+    capsys.readouterr()
+    match.main()
+    assert json.loads(capsys.readouterr().out)["memory_days"] == {"first": 7, "second": 1}
+    monkeypatch.setattr(sys, "argv", ["match.py", str(tmp_path / "work"), "--first", str(first), "--second", str(first),
+                                      "--games", "2", "--first-memory-days", "0"])
+    with pytest.raises(SystemExit) as refused:
+        match.main()
+    assert refused.value.code == 2
 
 
 def test_a_match_of_games_that_reach_the_day_limit_has_no_winner(fake_engine, checkpoints, tmp_path):

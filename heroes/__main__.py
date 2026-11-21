@@ -26,7 +26,8 @@ def _config(arguments):
     if any(value is not None for value in budgets.values()):
         from .game import guard
         changes["guard"] = guard.version(**budgets)
-    ppo = {name: getattr(arguments, name) for name in ("windows_per_minibatch", "windows_per_game", "learning_rate")
+    ppo = {name: getattr(arguments, name) for name in ("windows_per_minibatch", "windows_per_game", "learning_rate",
+                                                       "epochs", "max_kl")
            if getattr(arguments, name, None) is not None}
     if ppo:
         changes["ppo"] = replace(config.ppo, **ppo)
@@ -84,6 +85,10 @@ def main(argv=None):
             command.add_argument("--learning-rate", type=float,
                                  help="Adam step size (default 3e-4, for 2 windows per optimizer step; "
                                       "8.5e-4 goes with 16)")
+            command.add_argument("--epochs", type=int, help="passes of an update over its games (default 1)")
+            command.add_argument("--max-kl", type=float,
+                                 help="stop an update once its latest steps find the policy this far from the one "
+                                      "that played the games, for example 0.02 (default: never)")
         command.add_argument("--backend", choices=("mlx", "torch"), help="PPO backend (default mlx)")
         command.add_argument("--state", type=_path, help="folder for checkpoints and the log")
         command.add_argument("--legacy", type=_path, help="folder of the previous pipeline, imported once")
@@ -94,9 +99,9 @@ def main(argv=None):
     try:
         config = _config(arguments)
     except ValueError:
-        parser.error("--windows-per-minibatch and --windows-per-game must be at least 1, --windows-per-game "
-                     "must divide --windows-per-minibatch, --learning-rate must be positive, and the daily "
-                     "budgets --stack-moves, --windows and --decisions at least 1")
+        parser.error("--windows-per-minibatch, --windows-per-game and --epochs must be at least 1, "
+                     "--windows-per-game must divide --windows-per-minibatch, --learning-rate and --max-kl must "
+                     "be positive, and the daily budgets --stack-moves, --windows and --decisions at least 1")
     if arguments.command == "train" and arguments.games < 1:
         parser.error("games must be positive")
     if config.workers < 1 or config.games_per_update < 1:

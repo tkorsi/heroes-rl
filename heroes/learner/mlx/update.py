@@ -57,7 +57,7 @@ def update(model, optimizer, trajectories, *, config, generator, progress=None):
     """Run the whole update, then copy FP32 weights, Adam state and the shuffle RNG back."""
     import numpy as np
     import torch
-    from ..ppo import PPOReport, prepare
+    from ..ppo import KLLimit, PPOReport, prepare
     from .model import MLXBackend
     from .plans import _prefix_plan, _joined_plan, _active_parameters
 
@@ -146,6 +146,7 @@ def update(model, optimizer, trajectories, *, config, generator, progress=None):
     prepared_prefixes = None
     weighted = [0.0] * 4
     count_seen = completed = 0
+    limit, stopped = KLLimit(config.max_kl), False
     planner = ThreadPoolExecutor(max_workers=1, thread_name_prefix="ppo-plans")
     try:
         backend = MLXBackend(manifest, array_loader=lambda value: value, plan_loader=load_history)
@@ -180,9 +181,14 @@ def update(model, optimizer, trajectories, *, config, generator, progress=None):
                 del step
                 prepared_prefixes.clear()
                 prepared_prefixes = None
+                if limit.passed(metrics[2], count):
+                    stopped = True
+                    break
+            if stopped:
+                break
         backend.mx.synchronize()
         updated = time.perf_counter()
-        _require(completed == planned_steps and count_seen == offset * config.epochs,
+        _require(stopped or (completed == planned_steps and count_seen == offset * config.epochs),
                  "MLX update skipped samples or optimizer steps")
         restored_parameters = {name: torch.from_numpy(np.array(value, copy=True)) for name, value in backend.p.items()}
         restored_adam = {}
@@ -225,9 +231,9 @@ def update(model, optimizer, trajectories, *, config, generator, progress=None):
             mx.synchronize()
             mx.clear_cache()
     finished = time.perf_counter()
-    return PPOReport(offset, completed, *(value / count_seen for value in weighted), timings_seconds={
+    return PPOReport(min(count_seen, offset), completed, *(value / count_seen for value in weighted), timings_seconds={
         "preparation": prepared - started, "update": updated - prepared,
         "plan_build": plan_seconds, "cpu_restore": restored - updated,
         "state_validation": validation_seconds, "cleanup": finished - restored,
         "full_update": finished - started,
-    })
+    }, planned_steps=planned_steps)

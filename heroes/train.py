@@ -448,12 +448,15 @@ def _train(config, games, update_policy, fresh, out):
             saved_update = update
             del batch
             log.write("update", update=update, games=target, **tally, samples=report.samples,
-                      optimizer_steps=report.optimizer_steps, policy_loss=report.policy_loss,
+                      optimizer_steps=report.optimizer_steps, planned_steps=report.planned_steps,
+                      policy_loss=report.policy_loss,
                       value_loss=report.value_loss, approximate_kl=report.approximate_kl,
                       clip_fraction=report.clip_fraction, collect_seconds=round(collected - started, 1),
                       update_seconds=round(updated - collected, 1), update_timings=report.timings_seconds,
                       checkpoint=saved.name, progress=state.progress)
-            display.line(f"update {update} saved  {report.samples} samples  {report.optimizer_steps} steps  "
+            steps = (f"{report.optimizer_steps} steps" if report.optimizer_steps >= report.planned_steps else
+                     f"{report.optimizer_steps} of {report.planned_steps} steps (stopped at the KL limit)")
+            display.line(f"update {update} saved  {report.samples} samples  {steps}  "
                          f"policy loss {report.policy_loss:+.4f}  value loss {report.value_loss:.4f}  "
                          f"KL {report.approximate_kl:.5f}  games {_clock(collected - started)}  "
                          f"PPO {_clock(updated - collected)}")
