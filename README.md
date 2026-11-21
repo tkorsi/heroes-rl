@@ -4,8 +4,6 @@ Can a policy learn to take an enemy town in *Heroes of Might and Magic III*? It 
 
 ![A snowy Heroes III battlefield beside two Terminal windows showing a 20-game self-play batch and its 3,869 PPO optimizer steps.](docs/media/heroes-self-play.webp)
 
-*On the left, a player’s Horn of the Abyss battle. On the right, two Terminal windows summarize the recorded training run from checkpoint 1799 to 1800. During self-play, VCMI’s BattleAI handles tactical combat.* [Run record](docs/research-log.md#2026-11-21--one-20-game-update-from-checkpoint-1799)
-
 ## What has the policy learned?
 
 In a head-to-head evaluation, two frozen policies played **ten fresh seeds twice**, swapping Red and Blue on each seed. Both played the same scenario, with learning switched off. The engine recorded who owned each town after every transfer.
