@@ -9895,3 +9895,31 @@ windows summarizing the recorded self-play batch and PPO update that produced
 checkpoint 1800. The caption identifies both sources. The research notes now
 use portable path references and omit private workspace identifiers. The
 recorded results and experimental settings are preserved.
+
+
+### 2026-11-23 — Curriculum and layout training handoff
+
+A policy trained from simplified starting positions beat the ordinary self-play
+checkpoint 196–1, with three games reaching day 365. Both training arms started
+from checkpoint 1805 and had 107 minutes. Four wins ended before the other side
+had a first turn. They are included in the result. The collector now preserves
+valid decisions from such completed games.
+
+The return to normal starts finished at checkpoint 2044. On the original map,
+it won 113 games and lost 86 against checkpoint 1951, with one day-limit game.
+The mean paired score was +0.135 (95% interval +0.005 to +0.265). Evaluation
+used fresh seeds and swapped colors, with PPO disabled.
+
+Five PPO updates on a mix of original and generated town layouts led to
+checkpoint 2049. Against 2044 it scored 49–49 on the original map and 47–52
+on held-out town layouts, with two and one day-limit games respectively. Five
+more updates that also varied resource placement led to checkpoint 2054. It
+scored 66–32 against 2049 on the original map, with two day-limit games, and
+39–61 on held-out resource layouts. These are sequential comparisons. A
+same-time ordinary self-play control is needed to attribute the changes to
+the layouts.
+
+The implementation uses the native CPU policy path, compact rollout recording
+and whole-game MLX PPO. The original map and reward rules are used in the
+end-to-end comparison. Exact experiment commands, checkpoint hashes and replay
+ledgers are recorded in the private research snapshot.

@@ -18,6 +18,7 @@ from math import copysign, log1p, sqrt
 
 import torch
 from torch import Tensor, nn
+from torch.nn import functional as F
 
 from ..game import contract as c
 from ..game import guard as interaction_guard
@@ -88,6 +89,9 @@ _KEPT_VISIT_LIMIT = 2048  # each entry keeps the encodings of one kept tree's su
 # Key of the per-frame cache entry that is False once the cache may hold a tree
 # equal to, but not identical with, a later one (see _encode_root).
 _EXACT_CACHE = object()
+# Key of the per-frame cache entry that lists the exact roots encoded from the
+# memo alone: their subtrees are not in the cache until ``_settle`` writes them.
+_UNSETTLED = object()
 
 
 def _leaf_key(kind, value):
@@ -99,6 +103,10 @@ def _leaf_key(kind, value):
     return (type(value), value) if type(value) in (int, bool) else None
 
 
+_EXACT_LIMIT = 4096
+_EXACT = {}  # id of a tree asked about lately -> (the tree, the answer): the policy and the recorder ask about the same trees
+
+
 def _exact_tree(tree):
     """True when equality is identity for every subtree of this tree.
 
@@ -107,6 +115,20 @@ def _exact_tree(tree):
     whose texts and tags are strings have no such distinctions: equal subtrees
     are exactly identical and encode to identical tensors.
     """
+    if type(tree) is _Kept:
+        return tree.exact  # checked when it was built
+    found = _EXACT.get(id(tree))
+    if found is not None and found[0] is tree:
+        return found[1]
+    result = _walk_exact(tree)
+    if len(_EXACT) >= _EXACT_LIMIT:
+        _EXACT.clear()  # bounded memory; a miss only walks the tree again
+    _EXACT[id(tree)] = (tree, result)  # holds the tree, so its id names nothing else
+    return result
+
+
+def _walk_exact(tree):
+    # heroes.model.fast puts the same walk in C in this function's place where its kernel is in use.
     stack = [tree]
     while stack:
         item = stack.pop()
@@ -389,6 +411,10 @@ class ContextualInput:
     guard: interaction_guard.GuardSupport | None = None
 
 
+_KEEP_FRAMES = True  # tests switch it off to compare with payloads built anew
+_FRAME_TREES = {}  # (day, kind, result, accepted, outcome) -> the kept payload of a frame that carries nothing else
+
+
 class ContextualEncoder:
     """Turns one seat's frames, in order, into model inputs. It holds no neural state.
 
@@ -406,7 +432,13 @@ class ContextualEncoder:
         basis = self.decision.observation if self.decision is not None else self.observation
         kind = frame.kind
         payload = None
-        if kind not in _METADATA:
+        # Most frames carry a day, a kind and at most a result or an acknowledgement: a consumed action, a
+        # result, a view, a decision. Such a payload is a function of those alone and is built once.
+        plain = _KEEP_FRAMES and frame.action is None and frame.event is None and frame.context is None
+        key = (frame.day, kind, frame.result, frame.accepted, frame.outcome) if plain else None
+        if plain and kind not in _METADATA:
+            payload = _FRAME_TREES.get(key)
+        if kind not in _METADATA and payload is None:
             children = [_node("day", _number(frame.day)), _text(kind)]
             if frame.action is not None:
                 children.append(_action(frame.action, basis))
@@ -430,6 +462,10 @@ class ContextualEncoder:
             # Consumer layer, revisions, sequence numbers, evidence and command
             # counters are deliberately absent. A consumed-action marker remains.
             payload = _node("frame", *children)
+            if plain:
+                if len(_FRAME_TREES) >= _KEPT_LIMIT:
+                    _FRAME_TREES.clear()  # bounded memory; a miss only builds the payload again
+                payload = _FRAME_TREES[key] = _keep(payload)
         guard = self.guard_tracker.observe(frame)
         if kind == "decision":
             self.decision = frame
@@ -479,8 +515,96 @@ def map_key(observation):
             tuple((obj.position, obj.kind, obj.subtype, obj.owner) for obj in observation.objects))
 
 
+_GROUNDS = {}  # id of a tile tuple -> (the tuple, the map's size, terrain, road, rows, their bytes), the latest few
+_OBJECT_ROWS = {}  # (kind, subtype, owner) -> the 67 attributes of such an object
+
+
+def ground(tiles, size):
+    """What a view's tiles say, cell by cell: ``(tiles, size, terrain, road, rows, content)``.
+
+    ``terrain`` and ``road`` are the tiles' numbers raised by one, 0 where no
+    tile is seen; ``rows`` has five columns per cell, the first three seen,
+    blocked and visitable and the last two zero, for whoever adds heroes and
+    towns to a copy. ``content`` is the three packed into bytes: two tile
+    tuples are equal exactly when their contents are, since a view lists its
+    tiles in the order of their places. The arrays are shared with every later
+    caller: read them, never write to them.
+
+    A view changes a tile or two of the view before it, and the tuple of such
+    a view is made from the previous one (``contract.tiles_made_from``): its
+    arrays are then the previous arrays with those places written again,
+    instead of a walk over every tile for every hero's step.
+    """
+    import numpy as np
+    known = _GROUNDS.get(id(tiles))
+    if known is not None and known[0] is tiles and known[1] == size:
+        return known
+    width, height, _ = size
+    count = width * height
+    before = None
+    made = c.tiles_made_from(tiles)
+    if made is not None:
+        before = _GROUNDS.get(id(made[0]))
+        if before is not None and (before[0] is not made[0] or before[1] != size):
+            before = None
+    if before is not None:
+        terrain, road, rows = before[2].copy(), before[3].copy(), before[4].copy()
+        for place in made[1]:
+            tile = tiles[place]  # at the position of the tile it replaced
+            index = tile.position[1] * width + tile.position[0]
+            terrain[index], road[index] = tile.terrain + 1, tile.road + 1
+            rows[index, 0], rows[index, 1], rows[index, 2] = 1.0, float(tile.blocked), float(tile.visitable)
+    else:
+        numbers, flags = [0] * (2 * count), [0.0] * (5 * count)
+        for tile in tiles:
+            index = tile.position[1] * width + tile.position[0]
+            numbers[index], numbers[count + index] = tile.terrain + 1, tile.road + 1
+            flags[5 * index:5 * index + 3] = (1.0, float(tile.blocked), float(tile.visitable))
+        both = np.array(numbers, dtype=np.int32)
+        terrain, road, rows = both[:count].copy(), both[count:].copy(), np.array(flags, dtype=np.float32).reshape(count, 5)
+    # Two kilobytes instead of the arrays' eight: a game meets tens of thousands of grounds and keeps their contents.
+    # Terrain and road numbers are at most 256; the three flags of a cell are a zero or a one each.
+    marks = rows[:, 0] + 2 * rows[:, 1] + 4 * rows[:, 2]
+    content = terrain.astype(np.uint16).tobytes() + road.astype(np.uint16).tobytes() + marks.astype(np.uint8).tobytes()
+    if len(_GROUNDS) >= 16:
+        del _GROUNDS[next(iter(_GROUNDS))]  # the oldest; an entry holds its tuple, so no id is reused meanwhile
+    known = _GROUNDS[id(tiles)] = (tiles, size, terrain, road, rows, content)
+    return known
+
+
+def object_row(kind, subtype, owner):
+    """An object's 67 attributes: the bits of its kind and subtype (categories, not ranks) and whose it is."""
+    row = _OBJECT_ROWS.get((kind, subtype, owner))
+    if row is None:
+        if len(_OBJECT_ROWS) >= 4096:
+            _OBJECT_ROWS.clear()
+        row = _OBJECT_ROWS[(kind, subtype, owner)] = (
+            [float(value >> bit & 1) for value in (kind, subtype) for bit in range(32)]
+            + [float(owner == side) for side in ("self", "opponent", "neutral")])
+    return row
+
+
+_SEMANTICS_LIMIT = 64
+_SEMANTICS = {}  # id of an observation -> (the observation, its semantic tree), the latest few
+
+
 def observation_semantics(observation):
-    """The visible semantic tree shared by Python and native tensor execution."""
+    """The visible semantic tree shared by Python and native tensor execution.
+
+    The trees of the observations met last are kept: the recipe of a frame is
+    recorded a few frames after the policy read it, from the same tree.
+    """
+    found = _SEMANTICS.get(id(observation))
+    if found is not None and found[0] is observation:
+        return found[1]
+    tree = _observation_semantics(observation)
+    if len(_SEMANTICS) >= _SEMANTICS_LIMIT:
+        del _SEMANTICS[next(iter(_SEMANTICS))]  # the oldest; it holds its observation, so no id is reused meanwhile
+    _SEMANTICS[id(observation)] = (observation, tree)
+    return tree
+
+
+def _observation_semantics(observation):
     own = _node("observation", _node("size", _semantic(observation.size)),
                 _node("resources", _semantic(observation.resources)),
                 _set("heroes", [_semantic(hero) for hero in observation.heroes]),
@@ -552,6 +676,8 @@ class ContextualActorCritic(nn.Module):
     def __getstate__(self):
         state = super().__getstate__()
         state.pop("_memo_state", None)  # copies and pickles start without a memo
+        state.pop("_frozen", None)
+        state.pop("_fast", None)  # and without the acting twin (heroes.model.fast), which holds these weights
         return state
 
     def _memo(self):
@@ -567,39 +693,133 @@ class ContextualActorCritic(nn.Module):
         if torch.is_grad_enabled() or self.training:
             return None
         memo = self.__dict__.get("_memo_state")
+        if memo is not None and self.__dict__.get("_frozen"):
+            return memo  # the owner promised that the weights stay as they are
         parameters = tuple(self.parameters()) if memo is None else memo["parameters"]
         versions = tuple((parameter._version, parameter.data_ptr()) for parameter in parameters)
         if memo is None or memo["versions"] != versions:
             memo = self.__dict__["_memo_state"] = {
                 "parameters": parameters, "versions": versions, "text": {}, "number": {}, "node": {},
-                "kept": {}, "map": None, "observation": None}
+                "kept": {}, "exact": {}, "frame": {}, "map": None, "observation": None,
+                # The weights the acting path reads most, without a module call in between:
+                # the same operations on the same tensors as ``self.tree``, ``self.gru`` and ``self.value``.
+                "tree": (self.tree[0].weight, self.tree[0].bias),
+                "gru": (self.gru.weight_ih, self.gru.weight_hh, self.gru.bias_ih, self.gru.bias_hh),
+                "value": (self.value.weight, self.value.bias),
+                "query": (self.policy_query.weight, self.policy_query.bias)}
         return memo
+
+    def freeze(self):
+        """Promise that no weight changes until ``thaw``: acting then skips the check that none did.
+
+        An actor loads a checkpoint and only plays with it. Checking every
+        parameter's version at every frame is then work for nothing. Loading a
+        state thaws the model; a change of the weights by any other way while
+        frozen would leave stale encodings in use.
+        """
+        self.eval()
+        self.__dict__["_frozen"] = True
+        return self
+
+    def thaw(self):
+        self.__dict__.pop("_frozen", None)
+        self.__dict__.pop("_memo_state", None)
+        self.__dict__.pop("_fast", None)
+        return self
+
+    def train(self, mode=True):
+        if mode:
+            self.__dict__.pop("_frozen", None)
+            self.__dict__.pop("_fast", None)
+        return super().train(mode)
 
     def load_state_dict(self, *arguments, **options):
         self.__dict__.pop("_memo_state", None)  # ``assign=True`` replaces the parameter objects themselves
+        self.__dict__.pop("_frozen", None)
+        self.__dict__.pop("_fast", None)
         return super().load_state_dict(*arguments, **options)
 
     def _encode_root(self, tree, cache, final=False):
         """Encode one top-level tree with this frame's cache, as ``_encode_tree`` does.
 
-        Internal nodes come from the inference memo only while this tree and
-        every earlier root of the cache are exact. Then no lookup can match an
-        equal but different tree, so every subtree's cached value is the exact
-        encoding of that very subtree, the value a memo entry holds. Hits still
-        visit their subtrees, so the cache gains exactly the entries the
-        reference computation would add, and a later inexact root (signed zero,
-        NaN) meets the reference cache. Once a root is inexact, or a root was
-        encoded without the memo, the cache no longer uses it.
+        While this tree and every earlier root of the cache are exact, no
+        lookup can match an equal but different tree, so the encoding of every
+        subtree is a function of that subtree alone and comes from the
+        inference memo (``_encode_exact``): nothing is read from the cache or
+        written to it. The root is only noted. A later inexact root (signed
+        zero, NaN), or a walk under other weights or modes, must meet the
+        cache the reference computation would hold; ``_settle`` then writes
+        the subtrees of the noted roots, and from there on the cache is used
+        without the memo. ``final`` means nothing reads the cache after this
+        root, so it need not be noted.
         """
         memo = cache.get(_LEAF_MEMO)
         nodes = memo["node"] if memo is not None and not torch.is_grad_enabled() else None
         if nodes is not None and cache.get(_EXACT_CACHE, True) and _exact_tree(tree):
             cache[_EXACT_CACHE] = True
-            # The last root of a cache that nothing reads afterwards needs no visit.
-            hit = nodes.get(tree) if final else None
-            return hit if hit is not None else self._encode_tree(tree, cache, nodes)
+            if not final:
+                unsettled = cache.get(_UNSETTLED)
+                if unsettled is None:
+                    unsettled = cache[_UNSETTLED] = []
+                unsettled.append(tree)
+            return self._encode_exact(tree, memo, nodes)
+        self._settle(cache)
         cache[_EXACT_CACHE] = False
         return self._encode_tree(tree, cache)
+
+    def _settle(self, cache):
+        """Write the subtrees of the exact roots met so far into the cache, as the reference computation holds them."""
+        unsettled = cache.pop(_UNSETTLED, None)
+        if unsettled:
+            nodes = cache[_LEAF_MEMO]["node"]
+            for tree in unsettled:
+                self._encode_tree(tree, cache, nodes)
+
+    def _encode_exact(self, tree, memo, nodes):
+        """The encoding of an exact tree, from the memo and whatever of it is new.
+
+        A kept tree is met once per version of the weights, a leaf once per
+        value, and an inner node that was encoded before is not entered again:
+        its parts cannot have changed. What is computed here is computed by
+        the operations ``_encode_visit`` applies to the same values.
+        """
+        if type(tree) is _Kept:
+            known = memo["exact"].get(id(tree))
+            if known is not None:
+                return known[1]
+        kind = tree[0]
+        if kind == "text" or kind == "number":
+            entries = memo[kind]
+            key = _leaf_key(kind, tree[1])  # never None for a leaf of an exact tree
+            result = entries.get(key) if key is not None else None
+            if result is None:
+                result = self._encode_visit(tree, {})
+                if key is not None:
+                    if len(entries) >= _LEAF_MEMO_LIMIT:
+                        entries.clear()  # bounded memory; a miss only recomputes
+                    entries[key] = result
+            return result
+        result = nodes.get(tree)
+        if result is None:
+            tag, children = tree[1:]
+            encodings = [self._encode_exact(child, memo, nodes) for child in children]
+            if not encodings:
+                pooled = self.byte.weight.new_zeros(self.config.feature_size)
+            elif kind == "ordered":
+                pooled = self.ordered(torch.stack(encodings).unsqueeze(0))[1][0, 0]
+            else:
+                pooled = torch.stack(encodings).sum(0) / sqrt(len(encodings))
+            joined = torch.cat((self._encode_exact(_text(tag), memo, nodes), pooled))
+            result = torch.tanh(F.linear(joined, *memo["tree"]))
+            if len(nodes) >= _NODE_MEMO_LIMIT:
+                nodes.clear()  # bounded memory; a miss only recomputes
+            nodes[tree] = result
+        if type(tree) is _Kept:
+            exact = memo["exact"]
+            if len(exact) >= _KEPT_LIMIT:
+                exact.clear()  # bounded memory; a miss only looks the tree up again
+            exact[id(tree)] = (tree, result)  # holds the tree, so its id names nothing else
+        return result
 
     def _encode_tree(self, tree, cache, nodes=None):
         """The encoding of ``tree``; the cache gains every subtree it did not hold.
@@ -680,7 +900,9 @@ class ContextualActorCritic(nn.Module):
                 pooled = self.ordered(torch.stack(encodings).unsqueeze(0))[1][0, 0]
             else:
                 pooled = torch.stack(encodings).sum(0) / sqrt(len(encodings))
-            result = self.tree(torch.cat((self._encode_tree(_text(tag), cache, nodes), pooled)))
+            joined = torch.cat((self._encode_tree(_text(tag), cache, nodes), pooled))
+            memo = cache.get(_LEAF_MEMO)
+            result = self.tree(joined) if memo is None else torch.tanh(F.linear(joined, *memo["tree"]))
             if nodes is not None:
                 if len(nodes) >= _NODE_MEMO_LIMIT:
                     nodes.clear()  # bounded memory; a miss only recomputes
@@ -688,30 +910,51 @@ class ContextualActorCritic(nn.Module):
         cache[tree] = result
         return result
 
-    def _encode_map(self, observation):
-        """Global and per-cell features of the visible map: a function of ``map_key(observation)``."""
+    def _encode_map(self, observation, memo=None):
+        """Global and per-cell features of the visible map: a function of ``map_key(observation)``.
+
+        With ``memo`` the parts that did not change since the map encoded last
+        are taken from it: the embedded terrain and roads while the tile tuple
+        is the very same, the objects' grid while the objects are the same.
+        They are the tensors a recomputation would give.
+        """
         width, height, _ = observation.size
         if width > self.config.max_map_side or height > self.config.max_map_side:
             raise ValueError("Map exceeds declared model configuration")
-        terrain, road = [0] * (width * height), [0] * (width * height)
-        flags = [[0.] * 5 for _ in terrain]
-        for tile in observation.tiles:
-            index = tile.position[1] * width + tile.position[0]
-            terrain[index], road[index] = tile.terrain + 1, tile.road + 1
-            flags[index][:3] = (1., float(tile.blocked), float(tile.visitable))
+        tiles = observation.tiles
+        ground = None if memo is None else memo.get("ground")
+        if ground is None or ground[0] is not tiles or ground[1] != observation.size:
+            terrain, road = [0] * (width * height), [0] * (width * height)
+            base = [[0.] * 5 for _ in terrain]
+            for tile in tiles:
+                index = tile.position[1] * width + tile.position[0]
+                terrain[index], road[index] = tile.terrain + 1, tile.road + 1
+                base[index][:3] = (1., float(tile.blocked), float(tile.visitable))
+            ground = (tiles, observation.size, self.terrain(self._long(terrain)), self.road(self._long(road)), base)
+            if memo is not None:
+                memo["ground"] = ground  # holds the tuple, so "the very same" means what it says
+        flags = [row[:] for row in ground[4]]
         for hero in observation.heroes:
             flags[hero.position[1] * width + hero.position[0]][3] += 1.
         for town in observation.towns:
             flags[town.position[1] * width + town.position[0]][4] += 1.
-        objects = sorted(observation.objects, key=lambda obj: (obj.position, obj.kind, obj.subtype, obj.owner))
-        object_grid = self.byte.weight.new_zeros(width * height, 16)
-        if objects:
-            # Static content IDs are categorical bit patterns, not scalar ranks.
-            attributes = [[float(value >> bit & 1) for value in (obj.kind, obj.subtype) for bit in range(32)]
-                          + [float(obj.owner == owner) for owner in ("self", "opponent", "neutral")] for obj in objects]
-            indices = self._long([obj.position[1] * width + obj.position[0] for obj in objects])
-            object_grid = object_grid.index_add(0, indices, self.object_encoder(self._float(attributes)))
-        grid = torch.cat((self.terrain(self._long(terrain)), self.road(self._long(road)), object_grid, self._float(flags)), -1)
+        described = (observation.size, tuple((obj.position, obj.kind, obj.subtype, obj.owner)
+                                             for obj in observation.objects))
+        things = None if memo is None else memo.get("things")
+        if things is None or things[0] != described:
+            objects = sorted(described[1])  # by position, kind, subtype, owner
+            object_grid = self.byte.weight.new_zeros(width * height, 16)
+            if objects:
+                # Static content IDs are categorical bit patterns, not scalar ranks.
+                attributes = [[float(value >> bit & 1) for value in (kind, subtype) for bit in range(32)]
+                              + [float(owner == side) for side in ("self", "opponent", "neutral")]
+                              for _, kind, subtype, owner in objects]
+                indices = self._long([position[1] * width + position[0] for position, _, _, _ in objects])
+                object_grid = object_grid.index_add(0, indices, self.object_encoder(self._float(attributes)))
+            things = (described, object_grid)
+            if memo is not None:
+                memo["things"] = things
+        grid = torch.cat((ground[2], ground[3], things[1], self._float(flags)), -1)
         cells = self.map_cnn(grid.reshape(height, width, 33).permute(2, 0, 1).unsqueeze(0))
         return self.map_global(cells)[0], cells[0].permute(1, 2, 0).reshape(-1, 16)
 
@@ -725,7 +968,7 @@ class ContextualActorCritic(nn.Module):
             if last is not None and last[0] == key:
                 global_map, cells = last[1]
             else:
-                global_map, cells = self._encode_map(observation)
+                global_map, cells = self._encode_map(observation, memo)
                 memo["map"] = (key, (global_map, cells))
         return global_map, self._encode_root(observation_semantics(observation), cache), cells
 
@@ -767,9 +1010,13 @@ class ContextualActorCritic(nn.Module):
         if last is not None and last[0] is observation:
             global_map, own, cells, added = last[1]
             cache.update(added)
+            if _UNSETTLED in added:
+                cache[_UNSETTLED] = list(added[_UNSETTLED])  # this frame's own list
             return global_map, own, cells
         global_map, own, cells = self._encode_observation(observation, cache)
         added = {tree: tensor for tree, tensor in cache.items() if tree is not _LEAF_MEMO}
+        if _UNSETTLED in added:
+            added[_UNSETTLED] = tuple(added[_UNSETTLED])
         memo["observation"] = (observation, (global_map, own, cells, added))
         return global_map, own, cells
 
@@ -781,13 +1028,49 @@ class ContextualActorCritic(nn.Module):
         memo = self._memo()
         if memo is not None:
             cache[_LEAF_MEMO] = memo
-        vector, cells = self._frame_features(frame, cache, final=frame.frame.kind != "decision")
-        state = self.gru(vector, state)
+        tree = frame.semantics
+        if memo is not None and frame.observation is None and type(tree) is _Kept and not torch.is_grad_enabled():
+            # A frame without an observation whose payload was built once: its input is a function of the
+            # payload alone, and nothing reads the frame's tree cache afterwards.
+            known, cells = memo["frame"].get(id(tree)), None
+            if known is None:
+                vector, _ = self._frame_features(frame, cache, final=True)
+                if len(memo["frame"]) >= _KEPT_LIMIT:
+                    memo["frame"].clear()  # bounded memory; a miss only joins the three parts again
+                memo["frame"][id(tree)] = (tree, vector)  # holds the tree, so its id names nothing else
+            else:
+                vector = known[1]
+        else:
+            vector, cells = self._frame_features(frame, cache, final=frame.frame.kind != "decision")
+        if memo is None:
+            state = self.gru(vector, state)
+        else:  # what ``nn.GRUCell`` does with one unbatched input
+            state = torch.gru_cell(vector.unsqueeze(0), state.unsqueeze(0), *memo["gru"]).squeeze(0)
         decision = None
         if frame.frame.kind == "decision":
             distribution = ContextualDistribution(self, state, frame.frame.observation, frame.frame.offers, cells, cache, frame.guard)
-            decision = PolicyValue(self.value(state).squeeze(-1), distribution)
+            value = self.value(state) if memo is None else F.linear(state, *memo["value"])
+            decision = PolicyValue(value.squeeze(-1), distribution)
         return StepOutput(state, decision)
+
+
+_ACTION_LIMIT = 65536
+_ACTION_MEMO = {}  # (schema, kind, subject, the other fields) -> the action
+
+
+class Recording:
+    """What sampling one action read, in the order it read it, with no weight in it.
+
+    ``trees`` are the semantic trees whose features the walk asked for and
+    ``steps`` its conditional choices, each naming its trees by their position
+    in ``trees``. ``heroes.learner.recipes.Recorder`` turns them into the
+    conditionals of a recipe: the same ones the recipe compiler finds when it
+    walks the recorded action again.
+    """
+    __slots__ = ("trees", "steps", "feature", "pending")
+
+    def __init__(self):
+        self.trees, self.steps, self.feature, self.pending = [], [], {}, None
 
 
 class ContextualDistribution:
@@ -803,19 +1086,40 @@ class ContextualDistribution:
         self.model, self.state, self.observation, self.offers = model, state, observation, offers
         self.cells, self.cache = cells, cache
         self.guard = guard
+        self.recording = None  # a ``Recording`` to fill while an action is sampled
+        self.query = None  # the state's policy query, computed at the first categorical choice
 
     def _features(self, semantic):
-        return self.model._encode_root(semantic, self.cache)
+        result = self.model._encode_root(semantic, self.cache)
+        recording = self.recording
+        if recording is not None:
+            recording.feature[id(result)] = len(recording.trees)  # the cache keeps ``result`` alive during the walk
+            recording.trees.append(semantic)
+        return result
 
     def _logits(self, semantics):
+        recording = self.recording
+        first = len(recording.trees) if recording is not None else 0
         candidates = torch.stack([self._features(item) for item in semantics])
-        return candidates.mv(torch.tanh(self.model.policy_query(self.state))) / sqrt(self.model.config.feature_size)
+        if recording is not None:
+            recording.pending = {"kind": "categorical", "roots": range(first, len(recording.trees))}
+        query = self.query
+        if query is None or torch.is_grad_enabled():
+            # One decision asks for it at every categorical step with the same state: computed once without autograd.
+            query = torch.tanh(self.model.policy_query(self.state))
+            if not torch.is_grad_enabled():
+                self.query = query
+        return candidates.mv(query) / sqrt(self.model.config.feature_size)
 
     def _quantity_logits(self, features, low, high, maximum, depth):
         numeric = self.model._float((low / maximum, high / maximum, log1p(maximum), depth / 31))
         logits = self.model.quantity(torch.cat((self.state, features, numeric)))
         middle = (low + high) // 2
-        return logits + self.model._float((log1p(middle - low), log1p(high - middle - 1)))
+        offsets = self.model._float((log1p(middle - low), log1p(high - middle - 1)))
+        if self.recording is not None:
+            self.recording.pending = {"kind": "quantity", "root": self.recording.feature[id(features)],
+                                      "numeric": numeric, "offsets": offsets}
+        return logits + offsets
 
     def _coordinate_positions(self, subject, width, height):
         hx = hy = 0
@@ -828,16 +1132,26 @@ class ContextualDistribution:
         positions = self._coordinate_positions(subject, width, height)
         target = self._features(semantic).expand(width * height, -1)
         state = self.state.expand(width * height, -1)
+        if self.recording is not None:
+            self.recording.pending = {"kind": "coordinate", "root": len(self.recording.trees) - 1,
+                                      "positions": positions, "indices": None}
         return self.model.coordinate(torch.cat((state, target, self.cells, positions), -1)).squeeze(-1)
 
     def _coordinate_subset(self, logits, coordinates):
-        return logits[torch.tensor(coordinates, dtype=torch.long, device=logits.device)]
+        indices = torch.tensor(coordinates, dtype=torch.long, device=logits.device)
+        if self.recording is not None:
+            self.recording.pending = {**self.recording.pending, "indices": indices}
+        return logits[indices]
 
     def _choose(self, name, logits, selected, generator, trace):
         log_probs = torch.log_softmax(logits, 0)
         if selected is None:
             selected = int(torch.multinomial(log_probs.detach().exp(), 1, generator=generator).item())
         trace.append(ConditionalProbability(name, selected, logits.numel(), log_probs[selected]))
+        recording = self.recording
+        if recording is not None:
+            recording.steps.append({**recording.pending, "selected": selected})
+            recording.pending = None
         return selected
 
     def _kinds(self):
@@ -892,7 +1206,15 @@ class ContextualDistribution:
 
     def _action(self, kind, **values):
         subject = None if kind in ("close", "end_turn") else self.offers.context.subject
-        return c.Action(kind, schema=self.offers.schema, **dict({"subject": subject}, **values))
+        # A walk asks for the same few actions again and again; an action is a frozen value, so one object serves.
+        key = (self.offers.schema, kind, subject, *values.items())
+        action = _ACTION_MEMO.get(key)
+        if action is None:
+            action = c.Action(kind, schema=self.offers.schema, **dict({"subject": subject}, **values))
+            if len(_ACTION_MEMO) >= _ACTION_LIMIT:
+                _ACTION_MEMO.clear()  # bounded memory; a miss only builds the action again
+            _ACTION_MEMO[key] = action
+        return action
 
     def _permitted(self, action):
         return self.guard is None or self.guard.permits(action, self.observation, self.offers)
@@ -1019,6 +1341,8 @@ class ContextualDistribution:
         memo = self.model._memo()  # revalidated: weights or modes may differ from forward_step
         if memo is not self.cache.get(_LEAF_MEMO):
             # Values cached under other weights or modes must never seed internal-node entries.
+            if self.cache.get(_LEAF_MEMO) is not None:
+                self.model._settle(self.cache)
             self.cache[_EXACT_CACHE] = False
         if memo is None:
             self.cache.pop(_LEAF_MEMO, None)
@@ -1149,6 +1473,12 @@ class ContextualDistribution:
         if not self.offers.permits(selected_action) or not self._permitted(selected_action) or action is not None and selected_action != action:
             raise ValueError("Conditional action construction disagrees with support")
         return selected_action, ActionEvaluation(torch.stack([part.log_prob for part in trace]).sum(), tuple(trace))
+
+    def settled_cache(self):
+        """The decision's tree cache with every subtree written, as a computation without the memo leaves it."""
+        if self.cache.get(_LEAF_MEMO) is not None:
+            self.model._settle(self.cache)
+        return self.cache
 
     def sample_evaluated(self, generator=None):
         """A sampled action with its evaluation: only the selected indices come from the generator."""

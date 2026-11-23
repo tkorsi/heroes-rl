@@ -44,7 +44,38 @@ JsonNode army(const CArmedInstance & object)
 	return node;
 }
 
-JsonNode ownArmyDetails(const CArmedInstance & object, PlayerColor player, const std::string & subject, const char * role)
+JsonNode ownStackDetail(const SlotID & slot, const CStackInstance & stack)
+{
+	// Match CCreatureWindow's adventure-map popup convention: attack,
+	// defense and damage use ranged mode for a shooter with shots. These
+	// are current stack/hero bonuses, not the creature's unmodified base.
+	const int shots = stack.valOfBonuses(BonusType::SHOTS);
+	const bool shooter = stack.hasBonusOfType(BonusType::SHOOTER) && shots != 0;
+	JsonNode item;
+	item["slot"].Integer() = slot.getNum();
+	item["creature"].Integer() = stack.getCreatureID().getNum();
+	item["count"].Integer() = stack.getCount();
+	item["name_text_id"].String() = stack.getCreature()->getNamePluralTextID();
+	item["attack"].Integer() = stack.getAttack(shooter);
+	item["defense"].Integer() = stack.getDefense(shooter);
+	item["damage_min"].Integer() = stack.getMinDamage(shooter);
+	item["damage_max"].Integer() = stack.getMaxDamage(shooter);
+	item["health"].Integer() = stack.getMaxHealth();
+	item["speed"].Integer() = stack.getMovementRange();
+	item["shots"].Integer() = shooter ? shots : 0;
+	item["casts"].Integer() = stack.valOfBonuses(BonusType::CASTS);
+	// MoraleLuckBox suppresses these values even when a MAX_* bonus is
+	// present, so apply its displayed immunity override explicitly.
+	item["morale"].Integer() = stack.unaffectedByMorale() ? 0 : stack.moraleVal();
+	item["luck"].Integer() = stack.hasBonusOfType(BonusType::NO_LUCK) ? 0 : stack.luckVal();
+	item["shooter"].Bool() = shooter;
+	item["flying"].Bool() = stack.hasBonusOfType(BonusType::FLYING);
+	item["undead"].Bool() = stack.hasBonusOfType(BonusType::UNDEAD);
+	return item;
+}
+
+JsonNode ownArmyDetails(const CArmedInstance & object, PlayerColor player, const std::string & subject, const char * role,
+	explorer_rl::OwnStackDetails & known)
 {
 	// This opt-in view may read only the player's own callback-provided armies.
 	// It intentionally has no path through visible enemy/neutral object handles.
@@ -59,32 +90,24 @@ JsonNode ownArmyDetails(const CArmedInstance & object, PlayerColor player, const
 		if(!slot.validSlot() || !stack || !stack->getCreature() || stack->getCount() <= 0
 			|| stack->getCount() > std::numeric_limits<int32_t>::max())
 			throw std::runtime_error("Unsupported owned army detail slot");
-		// Match CCreatureWindow's adventure-map popup convention: attack,
-		// defense and damage use ranged mode for a shooter with shots. These
-		// are current stack/hero bonuses, not the creature's unmodified base.
-		const int shots = stack->valOfBonuses(BonusType::SHOTS);
-		const bool shooter = stack->hasBonusOfType(BonusType::SHOOTER) && shots != 0;
-		JsonNode item;
-		item["slot"].Integer() = slot.getNum();
-		item["creature"].Integer() = stack->getCreatureID().getNum();
-		item["count"].Integer() = stack->getCount();
-		item["name_text_id"].String() = stack->getCreature()->getNamePluralTextID();
-		item["attack"].Integer() = stack->getAttack(shooter);
-		item["defense"].Integer() = stack->getDefense(shooter);
-		item["damage_min"].Integer() = stack->getMinDamage(shooter);
-		item["damage_max"].Integer() = stack->getMaxDamage(shooter);
-		item["health"].Integer() = stack->getMaxHealth();
-		item["speed"].Integer() = stack->getMovementRange();
-		item["shots"].Integer() = shooter ? shots : 0;
-		item["casts"].Integer() = stack->valOfBonuses(BonusType::CASTS);
-		// MoraleLuckBox suppresses these values even when a MAX_* bonus is
-		// present, so apply its displayed immunity override explicitly.
-		item["morale"].Integer() = stack->unaffectedByMorale() ? 0 : stack->moraleVal();
-		item["luck"].Integer() = stack->hasBonusOfType(BonusType::NO_LUCK) ? 0 : stack->luckVal();
-		item["shooter"].Bool() = shooter;
-		item["flying"].Bool() = stack->hasBonusOfType(BonusType::FLYING);
-		item["undead"].Bool() = stack->hasBonusOfType(BonusType::UNDEAD);
-		result["slots"].Vector().push_back(std::move(item));
+		// A view is captured after every pack, and almost every pack leaves an army as it was:
+		// an entry is built again only when something it is read from differs (see OwnStackDetail).
+		const int32_t version = stack->getTreeVersion(); // before the entry is built
+		const int creature = stack->getCreatureID().getNum();
+		const int64_t count = stack->getCount();
+		if(known.size() > 1024)
+			known.clear(); // stacks that no longer exist
+		auto & detail = known[&*stack];
+		if(detail.item.isNull() || detail.version != version || detail.slot != slot.getNum() || detail.creature != creature || detail.count != count)
+		{
+			detail.item = JsonNode(); // nothing of an older entry survives a failure below
+			detail.item = ownStackDetail(slot, *stack);
+			detail.version = version;
+			detail.slot = slot.getNum();
+			detail.creature = creature;
+			detail.count = count;
+		}
+		result["slots"].Vector().push_back(detail.item);
 	}
 	std::sort(result["slots"].Vector().begin(), result["slots"].Vector().end(), [](const JsonNode & first, const JsonNode & second)
 	{
@@ -231,7 +254,102 @@ bool writeMapChange(JsonNode & observation, const explorer_rl::VisibleMap & prev
 }
 }
 
-JsonNode ExplorerRL::contextualObservation(explorer_rl::VisibleMap & map)
+void ExplorerRL::readVisibleMap(explorer_rl::VisibleMap & map)
+{
+	const auto size = callback->getMapSize();
+	std::set<int> seen;
+	for(int y = 0; y < size.y; ++y)
+		for(int x = 0; x < size.x; ++x)
+		{
+			const int3 position(x, y, 0);
+			// getTile answers for a visible tile only; it tests what isVisible tests.
+			const auto * tile = callback->getTile(position, false);
+			if(!tile)
+			{
+				if(callback->isVisible(position))
+					throw std::runtime_error("Visible contextual tile is unavailable");
+				continue;
+			}
+			const auto facts = explorer_rl::visibleTileFacts(*callback, *tile);
+			map.tiles.push_back({x, y, facts.terrain, tile->getRoadID().getNum(), facts.blocked, facts.visitable});
+			for(const auto id : tile->visitableObjects)
+			{
+				const auto * object = explorer_rl::playerVisibleObject(*callback, id);
+				if(!object || !seen.insert(id.getNum()).second)
+					continue;
+				// Handles are numbered in the order objects are first met, so
+				// each one is taken here, not when the JSON is written.
+				contextState.handle(id.getNum());
+				const auto owner = object->getOwner();
+				// This is a visible visitable tile, never an unseen footprint anchor.
+				map.objects.push_back({id.getNum(), x, y, object->ID.getNum(), object->subID.getNum(),
+					owner == playerID ? 0 : owner.isValidPlayer() ? 1 : 2});
+			}
+		}
+}
+
+std::optional<explorer_rl::ViewPrint> ExplorerRL::mapViewPrint(explorer_rl::VisibleMap & map)
+{
+	// Everything contextualObservation reads in the map context, in its order,
+	// so that handles are taken in the order it takes them: the player's
+	// heroes, the player's towns, the resources, then the map. A stack is in
+	// the print as OwnStackDetail keys it. The garrison flag and the stacks are
+	// in it whether or not this interface reports them: a print may differ where
+	// the views do not, never the other way.
+	const auto size = callback->getMapSize();
+	if(size.z != 1 || size.x <= 0 || size.y <= 0)
+		throw std::runtime_error("Contextual interface requires one map level");
+	explorer_rl::ViewPrint print;
+	bool accepted = true;
+	const auto stacks = [&](const CArmedInstance & object)
+	{
+		print.numbers.push_back(static_cast<int64_t>(object.Slots().size()));
+		for(const auto & [slot, stack] : object.Slots())
+		{
+			if(!slot.validSlot() || !stack || !stack->getCreature() || stack->getCount() <= 0
+				|| stack->getCount() > std::numeric_limits<int32_t>::max())
+			{
+				accepted = false;
+				continue;
+			}
+			print.stacks.push_back(&*stack);
+			for(const int64_t value : {int64_t(slot.getNum()), int64_t(stack->getTreeVersion()),
+				int64_t(stack->getCreatureID().getNum()), int64_t(stack->getCount())})
+				print.numbers.push_back(value);
+		}
+	};
+	for(const auto * hero : callback->getHeroesInfo())
+	{
+		if(hero->getOwner() != playerID)
+			continue;
+		contextState.handle(hero->id.getNum());
+		const auto position = hero->visitablePos();
+		for(const int64_t value : {int64_t(hero->id.getNum()), int64_t(position.x), int64_t(position.y), int64_t(position.z),
+			int64_t(hero->movementPointsRemaining()), int64_t(hero->movementPointsLimit()), int64_t(hero->isGarrisoned())})
+			print.numbers.push_back(value);
+		stacks(*hero);
+	}
+	print.numbers.push_back(-1); // the heroes end here
+	for(const auto * town : callback->getTownsInfo())
+	{
+		if(town->getOwner() != playerID)
+			continue;
+		contextState.handle(town->id.getNum());
+		const auto position = town->visitablePos();
+		for(const int64_t value : {int64_t(town->id.getNum()), int64_t(position.x), int64_t(position.y), int64_t(position.z)})
+			print.numbers.push_back(value);
+		stacks(*town);
+	}
+	print.numbers.push_back(-1); // the towns end here
+	for(int resource = 0; resource < 7; ++resource)
+		print.numbers.push_back(callback->getResourceAmount(GameResID(resource)));
+	readVisibleMap(map);
+	if(!accepted)
+		return std::nullopt;
+	return print;
+}
+
+JsonNode ExplorerRL::contextualObservation(explorer_rl::VisibleMap & map, bool mapRead)
 {
 	// Caller holds a stable engine view and stateMutex. Historical observations
 	// still require opened windows for armies; only the explicit owned-army
@@ -266,7 +384,7 @@ JsonNode ExplorerRL::contextualObservation(explorer_rl::VisibleMap & map)
 		if(armyManagement) item["in_garrison"].Bool() = hero->isGarrisoned();
 		observation["heroes"].Vector().push_back(std::move(item));
 		if(ownArmyInformation)
-			observation["own_armies"].Vector().push_back(ownArmyDetails(*hero, playerID, handle, "hero"));
+			observation["own_armies"].Vector().push_back(ownArmyDetails(*hero, playerID, handle, "hero", contextState.ownStackDetails));
 		if(contextState.context == "hero" && contextState.subject == handle)
 			openHero = hero;
 	}
@@ -282,7 +400,7 @@ JsonNode ExplorerRL::contextualObservation(explorer_rl::VisibleMap & map)
 		// A garrison hero was already emitted with the owned heroes. Reading
 		// the town itself, rather than getUpperArmy(), avoids duplicating it.
 		if(ownArmyInformation)
-			observation["own_armies"].Vector().push_back(ownArmyDetails(*town, playerID, handle, "town_garrison"));
+			observation["own_armies"].Vector().push_back(ownArmyDetails(*town, playerID, handle, "town_garrison", contextState.ownStackDetails));
 		if(contextState.context == "town" && contextState.subject == handle)
 			openTown = town;
 	}
@@ -293,35 +411,8 @@ JsonNode ExplorerRL::contextualObservation(explorer_rl::VisibleMap & map)
 		});
 	for(int resource = 0; resource < 7; ++resource)
 		observation["resources"].Vector().emplace_back(callback->getResourceAmount(GameResID(resource)));
-	std::set<int> seen;
-	for(int y = 0; y < size.y; ++y)
-		for(int x = 0; x < size.x; ++x)
-		{
-			const int3 position(x, y, 0);
-			// getTile answers for a visible tile only; it tests what isVisible tests.
-			const auto * tile = callback->getTile(position, false);
-			if(!tile)
-			{
-				if(callback->isVisible(position))
-					throw std::runtime_error("Visible contextual tile is unavailable");
-				continue;
-			}
-			const auto facts = explorer_rl::visibleTileFacts(*callback, *tile);
-			map.tiles.push_back({x, y, facts.terrain, tile->getRoadID().getNum(), facts.blocked, facts.visitable});
-			for(const auto id : tile->visitableObjects)
-			{
-				const auto * object = explorer_rl::playerVisibleObject(*callback, id);
-				if(!object || !seen.insert(id.getNum()).second)
-					continue;
-				// Handles are numbered in the order objects are first met, so
-				// each one is taken here, not when the JSON is written.
-				contextState.handle(id.getNum());
-				const auto owner = object->getOwner();
-				// This is a visible visitable tile, never an unseen footprint anchor.
-				map.objects.push_back({id.getNum(), x, y, object->ID.getNum(), object->subID.getNum(),
-					owner == playerID ? 0 : owner.isValidPlayer() ? 1 : 2});
-			}
-		}
+	if(!mapRead)
+		readVisibleMap(map);
 	const bool dialogModal = adventureDialogs && contextState.context == "dialog";
 	const bool capabilityModal = expandedInterface && contextState.context == "capability";
 	const bool armyModal = armyManagement && (contextState.context == "exchange" || contextState.context == "stack");
@@ -414,11 +505,26 @@ void ExplorerRL::captureContextualLocked()
 	if(day < 1)
 		return;
 	explorer_rl::VisibleMap map;
-	auto observation = contextualObservation(map);
+	// A view is captured after every pack, and most packs change nothing this player sees. In the map
+	// context the view is a function of its print and its map (see ViewPrint): finding both as the
+	// latest view had them, on its day, is finding the observation equal, without building it.
+	std::optional<explorer_rl::ViewPrint> print;
+	const bool mapRead = contextState.context == "map";
+	if(mapRead)
+	{
+		print = mapViewPrint(map);
+		if(print && contextState.lastPrint && *print == *contextState.lastPrint && !contextState.lastObservation.isNull()
+			&& map == contextState.lastMap && day == contextState.lastDay)
+			return;
+	}
+	auto observation = contextualObservation(map, mapRead);
 	// No view was sent yet while lastObservation is null: the first one always carries its map.
 	const bool sameMap = !contextState.lastObservation.isNull() && map == contextState.lastMap;
 	if(sameMap && observation == contextState.lastObservation && day == contextState.lastDay)
+	{
+		contextState.lastPrint = std::move(print); // of an observation equal to lastObservation; empty outside the map context
 		return;
+	}
 	if(!contextState.executing)
 		contextState.supersede(day, "visible_state_changed");
 	if(!contextState.lastObservation.isNull())
@@ -447,6 +553,7 @@ void ExplorerRL::captureContextualLocked()
 	contextState.lastObservation = std::move(observation);
 	contextState.lastMap = std::move(map);
 	contextState.lastDay = day;
+	contextState.lastPrint = std::move(print);
 }
 
 JsonNode ExplorerRL::takeContextualRecords()
@@ -762,6 +869,11 @@ bool ExplorerRL::executeTownAction(const JsonNode & action, int64_t decision)
 
 bool ExplorerRL::executeContextualAction(const JsonNode & action, int64_t decision)
 {
+	{
+		// An action reads the latest view to find what it names, and such a read may leave a mark in it.
+		std::lock_guard lock(stateMutex);
+		contextState.lastPrint.reset();
+	}
 	fields(action, townEconomy ? std::set<std::string>{"schema", "kind", "subject", "x", "y", "panel", "selection", "count", "destination"}
 		: std::set<std::string>{"schema", "kind", "subject", "x", "y"}, {"schema", "kind"});
 	if(action["schema"].String() != (expandedInterface ? "heroes-context-actions-v8" : adventureDialogs ? "heroes-context-actions-v7" : armyManagement ? "heroes-context-actions-v6" : heroRecruitment ? "heroes-context-actions-v5" : armyTransfer ? "heroes-context-actions-v4" : townEconomy ? "heroes-context-actions-v3" : "heroes-context-actions-v2") || !action["kind"].isString())

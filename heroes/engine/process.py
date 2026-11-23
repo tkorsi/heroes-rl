@@ -54,8 +54,11 @@ class Engine:
             "logging": {"loggers": [{"domain": "global", "level": "info"}, {"domain": "rng", "level": "info"}]},
         }
 
-    def launch(self, directory, episode, seed, ports, log):
-        """Start the game in ``directory``; ``ports`` are the two policy listeners."""
+    def launch(self, directory, episode, seed, ports, log, game_map=None):
+        """Start the game in ``directory``; ``ports`` are the two policy listeners.
+
+        ``game_map`` is another map file for this game alone, in place of the engine's own.
+        """
         directory = Path(directory).resolve()  # the engine runs in its own folder, not ours
         profile, logs, engine = directory / "profile", directory / "logs", directory / "engine"
         for folder in (logs, engine):
@@ -70,8 +73,9 @@ class Engine:
         for folder in (data_root / "Maps", config_root):
             folder.mkdir(parents=True, exist_ok=True)
         (data_root / "Data").symlink_to(Path(self.data).resolve() / "Data", target_is_directory=True)
-        local_map = data_root / "Maps" / ("headless" + Path(self.game_map).suffix.lower())
-        shutil.copyfile(self.game_map, local_map)
+        played = self.game_map if game_map is None else game_map
+        local_map = data_root / "Maps" / ("headless" + Path(played).suffix.lower())
+        shutil.copyfile(played, local_map)
         (config_root / "settings.json").write_text(json.dumps(self.settings(seed), indent=2, sort_keys=True) + "\n")
         environment.update({
             "VCMI_EXPERIMENT_DIR": str(engine), "VCMI_EXPERIMENT_NO_CHEATS": "1",

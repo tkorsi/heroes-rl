@@ -17,6 +17,22 @@ from .learner.ppo import PPOConfig
 
 REPOSITORY = Path(__file__).resolve().parents[1]
 GROUPED_MLX_PPO = PPOConfig(windows_per_minibatch=16, windows_per_game=8, learning_rate=8.5e-4)
+# The update by whole games: a step takes all windows of ten trajectories (a game gives one, a 365-day game
+# two), so a batch of 100 games is some sixteen steps a pass and a batch of ten games one. It makes one pass;
+# given more epochs, a further pass is made only while the first games of it show a mean KL below the target.
+# Its time grows with the number of decisions, where the window updates above also grow with the length of a game.
+#
+# Adam's first moment is not used (``momentum`` 0): each step follows its own ten trajectories. A checkpoint
+# keeps the moment of the update that made it, and with the usual 0.9 the few steps of this update spent three
+# quarters of their movement on that kept moment, a direction no game of the batch had a part in. The second
+# moment a checkpoint keeps fits the steps that made it as well: a run that changes the update's settings
+# starts a new optimizer (``Config.new_optimizer``), and the rate here is for an optimizer of this update's
+# own: one pass then moves the policy by a KL of about 0.001 on games it was not trained on.
+#
+# The value loss trains the value head alone (``value_trunk`` 0), so that nothing the policy reads is moved
+# for the value's sake. Journal, 2026-11-22.
+WHOLE_GAMES_MLX_PPO = PPOConfig(games_per_minibatch=10, epochs=1, learning_rate=1e-3, target_kl=0.01,
+                                value_trunk=0.0, momentum=0.0)
 
 
 def _artifacts():
@@ -24,7 +40,7 @@ def _artifacts():
 
 
 def _vcmi():
-    return Path(os.environ.get("HEROES_VCMI", _artifacts() / "runtime/local-v8-tile-changes-v1/bin/vcmiclient")).expanduser()
+    return Path(os.environ.get("HEROES_VCMI", _artifacts() / "runtime/local-v8-quiet-captures-v1/bin/vcmiclient")).expanduser()
 
 
 def _training_state():
@@ -47,10 +63,16 @@ class Config:
     limits: Limits = Limits()
     guard: str | None = guard.VERSION  # repeated no-progress actions the policy may not sample; None for none
     keep_game_files: bool = False  # keep every game's engine folder instead of deleting it
+    # Practice games: a file listing start positions (heroes/starts.py). Every game then begins from one of
+    # them, the training map with the heroes elsewhere, instead of from the training map as it is.
+    starts: Path | None = None
 
     # What a game is trained on.
     both_seats: bool = False  # train on the opponent seat's experience too: two trajectories per game
     play_during_update: bool = False  # collect the next batch while the update runs, one update behind; torch backend only
+    # Start this run's updates with a new Adam optimizer instead of the checkpoint's. A checkpoint keeps the
+    # moments of the update that made it; they fit that update's steps (its minibatch, its rate) and no other's.
+    new_optimizer: bool = False
 
     # How the policy learns.
     games_per_update: int | None = None  # one update after all requested games unless a batch size is set

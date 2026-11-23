@@ -53,19 +53,18 @@ def _host(value):
     return convert(value)
 
 
-def update(model, optimizer, trajectories, *, config, generator, progress=None):
-    """Run the whole update, then copy FP32 weights, Adam state and the shuffle RNG back."""
-    import numpy as np
-    import torch
-    from ..ppo import PPOReport, prepare
-    from .model import MLXBackend
-    from .plans import _prefix_plan, _joined_plan, _active_parameters
+def _taken(model, optimizer, trajectories):
+    """Check what MLX is given and copy the Adam state out of torch.
 
-    started = time.perf_counter()
+    Returns the trajectories, their recipes, the named parameters, the
+    optimizer's one parameter group and the Adam state as host arrays. The
+    torch objects stay unchanged until ``_given_back``.
+    """
+    import torch
     _require(type(optimizer) is torch.optim.Adam and len(optimizer.param_groups) == 1,
              "MLX requires one plain Adam parameter group")
     rollouts = tuple(trajectories)
-    histories = tuple(item.recipe for item in rollouts)
+    histories = tuple(item.recipe if item.recipe is not None else item.compact for item in rollouts)
     _require(rollouts and all(history is not None for history in histories),
              "MLX requires trajectories with compiled recipes")
     parameters = dict(model.named_parameters())
@@ -94,20 +93,83 @@ def update(model, optimizer, trajectories, *, config, generator, progress=None):
         _require(set(state) == {"step", "exp_avg", "exp_avg_sq"}, "Unexpected Adam state fields")
         adam[name] = {"step": int(step), "exp_avg": _host(state["exp_avg"]),
                       "exp_avg_sq": _host(state["exp_avg_sq"])}
+    return rollouts, histories, parameters, group, adam
+
+
+def _manifest(model, parameters, group, adam, config, histories):
+    return {"parameter_order": list(parameters), "parameters": {name: _host(p) for name, p in parameters.items()},
+            "model_config": model.config.to_dict(), "ppo": config.to_dict(),
+            "optimizer": {"config": {key: group[key] for key in
+                          ("lr", "betas", "eps", "weight_decay", "amsgrad")}, "state": adam},
+            "history_plans": [{"path": str(index), "history_index": index} for index in range(len(histories))]}
+
+
+def _given_back(backend, optimizer, parameters):
+    """Copy the finished update's weights and Adam state into torch; nothing is written unless all is finite."""
+    import numpy as np
+    import torch
+    restored_parameters = {name: torch.from_numpy(np.array(value, copy=True)) for name, value in backend.p.items()}
+    restored_adam = {}
+    for name, parameter in parameters.items():
+        saved = backend.adam[name]
+        if not optimizer.state.get(parameter) and saved["step"] == 0:
+            continue
+        existing_step = optimizer.state.get(parameter, {}).get("step")
+        step_dtype = existing_step.dtype if isinstance(existing_step, torch.Tensor) else torch.float32
+        restored_adam[parameter] = {
+            "step": torch.tensor(float(saved["step"]), dtype=step_dtype),
+            "exp_avg": torch.from_numpy(np.array(saved["exp_avg"], copy=True)),
+            "exp_avg_sq": torch.from_numpy(np.array(saved["exp_avg_sq"], copy=True)),
+        }
+    _require(all(torch.isfinite(p).all().item() for p in restored_parameters.values())
+             and all(torch.isfinite(v).all().item() for state in restored_adam.values() for v in state.values()),
+             "Nonfinite weights or optimizer state after the MLX update")
+    with torch.no_grad():
+        for name, parameter in parameters.items():
+            parameter.copy_(restored_parameters[name])
+    optimizer.state.clear()
+    optimizer.state.update(restored_adam)
+    optimizer.zero_grad(set_to_none=True)
+
+
+def _released(backend):
+    """Drop the backend's GPU arrays. The caller deletes the backend and then calls ``_returned``."""
+    backend.plan_cache.clear()
+    backend.p.clear()
+    backend.adam.clear()
+    return backend.mx
+
+
+def _returned(mx):
+    """Give MLX's cached GPU memory back to the system."""
+    gc.collect()
+    mx.synchronize()
+    mx.clear_cache()
+
+
+def update(model, optimizer, trajectories, *, config, generator, progress=None):
+    """Run the whole update, then copy FP32 weights, Adam state and the shuffle RNG back."""
+    import numpy as np
+    import torch
+    from ..ppo import PPOReport, prepare, set_momentum
+    from .model import MLXBackend
+    from .plans import _prefix_plan, _joined_plan, _active_parameters
+
+    started = time.perf_counter()
+    set_momentum(optimizer, config)
+    if config.games_per_minibatch is not None:
+        from .games import update as update_by_games
+        return update_by_games(model, optimizer, trajectories, config=config, generator=generator, progress=progress)
+    rollouts, histories, parameters, group, adam = _taken(model, optimizer, trajectories)
 
     batch = prepare(rollouts, config)
     targets, advantages, offsets, windows, offset = batch.targets, batch.advantages, batch.offsets, batch.windows, batch.samples
     planned_steps = batch.planned_steps(config)
     schedule = torch.Generator(device="cpu")
     schedule.set_state(generator.get_state())
-    references = [{"path": str(index), "history_index": index} for index in range(len(histories))]
     history_jobs = [[i for i, frame in enumerate(history.frames) if frame["root"] >= 0]
                     for history in histories]
-    manifest = {"parameter_order": list(parameters), "parameters": {name: _host(p) for name, p in parameters.items()},
-                "model_config": model.config.to_dict(), "ppo": config.to_dict(),
-                "optimizer": {"config": {key: group[key] for key in
-                              ("lr", "betas", "eps", "weight_decay", "amsgrad")}, "state": adam},
-                "history_plans": references}
+    manifest = _manifest(model, parameters, group, adam, config, histories)
     plan_seconds = 0.0
 
     def load_history(reference):
@@ -184,31 +246,10 @@ def update(model, optimizer, trajectories, *, config, generator, progress=None):
         updated = time.perf_counter()
         _require(completed == planned_steps and count_seen == offset * config.epochs,
                  "MLX update skipped samples or optimizer steps")
-        restored_parameters = {name: torch.from_numpy(np.array(value, copy=True)) for name, value in backend.p.items()}
-        restored_adam = {}
-        for name, parameter in parameters.items():
-            saved = backend.adam[name]
-            if not optimizer.state.get(parameter) and saved["step"] == 0:
-                continue
-            existing_step = optimizer.state.get(parameter, {}).get("step")
-            step_dtype = existing_step.dtype if isinstance(existing_step, torch.Tensor) else torch.float32
-            restored_adam[parameter] = {
-                "step": torch.tensor(float(saved["step"]), dtype=step_dtype),
-                "exp_avg": torch.from_numpy(np.array(saved["exp_avg"], copy=True)),
-                "exp_avg_sq": torch.from_numpy(np.array(saved["exp_avg_sq"], copy=True)),
-            }
-        _require(all(torch.isfinite(p).all().item() for p in restored_parameters.values())
-                 and all(torch.isfinite(v).all().item() for state in restored_adam.values() for v in state.values()),
-                 "Nonfinite weights or optimizer state after the MLX update")
-        with torch.no_grad():
-            for name, parameter in parameters.items():
-                parameter.copy_(restored_parameters[name])
-        optimizer.state.clear()
-        optimizer.state.update(restored_adam)
-        optimizer.zero_grad(set_to_none=True)
+        _given_back(backend, optimizer, parameters)
         generator.set_state(schedule.get_state())
         restored = time.perf_counter()
-        validation_seconds = backend.state_validation_seconds
+        validation_seconds, initial_check = backend.state_validation_seconds, backend.initial_check
     finally:
         planner.shutdown(wait=True, cancel_futures=True)
         if prepared_prefixes is not None:
@@ -216,18 +257,13 @@ def update(model, optimizer, trajectories, *, config, generator, progress=None):
         for history in histories:
             history.plans.pop((0, history.frame_count, ()), None)
         if backend is not None:
-            backend.plan_cache.clear()
-            backend.p.clear()
-            backend.adam.clear()
-            mx = backend.mx
+            mx = _released(backend)
             del backend
-            gc.collect()
-            mx.synchronize()
-            mx.clear_cache()
+            _returned(mx)
     finished = time.perf_counter()
     return PPOReport(offset, completed, *(value / count_seen for value in weighted), timings_seconds={
         "preparation": prepared - started, "update": updated - prepared,
         "plan_build": plan_seconds, "cpu_restore": restored - updated,
         "state_validation": validation_seconds, "cleanup": finished - restored,
         "full_update": finished - started,
-    })
+    }, initial_check=initial_check)

@@ -125,3 +125,54 @@ def repeated_empty_opens(frames):
                     and all(_same_view(a.after, view) for view in (b.before, c.after, d.before))):
                 repeats.append(c.before.seq)
     return tuple(repeats)
+
+
+class RepeatedOpens:
+    """``repeated_empty_opens`` for a history that is still growing.
+
+    ``read`` takes the seat's frames so far and settles every decision whose
+    successor has arrived; ``finish`` settles the last one and returns what
+    ``repeated_empty_opens`` returns for the finished history. A frame before
+    ``needed`` is not read again, so its observation may be dropped.
+    """
+
+    def __init__(self):
+        self.recent = deque(maxlen=4)
+        self.repeats = []
+        self.start = None  # the latest decision; its step is settled when the next decision is there
+        self.scanned = 0  # frames looked at for decisions
+
+    @property
+    def needed(self):
+        """The first frame a later call still reads."""
+        return self.scanned if self.start is None else self.start
+
+    def read(self, frames):
+        for position in range(self.scanned, len(frames)):
+            if frames[position].kind == "decision":
+                if self.start is not None:
+                    self._settle(frames, self.start, position)
+                self.start = position
+        self.scanned = len(frames)
+
+    def finish(self, frames):
+        self.read(frames)
+        if self.start is not None:
+            self._settle(frames, self.start, len(frames))
+            self.start = None
+        return tuple(self.repeats)
+
+    def _settle(self, frames, start, stop):
+        step = _navigation_step(frames, start, stop)
+        recent = self.recent
+        if step is None:
+            recent.clear()
+            return
+        recent.append(step)
+        if len(recent) == 4:
+            a, b, c, d = recent
+            if (a.target is not None and a.target == c.target and b.target is None and d.target is None
+                    and a.before.day == d.after.day
+                    and all(_same_view(a.before, view) for view in (b.after, c.before, d.after))
+                    and all(_same_view(a.after, view) for view in (b.before, c.after, d.before))):
+                self.repeats.append(c.before.seq)

@@ -33,6 +33,7 @@ COLORS = ("red", "blue")
 TRAINING_DAY_LIMIT = 365
 MAX_MESSAGE_BYTES = 16 * 1024 * 1024
 READER_DRAIN_SECONDS = 5.0  # after the engine exits, for both readers to reach the end of their streams
+SETTLE_SECONDS = 5.0  # at a limit, for the engine's report on an action it was sent before the limit was met
 # Lines the patched engine logs when it gives up on a game.
 ENGINE_FAILURE_MARKERS = (
     "Experiment failure:", "Headless network thread failed:",
@@ -83,10 +84,14 @@ class Env:
         self.process = None
         self.sides = ()
         self.log = None
+        self.idle = None  # called with no argument whenever the environment is about to wait for the engine
 
     # -- the caller's interface ------------------------------------------------
-    def reset(self, directory, episode, seed):
-        """Start game ``episode`` with engine ``seed`` in the new folder ``directory``."""
+    def reset(self, directory, episode, seed, game_map=None):
+        """Start game ``episode`` with engine ``seed`` in the new folder ``directory``.
+
+        ``game_map`` is another map file for this game alone; without it the game is the engine's own map.
+        """
         self.close()
         self.directory = Path(directory).expanduser().resolve()
         self.directory.mkdir(parents=True)
@@ -105,8 +110,11 @@ class Env:
         (self.directory / "logs").mkdir()
         self.log = (self.directory / "logs" / "process.log").open("w")
         try:
-            self.process = self.engine.launch(self.directory, episode, seed,
-                                              [side.listener.getsockname()[1] for side in self.sides], self.log)
+            ports = [side.listener.getsockname()[1] for side in self.sides]
+            if game_map is None:
+                self.process = self.engine.launch(self.directory, episode, seed, ports, self.log)
+            else:
+                self.process = self.engine.launch(self.directory, episode, seed, ports, self.log, game_map=game_map)
         except BaseException:
             self.close()
             raise
@@ -145,14 +153,48 @@ class Env:
         """Stop the game at a limit. A game that already ended on its own keeps its real result."""
         self.request = None
         self._drain()
+        self._settle()
         if self.failure is None and self.exit_code is None and not self._ending():
             self.limit = reason
             return self._finish()
         return self._advance()
 
+    def _settle(self):
+        """Wait for the engine's report on every action it has been sent.
+
+        A limit is met in one seat's decision while the other seat's last
+        action, the end of its turn, may still be on its way through the
+        engine: sent, its result not yet read. The two travel on two
+        connections, so which arrived first was a matter of milliseconds, and
+        a seat's history ended with or without the result of its last action
+        accordingly: the same game gave two trajectories. The engine reports
+        on every action it was sent, so the stop waits for those reports, for
+        ``SETTLE_SECONDS`` at most; an engine that stays silent is stopped as
+        it is, as before.
+        """
+        deadline = time.monotonic() + SETTLE_SECONDS
+        while (self.failure is None and self.exit_code is None and not self._ending()
+               and any(side.producer.history.action is not None for side in self.sides)):
+            try:
+                self._fold(self.events.get(timeout=max(0.0, deadline - time.monotonic())))
+            except queue.Empty:
+                break
+
     def frames(self, player):
         """Every frame the seat has received or produced so far."""
         return tuple(self.sides[player].producer.history._frames)
+
+    def received(self, player):
+        """The seat's frames so far as the growing list itself; frame ``n`` is at position ``n``. Read only."""
+        return self.sides[player].producer.history._frames
+
+    def forget(self, player, before):
+        """Drop the observations and offers of the seat's frames before ``before``, to bound a long game's memory.
+
+        ``before`` is at most the seat's latest decision. The frames stay in
+        their places, without what they showed.
+        """
+        self.sides[player].producer.history.forget(before)
 
     @property
     def day(self):
@@ -293,6 +335,8 @@ class Env:
                 request = self._next_request()
                 if request is not None:
                     return request
+            if self.idle is not None:
+                self.idle()  # the engine is working: the caller may use the time
             event = self._wait()
             if event is None:
                 self._fail("engine_silent", f"No engine event for {self.limits.idle_seconds} s")
@@ -351,7 +395,10 @@ class Env:
             return End("truncated", self.limit)
         if returncode != 0:
             return End("failed", "unclean_exit", detail=f"The engine exited with status {returncode}")
-        if any(not side.producer.ready or side.actions < 1 for side in self.sides):
+        # A seat that connected and was never asked anything lost before its first turn: red's hero can reach
+        # blue's town on day 1 and win the game there. That is a game with a result, and the engine's account of
+        # it is checked below like any other. A seat that never connected, or a game nobody acted in, is not.
+        if any(not side.producer.ready for side in self.sides) or not any(side.actions for side in self.sides):
             return End("failed", "seat_never_acted")
         if log.count("Experiment self-play complete. Ending game.") != 1:
             return End("failed", "unverified_terminal", detail="The engine log has no single end-of-game line")

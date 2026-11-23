@@ -3,9 +3,11 @@
 #include "../../lib/json/JsonNode.h"
 #include "TownEconomy.h"
 
+#include <cstdint>
 #include <map>
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace explorer_rl
@@ -33,6 +35,35 @@ struct VisibleMap
 	bool operator==(const VisibleMap &) const = default;
 };
 
+/// One stack's entry of an "own_armies" army, kept for as long as nothing it
+/// was read from has changed. Every figure in it but the creature and the
+/// count is an answer of the stack's bonus node, and the engine keeps those
+/// answers itself for as long as the node's tree version stands
+/// (CBonusSystemNode::getAllBonuses). The same stack in the same slot with
+/// the same creature, count and version therefore has the entry it had.
+struct OwnStackDetail
+{
+	int32_t version = -1; ///< the stack's bonus tree version, read before the entry was built
+	int slot = -1;
+	int creature = -1;
+	int64_t count = -1;
+	JsonNode item; ///< null until built
+};
+using OwnStackDetails = std::unordered_map<const void *, OwnStackDetail>; ///< by the stack's address
+
+/// What a view in the map context is written from besides its tiles and
+/// objects: the player's heroes and towns with their places, movement and
+/// stacks (as OwnStackDetail knows a stack), and the resources. Two views in
+/// the map context with equal prints and equal maps are the same JSON, so a
+/// capture that finds the print and the map of the latest view again need not
+/// build its observation to learn that nothing changed.
+struct ViewPrint
+{
+	std::vector<int64_t> numbers;
+	std::vector<const void *> stacks;
+	bool operator==(const ViewPrint &) const = default;
+};
+
 /// Per-player adapter bookkeeping. All access is protected by ExplorerRL's
 /// state mutex; engine identifiers never leave these routing tables.
 struct ContextualState
@@ -42,6 +73,11 @@ struct ContextualState
 	std::vector<JsonNode> records;
 	JsonNode lastObservation; ///< of the latest view, without its tiles and objects
 	VisibleMap lastMap; ///< the tiles and objects of the latest view
+	OwnStackDetails ownStackDetails; ///< entries of the "own_armies" stacks seen last; a miss only builds one again
+	/// The print of lastObservation while that was captured in the map context
+	/// and no action has run since (an action reads the latest view and may
+	/// leave a mark in it); otherwise empty, and the next capture compares in full.
+	std::optional<ViewPrint> lastPrint;
 	int lastDay = 0;
 	std::string context = "map";
 	std::string subject;

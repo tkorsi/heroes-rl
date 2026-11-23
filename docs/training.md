@@ -17,7 +17,7 @@ mkdir -p "$HEROES_ARTIFACTS"
 Supply a compatible Heroes III installation so that its original `Data` folder is available at `$HEROES_ARTIFACTS/game-data/Data`. Follow the [VCMI build instructions](architecture.md#engine) through the CMake build. For the artifact directory chosen above, run the freeze step there:
 
 ```sh
-python3 tools/freeze_runtime.py "$HEROES_ARTIFACTS/runtime/local-v8-tile-changes-v1"
+python3 tools/freeze_runtime.py "$HEROES_ARTIFACTS/runtime/local-v8-quiet-captures-v1"
 ```
 
 To use a different prepared runtime, set `HEROES_VCMI` to its patched `vcmiclient` executable. For the Torch reference backend, install [the base learner lock](../dependencies/learner.lock) and pass `--backend torch` to both the check and train commands.
@@ -54,7 +54,7 @@ To train a randomly initialized network in a separate empty state instead:
 | `--both-seats` | Also learn from the opponent in decisive games. Both seats already contribute on 365-day draws. |
 | `--stack-moves N`, `--windows N`, `--decisions N` | Change action budgets. Record these when comparing policies. |
 
-The grouped MLX preset uses one epoch, 16 loss windows per minibatch, eight windows per game and an Adam learning rate of 0.00085. Each loss window covers up to 16 decisions. Inference uses the same frozen weights for both seats. By default the learner color alternates between games. Runs record engine and policy seeds, outcomes, rewards and PPO timings in `log.jsonl`. The launcher lists further options with `./train.command 20 --help`. [Learner architecture](architecture.md#the-update)
+The default MLX update makes one pass over the batch with ten trajectories per optimizer step and an Adam learning rate of 0.001. Use `--windows-per-minibatch` and `--windows-per-game` for the window-based update. Both seats use the same frozen weights. By default the learner color alternates between games. Runs record engine and policy seeds, outcomes, samples, optimizer steps, model-weight hashes and phase timings in `log.jsonl`. Use `--starts FILE` for a weighted mix of starting positions or layouts and `--seed N` to reproduce seed selection. The launcher lists further options with `./train.command 20 --help`.
 
 ## Read a training result
 
