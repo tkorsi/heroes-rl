@@ -7,8 +7,11 @@ play are never reused, and neither is a state computed with earlier weights:
 at every optimizer step the state is rebuilt from the start of the game with
 the current weights, which costs time quadratic in the length of a game.
 ``windows_per_game`` lets the windows a minibatch takes from one game share
-that replay. The MLX backend in ``heroes.learner.mlx`` runs the same update on
-Apple GPUs. ``update`` below is the slow, plain-autograd reference.
+that replay. With ``games_per_minibatch`` a minibatch is every window of whole
+games: one pass over a game then gives the states of all its windows, and the
+time of an update grows with the number of decisions and no longer with the
+length of a game. The MLX backend in ``heroes.learner.mlx`` runs the same
+update on Apple GPUs. ``update`` below is the slow, plain-autograd reference.
 """
 from __future__ import annotations
 
@@ -39,6 +42,23 @@ class PPOConfig:
     # of it. 1 draws every window from all games alike; it must divide
     # windows_per_minibatch.
     windows_per_game: int = 1
+    # Whole games per optimizer step. When set, a minibatch is every window of
+    # that many games and the two window counts above are not used. 0 stands for
+    # every game of the batch: each step is then a step on all of it.
+    games_per_minibatch: int | None = None
+    # With ``games_per_minibatch``: the update ends before a step whose games show a mean KL from the
+    # policy that played them above this, measured with the weights the step would start from.
+    target_kl: float | None = None
+    # The share of the value loss's gradient that reaches the network below the value head. The policy reads
+    # the same recurrent state as the value, so a value gradient there moves the policy as well: with 1 the
+    # trunk is trained on the value as on the policy, with 0 the value loss trains the value head alone and
+    # the trunk follows the policy loss only. The value itself is the same number for every share.
+    value_trunk: float = 1.0
+    # Adam's coefficient for its first moment, the running mean of gradients a step follows. With 0.9, Adam's
+    # usual value, a step also follows the steps before it, and an update's first steps follow the last steps
+    # of the update before it, whose moment the checkpoint keeps: about nine steps' worth in all. With 0 a step
+    # follows its own minibatch's gradient and nothing is carried from step to step or from update to update.
+    momentum: float = 0.9
 
     def __post_init__(self):
         if not (0 <= self.gae_lambda <= 1 and 0 < self.clip_ratio < 1 and self.value_coefficient >= 0
@@ -47,7 +67,11 @@ class PPOConfig:
                 and type(self.windows_per_game) is int
                 and min(self.epochs, self.decisions_per_window, self.windows_per_minibatch,
                         self.windows_per_game) >= 1
-                and self.windows_per_minibatch % self.windows_per_game == 0):
+                and self.windows_per_minibatch % self.windows_per_game == 0
+                and (self.games_per_minibatch is None
+                     or type(self.games_per_minibatch) is int and self.games_per_minibatch >= 0)
+                and (self.target_kl is None or self.target_kl > 0)
+                and 0 <= self.value_trunk <= 1 and 0 <= self.momentum < 1):
             raise ValueError("Invalid PPO configuration")
 
     def to_dict(self):
@@ -72,6 +96,7 @@ class Trajectory:
     guard: str | None = None  # interaction-guard version the behaviour policy used
     recipe: object = None  # compiled ``heroes.learner.plan.History`` (MLX backend)
     window_repeat_indices: tuple[int, ...] = ()  # indices into decisions, in play order
+    compact: object = None  # the recipe as arrays, ``heroes.learner.compact.Compact`` (MLX update by whole games)
 
     def __post_init__(self):
         count = len(self.decisions)
@@ -137,8 +162,16 @@ class Batch:
     starts: list = field(default_factory=list)  # per trajectory, the first frame of each of its windows, ascending
 
     def planned_steps(self, config):
+        if config.games_per_minibatch is not None:
+            return config.epochs * math.ceil(len(self.starts) / (config.games_per_minibatch or len(self.starts)))
         groups = sum(math.ceil(len(starts) / config.windows_per_game) for starts in self.starts)
         return config.epochs * math.ceil(groups * config.windows_per_game / config.windows_per_minibatch)
+
+    def game_minibatches(self, config, generator):
+        """One epoch of whole games: for every optimizer step, the indices of its games, in shuffled order."""
+        order = torch.randperm(len(self.starts), generator=generator).tolist()
+        size = config.games_per_minibatch or len(order)
+        return [order[left:left + size] for left in range(0, len(order), size)]
 
     def minibatches(self, config, generator):
         """One epoch: for every optimizer step, the indices of its windows in ``windows``.
@@ -148,8 +181,16 @@ class Batch:
         shuffled and cut into groups of that size, the groups of all games are
         shuffled, and a minibatch takes whole groups. Its windows then come
         from few games, and one replay of a game serves all its windows in the
-        step. A game's last group may be smaller.
+        step. A game's last group may be smaller. With ``games_per_minibatch``
+        the games are shuffled and a minibatch is every window of that many
+        games, each game's windows in their order.
         """
+        if config.games_per_minibatch is not None:
+            firsts = [0]
+            for starts in self.starts:  # ``windows`` lists the games one after another
+                firsts.append(firsts[-1] + len(starts))
+            return [[window for game in games for window in range(firsts[game], firsts[game + 1])]
+                    for games in self.game_minibatches(config, generator)]
         size = config.windows_per_game
         if size == 1:
             order = torch.randperm(len(self.windows), generator=generator).tolist()
@@ -216,6 +257,11 @@ class PPOReport:
     approximate_kl: float
     clip_fraction: float
     timings_seconds: dict = field(default_factory=dict)
+    # MLX only: how far its first forward pass was from what the actors recorded while playing.
+    initial_check: dict | None = None
+    # Update by whole games only: for every optimizer step, measured on its games before the step,
+    # [samples, policy loss, value loss, KL, clip fraction, gradient norm].
+    steps: list | None = None
 
 
 def _states_before(model, frames, starts):
@@ -230,11 +276,26 @@ def _states_before(model, frames, starts):
     return states
 
 
+def set_momentum(optimizer, config):
+    """Give Adam the first-moment coefficient of ``config``; a checkpoint's optimizer may hold another."""
+    for group in optimizer.param_groups:
+        group["betas"] = (config.momentum, group["betas"][1])
+
+
+def _value(model, output, share):
+    """The decision's value, with ``share`` of its gradient passed on to the state it is read from."""
+    if share == 1:
+        return output.decision.value
+    state = output.state.detach() if share == 0 else share * output.state + (1 - share) * output.state.detach()
+    return model.value(state).squeeze(-1)
+
+
 def update(model, optimizer, trajectories, *, config, generator, progress=None):
     """Reference update in plain torch autograd. Correct but slow: it replays
     games frame by frame. Production training uses MLX."""
     from ..model.policy import encode_history
     started = time.perf_counter()
+    set_momentum(optimizer, config)
     batch = prepare(trajectories, config)
     inputs = [encode_history(item.frames, guard=item.guard) for item in trajectories]
     totals, count_seen, steps = [0.0] * 4, 0, 0
@@ -256,7 +317,7 @@ def update(model, optimizer, trajectories, *, config, generator, progress=None):
                     if seq in wanted:
                         index = wanted[seq]
                         new_logs.append(output.decision.distribution.log_prob(item.actions[index]))
-                        new_values.append(output.decision.value)
+                        new_values.append(_value(model, output, config.value_trunk))
                         old_logs.append(item.log_probs[index])
                         old_values.append(item.values[index])
                         advantages.append(batch.advantages[batch.offsets[window.rollout_index] + index])

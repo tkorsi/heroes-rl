@@ -2186,6 +2186,26 @@ class Frame:
             raise ValueError("Offers must preserve complete context and all coordinate support")
 
 
+class Forgotten:
+    """What is left of a frame once what it carried was dropped: that it was there, and what it answered.
+
+    A game of 150,000 decisions has a million frames per seat. Once a frame
+    has been read, a trajectory needs its kind, its number and the decision
+    it belongs to, and nothing of its observation, offers, action or result.
+    """
+    __slots__ = ("seq", "day", "kind", "decision_seq", "reason")
+    observation = offers = action = result = event = context = None
+
+    def __init__(self, frame):
+        self.seq, self.day, self.kind = frame.seq, frame.day, frame.kind
+        self.decision_seq, self.reason = frame.decision_seq, frame.reason
+
+
+def without_view(frame):
+    """What remains of ``frame`` once it has been read: see ``Forgotten``."""
+    return frame if type(frame) is Forgotten else Forgotten(frame)
+
+
 class PlayerHistory:
     """Append-only one-player stream. It does not allocate or update neural state."""
 
@@ -2198,6 +2218,7 @@ class PlayerHistory:
             raise ValueError("PlayerHistory requires a history schema")
         self.schema = schema
         self._frames = []
+        self._forgotten = 0  # frames before this one no longer hold what they showed
         self.context = Context()
         self.revision = -1
         self.day = 1
@@ -2237,6 +2258,18 @@ class PlayerHistory:
     def frame_count(self):
         """len(self.frames), without copying them."""
         return len(self._frames)
+
+    def forget(self, before):
+        """Drop what the frames before ``before`` carried; see ``Forgotten``.
+
+        The caller keeps every frame from the seat's last decision on: the
+        checks of later frames look for the latest observation, and it is there.
+        """
+        frames = self._frames
+        before = min(before, len(frames))
+        for index in range(self._forgotten, before):
+            frames[index] = Forgotten(frames[index])
+        self._forgotten = max(self._forgotten, before)
 
     def emit(self, kind, day=None, **payload):
         frame = Frame(self.episode, self.player, len(self._frames), self.day if day is None else day, kind,
@@ -3066,14 +3099,22 @@ def _decode_tiles(raw):
 _TILE_PLACES = [None, None]  # the tile tuple indexed last, and the place of each of its positions
 
 
+_TILES_MADE = {}  # id of a tuple _changed_tiles made lately -> (the tuple, the one it was made from, the places replaced, every position's place)
+
+
 def _changed_tiles(tiles, raw):
     """``tiles`` with each tile of the raw list in the place of the one at its position."""
     items = _array(raw)
     if not items:
         return tiles
-    if tiles is not _TILE_PLACES[0]:
-        _TILE_PLACES[:] = tiles, {tile.position: place for place, tile in enumerate(tiles)}
-    places, changed, replaced = _TILE_PLACES[1], list(tiles), set()
+    made = _TILES_MADE.get(id(tiles))
+    if made is not None and made[0] is tiles:
+        places = made[3]  # a changed tile keeps its position: a tuple made here has the places of the one before it
+    else:
+        if tiles is not _TILE_PLACES[0]:
+            _TILE_PLACES[:] = tiles, {tile.position: place for place, tile in enumerate(tiles)}
+        places = _TILE_PLACES[1]
+    changed, replaced = list(tiles), set()
     for item in items:
         tile = _decode_tile(item)
         place = places.get(tile.position)
@@ -3081,7 +3122,22 @@ def _changed_tiles(tiles, raw):
             raise ValueError("A changed tile must replace a different tile of the previous view, once")
         replaced.add(place)
         changed[place] = tile
-    return tuple(changed)
+    result = tuple(changed)
+    if len(_TILES_MADE) >= 16:  # a few per seat: what a tuple was made from is asked while it is the newest
+        del _TILES_MADE[next(iter(_TILES_MADE))]
+    _TILES_MADE[id(result)] = (result, tiles, tuple(replaced), places)  # holds the tuple, so its id names nothing else
+    return result
+
+
+def tiles_made_from(tiles):
+    """``(the tuple these tiles were made from, the places replaced)`` if ``_changed_tiles`` made them lately, else None.
+
+    A hero's step changes two tiles of four hundred. Whoever keeps something
+    computed from a tile tuple can make it for the next tuple from these
+    places instead of from every tile.
+    """
+    made = _TILES_MADE.get(id(tiles))
+    return (made[1], made[2]) if made is not None and made[0] is tiles else None
 
 
 def decode_observation(raw, *, schema=SCHEMA, unchanged_map=None):

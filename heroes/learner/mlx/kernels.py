@@ -113,6 +113,22 @@ class OptimizedOps:
             [(b, t, 64)], (b * 1024, 1, 1), (1024, 1, 1), [("T", t), ("H", 64)])[0]
         return self.mx.stop_gradient(states)
 
+    def gru_prefixes(self, x, offsets, lengths, wi, wh, bi, bh):
+        """Detached main-memory recurrences of several sequences laid end to end in ``x``, each from a zero state.
+
+        Sequence ``k`` is the rows ``offsets[k]`` to ``offsets[k] + lengths[k]``
+        of ``x``. One kernel call runs them side by side, a thread group each,
+        so the time is that of the longest and not of their sum. Returns the
+        state after every row.
+        """
+        mx = self.mx
+        count = offsets.shape[0]
+        projected = x @ wi.T + bi
+        states = self.library.call("prefix_gru_r16_ragged",
+                                   [projected, wh, bh, mx.zeros((count, 64), dtype=mx.float32), offsets, lengths],
+                                   [(x.shape[0], 64)], (count * 1024, 1, 1), (1024, 1, 1), [("H", 64)])[0]
+        return mx.stop_gradient(states)
+
     def gru(self, x, h, wi, wh, bi, bh, lengths=None):
         mx = self.mx
         @mx.custom_function

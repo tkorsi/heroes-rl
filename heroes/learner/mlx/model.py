@@ -159,10 +159,13 @@ class MLXModel:
             own = own.at[maps["positions"]].add(table[maps["own"]])
         return mx.concatenate((roots, glob, own), axis=-1), table, cells
 
-    def score(self, p, plan, states, table, cells):
+    def score(self, p, plan, states, table, cells, value_trunk=1.0):
         mx = self.mx
         decision_states = states[plan["decision_states"]]
-        values = self.linear(p, decision_states, "value").squeeze(-1)
+        # ``value_trunk`` of the value's gradient goes on into the states; see ``PPOConfig.value_trunk``.
+        read = (decision_states if value_trunk == 1 else mx.stop_gradient(decision_states) if value_trunk == 0
+                else value_trunk * decision_states + (1 - value_trunk) * mx.stop_gradient(decision_states))
+        values = self.linear(p, read, "value").squeeze(-1)
         query = mx.tanh(self.linear(p, decision_states, "policy_query"))
         logs = mx.zeros((plan["decision_count"],), dtype=mx.float32)
         for kind, values_by_head in plan["heads"]:
@@ -288,7 +291,7 @@ class MLXBackend(MLXModel):
             initial = mx.stop_gradient(prefixes[(segment["history"], segment["start"])])
             sequence = self.recurrent(p, vectors[None, segment["left"]:segment["right"]], "gru", initial)
             states.append(sequence[0])
-        return self.score(p, plan, mx.concatenate(states, axis=0), table, cells)
+        return self.score(p, plan, mx.concatenate(states, axis=0), table, cells, self.config.get("value_trunk", 1.0))
 
     def losses(self, p, step, plan, prefixes, targets):
         mx = self.mx
@@ -312,45 +315,33 @@ class MLXBackend(MLXModel):
     def _moments(self):
         return [value for state in self.adam.values() for key, value in state.items() if key != "step"]
 
-    def update(self, step, *, prefixes=None):
-        mx = self.mx
-        if prefixes is None:
-            prefixes = self.prefix_states(step["prefixes"])
-        elif set(prefixes) != {(spec["history"], entry["stop"])
-                              for spec in step["prefixes"] for entry in spec["states"]}:
-            raise ValueError("Prepared prefixes differ from this minibatch's boundaries")
-        plan = self._prepare_plan(step["plan"])
-        targets = tuple(self._array(step[key]) for key in ("old_log_probs", "old_values", "advantages", "returns"))
-        # Only the parameter tree is transformed. Metadata, NumPy-backed step
-        # records and tuple-keyed prefix lookups remain ordinary Python values.
-        values, gradients = mx.value_and_grad(
-            lambda parameters: self.losses(parameters, step, plan, prefixes, targets)
-        )(self.p)
-        active = step["active_parameters"]
+    def _check_active(self, active):
         if not active or len(set(active)) != len(active) or any(name not in self.p for name in active):
             raise ValueError("Invalid minibatch active-parameter declaration")
-        norm = mx.sqrt(sum(mx.sum(gradients[name] ** 2) for name in active))
-        mx.eval(values, norm)
-        if not self.finite([norm, *values]):
-            raise FloatingPointError("Nonfinite MLX PPO loss, predictions or gradient norm")
-        if self.initial_check is None:
-            delta_logs, delta_values = values[-2] - targets[0], values[-1] - targets[1]
-            self.initial_check = {
-                "samples": int(values[-2].size),
-                "maximum_log_probability_difference": float(mx.max(mx.abs(delta_logs)).item()),
-                "maximum_value_difference": float(mx.max(mx.abs(delta_values)).item()),
-                "value_rmse": float(mx.sqrt(mx.mean(delta_values ** 2)).item()),
-                "maximum_log_probability_limit": INITIAL_LOG_PROBABILITY_LIMIT,
-                "maximum_value_limit": INITIAL_VALUE_LIMIT,
-                "reference": "recorded collection behavior on the first scheduled minibatch before any update",
-                "scope": "initial FP32 port sanity, not learning-quality equivalence",
-            }
-            self.initial_check["passed"] = (
-                self.initial_check["maximum_log_probability_difference"] <= INITIAL_LOG_PROBABILITY_LIMIT
-                and self.initial_check["maximum_value_difference"] <= INITIAL_VALUE_LIMIT
-            )
-            if not self.initial_check["passed"]:
-                raise ValueError("Initial MLX prediction sanity limits exceeded; no optimizer step performed")
+
+    def check_initial(self, delta_logs, delta_values):
+        """Before the first step: what MLX computes must be what was recorded while playing."""
+        mx = self.mx
+        self.initial_check = {
+            "samples": int(delta_logs.size),
+            "maximum_log_probability_difference": float(mx.max(mx.abs(delta_logs)).item()),
+            "maximum_value_difference": float(mx.max(mx.abs(delta_values)).item()),
+            "value_rmse": float(mx.sqrt(mx.mean(delta_values ** 2)).item()),
+            "maximum_log_probability_limit": INITIAL_LOG_PROBABILITY_LIMIT,
+            "maximum_value_limit": INITIAL_VALUE_LIMIT,
+            "reference": "recorded collection behavior on the first scheduled minibatch before any update",
+            "scope": "initial FP32 port sanity, not learning-quality equivalence",
+        }
+        self.initial_check["passed"] = (
+            self.initial_check["maximum_log_probability_difference"] <= INITIAL_LOG_PROBABILITY_LIMIT
+            and self.initial_check["maximum_value_difference"] <= INITIAL_VALUE_LIMIT
+        )
+        if not self.initial_check["passed"]:
+            raise ValueError("Initial MLX prediction sanity limits exceeded; no optimizer step performed")
+
+    def apply(self, gradients, active, norm):
+        """One Adam step on the ``active`` parameters, their gradients clipped to the configured norm."""
+        mx = self.mx
         scale = mx.minimum(1.0, self.config["max_grad_norm"] / (norm + 1e-6))
         beta1, beta2 = self.adam_config["betas"]
         lr, epsilon = self.adam_config["lr"], self.adam_config["eps"]
@@ -379,4 +370,28 @@ class MLXBackend(MLXModel):
             raise FloatingPointError("Nonfinite MLX model or Adam state after update")
         if mx.get_peak_memory() > self.memory_limit:
             raise MemoryError("MLX peak memory exceeded the declared reserve")
+
+    def update(self, step, *, prefixes=None):
+        mx = self.mx
+        if prefixes is None:
+            prefixes = self.prefix_states(step["prefixes"])
+        elif set(prefixes) != {(spec["history"], entry["stop"])
+                              for spec in step["prefixes"] for entry in spec["states"]}:
+            raise ValueError("Prepared prefixes differ from this minibatch's boundaries")
+        plan = self._prepare_plan(step["plan"])
+        targets = tuple(self._array(step[key]) for key in ("old_log_probs", "old_values", "advantages", "returns"))
+        # Only the parameter tree is transformed. Metadata, NumPy-backed step
+        # records and tuple-keyed prefix lookups remain ordinary Python values.
+        values, gradients = mx.value_and_grad(
+            lambda parameters: self.losses(parameters, step, plan, prefixes, targets)
+        )(self.p)
+        active = step["active_parameters"]
+        self._check_active(active)
+        norm = mx.sqrt(sum(mx.sum(gradients[name] ** 2) for name in active))
+        mx.eval(values, norm)
+        if not self.finite([norm, *values]):
+            raise FloatingPointError("Nonfinite MLX PPO loss, predictions or gradient norm")
+        if self.initial_check is None:
+            self.check_initial(values[-2] - targets[0], values[-1] - targets[1])
+        self.apply(gradients, active, norm)
         return [float(value.item()) for value in values[1:5]], int(values[-2].size)

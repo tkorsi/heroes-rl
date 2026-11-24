@@ -16,6 +16,7 @@ from __future__ import annotations
 from dataclasses import asdict, replace
 from datetime import datetime, timezone
 import fcntl
+import gc
 import itertools
 import json
 import multiprocessing
@@ -33,8 +34,9 @@ import traceback
 import torch
 
 from . import checkpoint
-from .actor import Game, Job, compile_recipe, play
+from .actor import Game, Job, compact_recipe, compile_recipe, play
 from .engine.env import COLORS, Env
+from .model.policy import weights_sha256
 
 
 def restore(config, *, fresh=False, save=True):
@@ -92,12 +94,17 @@ def _play_job(env, model, job, config, report):
     started = time.monotonic()
     try:
         try:
+            # The update by whole games reads arrays; an actor then records for it alone and keeps no frames.
+            record = config.backend == "mlx" and ("arrays" if config.ppo.games_per_minibatch is not None else True)
             game = play(env, model, job, directory, guard=config.guard, on_progress=report,
-                        both_seats=config.both_seats)
+                        both_seats=config.both_seats, record=record)
             if config.backend == "mlx":
                 compiling = time.monotonic()
                 for trajectory in game.trajectories:
-                    compile_recipe(model, trajectory)
+                    if trajectory.recipe is None:  # not recorded while playing
+                        compile_recipe(model, trajectory)
+                    if config.ppo.games_per_minibatch is not None:
+                        compact_recipe(trajectory)
                 game.compile_seconds = time.monotonic() - compiling
         except Exception:
             game = Game(job, "failed", "actor_error", None, traceback.format_exc(limit=8), 0, (0, 0),
@@ -131,11 +138,14 @@ def _stop_actor(*_):
 def worker(config, pipe, trainer):
     """One actor process. It plays the games it is handed, one at a time."""
     torch.set_num_threads(1)
+    # A game allocates millions of objects that are freed by reference counting. The cyclic collector
+    # finds nearly nothing among them and took a tenth of a game's time; it runs between games instead.
+    gc.disable()
     signal.signal(signal.SIGINT, signal.SIG_IGN)  # the trainer handles Ctrl-C and stops its actors
     signal.signal(signal.SIGTERM, _stop_actor)
     threading.Thread(target=_end_with_trainer, args=(trainer,), daemon=True).start()
     env = Env(config.engine(), config.limits)
-    model = loaded = None
+    model = loaded = weights = None
 
     def send(kind, payload):
         # Plain pickle keeps tensors inside the message instead of in shared memory files.
@@ -148,7 +158,8 @@ def worker(config, pipe, trainer):
                 return
             path, job = item
             if path != loaded:
-                model, loaded = checkpoint.load_model(path), path
+                model, loaded = checkpoint.load_model(path).freeze(), path  # an actor only plays with it
+                weights = weights_sha256(model)  # of the weights as this process holds them
             last = [time.monotonic()]
 
             def report(day, choices, job=job):
@@ -157,11 +168,18 @@ def worker(config, pipe, trainer):
                     last[0] = now
                     send("progress", (job.number, day, choices))
 
-            send("game", _play_job(env, model, job, config, report))
+            game = _play_job(env, model, job, config, report)
+            game.weights = weights
+            send("game", game)
+            del game
+            gc.collect()
     except (EOFError, ConnectionError):
         pass  # the pipe closed: the trainer is gone
     finally:
         env.close()
+
+
+RENEW_AFTER_DECISIONS = 20_000  # an actor that played a game this long is replaced by a new process
 
 
 class Pool:
@@ -169,12 +187,15 @@ class Pool:
 
     Every actor has its own pipe to the trainer. An actor that dies closes its
     end, which the trainer sees at once; a trainer that dies closes the other
-    end, which stops the actor and its engine.
+    end, which stops the actor and its engine. An actor that finished a long
+    game is replaced by a new process: Python does not give the memory of a
+    game back, so fourteen actors would each stay as large as their largest game.
     """
 
     def __init__(self, config):
         self.config = config
         self.context = multiprocessing.get_context("spawn")
+        self.retired = []  # replaced actors that have not exited yet
         self.pipes, self.processes = [None] * config.workers, [None] * config.workers
         for index in range(config.workers):
             self._start(index)
@@ -227,8 +248,21 @@ class Pool:
                                        0, (0, 0), 0.0, None)
         if kind == "game":
             del self.busy[index]
+            if sum(payload.choices) >= RENEW_AFTER_DECISIONS:
+                self._renew(index)
             self.idle.append(index)
         return kind, index, payload
+
+    def _renew(self, index):
+        """Replace an idle actor by a new process; the old one ends by itself."""
+        pipe, process = self.pipes[index], self.processes[index]
+        try:
+            pipe.send(None)
+        except OSError:
+            pass
+        pipe.close()
+        self.retired = [old for old in self.retired if old.is_alive()] + [process]
+        self._start(index)
 
     def shutdown(self):
         for pipe in self.pipes:
@@ -237,12 +271,13 @@ class Pool:
             except OSError:
                 pass
         deadline = time.monotonic() + 5
-        for process in self.processes:
+        processes = self.processes + self.retired
+        for process in processes:
             process.join(timeout=max(0, deadline - time.monotonic()))
-        for process in self.processes:
+        for process in processes:
             if process.is_alive():
                 process.terminate()  # its handler stops the game it is playing
-        for process in self.processes:
+        for process in processes:
             process.join(timeout=15)
 
 
@@ -316,9 +351,12 @@ class Log:
 class Batch:
     """The games of one update while they are being played."""
 
-    def __init__(self, pool, config, target, numbers, update, display, log):
+    def __init__(self, pool, config, target, numbers, update, display, log, seeds=None, starts=None):
         self.pool, self.config, self.target, self.numbers, self.update = pool, config, target, numbers, update
         self.display, self.log = display, log
+        self.seeds = seeds  # a ``random.Random`` that gives the games' seeds, for runs that must play the same games
+        self.starts = starts  # practice games: the start positions a game's own is drawn from (``heroes.starts``)
+        self.began = {}  # game number -> the name of its start position
         self.games, self.tally, self.started = [], {"red": 0, "blue": 0, "truncated": 0, "failed": 0}, time.monotonic()
 
     @property
@@ -334,8 +372,16 @@ class Batch:
         while pool.idle and len(games) + len(pool.busy) < self.target:
             number = next(self.numbers)
             self.log.write("job", number=number)  # before the game exists, so its number is never handed out twice
-            pool.submit(path, Job(number, secrets.randbelow(2**31 - 1) + 1, number % 2,
-                                  (secrets.randbits(62), secrets.randbits(62))))
+            if self.seeds is None:
+                job = Job(number, secrets.randbelow(2**31 - 1) + 1, number % 2,
+                          (secrets.randbits(62), secrets.randbits(62)))
+            else:
+                job = Job(number, self.seeds.randrange(1, 2**31 - 1), number % 2,
+                          (self.seeds.getrandbits(62), self.seeds.getrandbits(62)))
+            if self.starts is not None:  # drawn after the seeds: a run without start positions draws what it drew
+                self.began[number], file, days = self.starts.choose(self.seeds)
+                job = replace(job, game_map=file, max_days=days)
+            pool.submit(path, job)
         message = pool.next(timeout)
         if message is None:
             return False
@@ -355,7 +401,10 @@ class Batch:
                        window_repeats={seat: len(t.window_repeat_indices) for seat, t in seat_trajectories.items()},
                        window_penalties={seat: t.window_penalty for seat, t in seat_trajectories.items()},
                        choices=list(game.choices), samples=samples, seconds=round(game.seconds, 1),
-                       compile_seconds=round(game.compile_seconds, 1), update=self.update, detail=game.detail)
+                       compile_seconds=round(game.compile_seconds, 1), update=self.update,
+                       weights=game.weights, detail=game.detail,
+                       **({} if self.starts is None else {"start": self.began.pop(game.job.number, None)}),
+                       **({} if game.job.max_days is None else {"max_days": game.job.max_days}))
         self.display.game(game, samples)
         if not game.trajectories:
             tally["failed"] += 1
@@ -368,12 +417,12 @@ class Batch:
         return True
 
 
-def collect(pool, config, path, target, numbers, update, display, log, batch=None):
+def collect(pool, config, path, target, numbers, update, display, log, batch=None, seeds=None, starts=None):
     """Play until ``target`` games have given a trajectory, with the weights at ``path``.
 
     ``batch`` is a batch begun earlier, during the previous update.
     """
-    batch = batch or Batch(pool, config, target, numbers, update, display, log)
+    batch = batch or Batch(pool, config, target, numbers, update, display, log, seeds, starts)
     started = time.monotonic()
     while not batch.done:
         batch.step(path)
@@ -381,8 +430,12 @@ def collect(pool, config, path, target, numbers, update, display, log, batch=Non
     return batch.games, batch.tally
 
 
-def train(config, games, *, fresh=False, out=sys.stderr):
-    """Play ``games`` games in batches of ``config.games_per_update`` and update after each batch."""
+def train(config, games, *, fresh=False, out=sys.stderr, seed=None):
+    """Play ``games`` games in batches of ``config.games_per_update`` and update after each batch.
+
+    The games' seeds are random. With ``seed`` they are drawn from that number
+    instead, so that two runs from the same checkpoint play the same games.
+    """
     batch_size = games if config.games_per_update is None else min(games, config.games_per_update)
     config = replace(config, games_per_update=batch_size, workers=min(config.workers, batch_size))
     if config.play_during_update and config.backend == "mlx":
@@ -401,19 +454,37 @@ def train(config, games, *, fresh=False, out=sys.stderr):
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
             raise SystemExit(f"Another training run is using {config.state}.")
-        return _train(config, games, update_policy, fresh, out)
+        return _train(config, games, update_policy, fresh, out, seed)
 
 
-def _train(config, games, update_policy, fresh, out):
+def _adam_steps(optimizer):
+    """The steps Adam has taken, as its state counts them: one number, unless its parameters disagree."""
+    return sorted({int(entry["step"]) for entry in optimizer.state_dict()["state"].values() if "step" in entry})
+
+
+def _train(config, games, update_policy, fresh, out, seed=None):
+    import random
+    seeds = None if seed is None else random.Random(seed)
     state = restore(config, fresh=fresh)
+    if config.new_optimizer:
+        # The moments the checkpoint kept are those of the update that made it; this run's updates start their own.
+        state.optimizer.state.clear()
     shutil.rmtree(config.state / "games", ignore_errors=True)  # left behind by actors that were killed
     display, log = Display(out), Log(config.state / "log.jsonl")
     display.line(f"Continuing from update {state.updates} ({state.progress['games']} games, "
                  f"{state.progress['decisions']} decisions) in {config.state}")
+    starts = None
+    if config.starts is not None:
+        from .starts import load
+        starts = load(config.starts)
+        display.line(f"Practice games: every game begins from one of {len(starts.names)} starts ({config.starts}); "
+                     f"a start without a day limit of its own is stopped after day {config.limits.max_days}")
     log.write("start", games=games, games_per_update=config.games_per_update,
               backend=config.backend, workers=config.workers, progress=state.progress,
               ppo=config.ppo.to_dict(), limits=asdict(config.limits), guard=config.guard,
-              both_seats=config.both_seats)
+              both_seats=config.both_seats, weights=weights_sha256(state.model), seed=seed,
+              new_optimizer=config.new_optimizer,
+              **({} if starts is None else {"starts": starts.shares(), "starts_file": str(config.starts)}))
     # Failed and discarded games keep their numbers, so a number never names two games.
     numbers = itertools.count(max(state.progress["games"], log.last_game) + 1)
     pool, saved_update = Pool(config), state.updates
@@ -423,12 +494,12 @@ def _train(config, games, update_policy, fresh, out):
             target = min(config.games_per_update, games)
             update, started = state.updates + 1, time.monotonic()
             path = checkpoint.latest(config.state)
-            batch, tally = collect(pool, config, path, target, numbers, update, display, log, following)
+            batch, tally = collect(pool, config, path, target, numbers, update, display, log, following, seeds, starts)
             collected = time.monotonic()
             following = None
             if config.play_during_update and games > target:
                 following = Batch(pool, config, min(config.games_per_update, games - target), numbers, update + 1,
-                                  display, log)
+                                  display, log, seeds, starts)
 
             failed = []  # what stopped the next batch while this update ran
 
@@ -443,10 +514,17 @@ def _train(config, games, update_policy, fresh, out):
                 except Exception as error:
                     failed.append(error)
 
-            report = update_policy(state.model, state.optimizer,
-                                   [trajectory for game in batch for trajectory in game.trajectories],
+            trajectories = [trajectory for game in batch for trajectory in game.trajectories]
+            # What the update started from and what it trained on, for whoever checks the round afterwards.
+            audit = {"weights_before": weights_sha256(state.model), "adam_steps_before": _adam_steps(state.optimizer),
+                     "played_with": sorted({str(game.weights) for game in batch}), "trajectories": len(trajectories),
+                     "trajectory_samples": sum(len(trajectory.decisions) for trajectory in trajectories)}
+            report = update_policy(state.model, state.optimizer, trajectories,
                                    config=config.ppo, generator=state.generator, progress=progress)
+            del trajectories
             updated = time.monotonic()
+            audit.update(weights_after=weights_sha256(state.model), adam_steps_after=_adam_steps(state.optimizer),
+                         steps=report.steps, initial_check=report.initial_check)
             state.progress = {"updates": update, "games": state.progress["games"] + len(batch),
                               "decisions": state.progress["decisions"] + report.samples,
                               "optimizer_steps": state.progress["optimizer_steps"] + report.optimizer_steps}
@@ -458,7 +536,7 @@ def _train(config, games, update_policy, fresh, out):
                       value_loss=report.value_loss, approximate_kl=report.approximate_kl,
                       clip_fraction=report.clip_fraction, collect_seconds=round(collected - started, 1),
                       update_seconds=round(updated - collected, 1), update_timings=report.timings_seconds,
-                      checkpoint=saved.name, progress=state.progress)
+                      checkpoint=saved.name, progress=state.progress, **audit)
             display.line(f"update {update} saved  {report.samples} samples  {report.optimizer_steps} steps  "
                          f"policy loss {report.policy_loss:+.4f}  value loss {report.value_loss:.4f}  "
                          f"KL {report.approximate_kl:.5f}  games {_clock(collected - started)}  "

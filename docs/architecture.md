@@ -166,6 +166,14 @@ soon as any weight changes.
 
 ## The update
 
+The default MLX trainer collects the requested number of games, then runs
+one pass over their trajectories. Each optimizer step takes all loss windows
+from ten trajectories and computes the recurrent state with the current
+weights. See the [training guide](training.md#choose-a-batch) for launcher
+defaults and options.
+
+### Window-based reference
+
 [`heroes/learner/ppo.py`](../heroes/learner/ppo.py) prepares a batch:
 undiscounted GAE with λ = 1, advantages normalized over the batch, and
 **loss windows** of 16 consecutive trained decisions. A minibatch is two
@@ -262,7 +270,7 @@ A build finds its library through the path of the build folder. To use it for
 training, copy it into a runtime folder that stands on its own:
 
 ```sh
-python3 tools/freeze_runtime.py ~/Projects/Heroes-artifacts/runtime/local-v8-tile-changes-v1
+python3 tools/freeze_runtime.py ~/Projects/Heroes-artifacts/runtime/local-v8-quiet-captures-v1
 ```
 
 The runtime is put together beside its final place and renamed into it when
@@ -313,11 +321,10 @@ places are in `dependencies/vcmi.json`), confirm with `--check`, and build the
 target that owns it: `cmake --build vcmi/build --target vcmireplay`.
 
 The Python side expects the client at `HEROES_VCMI`, by default
-`~/Projects/Heroes-artifacts/runtime/local-v8-tile-changes-v1/bin/vcmiclient`,
+`~/Projects/Heroes-artifacts/runtime/local-v8-quiet-captures-v1/bin/vcmiclient`,
 and the original game's `Data` folder under `~/Projects/Heroes-artifacts/game-data`.
-That runtime is the engine of `local-v8-sleep-resume-v1` plus the four
-switches above. All are off unless the launcher sets them, and an older runtime
-ignores the ones it does not know: it plays the same games, slower.
+The launcher uses compact observations and disables the replay ledger for
+training. Use `--keep-game-files` to retain the ledger.
 Python dependencies are pinned in [dependencies/](../dependencies/):
 Torch 2.9.1, NumPy 2.3.5 and MLX 0.31.1 on CPython 3.13.
 

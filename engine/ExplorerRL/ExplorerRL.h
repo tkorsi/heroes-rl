@@ -190,8 +190,14 @@ private:
 	void runContextualTurn(QueryID queryID, bool modalOnly = false);
 	void captureContextual(); ///< stable game state; acquires stateMutex
 	void captureContextualLocked(); ///< stable game state and stateMutex held
-	/// Stable game state and stateMutex held. Everything but the tiles and objects, which go to ``map``.
-	JsonNode contextualObservation(explorer_rl::VisibleMap & map);
+	/// Stable game state and stateMutex held. Everything but the tiles and objects, which go to ``map``
+	/// unless ``mapRead`` says that readVisibleMap has filled it for this capture already.
+	JsonNode contextualObservation(explorer_rl::VisibleMap & map, bool mapRead = false);
+	/// Stable game state and stateMutex held. The visible tiles and objects, taking the objects' handles.
+	void readVisibleMap(explorer_rl::VisibleMap & map);
+	/// Stable game state and stateMutex held, map context. Fills ``map``; empty when a stack is not one
+	/// contextualObservation accepts, which is then left to refuse it.
+	std::optional<explorer_rl::ViewPrint> mapViewPrint(explorer_rl::VisibleMap & map);
 	JsonNode takeContextualRecords(); ///< acquires stateMutex
 	void contextualEvent(JsonNode event); ///< stable game state; acquires stateMutex
 	void contextualTerminal(const char * outcome); ///< network thread, under sendMutex
