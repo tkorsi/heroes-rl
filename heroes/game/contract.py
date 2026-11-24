@@ -1456,6 +1456,11 @@ class Offers:
 
     @classmethod
     def from_observation(cls, observation, *, schema=ACTION_SCHEMA):
+        if cls is Offers and type(observation) is Observation:
+            # The offers are a function of the frozen observation; a repeated view is the same object.
+            known = _OFFERS_BUILT.get((id(observation), schema))
+            if known is not None and known[0] is observation:
+                return known[1]
         if type(observation) is not Observation:
             raise ValueError("Expected typed observation")
         profile = profile_for(schema)
@@ -1477,7 +1482,9 @@ class Offers:
             built = cls(Context(), observation.size, tuple(h.handle for h in observation.heroes),
                         tuple(t.handle for t in observation.towns), schema=schema, **extra)
         if cls is Offers:
-            _BUILT_OFFERS[:] = observation, schema, built  # holds the observation, so its identity names nothing else
+            if len(_OFFERS_BUILT) >= 2048:
+                _OFFERS_BUILT.clear()  # bounded memory; a miss only builds again
+            _OFFERS_BUILT[id(observation), schema] = (observation, built)  # holds the observation: its id is its own
         return built
 
     def permits(self, action):
@@ -2243,16 +2250,16 @@ class Frame:
             raise ValueError("Offers must preserve complete context and all coordinate support")
 
 
-_BUILT_OFFERS = [None, None, None]  # the observation, schema and offers Offers.from_observation built last
+_OFFERS_BUILT = {}  # (id of an observation, schema) -> (the observation, the offers Offers.from_observation built)
 
 
 def _offers_of(offers, observation, schema):
     """Whether ``offers`` are those of ``observation``: equal to what ``Offers.from_observation`` builds from it.
 
-    The offers it built last for the same observation are those: the very object needs no second building.
+    The offers it built for the same observation are those: the very object needs no second building.
     """
-    built = _BUILT_OFFERS
-    if offers is built[2] and observation is built[0] and schema == built[1]:
+    known = _OFFERS_BUILT.get((id(observation), schema))
+    if known is not None and known[0] is observation and known[1] is offers:
         return True
     return offers == Offers.from_observation(observation, schema=schema)
 

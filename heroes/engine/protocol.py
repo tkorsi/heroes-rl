@@ -102,22 +102,6 @@ def _decoded_view(raw, schema, unchanged_map):
     return observation
 
 
-_OFFERS = {}  # (id of an observation, schema) -> (the observation, its offers)
-
-
-def _offers_of(observation, schema):
-    """``Offers.from_observation``: the offers of an observation are a function of it, built once for a repeated view."""
-    key = (id(observation), schema)
-    known = _OFFERS.get(key)
-    if known is not None and known[0] is observation:
-        return known[1]
-    offers = contract.Offers.from_observation(observation, schema=schema)
-    if len(_OFFERS) >= 2048:
-        _OFFERS.clear()  # bounded memory; a miss only builds again
-    _OFFERS[key] = (observation, offers)  # holds the observation, so its id names nothing else
-    return offers
-
-
 class Producer:
     """One seat's stream. No other player's state is available here."""
 
@@ -198,7 +182,7 @@ class Producer:
                     observation = self.view
                 # The offers are built from the observation and handed over as they are: encoding them to their
                 # wire form and decoding that again gave an equal value, built twice.
-                offers = _offers_of(observation, self.profile.action_schema)
+                offers = contract.Offers.from_observation(observation, schema=self.profile.action_schema)
             # An observation is decoded once: here, or for a decision when its view arrived.
             frame = contract.decode_frame(raw, observation=observation, offers=offers)
             self.history.append(frame)
