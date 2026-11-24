@@ -11,7 +11,7 @@ _CLOSE = {"close", "back", "close_capability"}
 
 
 def _same_window(left, right):
-    if left == right:
+    if left is right or left == right:
         return True
     # On reopening, control IDs can change. Compare all displayed fields and
     # require every use of a control ID to refer to the same corresponding control.
@@ -44,14 +44,16 @@ def _same_members(left, right):
     return left == right or (left is not None and right is not None and set(left) == set(right))
 
 
-def _same_view(left, right):
-    if left.day != right.day:
-        return False
-    a, b = left.observation, right.observation
+def _same_world(a, b):
     return a is b or (a.size == b.size and a.resources == b.resources and a.heroes == b.heroes
                       and a.towns == b.towns and a.army_information == b.army_information
                       and _same_members(a.own_armies, b.own_armies) and _same_members(a.tiles, b.tiles)
-                      and _same_members(a.objects, b.objects) and _same_window(a.window, b.window))
+                      and _same_members(a.objects, b.objects))
+
+
+def _same_view(left, right):
+    a, b = left.observation, right.observation
+    return left.day == right.day and _same_world(a, b) and _same_window(a.window, b.window)
 
 
 class _Step(NamedTuple):
@@ -67,7 +69,7 @@ def _navigation_step(frames, start, stop):
     for i in range(start + 1, stop):
         frame = frames[i]
         if frame.kind == "submitted":
-            if frame.decision_seq != start:
+            if frame.decision_seq != before.seq:
                 return None
             action = frame.action
             if action.kind not in _OPEN and action.kind not in _CLOSE:
@@ -77,7 +79,7 @@ def _navigation_step(frames, start, stop):
         elif frame.kind == "view":
             after = frame
         elif frame.kind == "result":
-            if action is None or frame.decision_seq != start or not frame.result.accepted:
+            if action is None or frame.decision_seq != before.seq or not frame.result.accepted:
                 return None
             if action.kind in _OPEN and frame.result.status == "opened":
                 target = guard.nav_key(action, before.observation, before.offers)
@@ -96,6 +98,69 @@ def _navigation_step(frames, start, stop):
                 return _Step(before, after, target)
             return None
     return None
+
+
+class WindowMemory:
+    """Previously inspected targets visible to one seat, as of each decision.
+
+    Record a voluntary open only once an accepted, immediate close returns to
+    the original visible state. Keep independent targets while the seat browses.
+    """
+
+    def __init__(self):
+        self.day = None
+        self.observation = None
+        self.parents = {}  # parent context -> (last visible window there, immutable target keys)
+        self.frames = []  # one decision through its successor
+        self.opened = None  # confirmed open immediately preceding the current decision
+
+    def _at(self, observation):
+        window = observation.window
+        parent = None if window is None else (window.context.kind, window.context.subject, window.context.panel)
+        known = self.parents.get(parent)
+        if known is not None:
+            if _same_window(known[0], window):
+                return parent, known[1]
+            del self.parents[parent]
+        return parent, frozenset()
+
+    def observe(self, frame):
+        """Return the stale optional navigation keys for this decision, if any."""
+        observation = frame.observation
+        changed_world = (observation is not None and self.observation is not None
+                         and not _same_world(self.observation, observation))
+        # Some changes (e.g. new stock, a building or equipment) are known from
+        # an accepted command even before the affected window is visible again.
+        changed_by_action = (frame.result is not None and frame.result.accepted and frame.result.status in
+                             {"built", "recruited", "hired", "upgraded", "transferred", "split", "merged", "swapped",
+                              "garrison_swapped", "capability_applied", "dialog_answered", "interaction"})
+        if frame.day != self.day or changed_world or changed_by_action or frame.kind == "event":
+            self.parents.clear()
+            self.frames.clear()
+            self.opened = None
+        self.day = frame.day
+        if observation is not None:
+            self.observation = observation
+
+        if self.frames:
+            self.frames.append(frame)
+        if frame.kind != "decision":
+            return frozenset()
+        step = _navigation_step(self.frames, 0, len(self.frames) - 1) if self.frames else None
+        self.frames = [frame]
+        previous = self.opened
+        self.opened = step if step is not None and step.target is not None else None
+        if self.opened is not None:
+            # Re-entering begins a new visit whose contents and result may differ.
+            source = step.before.observation
+            parent, keys = self._at(source)
+            if step.target in keys:
+                self.parents[parent] = (source.window, keys - {step.target})
+        elif step is not None and previous is not None and _same_view(previous.after, step.before):
+            if _same_view(previous.before, step.after) and _same_view(step.after, frame):
+                parent, keys = self._at(observation)
+                self.parents[parent] = (observation.window, keys | {previous.target})
+        return self._at(observation)[1]
 
 
 def repeated_empty_opens(frames):

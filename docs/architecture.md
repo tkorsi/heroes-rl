@@ -145,13 +145,19 @@ turns each frame into a semantic tree; `ContextualActorCritic` encodes it:
   sequences use a second GRU;
 - an observation's map goes through a small CNN, its heroes, towns and window
   through the tree encoder;
-- one `GRUCell` (64 units) carries everything the policy remembers.
+- one `GRUCell` (64 units) carries recurrent state across frames.
 
 At a decision, `ContextualDistribution` samples an action step by step: the
 kind first, then what it applies to, then a tile or a quantity. The
 log-probability of an action is the sum over those steps. Engine handles and
 revision numbers are never features; they only select which visible entity a
 step refers to.
+
+Each seat also tracks optional windows it opened and immediately closed in
+the same visible state. A learned scalar biases an already inspected target
+and a navigation kind whose available targets are all marked. The actor and
+learner use the same decision-time bits. A v6 checkpoint gains this scalar
+at zero and resumes with its existing Adam moments and shuffle state.
 
 The **interaction guard** ([`heroes/game/guard.py`](../heroes/game/guard.py))
 removes actions that are legal but lead nowhere, such as reopening the same
@@ -248,7 +254,7 @@ happens once, when the state folder is empty.
 | [engine/patches](../engine/patches/) | changes to pinned upstream VCMI 1.7.5 |
 | [engine/ExperimentReplay](../engine/ExperimentReplay/) | the engine-side replay recorder and the replay worker. The engine's end-of-game shutdown is built on the recorder, so it stays switched on, but with `VCMI_EXPERIMENT_LEDGER=0` it writes no ledger; training reads none of it. `--keep-game-files` turns the ledger back on, and `vcmireplay` verifies such a game, see below |
 | [engine/NativeSession](../engine/NativeSession/) | an earlier reusable-host experiment; not used |
-| [maps/](../maps/) | the scenario both seats play, `hero-management-v4` |
+| [maps/](../maps/) | the default 36×36 scenario with four neutral corner gold mines |
 
 `vcmi/` is a generated checkout, ignored by Git. The canonical engine changes
 are the patches and the folders above; never leave work only in the checkout.
@@ -264,13 +270,15 @@ cmake -S vcmi -B vcmi/build -G Ninja -DCMAKE_BUILD_TYPE=Release \
   -DENABLE_MMAI=OFF -DENABLE_NULLKILLER2_AI=OFF -DENABLE_TRANSLATIONS=OFF
 cmake --build vcmi/build --parallel 2 \
   --target vcmiclient vcmiserver ExplorerRL Nullkiller BattleAI vcmireplay
+test -d vcmi/build/bin/config || ln -s ../../config vcmi/build/bin/config
+test -d vcmi/build/bin/Mods || ln -s ../../Mods vcmi/build/bin/Mods
 ```
 
 A build finds its library through the path of the build folder. To use it for
 training, copy it into a runtime folder that stands on its own:
 
 ```sh
-python3 tools/freeze_runtime.py ~/Projects/Heroes-artifacts/runtime/local-v8-quiet-captures-v1
+python3 tools/freeze_runtime.py ~/Projects/Heroes-artifacts/runtime/local-v8-equipment-controls-v1
 ```
 
 The runtime is put together beside its final place and renamed into it when
@@ -321,7 +329,7 @@ places are in `dependencies/vcmi.json`), confirm with `--check`, and build the
 target that owns it: `cmake --build vcmi/build --target vcmireplay`.
 
 The Python side expects the client at `HEROES_VCMI`, by default
-`~/Projects/Heroes-artifacts/runtime/local-v8-quiet-captures-v1/bin/vcmiclient`,
+`~/Projects/Heroes-artifacts/runtime/local-v8-equipment-controls-v1/bin/vcmiclient`,
 and the original game's `Data` folder under `~/Projects/Heroes-artifacts/game-data`.
 The launcher uses compact observations and disables the replay ledger for
 training. Use `--keep-game-files` to retain the ledger.

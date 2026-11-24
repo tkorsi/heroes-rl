@@ -2,7 +2,7 @@
 
 Every frame a seat receives becomes a semantic tree (what happened) plus, when
 it carries one, the current observation (map grid and visible entities). Trees
-and map are encoded and fed to one GRU, the only memory the policy has. At a
+and map are encoded and fed to one GRU. A seat also remembers empty window visits. At a
 decision the GRU state scores the offered actions through an autoregressive
 distribution: action kind first, then subject, target, quantity.
 
@@ -22,8 +22,9 @@ from torch.nn import functional as F
 
 from ..game import contract as c
 from ..game import guard as interaction_guard
+from ..game.window_repeats import WindowMemory
 
-MODEL_SCHEMA = "heroes-context-model-v6"  # reads the expanded adventure history (heroes-player-history-v8)
+MODEL_SCHEMA = "heroes-context-model-v7"  # reads the expanded adventure history (heroes-player-history-v8)
 _ACTIONS = ("move_to", "open_hero", "open_town", "end_turn", "close", "open_panel",
             "open_building", "construct", "back", "select_recruit", "recruit", "transfer_stack", "select_hero", "hire_hero", "split_stack", "merge_stacks", "swap_stacks",
             "open_stack", "select_upgrade", "upgrade_stack", "swap_garrison", "choose_dialog")
@@ -58,9 +59,13 @@ class ModelConfig:
 
 
 def weights_sha256(model):
-    """Digest of the model configuration and of every named tensor's exact bytes."""
-    digest = hashlib.sha256(json.dumps(model.config.to_dict(), sort_keys=True, separators=(",", ":")).encode())
-    for name, tensor in sorted(model.state_dict().items()):
+    return state_weights_sha256(model.config.to_dict(), model.state_dict())
+
+
+def state_weights_sha256(config, state_dict):
+    """Digest of a serialized model configuration and every named tensor's exact bytes."""
+    digest = hashlib.sha256(json.dumps(config, sort_keys=True, separators=(",", ":")).encode())
+    for name, tensor in sorted(state_dict.items()):
         value = tensor.detach().to("cpu").contiguous()
         flat = value.reshape(-1).view(torch.uint8)
         data = bytearray(flat.numel())
@@ -409,6 +414,7 @@ class ContextualInput:
     # The frame's own observation, never an accumulated map.
     observation: c.Observation | None = None
     guard: interaction_guard.GuardSupport | None = None
+    window_memory: frozenset[tuple] = frozenset()  # unchanged windows this seat already visited without acting
 
 
 _KEEP_FRAMES = True  # tests switch it off to compare with payloads built anew
@@ -418,15 +424,15 @@ _FRAME_TREES = {}  # (day, kind, result, accepted, outcome) -> the kept payload 
 class ContextualEncoder:
     """Turns one seat's frames, in order, into model inputs. It holds no neural state.
 
-    It keeps only what resolves references: the latest observation, and the
-    observation of the decision that is still open, which is the one the
-    submitted action's references were chosen from.
+    It tracks the visible state needed to resolve action references, interaction
+    restrictions and empty visits to unchanged windows.
     """
 
     def __init__(self, guard=None):
         self.observation = None
         self.decision = None  # the decision frame whose action has not finished yet
         self.guard_tracker = interaction_guard.Tracker(guard)
+        self.window_memory = WindowMemory()
 
     def encode(self, frame):
         basis = self.decision.observation if self.decision is not None else self.observation
@@ -474,7 +480,7 @@ class ContextualEncoder:
             self.decision = None
         if frame.observation is not None:
             self.observation = frame.observation
-        return ContextualInput(frame, payload, frame.observation, guard)
+        return ContextualInput(frame, payload, frame.observation, guard, self.window_memory.observe(frame))
 
 
 def encode_history(frames, *, guard=None):
@@ -660,6 +666,10 @@ class ContextualActorCritic(nn.Module):
         self.value = nn.Linear(h, 1)
         self.coordinate = nn.Sequential(nn.Linear(h + f + 18, f), nn.Tanh(), nn.Linear(f, 1))
         self.quantity = nn.Sequential(nn.Linear(h + f + 4, f), nn.Tanh(), nn.Linear(f, 2))
+        # Append to the parameter order used by earlier Adam checkpoints. A zero
+        # coefficient gives the inherited policy its original probabilities.
+        self.window_memory = nn.Module()
+        self.window_memory.register_parameter("weight", nn.Parameter(torch.zeros(1)))
 
     @property
     def device(self):
@@ -1052,7 +1062,8 @@ class ContextualActorCritic(nn.Module):
             state = torch.gru_cell(vector.unsqueeze(0), state.unsqueeze(0), *memo["gru"]).squeeze(0)
         decision = None
         if frame.frame.kind == "decision":
-            distribution = ContextualDistribution(self, state, frame.frame.observation, frame.frame.offers, cells, cache, frame.guard)
+            distribution = ContextualDistribution(self, state, frame.frame.observation, frame.frame.offers,
+                                                  cells, cache, frame.guard, frame.window_memory)
             value = self.value(state) if memo is None else F.linear(state, *memo["value"])
             decision = PolicyValue(value.squeeze(-1), distribution)
         return StepOutput(state, decision)
@@ -1086,10 +1097,11 @@ class ContextualDistribution:
     entropy coefficient zero, not a selected-path value mislabeled as entropy.
     """
 
-    def __init__(self, model, state, observation, offers, cells, cache, guard=None):
+    def __init__(self, model, state, observation, offers, cells, cache, guard=None, window_memory=frozenset()):
         self.model, self.state, self.observation, self.offers = model, state, observation, offers
         self.cells, self.cache = cells, cache
         self.guard = guard
+        self.window_memory = window_memory
         self.recording = None  # a ``Recording`` to fill while an action is sampled
         self.query = None  # the state's policy query, computed at the first categorical choice
 
@@ -1114,6 +1126,22 @@ class ContextualDistribution:
             if not torch.is_grad_enabled():
                 self.query = query
         return candidates.mv(query) / sqrt(self.model.config.feature_size)
+
+    def _window_logits(self, semantics, flags):
+        logits = self._logits(semantics)
+        if not any(flags):
+            return logits
+        if self.recording is not None:
+            self.recording.pending["window_memory"] = flags
+        return logits + self.model.window_memory.weight * logits.new_tensor(flags)
+
+    def _window_flags(self, kinds):
+        """Bits in the same target order as each conditional choice in the action walk."""
+        flags = {}
+        for kind in {key[0] for key in self.window_memory}.intersection(kinds):
+            flags[kind] = tuple(interaction_guard.nav_key(action, self.observation, self.offers) in self.window_memory
+                                for action in self._representatives(kind) if self._permitted(action))
+        return flags
 
     def _quantity_logits(self, features, low, high, maximum, depth):
         numeric = self.model._float((low / maximum, high / maximum, log1p(maximum), depth / 31))
@@ -1358,12 +1386,21 @@ class ContextualDistribution:
             return self._choose(name, logits, selected, generator, trace)
 
         kinds = self._kinds()
-        kind = kinds[choose("kind", self._logits([_node("action_kind", _text(kind)) for kind in kinds]),
-                            kinds.index(action.kind) if action else None)]
+        window_flags = self._window_flags(kinds) if self.window_memory else {}
+        # A type with only stale targets must be distinguishable before selecting
+        # its target, especially when that second choice has only one option.
+        fully_visited = {kind for kind, flags in window_flags.items() if flags and all(flags)}
+        all_stale = tuple(kind in fully_visited for kind in kinds) if fully_visited else ()
+        logits = self._window_logits([_node("action_kind", _text(k)) for k in kinds], all_stale)
+        kind = kinds[choose("kind", logits, kinds.index(action.kind) if action else None)]
+
+        def target_logits(semantics):
+            return self._window_logits(semantics, window_flags.get(kind, ()))
+
         subject = panel = selection = destination = x = y = count = None
         if kind == "open_capability":
             controls = self._filtered(self.offers.capability_controls, lambda panel: self._action(kind, panel=panel))
-            index = choose("capability_panel", self._logits([_node("capability_panel", _text(item)) for item in controls]),
+            index = choose("capability_panel", target_logits([_node("capability_panel", _text(item)) for item in controls]),
                            controls.index(action.panel) if action else None)
             subject, panel = self.offers.context.subject, controls[index]
         elif kind == "close_capability":
@@ -1389,7 +1426,7 @@ class ContextualDistribution:
         elif kind in ("move_to", "open_hero", "open_town"):
             refs = self._subjects(kind)
             semantics = [_node(kind, _subject(self.observation, ref)) for ref in refs]
-            index = choose("subject", self._logits(semantics), refs.index(action.subject) if action else None)
+            index = choose("subject", target_logits(semantics), refs.index(action.subject) if action else None)
             subject = refs[index]
             if kind == "move_to":
                 width, height, _ = self.offers.size
@@ -1411,14 +1448,14 @@ class ContextualDistribution:
             controls = self._filtered(controls, self._panel_action)
             selected = next((i for i, control in enumerate(controls) if action and control.panel == action.panel
                              and (control.panel in ("hall", "tavern") or control.ref == action.selection)), None)
-            index = choose("control", self._logits([_semantic(control) for control in controls]), selected)
+            index = choose("control", target_logits([_semantic(control) for control in controls]), selected)
             control = controls[index]
             subject, panel = self.offers.context.subject, control.panel
             selection = control.ref if panel == "recruitment" else None
         elif kind == "open_stack":
             choices = tuple(slot.ref for army in self.offers.armies for slot in army.slots if slot.count)
             choices = self._filtered(choices, lambda ref: self._action(kind, selection=ref))
-            index = choose("selection", self._logits([_army_slot(self.observation, ref, receiving=False) for ref in choices]),
+            index = choose("selection", target_logits([_army_slot(self.observation, ref, receiving=False) for ref in choices]),
                            choices.index(action.selection) if action else None)
             subject, selection = self.offers.context.subject, choices[index]
         elif kind == "select_upgrade":
@@ -1430,7 +1467,7 @@ class ContextualDistribution:
             choices = (self.offers.panel.buildings if kind == "open_building" else
                        self.offers.panel.tavern.offers if kind == "select_hero" else self.offers.panel.recruitment.offers)
             choices = self._filtered(choices, lambda item: self._action(kind, selection=item.ref))
-            index = choose("selection", self._logits([_semantic(item) for item in choices]),
+            index = choose("selection", target_logits([_semantic(item) for item in choices]),
                            next(i for i, item in enumerate(choices) if item.ref == action.selection) if action else None)
             subject, selection = self.offers.context.subject, choices[index].ref
         elif kind in ("transfer_stack", "split_stack", "merge_stacks", "swap_stacks"):

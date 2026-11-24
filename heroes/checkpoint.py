@@ -16,7 +16,7 @@ from pathlib import Path
 
 import torch
 
-from .model.policy import ContextualActorCritic, ModelConfig, weights_sha256
+from .model.policy import MODEL_SCHEMA, ContextualActorCritic, ModelConfig, state_weights_sha256, weights_sha256
 
 FORMAT = "heroes-checkpoint-v1"
 LEGACY_FORMAT = "heroes-context-checkpoint-v1"
@@ -107,16 +107,42 @@ def unlisted(directory, updates):
                   if path.name != _name(updates))
 
 
+def _read_model(payload, path):
+    config, weights = payload["model_config"], payload["model_state"]
+    if state_weights_sha256(config, weights) != payload["weights_sha256"]:
+        raise ValueError(f"Checkpoint weights do not match their recorded digest: {path}")
+
+    if config["schema"] == "heroes-context-model-v6":
+        config = dict(config, schema=MODEL_SCHEMA)
+        if "window_memory.weight" in weights:
+            raise ValueError(f"Unexpected window memory parameter in v6 checkpoint: {path}")
+        weights = {**weights, "window_memory.weight": torch.zeros(1)}
+    model = ContextualActorCritic(ModelConfig.from_dict(config))
+    model.load_state_dict(weights)
+    return model
+
+
+def _restore_optimizer(model, optimizer, saved, *, v6):
+    if v6:
+        # v7 appends one policy parameter. All historical Adam slots keep their
+        # original indices. Adam initializes the new slot on its first gradient.
+        names = list(dict(model.named_parameters()))
+        groups = saved["param_groups"]
+        if len(groups) != 1 or names[-1] != "window_memory.weight":
+            raise ValueError("Unexpected v6 optimizer parameter layout")
+        group = groups[0]
+        ids = group["params"]
+        if ids != list(range(len(names) - 1)):
+            raise ValueError("Unexpected v6 optimizer parameter order")
+        saved = {**saved, "param_groups": [{**group, "params": [*ids, len(ids)]}]}
+    optimizer.load_state_dict(saved)
+
+
 def load_model(path):
     """Only the policy of a checkpoint, in evaluation mode. This is all an actor needs."""
     payload = torch.load(path, map_location="cpu", weights_only=True)
-    model = ContextualActorCritic(ModelConfig.from_dict(payload["model_config"]))
-    model.load_state_dict(payload["model_state"])
-    if weights_sha256(model) != payload["weights_sha256"]:
-        raise ValueError(f"Checkpoint weights do not match their recorded digest: {path}")
-    for parameter in model.parameters():
-        parameter.requires_grad_(False)
-    return model.eval()
+    model = _read_model(payload, path)
+    return model.requires_grad_(False).eval()
 
 
 def load(path, *, learning_rate):
@@ -124,8 +150,9 @@ def load(path, *, learning_rate):
     payload = torch.load(path, map_location="cpu", weights_only=True)
     if payload.get("format") != FORMAT:
         raise ValueError(f"Not a {FORMAT} file: {path}")
-    model, optimizer = _state(load_model(path), learning_rate)
-    optimizer.load_state_dict(payload["optimizer_state"])
+    model, optimizer = _state(_read_model(payload, path).eval(), learning_rate)
+    _restore_optimizer(model, optimizer, payload["optimizer_state"],
+                       v6=payload["model_config"]["schema"] == "heroes-context-model-v6")
     optimizer.param_groups[0]["lr"] = learning_rate
     generator = torch.Generator()
     generator.set_state(payload["shuffle_rng"])
@@ -180,15 +207,13 @@ def import_legacy(policy_path, resume_path, *, learning_rate):
         raise ValueError("Expected a legacy policy.pt and its resume.pt")
     if policy["weights_sha256"] != resume["weights_sha256"] or policy["checkpoint"] != resume["checkpoint"]:
         raise ValueError("The legacy policy and optimizer files belong to different checkpoints")
-    model = ContextualActorCritic(ModelConfig.from_dict(policy["model_config"]))
-    model.load_state_dict(policy["model_state"])
-    if weights_sha256(model) != policy["weights_sha256"]:
-        raise ValueError("Legacy weights do not match their recorded digest")
-    model, optimizer = _state(model, learning_rate)
+    model, optimizer = _state(_read_model(policy, policy_path), learning_rate)
+    v6 = policy["model_config"]["schema"] == "heroes-context-model-v6"
     saved = resume["resume"]
-    if saved["parameter_names"] != [[name for name, _ in model.named_parameters()]]:
+    names = [name for name, _ in model.named_parameters() if not (v6 and name == "window_memory.weight")]
+    if saved["parameter_names"] != [names]:
         raise ValueError("The legacy optimizer state is laid out for different parameters")
-    optimizer.load_state_dict(saved["optimizer_state"])
+    _restore_optimizer(model, optimizer, saved["optimizer_state"], v6=v6)
     optimizer.param_groups[0]["lr"] = learning_rate
     generator = torch.Generator()
     generator.set_state(resume["rng"]["torch_generators"]["minibatch"])

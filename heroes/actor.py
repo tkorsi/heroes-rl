@@ -43,6 +43,7 @@ class Game:
     compile_seconds: float = 0.0  # time spent compiling the recipes
     other: Trajectory | None = None  # the opponent seat's trajectory, when both seats are trained on
     weights: str | None = None  # SHA-256 of the weights both seats played with, as the actor holds them
+    gold_mine_captures: tuple[int, int] | None = None  # Red, Blue, when reported by the actors
 
     @property
     def trajectories(self):
@@ -322,7 +323,8 @@ def _play(env, model, job, directory, *, guard, on_progress=None, both_seats=Fal
     built = {}  # seat -> its trajectory
     if job.learner is None:
         return Game(job, status, reason, state.outcomes, detail, env.day,
-                    tuple(len(item.choices) for item in seats), time.monotonic() - started, None)
+                    tuple(len(item.choices) for item in seats), time.monotonic() - started, None,
+                    gold_mine_captures=env.gold_mine_captures)
     if status in ("completed", "truncated"):
         day_limit_draw = reason == "game_day_limit" and env.limits.max_days == TRAINING_DAY_LIMIT
         collect_both = both_seats or day_limit_draw
@@ -350,4 +352,5 @@ def _play(env, model, job, directory, *, guard, on_progress=None, both_seats=Fal
             detail = "; ".join(unusable)
     return Game(job, status, reason, state.outcomes, detail, env.day,
                 tuple(len(item.choices) for item in seats), time.monotonic() - started,
-                built.get(job.learner), other=built.get(1 - job.learner))
+                built.get(job.learner), other=built.get(1 - job.learner),
+                gold_mine_captures=env.gold_mine_captures)

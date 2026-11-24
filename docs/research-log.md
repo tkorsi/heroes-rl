@@ -9955,3 +9955,432 @@ with its saved optimizer. A read-only launcher check restored that
 checkpoint, and a mocked training entry selected 100 games for one update
 with 14 workers and ten trajectories per optimizer step. No live training
 was launched for this validation.
+
+### 2026-11-24 — Wins and losses in the training terminal
+
+The trainer names the winner and the learner seat after each decisive game.
+The live status shows both sides' records, with a persistent batch summary
+before PPO. Cutoffs and failed attempts have separate counters. The saved
+update line names the checkpoint and reports PPO time to a tenth of a
+second.
+
+Local display checks covered a 44-column terminal, color opt-out, redirected
+output, and the rendering of a win, a cutoff and a failed game. The checks
+used synthetic game results. All 90 repository tests passed.
+
+### 2026-11-24 — One window-repeat check after update 2027
+
+Run one frozen match on the original map with the quiet-captures runtime
+and the standard interaction guard. Red loads fast-trainer checkpoint
+2026, Blue loads its child 2027. Use engine seed 1593671229 and policy
+seeds 76108315027 and 92754130153 for Red and Blue. Compare confirmed
+empty reopenings per 1,000 decisions. The two preceding training batches
+provide an additional check at the designated learner seat. A single match
+mixes policy, color and game-specific effects. No PPO is part of the match.
+
+The game ended naturally on day 4 with a Red 2026 win. Red took Blue's
+town on day 3 and defeated its remaining hero on day 4. Red had 34
+confirmed empty reopenings in 1,211 decisions (28.08 per 1,000). Blue
+2027 had 36 in 834 decisions (43.17 per 1,000). The private capture is
+under `eval-2027-vs-2026.6N7c6k/match` with outcome, actions, states and
+window summary. Both frozen actors reported native CPU inference.
+
+In the two consecutive training batches, the designated learner recorded
+18,955 repeats in 478,597 decisions with 2025 and 20,312 in 517,660 with
+2026. The respective rates were 39.61 and 39.24 per 1,000. The training
+batches have different seeds. The batch that produced 2027 had 63 Red
+wins, 37 Blue wins, zero cutoffs and two replaced attempts. Collection
+took 142.6 seconds. One MLX PPO pass processed 517,650 samples in ten
+optimizer steps and took 4.7 seconds. The model-weight digest changed
+from `f9d182ed` to `b333a5f1`. The prior batch's PPO took 4.4 seconds.
+
+The terminal batch summary now shows Blue wins, Red wins, cutoffs and
+failed attempts on a single line. The training suite passed 16 tests.
+
+### 2026-11-24 — Increase the empty-window repeat penalty
+
+Future training runs charge −0.0005 for each confirmed repeated empty
+opening, up to 400 charges per seat per game (−0.2). The first empty visit
+and visits used for recruitment are free. This change tests whether the
+stronger cost reduces repeats per 1,000 decisions.
+
+All 12 PPO and MLX update tests passed. Synthetic trajectories confirmed
+the reward at 399, 400 and 401 repeats, and a scripted recruitment visit
+incurred zero penalty.
+
+### 2026-11-24 — Five frozen games after update 2029
+
+Compare checkpoint 2029 with 2027, the last checkpoint before the stronger
+window penalty. Use five fresh engine and policy seed triples on the
+original map with the quiet-captures runtime and standard interaction
+guard. Alternate colors with 2029 as Blue in games 1, 3 and 5. No PPO.
+Measure confirmed empty reopenings per 1,000 decisions, useful actions,
+and game outcomes. The seed plan and complete traces are private.
+
+All five games ended naturally. Checkpoint 2029 won game 1 as Blue on day
+6, and checkpoint 2027 won games 2 through 5. Both policies reported native
+CPU inference. Checkpoint 2029 had 464 confirmed empty reopenings in
+14,511 decisions (31.98 per 1,000), compared with 796 in 21,041 decisions
+for 2027 (37.83 per 1,000). Its repeat rate was lower in three games.
+Excluding the 43-day game, the rates were 37.32 and 40.47 per 1,000.
+Checkpoint 2029 recruited troops 19 times, built eight times and hired
+nine heroes. It recaptured its town and took the opposing town in its win.
+The stronger-penalty self-play batch producing 2029 had 39.60 repeats per
+1,000 observed learner decisions and yielded 2,000 usable games.
+
+Private artifacts are under `eval-2029-vs-2027.qvz3iryw`. The seed plan,
+five launch manifests, actor outcomes and per-seat traces support the
+aggregate in `summary.json`. This five-game evaluation used three Blue
+seats and two Red seats for 2029, with a different seed in each game.
+
+### 2026-11-24 — Reduce the empty-window repeat penalty
+
+The next training run resumes from checkpoint 2029 at the user's request.
+Each confirmed repeated empty opening now costs 0.0002 for the first
+1,000 repeats per seat per game, for a maximum deduction of 0.2. The
+launcher check resolved the existing 2029 checkpoint. Twelve PPO and MLX
+tests passed, and synthetic trajectories confirmed the charge and the
+reward targets on either side of the cap.
+
+### 2026-11-24 — One frozen window-repeat test after update 2030
+
+Play 2030 as Red against 2029 as Blue on the original map with the
+standard interaction guard and quiet-captures runtime. Engine seed
+1768413497, Red seed 76108315031, Blue seed 92754130163. Compare confirmed
+empty reopenings per 1,000 decisions. A single game combines policy,
+color and seed effects. PPO is disabled.
+
+2030 won naturally on day 16. Red 2030 had 112 confirmed empty
+reopenings in 3,156 decisions (35.49 per 1,000) and Blue 2029 had 344 in
+7,313 (47.04 per 1,000). Red recruited troops four times and constructed
+three times. Both frozen actors reported native CPU inference. The
+private artifacts are under `eval-2030-vs-2029.94r45P/match`.
+
+### 2026-11-24 — Wider map with four corner gold mines
+
+Create a 28×28 variant of hero-management-v4. Extend the gap between the
+town entrances from 11 to 19 tiles and add a neutral gold mine near each
+corner. Keep the existing units, resources, buildings and victory rules.
+Compare frozen 2030 self-play on the two maps using five matched engine
+and seat seed triples. Read early finishes, recruitment, movement, mine
+captures and repeated empty opens. This compares the larger layout and its
+four new economic objectives together.
+
+The map passed archive, dimension, object-footprint and engine checks.
+Engine observations on 28×28 showed all four gold mines at their declared
+entrances. Across five matched seed triples, all ten games ended
+naturally. Median duration rose from 15 to 56 days. The 20×20 games
+included one first-day win before Blue acted, and the paired 28×28 game
+ended on day 75. Accepted movement commands rose from 254 to 2,119,
+recruitment actions from 35 to 161, and observed town captures from 11 to
+51. Decisions rose from 40,049 to 311,681 and confirmed empty reopenings
+from 37.38 to 46.89 per 1,000 decisions. The traces showed no gold mine
+changing to player ownership. The private evidence is under
+`eval-map28-gold-2030.50vz7v4e`, including `plan.json` and
+`summary.json`. Both sides used native inference for frozen checkpoint
+2030 throughout.
+
+### 2026-11-24 — Update 2031 and one matched-seed window test
+
+Evaluate frozen 2031 as Blue against frozen 2030 as Red on the 20×20 map.
+Reuse the engine and both policy seeds from the 2030 versus 2029 match
+(1768413497, 76108315031, 92754130163). This gives a one-game comparison
+between 2029 and 2031 from the Blue side against the same Red policy.
+The opponent's subsequent actions and the duration may differ. Score
+confirmed empty reopenings per 1,000 decisions. No PPO is used.
+
+Update 2031 admitted 1,000 games and replaced nine natural Red wins
+before Blue acted. The update used 5,903,833 samples and 101 optimizer
+steps. Collection took 1,249.5 seconds and PPO took 55.8 seconds. The
+weight digest changed from `50258061` to `f7b95e70`. The frozen 2030
+collectors recorded 39.13 confirmed empty reopenings per 1,000 learner
+decisions compared with 39.78 for the preceding 2029 collectors.
+
+In the no-PPO test, Red 2030 won on day 3. Blue 2031 recorded eight empty
+reopenings in 327 decisions (24.46 per 1,000), with one recruitment and
+two constructions. The previous match on these seeds had 47.04 per
+1,000 for Blue 2029 and ended on day 16. The shorter match has much
+less exposure to later-game windows. Private evidence is under
+`eval-2031-vs-2030.aOOYFH/match`.
+
+### 2026-11-24 — Short window memory on the 36×36 map, starting at 2031
+
+The local default trainer resumes checkpoint 2031 with its saved Adam
+moments and shuffle state. Each seat remembers a voluntary window it
+opened and immediately closed with the visible state unchanged. The
+policy receives a bit for each marked target and a bit for a navigation
+kind when all of its legal targets are marked. A single learned scalar
+weights these bits. Its initial value is zero. A new day, a visible world
+change or a state-changing action clears the relevant marks. PPO reads
+the same decision-time bits that the actor used.
+
+The repeat cost is −0.0001 per confirmed repeat, capped at −0.2 per seat
+per game. The default map is 36×36 with four neutral gold mines at
+(2, 2), (33, 2), (2, 33) and (33, 33). The two starting towns and
+sawmills are retained. The map SHA-256 is
+`269d05b5ab0c735c4beabe6b0eb1163196c2e0162d84b323d93219098c92a8d5`.
+Archive and terrain checks covered all 1,296 surface tiles, starting
+heroes and towns, and accessible approaches to the four mines.
+
+The read-only launcher check resolved the new map and restored update 2031.
+All 39 inherited weight tensors, all 39 saved Adam slots, the shuffle
+generator and progress counters matched the parent. Its original weight
+digest is `f7b95e70ff9508a255cbfcbb90e89c6f2645b4671092e344fbd229eeeed69420`.
+The in-memory v7 digest includes the new model schema and zero coefficient.
+Synthetic checks covered seat-local empty visits, native/Torch scoring,
+recorded/reconstructed flags and the MLX gradient of the new coefficient.
+No live game or training batch was launched for this change.
+
+### 2026-11-24 — Frozen update 2032 against its parent on 36×36
+
+Compare checkpoints 2032 and 2031 across five fresh engine seeds, each played
+twice with the checkpoints exchanging colors and the engine and per-color
+sampling seeds held fixed. Use the production interaction guard, ordinary
+limits, native CPU actors and no PPO. Compare wins by color, cutoff reasons,
+observed town captures and confirmed empty reopens per 1,000 decisions.
+The private plan, copied checkpoints and per-game traces are under
+`eval-2032-vs-2031.fhut6n_z`. A separate user-launched training batch
+was already collecting self-play games from 2032.
+
+### 2026-11-24 — Rolling terminal results
+
+Replace the scrolling per-game terminal output with ten rows for the most
+recent results in completion order. Keep the final table and batch tally in
+scrollback, followed by the checkpoint and PPO summary. Redirected output
+gets one static table per batch, and the private JSONL retains every game.
+The existing training process continues with the display it already loaded.
+
+The 2031 parent collected 100 usable games (70 Red wins, 12 Blue wins,
+18 cutoffs, zero failures). MLX PPO took 11 optimizer steps on 7,475,666
+samples. Collection took 1,998.6 s and PPO took 143.7 s. The model digest
+changed from `7e643fbe` (2031 after its zero-weight schema migration)
+to `5d431bf9`. The learned empty-window coefficient moved from 0 to
+−0.003457687. The training record is the update-2032 row of the
+private state's log.
+
+All ten frozen evaluation games ran on the planned map with the standard
+guard, matched seeds and native CPU inference on both seats. The recorded
+actors matched the assigned checkpoint digests and took zero optimizer
+steps. Seven games produced complementary terminal records. Update 2032
+won four (three Red, one Blue) and 2031 won three (two Red, one Blue).
+Three games ended at the 163,840-decision seat limit on days 165, 191
+and 244. No games failed or needed replacement.
+
+2032 recorded 44,922 confirmed empty reopenings in 934,651 decisions
+(48.063 per 1,000), versus 45,212 in 927,969 (48.721) for 2031. This
+is a 1.35% relative decrease. 2032 had fewer repeats per 1,000 in
+three of five seed pairs; it improved as Red (47.491 to 43.090) and
+had more as Blue (49.823 to 50.603). Artifact panels accounted for
+21,422 of the 2032 repeats. Observed town gains, including recaptures,
+were 136 to 134; initially neutral gold mines seen under each policy's
+ownership in a game totaled four to two, counting a location once per
+seat per game. In pair 1 with 2032 as Red, Red opened and closed the same
+hero's artifacts twice on day 1 (decisions 4–7), then recruited 14 at
+decision 55. Red captured Blue's town on day 33, retook it after each
+of three recaptures, and won on day 37. The small score and window-rate
+differences across five starts leave a sustained improvement unresolved.
+The private summary.json contains the per-game evidence, color splits,
+seed-pair aggregates and capture days.
+
+### 2026-11-24 — Where the decision budgets went in the three frozen cutoffs
+
+Count submitted actions by kind for the seat that reached 163,840 in each
+of the three earlier 2032/2031 evaluation cutoffs. Together these three
+seats sent 491,520 actions. Window opens, closes and back navigation
+used 365,995 (74.46%). Swapping, splitting and merging troop stacks
+used 101,423 (20.63%). The seats also made 3,376 accepted move commands
+and 178 accepted recruitments. These broad categories include useful
+navigation and army management.
+
+Confirming each four-action empty revisit and counting its decision
+positions once gives 34,256 (20.91%) for Blue 2031 on day 165, 35,776
+(21.84%) for Blue 2032 on day 191, and 33,924 (20.71%) for Red 2031
+on day 244. In total 103,956 decisions (21.15%) belonged to these
+verified empty sequences. On day 1 in pair 1 with 2032 as Blue, actions
+623–626 opened and closed the same artifact panel twice. Actions 828–829
+moved the entire stack of 25 pikemen to an empty neighboring slot and
+immediately back, restoring the original army. Blue later captured Red's
+starting town on day 187. The match stopped without a declared winner
+on day 191. The private action-limit-breakdown.json next to the ten-game
+summary records action counts for each capped seat.
+
+### 2026-11-24 — Gold-mine captures in the terminal
+
+Count each existing native gold-mine flag notice in its recipient seat's
+protocol stream. Games report Red and Blue counters in the terminal and
+JSONL. A recapture counts as a new capture. This adds no engine calls,
+map passes, reward terms or policy inputs. The completed 2032 versus 2031
+traces contain six matching gold notices across the ten games.
+
+### 2026-11-24 — Frozen update 2033 against 2032 on five fresh starts
+
+Compare wins and empty artifact-panel openings on the default 36×36 map.
+Play both colors on each of five new engine seeds, fixing the sampling
+seeds by color within each pair. Use the unchanged interaction guard and
+limits, production CPU actors and no PPO. Count confirmed empty artifact
+reopenings per 1,000 decisions, split by color and seed, and inspect
+all immediate empty artifact visits where the recorded state permits.
+The private plan, checkpoint copies, source identities and traces are
+under `eval-2033-vs-2032._o4lk_0a`. A separate user training batch of
+200 games had already started from 2033.
+
+Restore the team colors in the terminal table and totals. Apply color after
+fitting text to the terminal, and honor NO_COLOR and redirected output.
+
+Show the mean game day in the terminal batch summary. It covers all games
+admitted to the update, including cutoffs, and caps the reported day at
+the game's configured limit because the controller stops on the next day.
+
+### 2026-11-24 — Direct map PNG preview
+
+Add a standard-library CLI that renders terrain and object markers directly
+from the VCMI map archive. The preview uses original schematic symbols and
+does not launch the editor or engine. Verified PNG size on the 20×20, 28×28,
+and 36×36 scenarios and the four gold-mine positions on the 36×36 preview.
+
+Replace the symbolic map preview with the original installed terrain and
+object artwork, read directly from the local LOD archives. The renderer uses
+the VCMI tile frame and flip conventions and composites objects at 32 native
+pixels per tile. The whole-map render shows the static initial state without
+fog or UI. All three project maps rendered without launching the editor
+or engine. The 36×36 PNG is 1,152 × 1,152 and stays in private artifacts.
+
+### 2026-11-24 — Results of the frozen 2033/2032 comparison
+
+Update 2033 was saved at 17:00:46 UTC after 100 usable games: 68 Red
+wins, 17 Blue wins, 15 cutoffs and no failures. Collection took 2,413.8 s
+and MLX PPO took 137.7 s for 6,988,479 samples and 10 optimizer steps.
+The model digest changed from `5d431bf9` to `5c4eeb85`; the coefficient
+for previously empty windows moved from −0.003457687 to +0.000444240.
+
+All ten frozen matches on the five planned starts ran successfully.
+Both actors' weights, colors and sampling seeds matched the plan.
+Game, action-trace and wire decision counts agreed, and both native
+seat terminals confirmed each winner. 2033 won five times (three Red,
+two Blue), 2032 four (three Red, one Blue). One game reached its action
+limit on day 175. Three starts split one win each, one gave 2033 both
+wins, and one gave 2032 one win plus a shared cutoff.
+
+2032 made 38,224 empty artifact visits in 668,280 decisions (57.198 per
+1,000); 2033 made 37,692 in 659,068 (57.190). All 75,916 accepted
+artifact opens were immediately followed by a close with the visible
+state restored. Opening and closing the panel consumed 11.44% of all
+decisions in the series. The no-artifacts restriction was active in all
+ten games. Confirmed repeat opens per 1,000 fell from 23.255 to 23.002
+(15,541 to 15,160). Red fell from 20.303 to 19.266 and Blue rose from
+25.216 to 25.445. 2033 showed fewer repeat opens per 1,000 on two of
+the five paired starts. These results do not establish an improvement in
+strength or an appreciable reduction in empty visits. The private
+summary.json and artifact-visits.json contain the model/color/game counts.
+
+### 2026-11-24 — Preview of the installed Judgment Day scenario
+
+Read the installed Restoration of Erathia H3M through HeroWO h3m2json
+(1199a8eb84a1603c9925ec4ac4df02c81ec3ad97) in an offline container with
+the input mounted read-only. Adapt 1,296 terrain tiles and 303 surface
+objects for the existing render_vmap renderer. The 1,152 × 1,152 PNG
+preserves the scenario's random-object symbols before game initialization.
+The PNG and format adapter are in private artifacts under s-map-render.
+The editor and game were not launched.
+
+### 2026-11-24 — Screen the installed S maps for a two-seat curriculum
+
+Parsed 31 installed 36×36 H3M maps. Seven have a surface only, and one of
+those has exactly two playable, opposing teams: Knee Deep in the Dead.
+The existing artwork renderer produced a 1,152 × 1,152 PNG from 413
+surface objects, including 26 monster groups and 16 mines. The blue
+Necropolis starts owned and developed, while Red starts with a hero and
+no town. The second town is a neutral Castle. Nine map artifact objects
+and starting equipment also differ from the current no-artifacts rules.
+This makes the map a candidate for a later asymmetric evaluation, rather
+than the next training map. No compatibility or gameplay match was run.
+The PNG is in private artifacts under s-map-render.
+
+### 2026-11-24 — Hide the artifact panel when equipment is disabled
+
+The ten frozen 2033/2032 games spent 11.44% of all decisions entering
+and leaving the empty artifact panel. Under the existing `no-artifacts-v1`
+equipment rule, remove the offered panel in both possible parent contexts:
+the hero card and an exchange between friendly heroes. Native equipment
+should restore the panel even for an unequipped hero. Keep hero inspection,
+army commands, and the checkpoint and reward formats intact. Validate the
+two equipment modes and select a separately frozen engine for future starts.
+
+The local launcher now selects the separately built and frozen
+`local-v8-equipment-controls-v1` by default. The prepared VCMI tree
+matched the pinned upstream, repository patches and canonical adapter;
+the client, server, AI plugins and replay verifier were rebuilt. The
+frozen ExplorerRL SHA-256 is
+`4e019c6e7e7c96f6f8b2299c55876c54c83635c6e091520777473d18638ec884`.
+The launcher preflight resolved the new executable and the expected
+equipment rule. The active 200-game run from 2033 retained its original
+engine, with fourteen live actors on the previous runtime at this check.
+
+All 90 repository tests passed. An asset-free C++ test of the production
+control and equipment predicate bodies with stub game objects passed 114
+cases, including native/disabled equipment, hero, friendly exchange, and
+town contexts. A synthetic protocol check kept hero inspection and the
+same split, merge and swap options in both modes. No real game was
+launched to validate this change.
+
+### 2026-11-24 — Double the per-seat action budget
+
+New training and frozen evaluation games use a limit of 327,680 answered
+decisions per seat, up from 163,840. The 365-day horizon still applies.
+The start record for the running 200-game batch from 2033 records the
+previous budget. The training CLI resolved the new default with its
+trainer mocked. Eight synthetic request checks covered both colors at
+the old limit, just below and at the new limit, and on day 366. All 21
+environment tests passed. No training or evaluation games were launched.
+
+### 2026-11-24 — Make mean game days visible during and after a run
+
+Show mean game days under the live table as games are admitted, again on
+the final PPO line, and in the update JSONL. The counter uses the same
+admitted games and day ceilings as the previous batch summary. The already
+running 2035 update retains its loaded UI. Backfill the completed 2033
+versus 2032 evaluation summary with a mean of 111.3 game days across ten
+games, including the action cutoff.
+
+### 2026-11-24 — Review update 2036 and compare frozen 2036 with 2035
+
+Evaluate the saved policies on five fresh engine seeds on the same 36×36
+scenario. For each pair, exchange the colors while retaining its engine
+and color-specific policy seeds. Use the equipment-controls runtime, the
+default interaction guard, 365-day and 327,680-decision limits, and no PPO.
+Compare wins, cutoffs, empty window reopenings, recruitment, movement and
+captures. Check whether the artifact panel was offered. The private plan,
+checkpoint copies and traces are under `eval-2036-vs-2035.rbd7proq`.
+
+Update 2036 followed 100 self-play games with frozen 2035. In Kyiv the
+run lasted from 21:43:13 to 22:19:07 (35m54s). Collection took 2,008.6 s
+for 13,237,987 decisions across both seats, and MLX PPO took 144.4 s,
+6,578,777 samples and 11 steps. Actor weights matched the parent
+(`f6a56014`); the new weight digest was `bc8e07f3`. There were 72 Red
+wins, 27 Blue wins, one day-limit draw with a −1 reward for each seat
+and zero failures. None reached the 327,680 action cap. Eight wins
+crossed the old per-seat cap. Mean length was 123.42 days (median 119).
+There were 28 gold-mine captures in 24 games. The training log counted
+31.05 repeated empty opens per 1,000 choices of seats with a recorded
+trajectory; the previous batch counted 31.38. It does not log per-panel
+action counts or the engine binary path.
+
+All ten frozen matches were completed without a cutoff or failure.
+Each checkpoint won five as Red and zero as Blue. Every one of the
+five pairs split when the checkpoints exchanged colors. The native
+terminal records, seat model digests, seeds and decision counts agreed.
+2035 versus 2036 recorded 76 versus 76 town gains including recaptures,
+one versus three native gold-mine capture notices and 30.490 versus
+31.145 repeated empty opens per 1,000 decisions. 2036 repeated more on
+four of five paired starts. Stack and building inspections accounted
+for 24,875 of its 26,871 repeats.
+
+The default equipment-controls runtime offered artifacts in zero of
+478,123 hero/exchange observations; neither actor chose an artifact
+open. Across both checkpoints, navigation occupied 71.34% and troop
+rearrangements 23.05% of 1,541,882 decisions. In the earlier 2033/2032
+series the respective shares were 75.29% and 19.39%. Different policies,
+seeds and action limits preclude attributing the shift causally to
+hiding the panel. There was no observed head-to-head win advantage for
+2036. The private training-summary.json, summary.json and prior-action-mix.json
+contain the denominators and per-game results.

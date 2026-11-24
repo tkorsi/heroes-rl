@@ -17,14 +17,14 @@ mkdir -p "$HEROES_ARTIFACTS"
 Supply a compatible Heroes III installation so that its original `Data` folder is available at `$HEROES_ARTIFACTS/game-data/Data`. Follow the [VCMI build instructions](architecture.md#engine) through the CMake build. For the artifact directory chosen above, run the freeze step there:
 
 ```sh
-python3 tools/freeze_runtime.py "$HEROES_ARTIFACTS/runtime/local-v8-quiet-captures-v1"
+python3 tools/freeze_runtime.py "$HEROES_ARTIFACTS/runtime/local-v8-equipment-controls-v1"
 ```
 
 To use a different prepared runtime, set `HEROES_VCMI` to its patched `vcmiclient` executable. For the Torch reference backend, install [the base learner lock](../dependencies/learner.lock) and pass `--backend torch` to both the check and train commands.
 
-## Start from checkpoint 2025
+## Resume training
 
-The default state starts from the [published checkpoint](../checkpoints/update-002025.pt) on the first run. The trainer verifies the saved weight digest when loading. Subsequent runs resume the most recent checkpoint in that state. The default directories are `training-codex-2025-fast` for the Codex checkout and `training-2025-fast` for other checkouts, under `HEROES_ARTIFACTS`. The fast trainer starts its own history from 2025, in a separate directory from any runs started with the earlier default.
+The default map is 36×36 with four neutral gold mines. The default state starts from the [published checkpoint](../checkpoints/update-002025.pt) on the first run. The trainer verifies the saved weight digest when loading. Subsequent runs resume the most recent checkpoint in that state. The default directories are `training-codex-2025-fast` for the Codex checkout and `training-2025-fast` for other checkouts, under `HEROES_ARTIFACTS`. The fast trainer starts its own history from 2025, in a separate directory from any runs started with the earlier default.
 
 ```sh
 ./train.command check

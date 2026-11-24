@@ -46,7 +46,7 @@ ENGINE_FAILURE_MARKERS = (
 @dataclass(frozen=True)
 class Limits:
     max_days: int = TRAINING_DAY_LIMIT  # a decision on a later game day ends the game
-    max_actions: int = 163840  # answered decisions per seat
+    max_actions: int = 327_680  # answered decisions per seat
     idle_seconds: float | None = None  # longest engine silence; None waits forever
 
 
@@ -199,6 +199,10 @@ class Env:
     @property
     def day(self):
         return max((side.producer.history.day for side in self.sides), default=1)
+
+    @property
+    def gold_mine_captures(self):
+        return tuple(side.producer.gold_mine_captures for side in self.sides)
 
     def close(self):
         """Stop the engine and release sockets and files. The seats' frames stay readable."""

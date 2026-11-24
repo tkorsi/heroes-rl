@@ -165,7 +165,7 @@ class _Arena:
 class _RecipeDistribution(ContextualDistribution):
     def __init__(self, model, frame, arena):
         super().__init__(model, model.initial_state(), frame.frame.observation,
-                         frame.frame.offers, None, {}, frame.guard)
+                         frame.frame.offers, None, {}, frame.guard, frame.window_memory)
         self.arena = arena
         self.recipes = []
 
@@ -174,6 +174,12 @@ class _RecipeDistribution(ContextualDistribution):
 
     def _logits(self, semantics):
         return {"kind": "categorical", "roots": [self._features(item) for item in semantics]}
+
+    def _window_logits(self, semantics, flags):
+        step = self._logits(semantics)
+        if any(flags):
+            step["window_memory"] = flags
+        return step
 
     def _quantity_logits(self, features, low, high, maximum, depth):
         middle = (low + high) // 2
@@ -381,8 +387,7 @@ class Recorder:
             conditionals = []
             for step in recording.steps:
                 if step["kind"] == "categorical":
-                    conditionals.append({"kind": "categorical", "roots": [nodes[index] for index in step["roots"]],
-                                         "selected": step["selected"]})
+                    conditionals.append({**step, "roots": [nodes[index] for index in step["roots"]]})
                 else:
                     conditionals.append({**step, "root": nodes[step["root"]]})
             self.frames[seq]["conditionals"] = conditionals

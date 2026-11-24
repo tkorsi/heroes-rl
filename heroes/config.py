@@ -40,7 +40,7 @@ def _artifacts():
 
 
 def _vcmi():
-    return Path(os.environ.get("HEROES_VCMI", _artifacts() / "runtime/local-v8-quiet-captures-v1/bin/vcmiclient")).expanduser()
+    return Path(os.environ.get("HEROES_VCMI", _artifacts() / "runtime/local-v8-equipment-controls-v1/bin/vcmiclient")).expanduser()
 
 
 def _training_state():
@@ -53,7 +53,7 @@ class Config:
     # Where things are.
     vcmi: Path = field(default_factory=_vcmi)  # the patched vcmiclient, built by tools/prepare_vcmi.py
     game_data: Path = field(default_factory=lambda: _artifacts() / "game-data")  # holds the original game's Data
-    game_map: Path = REPOSITORY / "maps" / "hero-management-v4.vmap"
+    game_map: Path = REPOSITORY / "maps" / "hero-management-v6-36x36-gold.vmap"
     state: Path = field(default_factory=_training_state)  # checkpoints, log, running games
     legacy: Path = field(default_factory=lambda: _artifacts() / "selfplay-ten-then-check")  # imported once
 

@@ -140,9 +140,12 @@ JsonNode ExplorerRL::capabilityControls()
 	if(contextState.context == "hero")
 	{
 		const auto * current = hero(*callback, contextState, contextState.subject);
-		result.Vector().emplace_back("artifacts");
-		if(ArtifactUtils::isEquipmentAllowed(ArtifactID::SPELLBOOK) && current->hasSpellbook())
-			result.Vector().emplace_back("spellbook");
+		if(ArtifactUtils::isEquipmentAllowed(ArtifactID::SPELLBOOK))
+		{
+			result.Vector().emplace_back("artifacts");
+			if(current->hasSpellbook())
+				result.Vector().emplace_back("spellbook");
+		}
 		if(current->hasBonusOfType(BonusType::VISIONS)) result.Vector().emplace_back("visions");
 	}
 	else if(contextState.context == "town" && contextState.panel == "overview")
@@ -157,7 +160,8 @@ JsonNode ExplorerRL::capabilityControls()
 		if(purchase) result.Vector().emplace_back("purchases");
 	}
 	else if(contextState.context == "exchange" && contextState.ownHeroExchange
-		&& !contextState.ownHeroExchange->joiningNeutral && !contextState.ownHeroExchange->objectGarrison)
+		&& !contextState.ownHeroExchange->joiningNeutral && !contextState.ownHeroExchange->objectGarrison
+		&& ArtifactUtils::isEquipmentAllowed(ArtifactID::SPELLBOOK))
 		result.Vector().emplace_back("artifacts");
 	return result;
 }

@@ -9,7 +9,7 @@ rules of Heroes III and must not be forgotten when interpreting results.
 | Automatic combat | Tactical combat is delegated to VCMI's BattleAI. | Add and validate a separate battle policy before claiming end-to-end learned play. |
 | No artifacts anywhere | The engine setting `no-artifacts-v1` removes all hero equipment and disables every artifact, including spellbooks and war machines, for the whole game. | Restore normal artifacts in a separately versioned experiment; report that removing catapults and spellbooks changes siege and spell access. |
 | Interaction guard | `visible-interaction-budget-hero-relative-stack-cycle-v1` ([heroes/game/guard.py](../heroes/game/guard.py)) keeps the policy from sampling these legal actions: a navigation step already taken twice since the last visible progress, further stack management by a hero or town after 32 such moves in a day, a swap that recreates an army layout already seen since the last progress, a move to an unrevealed tile, to the hero's own tile, to its previous target or to a target that failed since the last progress, the previous command repeated exactly, and reopening a town right after closing it. Mandatory choices and window exits always stay available. | Measure repeated commands, travel and menu alternation, then select a new guard version. |
-| Game horizon | A game is stopped at day 365 or after 163,840 answered decisions per seat and then trained on without a win or loss. | Review once games end naturally well before the limit. |
+| Game horizon | A game ends in a draw if neither seat wins within 365 days. If either seat uses its budget of 327,680 decisions first, the next request from that seat stops play with an action-limit cutoff. | Review once games end naturally well before the limit. |
 
 Not restricted: calendar neutral spawning (restored in v4 on November 12, 2026)
 and manual troop-slot management (split, merge, swap, transfer, stack inspection
@@ -71,9 +71,10 @@ explicitly expanded the rule to every artifact for every hero throughout the
 game. This includes ordinary artifacts, spellbooks, war machines and all later
 acquisitions. Normal initialization and starting-bonus RNG draws still occur;
 gold/resource bonuses are retained. The map and army composition are unchanged.
-Native rules reject prohibited acquisitions, and the adapter reflects those
-rules. No policy dialog is silently closed. Empty artifact windows may still be
-opened; this rule is not a claim that repeated empty-window visits are useful.
+Native rules reject prohibited acquisitions. With `no-artifacts-v1` active,
+the adapter also omits the artifact panel from a hero’s card and from exchanges
+between friendly heroes. Both screens still offer their usual army actions.
+With native equipment rules, the artifact panel is available again.
 Review and remove the entire `no-artifacts-v1` restriction explicitly before
 restoring ordinary artifact behavior. Siege and spell access intentionally differ.
 

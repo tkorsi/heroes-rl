@@ -172,6 +172,8 @@ class MLXModel:
             d = values_by_head
             if kind == "categorical":
                 logits = mx.sum(table[d["roots"]] * query[d["decision"]][:, None, :], axis=-1) / math.sqrt(32)
+                if "window_memory" in d:
+                    logits = logits + d["window_memory"] * p["window_memory.weight"]
             elif kind == "quantity":
                 inputs = mx.concatenate((states[d["state"]], table[d["roots"]], d["numeric"]), axis=-1)
                 logits = self.linear(p, mx.tanh(self.linear(p, inputs, "quantity.0")), "quantity.2") + d["offsets"]

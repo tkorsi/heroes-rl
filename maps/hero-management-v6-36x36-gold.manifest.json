@@ -1,0 +1,44 @@
+{
+  "schema": "heroes-temporary-scenario-v1",
+  "scenario_id": "hero-management-v6-36x36-gold",
+  "parent_sha256": "a01b59d945e901fe0db3e0fe8a6b579b432283d08ec88a81f46970580009eac7",
+  "map_sha256": "269d05b5ab0c735c4beabe6b0eb1163196c2e0162d84b323d93219098c92a8d5",
+  "temporary_rules": {
+    "monthly_neutral_spawns": "native_default",
+    "starting_taverns": "both_towns_prebuilt_without_resource_cost"
+  },
+  "map_size": [
+    36,
+    36
+  ],
+  "starting_town_entrances": {
+    "blue": [
+      31,
+      15
+    ],
+    "red": [
+      4,
+      15
+    ]
+  },
+  "neutral_gold_mine_entrances": [
+    [
+      2,
+      2
+    ],
+    [
+      33,
+      2
+    ],
+    [
+      2,
+      33
+    ],
+    [
+      33,
+      33
+    ]
+  ],
+  "engine_verified": false,
+  "training_performed": false
+}

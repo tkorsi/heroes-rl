@@ -158,6 +158,7 @@ class Compact:
         steps = np.zeros(len(decisions), dtype=np.int64)
         head, selected, roots, extra = [], [], [], []
         choice_counts, choices = [], []
+        repeated_choices = []  # flat indices whose candidate window was previously visited without effect
         numeric, offsets = [], []
         positions, cell_counts, cells = [], [], []
         for row, frame_index in enumerate(decisions):
@@ -173,6 +174,9 @@ class Compact:
                     roots.append(-1)
                     extra.append(len(choice_counts))
                     choice_counts.append(len(conditional["roots"]))
+                    if "window_memory" in conditional:
+                        base = len(choices)
+                        repeated_choices.extend(base + i for i, flag in enumerate(conditional["window_memory"]) if flag)
                     choices.extend(conditional["roots"])
                 elif code == QUANTITY:
                     roots.append(conditional["root"])
@@ -197,6 +201,10 @@ class Compact:
         self.choice_first = np.zeros(len(choice_counts) + 1, dtype=np.int64)
         np.cumsum(np.asarray(choice_counts, dtype=np.int64), out=self.choice_first[1:])
         self.choices = np.asarray(choices, dtype=np.int32)
+        self.window_memory = None
+        if repeated_choices:
+            self.window_memory = np.zeros(len(choices), dtype=bool)
+            self.window_memory[repeated_choices] = True
         self.numeric = np.asarray(numeric, dtype=np.float32).reshape(-1, 4)
         self.offsets = np.asarray(offsets, dtype=np.float32).reshape(-1, 2)
         self.positions = (np.stack(positions).astype(np.float32) if positions
@@ -309,11 +317,16 @@ class Compact:
         selected, state = self.step_selected[steps], decision_jobs[step_decision]
         if len(categorical):
             width = int(choice_counts.max())
-            heads.append(("categorical", {
+            data = {
                 "decision": step_decision[categorical], "state": state[categorical],
                 "selected": selected[categorical].reshape(-1, 1),
                 "mask": np.where(np.arange(width) < choice_counts[:, None], 0.0, -np.inf).astype(np.float32),
-                "roots": _padded(local[self.choices[choice_flat]], choice_counts, count, width)}))
+                "roots": _padded(local[self.choices[choice_flat]], choice_counts, count, width)}
+            if getattr(self, "window_memory", None) is not None:
+                flags = self.window_memory[choice_flat]
+                if flags.any():
+                    data["window_memory"] = _padded(flags, choice_counts, False, width)
+            heads.append(("categorical", data))
         coordinate = np.flatnonzero(head == COORDINATE)
         if len(coordinate):
             # The map of a decision's own frame gives the cells its coordinates are scored on.

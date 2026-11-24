@@ -13,6 +13,7 @@ weights it starts from did not play.
 """
 from __future__ import annotations
 
+from collections import deque
 from dataclasses import asdict, replace
 from datetime import datetime, timezone
 import fcntl
@@ -23,6 +24,7 @@ import multiprocessing
 import multiprocessing.connection
 import os
 import pickle
+import re
 import secrets
 import shutil
 import signal
@@ -36,6 +38,7 @@ import torch
 from . import checkpoint
 from .actor import Game, Job, compact_recipe, compile_recipe, play
 from .engine.env import COLORS, Env
+from .learner.ppo import WINDOW_REPEAT_PENALTY
 from .model.policy import weights_sha256
 
 
@@ -283,43 +286,104 @@ class Pool:
 
 # -- what the person watching sees ---------------------------------------------
 
-def _clock(seconds):
-    seconds = int(seconds)
-    return f"{seconds // 3600}:{seconds % 3600 // 60:02d}:{seconds % 60:02d}"
+def _clock(seconds, *, tenths=False):
+    whole, fraction = divmod(round(seconds * 10), 10) if tenths else (int(seconds), 0)
+    clock = f"{whole // 3600}:{whole % 3600 // 60:02d}:{whole % 60:02d}"
+    return f"{clock}.{fraction}" if tenths else clock
 
 
 class Display:
-    """One permanent line per finished game and update; on a terminal also a live status line."""
+    """Keep a rolling table above one live status line."""
+
+    rows = 10
+    team_labels = re.compile(r"\b(?:Red|Blue|[RB][0-9]+)\b")
+    header = f"{'Game':>8}  {'Result':<18}  {'Learner':<7}  {'Day':>3}  {'Gold mines':<11}  {'Samples':>9}  {'Time':>11}"
 
     def __init__(self, out):
         self.out = out
-        self.live = out.isatty()
+        self.live = out.isatty() and os.environ.get("TERM", "").lower() != "dumb"
+        self.color = self.live and "NO_COLOR" not in os.environ
+        self.table_live = self.live and shutil.get_terminal_size().lines >= self.rows + 2
+        self.table_visible = False
+        self.recent = deque(maxlen=self.rows)
         self.playing = {}  # worker index -> (game number, day, choices)
 
+    def color_teams(self, text):
+        if not self.color:
+            return text
+        return self.team_labels.sub(
+            lambda match: f"\x1b[{91 if match[0].startswith('R') else 94}m{match[0]}\x1b[0m", text)
+
     def line(self, text):
-        self.out.write(("\r\x1b[2K" if self.live else "") + text + "\n")
+        self.out.write(("\r\x1b[2K" if self.live else "") + self.color_teams(text) + "\n")
         self.out.flush()
 
-    def status(self, text):
-        if self.live:
-            self.out.write("\r\x1b[2K" + text[:shutil.get_terminal_size().columns - 1])
-            self.out.flush()
+    def status(self, *fields):
+        if not self.live:
+            return
+        width = max(0, shutil.get_terminal_size().columns - 1)
+        text = fields[0][:width]
+        for field in fields[1:]:
+            if len(text) + 2 + len(field) > width:
+                break
+            text += "  " + field
+        self.out.write("\r\x1b[2K" + self.color_teams(text))
+        self.out.flush()
 
-    def collecting(self, update, done, target, tally, started):
+    def table(self, *, pad):
+        rows = [self.header, *self.recent]
+        if pad:
+            rows.extend("       ·" for _ in range(self.rows - len(self.recent)))
+        if self.live:
+            width = max(0, shutil.get_terminal_size().columns - 1)
+            above = f"\x1b[{self.rows + 1}A" if self.table_visible else ""
+            self.out.write(above + "".join("\r\x1b[2K" + self.color_teams(row[:width]) + "\n" for row in rows))
+        else:
+            self.out.write("\n".join(rows) + "\n")
+        self.out.flush()
+
+    def finish_games(self):
+        if self.table_visible or self.recent:
+            self.table(pad=self.table_visible)
+        self.table_visible = False
+        self.recent.clear()
+
+    def collecting(self, update, done, target, tally, started, average_days=None):
+        if not self.live:
+            return
+        if self.table_live:
+            self.table(pad=True)
+            self.table_visible = True
         days = " ".join(str(day) for _, day, _ in sorted(self.playing.values()))
-        self.status(f"update {update}  games {done}/{target}  red {tally['red']}  blue {tally['blue']}  "
-                    f"stopped {tally['truncated']}  failed {tally['failed']}  "
-                    f"{_clock(time.monotonic() - started)}  days in play: {days}")
+        average = f"Avg days {average_days:.1f}" if average_days is not None else "Avg days –"
+        self.status(f"Games {done}/{target}", average, *self.score(tally), _clock(time.monotonic() - started),
+                    f"Update {update}", f"Days in play {days}" if days else "")
 
     def game(self, game, samples):
         if game.status == "completed":
-            result = f"{COLORS[game.outcomes.index('win')]} wins"
+            result = COLORS[game.outcomes.index("win")].title() + " won"
         elif game.status == "truncated":
-            result = "stopped at the " + ("day" if game.reason == "game_day_limit" else "action") + " limit"
+            limit = "day" if game.reason == "game_day_limit" else "action"
+            result = f"Cutoff ({limit})"
         else:
-            result = f"FAILED ({game.reason})"
-        self.line(f"game {game.job.number}  {result}  day {game.day}  learner {COLORS[game.job.learner]}  "
-                  f"{samples} samples  {_clock(game.seconds)}")
+            result = f"Failed ({game.reason})"
+        if len(result) > 18:
+            result = result[:17] + "…"
+        learner = COLORS[game.job.learner].title()
+        gold = "?"
+        if game.gold_mine_captures is not None:
+            red, blue = game.gold_mine_captures
+            total = red + blue
+            gold = "-" if total == 0 else "Red" if red else "Blue"
+            if total > 1:
+                gold = f"({total}) R{red}/B{blue}"
+        self.recent.append(f"{game.job.number:>8}  {result:<18}  {learner:<7}  {game.day:>3}"
+                           f"  {gold:<11}  {samples:>9,}  {_clock(game.seconds, tenths=True):>11}")
+
+    @staticmethod
+    def score(tally):
+        return (f"Blue wins {tally['blue']:,}", f"Red wins {tally['red']:,}",
+                f"Cutoffs {tally['truncated']:,}", f"Failed {tally['failed']:,}")
 
 
 class Log:
@@ -358,6 +422,12 @@ class Batch:
         self.starts = starts  # practice games: the start positions a game's own is drawn from (``heroes.starts``)
         self.began = {}  # game number -> the name of its start position
         self.games, self.tally, self.started = [], {"red": 0, "blue": 0, "truncated": 0, "failed": 0}, time.monotonic()
+
+        self.days_played = 0
+
+    @property
+    def average_days(self):
+        return self.days_played / len(self.games) if self.games else None
 
     @property
     def done(self):
@@ -400,6 +470,8 @@ class Batch:
                        training_rewards={seat: t.reward for seat, t in seat_trajectories.items()},
                        window_repeats={seat: len(t.window_repeat_indices) for seat, t in seat_trajectories.items()},
                        window_penalties={seat: t.window_penalty for seat, t in seat_trajectories.items()},
+                       gold_mine_captures=(dict(zip(COLORS, game.gold_mine_captures))
+                                           if game.gold_mine_captures is not None else None),
                        choices=list(game.choices), samples=samples, seconds=round(game.seconds, 1),
                        compile_seconds=round(game.compile_seconds, 1), update=self.update,
                        weights=game.weights, detail=game.detail,
@@ -414,6 +486,8 @@ class Batch:
         else:
             tally["truncated" if game.status == "truncated" else COLORS[game.outcomes.index("win")]] += 1
             games.append(game)
+            # A day cutoff is delivered on the first request of the following day.
+            self.days_played += min(game.day, game.job.max_days or self.config.limits.max_days)
         return True
 
 
@@ -424,10 +498,11 @@ def collect(pool, config, path, target, numbers, update, display, log, batch=Non
     """
     batch = batch or Batch(pool, config, target, numbers, update, display, log, seeds, starts)
     started = time.monotonic()
+    display.collecting(update, len(batch.games), target, batch.tally, started, batch.average_days)
     while not batch.done:
         batch.step(path)
-        display.collecting(update, len(batch.games), target, batch.tally, started)
-    return batch.games, batch.tally
+        display.collecting(update, len(batch.games), target, batch.tally, started, batch.average_days)
+    return batch.games, batch.tally, batch.average_days
 
 
 def train(config, games, *, fresh=False, out=sys.stderr, seed=None):
@@ -481,6 +556,7 @@ def _train(config, games, update_policy, fresh, out, seed=None):
                      f"a start without a day limit of its own is stopped after day {config.limits.max_days}")
     log.write("start", games=games, games_per_update=config.games_per_update,
               backend=config.backend, workers=config.workers, progress=state.progress,
+              game_map=str(config.game_map), window_repeat_penalty=WINDOW_REPEAT_PENALTY,
               ppo=config.ppo.to_dict(), limits=asdict(config.limits), guard=config.guard,
               both_seats=config.both_seats, weights=weights_sha256(state.model), seed=seed,
               new_optimizer=config.new_optimizer,
@@ -494,8 +570,11 @@ def _train(config, games, update_policy, fresh, out, seed=None):
             target = min(config.games_per_update, games)
             update, started = state.updates + 1, time.monotonic()
             path = checkpoint.latest(config.state)
-            batch, tally = collect(pool, config, path, target, numbers, update, display, log, following, seeds, starts)
+            batch, tally, average_days = collect(
+                pool, config, path, target, numbers, update, display, log, following, seeds, starts)
             collected = time.monotonic()
+            display.finish_games()
+            display.line("  |  ".join(display.score(tally)))
             following = None
             if config.play_during_update and games > target:
                 following = Batch(pool, config, min(config.games_per_update, games - target), numbers, update + 1,
@@ -505,7 +584,7 @@ def _train(config, games, update_policy, fresh, out, seed=None):
 
             def progress(step, total, update=update, collected=collected, path=path, following=following,
                          failed=failed):
-                display.status(f"update {update}  PPO step {step}/{total}  {_clock(time.monotonic() - collected)}")
+                display.status(f"PPO {update}  step {step}/{total}", _clock(time.monotonic() - collected))
                 # The actors play on with the weights this update started from.
                 # If that batch fails, this update still finishes and is saved first.
                 try:
@@ -517,6 +596,7 @@ def _train(config, games, update_policy, fresh, out, seed=None):
             trajectories = [trajectory for game in batch for trajectory in game.trajectories]
             # What the update started from and what it trained on, for whoever checks the round afterwards.
             audit = {"weights_before": weights_sha256(state.model), "adam_steps_before": _adam_steps(state.optimizer),
+                     "window_memory_weight_before": state.model.window_memory.weight.item(),
                      "played_with": sorted({str(game.weights) for game in batch}), "trajectories": len(trajectories),
                      "trajectory_samples": sum(len(trajectory.decisions) for trajectory in trajectories)}
             report = update_policy(state.model, state.optimizer, trajectories,
@@ -524,6 +604,7 @@ def _train(config, games, update_policy, fresh, out, seed=None):
             del trajectories
             updated = time.monotonic()
             audit.update(weights_after=weights_sha256(state.model), adam_steps_after=_adam_steps(state.optimizer),
+                         window_memory_weight_after=state.model.window_memory.weight.item(),
                          steps=report.steps, initial_check=report.initial_check)
             state.progress = {"updates": update, "games": state.progress["games"] + len(batch),
                               "decisions": state.progress["decisions"] + report.samples,
@@ -536,17 +617,21 @@ def _train(config, games, update_policy, fresh, out, seed=None):
                       value_loss=report.value_loss, approximate_kl=report.approximate_kl,
                       clip_fraction=report.clip_fraction, collect_seconds=round(collected - started, 1),
                       update_seconds=round(updated - collected, 1), update_timings=report.timings_seconds,
-                      checkpoint=saved.name, progress=state.progress, **audit)
-            display.line(f"update {update} saved  {report.samples} samples  {report.optimizer_steps} steps  "
-                         f"policy loss {report.policy_loss:+.4f}  value loss {report.value_loss:.4f}  "
-                         f"KL {report.approximate_kl:.5f}  games {_clock(collected - started)}  "
-                         f"PPO {_clock(updated - collected)}")
+                      checkpoint=saved.name, progress=state.progress, average_days=round(average_days, 2), **audit)
+            display.line(f"update {update} saved  |  {saved.name}  |  games {_clock(collected - started, tenths=True)}"
+                         f"  |  PPO {_clock(updated - collected, tenths=True)}"
+                         f"  |  {report.optimizer_steps:,} steps  |  {report.samples:,} samples")
+            display.line(f"  Total {_clock(updated - started, tenths=True)}  |  Avg days {average_days:.1f}"
+                         f"  |  policy loss {report.policy_loss:+.4f}"
+                         f"  |  value loss {report.value_loss:.4f}  |  KL {report.approximate_kl:.5f}")
             games -= target
             if failed:
                 raise failed[0]
     except KeyboardInterrupt:
+        display.finish_games()
         display.line(f"Stopped. The next run continues from update {saved_update}; "
                      "games of the unfinished batch are discarded.")
     finally:
+        display.finish_games()
         pool.shutdown()
     return state

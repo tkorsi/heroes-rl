@@ -151,6 +151,7 @@ class _Quiet:
 
     def __init__(self, model):
         self.config, self._float = model.config, model._float
+        self.window_memory = model.window_memory
 
     def _memo(self):
         return None
@@ -337,7 +338,8 @@ class FastPolicy:
         lib.fn_step(net, state.address, after.address, root, summary, own)
         decision = None
         if frame.frame.kind == "decision":
-            distribution = FastDistribution(self, after, frame.frame.observation, frame.frame.offers, cells, frame.guard)
+            distribution = FastDistribution(self, after, frame.frame.observation, frame.frame.offers,
+                                            cells, frame.guard, frame.window_memory)
             decision = PolicyValue(lib.fn_value(net, after.address), distribution)
         return StepOutput(after, decision)
 
@@ -345,8 +347,8 @@ class FastPolicy:
 class FastDistribution(ContextualDistribution):
     """The action walk of ``ContextualDistribution`` with its features and logits from ``FastPolicy``."""
 
-    def __init__(self, policy, state, observation, offers, cells, guard=None):
-        super().__init__(policy.quiet, state, observation, offers, cells, {}, guard)
+    def __init__(self, policy, state, observation, offers, cells, guard=None, window_memory=frozenset()):
+        super().__init__(policy.quiet, state, observation, offers, cells, {}, guard, window_memory)
         self.policy = policy
 
     def _features(self, semantic):

@@ -106,6 +106,8 @@ def _active_parameters(plan, parameter_order):
                 prefixes.add("ordered.")
     if plan["maps"] is not None:
         prefixes.update(("terrain.", "road.", "object_encoder.", "map_cnn.", "map_global."))
-    for kind, _ in plan["heads"]:
+    for kind, head in plan["heads"]:
         prefixes.add({"categorical": "policy_query.", "quantity": "quantity."}.get(kind, "coordinate."))
+        if "window_memory" in head:
+            prefixes.add("window_memory.")
     return [name for name in parameter_order if any(name.startswith(prefix) for prefix in prefixes)]

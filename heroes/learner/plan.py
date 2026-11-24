@@ -255,6 +255,12 @@ class History:
                 d["roots"] = torch.stack(
                     [F.pad(i[3]["roots"], (0, width - i[4]), value=zero) for i in items]
                 )
+                if any("window_memory" in conditional for _, _, _, conditional, _ in items):
+                    memory = torch.zeros((len(items), width), dtype=torch.float32)
+                    for row, (_, _, _, conditional, size) in enumerate(items):
+                        if "window_memory" in conditional:
+                            memory[row, :size] = tensor(conditional["window_memory"], torch.float32)
+                    d["window_memory"] = memory
             else:
                 d["roots"] = tensor([i[3]["root"] for i in items])
                 if kind == "quantity":

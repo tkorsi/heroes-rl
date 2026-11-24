@@ -81,6 +81,7 @@ class Producer:
         self.army_information = validate_army_information(interface, army_information)
         self.history = contract.PlayerHistory(episode, player, schema=self.profile.history_schema)
         self.ready = False
+        self.gold_mine_captures = 0
         self.terminal = None  # this seat's "win" or "loss" once the engine sent it
         self.decision_ids = {}  # engine decision id -> frame sequence number
         self.current_id = None
@@ -162,6 +163,16 @@ class Producer:
                 self.current_id = None
             elif record_kind == "terminal":
                 self.terminal = frame.outcome
+            elif record_kind == "event" and frame.event.kind == "notice":
+                notice = frame.event.notice
+                # CGMine::flagMine sends this notice to the player taking ownership.
+                if (notice.display_mode == "auto" and len(notice.text) == 1
+                        and notice.text[0].op == "append_text"
+                        and notice.text[0].text_id == "core.mineevnt.6"
+                        and len(notice.components) == 1
+                        and notice.components[0].kind == "resource_per_day"
+                        and notice.components[0].resource == "gold"):
+                    self.gold_mine_captures += 1
         return tuple(appended)
 
     def response(self, action):

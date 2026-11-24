@@ -8,7 +8,7 @@ Should a hero attack an enemy town today or wait a turn for reinforcements? Wait
 
 A fresh policy starts with randomly initialized weights. Two copies of the same network play Red and Blue in the VCMI engine. Each sees its own side of the map and remembers what it has seen across turns. The policy chooses where to move, when to recruit, what to build and when to attack. VCMI’s BattleAI resolves the tactical battles.
 
-We design the reward and let the policy work out how to earn it. A win earns a positive reward, a loss earns a penalty, and both sides receive a penalty if time runs out. A smaller penalty discourages repeatedly opening and closing an unchanged window. Opening a town to recruit is free. The reward leaves the choice of army, route and timing to the policy.
+We design the reward and let the policy work out how to earn it. A win earns a positive reward, a loss earns a penalty, and both sides receive a penalty if neither wins within 365 days. Each bot also has a budget of 327,680 decisions per game. A smaller penalty discourages repeatedly opening and closing an unchanged window. Opening a town to recruit is free. The reward leaves the choice of army, route and timing to the policy.
 
 After each batch of games, Proximal Policy Optimization (PPO) uses the rewards to estimate how to adjust the network’s weights. Choices that led to better outcomes than expected tend to become more likely in similar situations. Both sides use the updated policy in the next batch, so a successful opening can eventually face an opponent that knows how to answer it.
 
@@ -20,7 +20,7 @@ We test a new policy against a frozen earlier version on fresh seeds, playing ea
 
 ## Run it
 
-On a configured training machine, these commands inspect the selected checkpoint and then collect 100 usable games for one PPO update. An empty default state starts from checkpoint 2025.
+The default training map is 36×36 with four neutral gold mines. The bot can open the artifact panel only when equipment is enabled. These commands inspect the selected checkpoint and collect 100 usable games for one PPO update. The launcher resumes the most recent local checkpoint. An empty default state starts from the published checkpoint 2025.
 
 ```sh
 ./train.command check
