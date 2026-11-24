@@ -237,10 +237,12 @@ class GuardSupport:
             return self._permits_movement(action.subject, action.x, action.y,
                                           self._revealed_coordinates(action.subject, observation))
         if action.kind == "swap_stacks":
-            if _swap_key(offers.armies, action.selection, action.destination) in self.blocked_swaps:
+            if self.blocked_swaps and _swap_key(offers.armies, action.selection, action.destination) in self.blocked_swaps:
                 return False
         if action.kind in MANAGEMENT_KINDS:
-            return not set(management_subjects(action, observation, offers)).intersection(self.blocked_management_subjects)
+            # Nothing is blocked: no subject can be. Otherwise the subjects charged, as management_subjects lists them.
+            return not self.blocked_management_subjects or not set(
+                management_subjects(action, observation, offers)).intersection(self.blocked_management_subjects)
         key = nav_key(action, observation, offers)
         return key not in self.blocked_navigation and (key is None or key[1] not in self.blocked_window_subjects)
 

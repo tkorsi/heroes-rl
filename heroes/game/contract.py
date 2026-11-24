@@ -1225,6 +1225,7 @@ class OwnArmy:
 
 
 _CHECKED_TILES = [None, None, None]  # the tile tuple checked last, the map size it was checked for, its positions
+_CHECKED_OBJECTS = [None, None]  # the object tuple checked last, and the tile tuple it was checked against
 
 
 @dataclass(frozen=True)
@@ -1246,9 +1247,12 @@ class Observation:
         # Most observations carry the very tile tuple of the one before. Its
         # checks passed then and depend on nothing but the tuple and the size.
         checked = self.tiles is _CHECKED_TILES[0] and self.size == _CHECKED_TILES[1]
+        # So do the objects: a view that left the map as it was carries the object tuple of the one before, and its
+        # checks (types, bounds, on a visible tile, unique handles) depend on nothing but it and the tiles.
+        objects_checked = checked and self.objects is _CHECKED_OBJECTS[0] and self.tiles is _CHECKED_OBJECTS[1]
         width, height, levels = self.size
         for name, cls in (("tiles", Tile), ("objects", ObjectView), ("heroes", Hero), ("towns", Town)):
-            if checked and name == "tiles":
+            if checked and name == "tiles" or objects_checked and name == "objects":
                 continue
             _tuple(getattr(self, name), cls, name)
             # Every entry checked its own position: three exact integers.
@@ -1260,9 +1264,12 @@ class Observation:
             _unique([t.position for t in self.tiles], "visible tile")
             visible = frozenset(t.position for t in self.tiles)
             _CHECKED_TILES[:] = self.tiles, self.size, visible
-        if any(obj.position not in visible for obj in self.objects):
-            raise ValueError("Current object must be on a currently visible tile")
-        for name in ("objects", "heroes", "towns"):
+        if not objects_checked:
+            if any(obj.position not in visible for obj in self.objects):
+                raise ValueError("Current object must be on a currently visible tile")
+            _unique([entry.handle for entry in self.objects], "objects handle")
+            _CHECKED_OBJECTS[:] = self.objects, self.tiles
+        for name in ("heroes", "towns"):
             _unique([entry.handle for entry in getattr(self, name)], name + " handle")
         _unique([x.handle for x in (*self.heroes, *self.towns)], "own subject handle")
         if self.army_information is None:

@@ -625,11 +625,32 @@ def observation_semantics(observation):
     return tree
 
 
+_PARTS = {}  # (part, ids of the frozen values it is a function of) -> (those values, the part's tree)
+
+
+def _part(name, values, build):
+    """The tree ``build()`` makes of ``values``, built once for the same frozen objects.
+
+    From one view to the next most heroes, towns and armies are the very objects of the view before
+    (``contract._decoded_once``); a part of the tree that reads nothing else is the same tree.
+    """
+    key = (name, *map(id, values))
+    known = _PARTS.get(key)
+    if known is not None and all(held is value for held, value in zip(known[0], values)):
+        return known[1]
+    tree = build()
+    if len(_PARTS) >= 256:
+        _PARTS.clear()  # bounded memory; a miss only builds again
+    _PARTS[key] = (tuple(values), tree)  # holds the values, so their ids name nothing else
+    return tree
+
+
 def _observation_semantics(observation):
+    heroes, towns = observation.heroes, observation.towns
     own = _node("observation", _node("size", _semantic(observation.size)),
                 _node("resources", _semantic(observation.resources)),
-                _set("heroes", [_semantic(hero) for hero in observation.heroes]),
-                _set("towns", [_semantic(town) for town in observation.towns]),
+                _part("heroes", heroes, lambda: _set("heroes", [_semantic(hero) for hero in heroes])),
+                _part("towns", towns, lambda: _set("towns", [_semantic(town) for town in towns])),
                 _window_semantic(observation),
                 _node("current_window_subject", _subject(observation, observation.context.subject)))
     if observation.window is not None and observation.window.armies is not None:
@@ -643,9 +664,19 @@ def _observation_semantics(observation):
             bindings.append(_node("exchange_partner", _subject(observation, window.context.selection)))
         own = _node("management_observation", own, _set("army_bindings", bindings))
     if observation.own_armies is not None:
-        bindings = [_pair("own_army", _semantic(army), _subject(observation, army.subject))
-                    for army in observation.own_armies]
-        own = _node("passive_army_observation", own, _set("own_army_bindings", bindings))
+        # Each passive army belongs to an owned hero or town (the observation checks that it covers exactly those),
+        # so its subject resolves among the heroes and towns, never among the other objects.
+        armies = observation.own_armies
+
+        def bindings():
+            return _set("own_army_bindings", [_pair("own_army", _semantic(army), _subject(observation, army.subject))
+                                              for army in armies])
+
+        if {army.subject for army in armies} <= {entry.handle for entry in (*heroes, *towns)}:
+            tree = _part("own_armies", (len(armies), *armies, len(heroes), *heroes, *towns), bindings)
+        else:
+            tree = bindings()
+        own = _node("passive_army_observation", own, tree)
     return own
 
 
