@@ -608,7 +608,7 @@ def object_row(kind, subtype, owner):
     return row
 
 
-_SEMANTICS_LIMIT = 64
+_SEMANTICS_LIMIT = 2048  # a seat returns to the same window often, and a repeated view is the same object (protocol)
 _SEMANTICS = {}  # id of an observation -> (the observation, its semantic tree), the latest few
 
 

@@ -195,6 +195,7 @@ class FastPolicy:
         self.lib.fn_reset(self.net)
         self.text, self.number, self.node, self.exact, self.frame = {}, {}, {}, {}, {}
         self.map = self.observation = self.things = None
+        self.features = {}  # id of an observation -> (it, its features): slots of this arena, forgotten with it
 
     def initial_state(self):
         return State()
@@ -300,6 +301,10 @@ class FastPolicy:
         last = self.observation
         if last is not None and last[0] is observation:
             return last[1]
+        known = self.features.get(id(observation))
+        if known is not None and known[0] is observation:
+            self.observation = known
+            return known[1]
         key, known = map_key(observation), self.map
         if known is not None and known[0] == key:
             summary, cells = known[1]
@@ -308,6 +313,9 @@ class FastPolicy:
             self.map = (key, (summary, cells))
         found = (summary, self._encode_root(observation_semantics(observation)), cells)
         self.observation = (observation, found)
+        if len(self.features) >= 2048:
+            self.features.clear()  # bounded memory; a miss only encodes again
+        self.features[id(observation)] = self.observation  # holds the observation, so its id names nothing else
         return found
 
     # -- a frame ---------------------------------------------------------------------
