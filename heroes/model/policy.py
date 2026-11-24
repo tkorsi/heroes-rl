@@ -417,8 +417,11 @@ def _semantic(value):
     raise ValueError("Unsupported model semantic payload")
 
 
-# The values contract._decoded_once shares between observations.
-_KEPT_TYPES = frozenset((c.OwnArmyStack, c.OwnArmy, c.ArmyView, c.Hero, c.Town, c.TownPanel, c.CapabilityPanel))
+# The values contract._decoded_once shares between observations, and the entries of a shared town panel: the walk
+# describes a panel's controls, buildings and offers for every decision taken in it.
+_KEPT_TYPES = frozenset((c.OwnArmyStack, c.OwnArmy, c.ArmyView, c.Hero, c.Town, c.TownPanel, c.CapabilityPanel,
+                         c.PanelControl, c.BuildingChoice, c.BuildingDetails, c.RecruitChoice, c.HeroRecruitChoice,
+                         c.UpgradeChoice, c.ArmySlot))
 
 
 @dataclass(frozen=True)
