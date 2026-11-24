@@ -328,7 +328,22 @@ def _tiles_by_position(tiles):
     return _SORTED_TILES[1]
 
 
+_WORLDS = {}  # id of an observation -> (the observation, its world)
+
+
 def _world(observation):
+    # A repeated view is the same observation object (protocol): its world is built once.
+    known = _WORLDS.get(id(observation))
+    if known is not None and known[0] is observation:
+        return known[1]
+    world = _build_world(observation)
+    if len(_WORLDS) >= 2048:
+        _WORLDS.clear()  # bounded memory; a miss only builds again
+    _WORLDS[id(observation)] = (observation, world)  # holds the observation, so its id names nothing else
+    return world
+
+
+def _build_world(observation):
     # No window, army layout, artifact inventory, query reference or revision.
     # Garrison swaps and artifact-derived movement maxima do not renew budgets.
     return (observation.size, _tiles_by_position(observation.tiles),

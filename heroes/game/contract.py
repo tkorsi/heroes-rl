@@ -2120,7 +2120,7 @@ def _validate_observation(observation, profile):
     if known is not None and known is observation:
         return
     _check_observation(observation, profile)
-    if len(_VALIDATED) >= 16:
+    if len(_VALIDATED) >= 4096:
         _VALIDATED.clear()  # bounded memory; a miss only checks again
     _VALIDATED[key] = observation
 
