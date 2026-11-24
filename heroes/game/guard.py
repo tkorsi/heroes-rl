@@ -236,6 +236,12 @@ class GuardSupport:
                                                      army_slot(offers.armies, action.destination)) if army is not None}
             if (subjects or {action.subject}) & set(self.blocked_management_subjects):
                 return False
+        if kind == "swap_stacks" and self.blocked_swaps and offers.armies and not _mandatory(offers):
+            # So does a swap the layouts already seen exclude.
+            left, a = c.army_slot(offers.armies, action.selection)
+            right, b = c.army_slot(offers.armies, action.destination)
+            if a is not None and b is not None and _swap_key(offers.armies, action.selection, action.destination) in self.blocked_swaps:
+                return False
         if not offers.permits(action):
             return False
         if _mandatory(offers) or action.kind in ("close", "back", "close_capability"):
