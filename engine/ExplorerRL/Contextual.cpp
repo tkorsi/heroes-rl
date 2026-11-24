@@ -13,11 +13,13 @@
 #include "../../lib/mapObjects/CGTownInstance.h"
 #include "../../lib/mapObjects/army/CStackInstance.h"
 #include "../../lib/mapping/TerrainTile.h"
+#include "../../lib/CPlayerState.h"
 #include "../../lib/networkPacks/ArtifactLocation.h"
 
 #include <algorithm>
 #include <limits>
 #include <set>
+#include <unordered_map>
 
 namespace
 {
@@ -258,23 +260,42 @@ void ExplorerRL::readVisibleMap(explorer_rl::VisibleMap & map)
 {
 	const auto size = callback->getMapSize();
 	std::set<int> seen;
+	// A capture runs after every pack and reads every tile. Whether the player sees a tile is its team's fog
+	// (CGameState::isVisibleFor, which getTile and isVisible ask), read here once for the capture; whether it
+	// sees an object is asked once per object (playerVisibleObject), not again for every tile the object is on.
+	// The answers are those of the calls they replace, which a spectator or a neutral player still makes.
+	const TeamState * team = playerID.isValidPlayer() && !playerID.isSpectator() ? callback->getPlayerTeam(playerID) : nullptr;
+	std::unordered_map<int, const CGObjectInstance *> asked;
+	const auto visibleObject = [&](ObjectInstanceID id)
+	{
+		const auto [entry, fresh] = asked.try_emplace(id.getNum(), nullptr);
+		if(fresh)
+			entry->second = explorer_rl::playerVisibleObject(*callback, id);
+		return entry->second;
+	};
+	const auto anyVisible = [&](const std::vector<ObjectInstanceID> & objects)
+	{
+		return std::any_of(objects.begin(), objects.end(), [&](const auto id) { return visibleObject(id) != nullptr; });
+	};
 	for(int y = 0; y < size.y; ++y)
 		for(int x = 0; x < size.x; ++x)
 		{
 			const int3 position(x, y, 0);
 			// getTile answers for a visible tile only; it tests what isVisible tests.
-			const auto * tile = callback->getTile(position, false);
+			const auto * tile = team ? (team->fogOfWarMap[position] ? callback->getTileUnchecked(position) : nullptr)
+				: callback->getTile(position, false);
 			if(!tile)
 			{
-				if(callback->isVisible(position))
+				if(!team && callback->isVisible(position))
 					throw std::runtime_error("Visible contextual tile is unavailable");
 				continue;
 			}
-			const auto facts = explorer_rl::visibleTileFacts(*callback, *tile);
+			const explorer_rl::VisibleTile facts{tile->getTerrainID().getNum(), anyVisible(tile->blockingObjects),
+				anyVisible(tile->visitableObjects)};
 			map.tiles.push_back({x, y, facts.terrain, tile->getRoadID().getNum(), facts.blocked, facts.visitable});
 			for(const auto id : tile->visitableObjects)
 			{
-				const auto * object = explorer_rl::playerVisibleObject(*callback, id);
+				const auto * object = visibleObject(id);
 				if(!object || !seen.insert(id.getNum()).second)
 					continue;
 				// Handles are numbered in the order objects are first met, so

@@ -133,7 +133,7 @@ class Producer:
                 else:
                     raw["decision_seq"] = self.decision_ids[native_id]
             raw.update(schema=self.profile.history_schema, episode=self.episode, player=self.player, seq=self.history.frame_count)
-            observation = None
+            observation = offers = None
             if "observation" in raw:
                 if declared_army_information(raw["observation"], self.profile.environment) != self.army_information:
                     raise ValueError("Observation army information differs from the negotiated extension")
@@ -149,9 +149,11 @@ class Producer:
                     raise ValueError("A decision without an observation needs an earlier view")
                 else:
                     observation = self.view
-                raw["offers"] = contract.encode_offers(contract.Offers.from_observation(observation, schema=self.profile.action_schema))
+                # The offers are built from the observation and handed over as they are: encoding them to their
+                # wire form and decoding that again gave an equal value, built twice.
+                offers = contract.Offers.from_observation(observation, schema=self.profile.action_schema)
             # An observation is decoded once: here, or for a decision when its view arrived.
-            frame = contract.decode_frame(raw, observation=observation)
+            frame = contract.decode_frame(raw, observation=observation, offers=offers)
             self.history.append(frame)
             appended.append(frame)
             if record_kind == "view":

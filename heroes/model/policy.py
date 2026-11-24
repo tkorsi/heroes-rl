@@ -274,7 +274,21 @@ def _action(action, observation):
     return _node("action", *children)
 
 
+_ARMY_SLOTS = [None, {}]  # the observation whose army slots were described last, and those descriptions
+
+
 def _army_slot(observation, ref, *, receiving):
+    # A walk describes the same few slots of one observation for many candidate actions; the description is a
+    # function of the observation (a frozen value, held here so that its id stays its own) and of its arguments.
+    if observation is not _ARMY_SLOTS[0]:
+        _ARMY_SLOTS[0], _ARMY_SLOTS[1] = observation, {}
+    known = _ARMY_SLOTS[1].get((ref, receiving))
+    if known is None:
+        known = _ARMY_SLOTS[1][ref, receiving] = _describe_army_slot(observation, ref, receiving)
+    return known
+
+
+def _describe_army_slot(observation, ref, receiving):
     window = observation.window if observation else None
     if window is not None and window.armies is not None:
         army, slot = c.army_slot(window.armies, ref)
@@ -1104,6 +1118,9 @@ class ContextualDistribution:
         self.window_memory = window_memory
         self.recording = None  # a ``Recording`` to fill while an action is sampled
         self.query = None  # the state's policy query, computed at the first categorical choice
+        # What the guard said of an action at this decision: a walk asks of the same action more than once (a kind
+        # is tested on its representatives, then its permitted choices are listed), and the answer cannot change.
+        self._permits = {}
 
     def _features(self, semantic):
         result = self.model._encode_root(semantic, self.cache)
@@ -1249,7 +1266,12 @@ class ContextualDistribution:
         return action
 
     def _permitted(self, action):
-        return self.guard is None or self.guard.permits(action, self.observation, self.offers)
+        if self.guard is None:
+            return True
+        known = self._permits.get(action)
+        if known is None:
+            known = self._permits[action] = self.guard.permits(action, self.observation, self.offers)
+        return known
 
     def _filtered(self, choices, action_for):
         # Quantity-bearing choices supply a permitted representative; their

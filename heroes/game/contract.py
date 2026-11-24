@@ -3351,11 +3351,16 @@ def encode_frame(frame):
     return data
 
 
-def decode_frame(raw, *, observation=None):
+def decode_frame(raw, *, observation=None, offers=None):
     """The typed frame of raw. ``observation``, when given, is the frame's
     observation, already decoded by the caller: from this raw's own, or from
-    the earlier view that a decision without one refers to."""
+    the earlier view that a decision without one refers to. ``offers``, when
+    given, are the frame's typed offers (raw then carries none)."""
     data = _record(raw, Frame)
+    if offers is not None:
+        if type(offers) is not Offers or "offers" in raw:
+            raise ValueError("Typed offers replace the wire offers")
+        data["offers"] = offers
     if not {"schema", "episode", "player", "seq", "day", "kind"} <= data.keys():
         raise ValueError("History JSON requires explicit schema and base fields")
     profile = profile_for(data["schema"])
@@ -3382,7 +3387,7 @@ def decode_frame(raw, *, observation=None):
         if event.get("capability") is not None:
             event["capability"] = decode_capability_panel(event["capability"], schema=profile.history_schema)
         data["event"] = _decode_simple(event, VisibleEvent)
-    if data.get("offers") is not None:
+    if data.get("offers") is not None and type(data["offers"]) is not Offers:
         offer = _record(data["offers"], Offers)
         if "schema" in offer or profile == WINDOWS_PROFILE and "panel" in offer:
             raise ValueError("Unsupported offer schema/panel wire field")
