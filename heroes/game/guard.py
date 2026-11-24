@@ -73,6 +73,9 @@ MANAGEMENT_KINDS = frozenset({
 })
 
 
+_ARRANGEMENTS = frozenset(("split_stack", "merge_stacks", "swap_stacks"))  # charged to the armies of offers.armies
+
+
 def _mandatory(offers):
     return (offers.context.kind == "dialog" or
             offers.capability_panel is not None and offers.capability_panel.mandatory)
@@ -223,6 +226,16 @@ class GuardSupport:
     exhausted: bool = False  # the seat is past its daily decision budget
 
     def permits(self, action, observation, offers):
+        kind = action.kind if type(action) is c.Action else None
+        if (kind in _ARRANGEMENTS and self.blocked_management_subjects and offers.armies
+                and not _mandatory(offers) and kind not in ("close", "back", "close_capability")):
+            # Every path below ends in False for a rearrangement whose subject is past its budget, whether or not
+            # the offers permit it: answered here without the offers' and the repeat's checks.
+            army_slot = c.army_slot
+            subjects = {army.subject for army, _ in (army_slot(offers.armies, action.selection),
+                                                     army_slot(offers.armies, action.destination)) if army is not None}
+            if (subjects or {action.subject}) & set(self.blocked_management_subjects):
+                return False
         if not offers.permits(action):
             return False
         if _mandatory(offers) or action.kind in ("close", "back", "close_capability"):
