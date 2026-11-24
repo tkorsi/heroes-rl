@@ -23,6 +23,8 @@ frames are equal either way.
 """
 from __future__ import annotations
 
+import marshal
+
 import json
 
 from ..game import contract
@@ -68,6 +70,36 @@ def declared_army_information(document, interface):
     if "army_information" in document and value is None:
         raise ValueError("Absent army information must omit its declaration")
     return validate_army_information(interface, value)
+
+
+_VIEWS = {}  # (marshal bytes of a raw observation, ids of the map it was read against) -> (observation, that map)
+
+
+def _decoded_view(raw, schema, unchanged_map):
+    """``contract.decode_observation`` of a view, as one shared object for a raw observation seen before.
+
+    Half of a seat's views repeat an earlier one exactly: the same window
+    opened again. Decoding is a function of the raw value, the schema and, for a
+    view that leaves out its map or lists only changed tiles, the map of the
+    view before; equal marshal bytes mean equal values of identical exact types,
+    and the entry holds the map it was read against, so its ids name nothing
+    else. Only a successful decoding is kept.
+    """
+    try:
+        data = marshal.dumps(raw)
+    except ValueError:
+        return contract.decode_observation(raw, schema=schema, unchanged_map=unchanged_map)
+    reads_map = type(raw) is dict and "tiles" not in raw
+    key = (data, schema, *(map(id, unchanged_map) if reads_map and unchanged_map is not None else ()))
+    known = _VIEWS.get(key)
+    if known is not None and (not reads_map or unchanged_map is None or all(
+            held is value for held, value in zip(known[1], unchanged_map))):
+        return known[0]
+    observation = contract.decode_observation(raw, schema=schema, unchanged_map=unchanged_map)
+    if len(_VIEWS) >= 2048:
+        _VIEWS.clear()  # bounded memory; a miss only decodes again
+    _VIEWS[key] = (observation, unchanged_map if reads_map else None)
+    return observation
 
 
 class Producer:
@@ -139,9 +171,8 @@ class Producer:
                     raise ValueError("Observation army information differs from the negotiated extension")
             if record_kind == "view":
                 # A view without its map has the map of the view before it.
-                observation = contract.decode_observation(
-                    raw["observation"], schema=self.profile.history_schema,
-                    unchanged_map=None if self.view is None else (self.view.tiles, self.view.objects))
+                observation = _decoded_view(raw["observation"], self.profile.history_schema,
+                                            None if self.view is None else (self.view.tiles, self.view.objects))
             elif record_kind == "decision":
                 if "observation" in raw:
                     observation = contract.decode_observation(raw["observation"], schema=self.profile.history_schema)
