@@ -266,8 +266,7 @@ class GuardSupport:
         # Membership in the current observation is the whole rule. Blocked and
         # visitable flags and route feasibility are not consulted.
         level = next((hero.position[2] for hero in observation.heroes if hero.handle == subject), None)
-        return frozenset((tile.position[0], tile.position[1]) for tile in observation.tiles
-                         if tile.position[2] == level)
+        return _revealed(observation.tiles, level)
 
     def _permits_movement(self, subject, x, y, revealed):
         return (subject in self.movable_heroes
@@ -282,6 +281,20 @@ class GuardSupport:
                 if offers.permits(c.Action("move_to", subject, index % width, index // width,
                                            schema=offers.schema))
                 and self._permits_movement(subject, index % width, index // width, revealed))
+
+
+_REVEALED = {}  # (id of a tile tuple, level) -> (the tuple, the cells of that level it shows)
+
+
+def _revealed(tiles, level):
+    """The ``(x, y)`` of every tile of ``level`` in ``tiles``. Most observations carry the tile tuple of the one before."""
+    known = _REVEALED.get((id(tiles), level))
+    if known is None or known[0] is not tiles:
+        known = (tiles, frozenset((tile.position[0], tile.position[1]) for tile in tiles if tile.position[2] == level))
+        if len(_REVEALED) >= 8:
+            _REVEALED.clear()  # the entry holds its tuple, so an id names nothing else while it is kept
+        _REVEALED[id(tiles), level] = known
+    return known[1]
 
 
 _SORTED_TILES = [None, None]  # the tile tuple sorted last, and its tiles by position
