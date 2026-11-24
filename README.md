@@ -20,11 +20,11 @@ We test a new policy against a frozen earlier version on fresh seeds, playing ea
 
 ## Run it
 
-On a configured training machine with an initialized state, these commands inspect the current checkpoint and then collect 20 usable games for one PPO update.
+On a configured training machine, these commands inspect the selected checkpoint and then collect 100 usable games for one PPO update. An empty default state starts from checkpoint 2025.
 
 ```sh
 ./train.command check
-./train.command 20
+./train.command 100
 ```
 
 For a new checkout, the training guide covers building the patched engine, supplying your own game data, and starting from the published checkpoint or random weights. [Training guide](docs/training.md) · [Third-party notices](THIRD_PARTY_NOTICES.md)
