@@ -9895,3 +9895,20 @@ windows summarizing the recorded self-play batch and PPO update that produced
 checkpoint 1800. The caption identifies both sources. The research notes now
 use portable path references and omit private workspace identifiers. The
 recorded results and experimental settings are preserved.
+
+
+### 2026-11-24 — Checkpoint 2025 becomes the published starting point
+
+The published checkpoint is `checkpoints/update-002025.pt`, file SHA-256
+`d140785d38f10d65711f05486dea648ff08161f7c35702b890fa6579747bd5fc`
+and model-weight SHA-256
+`8437b876d44450973975c543868989d39ec53558ed344acb6f3e7e27597c0a53`.
+Its training batch comprised 100 games on the original map, 53 Red wins and
+47 Blue wins, with no cutoffs or replacements. One MLX PPO update used
+900,608 samples in 20 optimizer steps. A single evaluation game was observed
+afterward. The user's choice of the continuing checkpoint is independent of
+that game's outcome.
+
+The command-line launcher loads this snapshot for a new default state. The
+default state has a separate directory for each of the two local checkouts.
+Explicit state and legacy arguments still select their own training histories.

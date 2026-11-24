@@ -16,6 +16,7 @@ from .game import guard
 from .learner.ppo import PPOConfig
 
 REPOSITORY = Path(__file__).resolve().parents[1]
+PUBLISHED_CHECKPOINT = REPOSITORY / "checkpoints" / "update-002025.pt"
 GROUPED_MLX_PPO = PPOConfig(windows_per_minibatch=16, windows_per_game=8, learning_rate=8.5e-4)
 
 
@@ -28,8 +29,7 @@ def _vcmi():
 
 
 def _training_state():
-    # Claude keeps the original training directory and its checkpoint history.
-    directory = "training-codex" if REPOSITORY.name == "Heroes-codex" else "training"
+    directory = "training-codex-2025" if REPOSITORY.name == "Heroes-codex" else "training-2025"
     return _artifacts() / directory
 
 
@@ -56,6 +56,7 @@ class Config:
     games_per_update: int | None = None  # one update after all requested games unless a batch size is set
     backend: str = "mlx"  # "mlx" on Apple GPUs, "torch" for the slow reference
     ppo: PPOConfig = PPOConfig()
+    initial_checkpoint: Path | None = None  # use when the chosen state has no saved checkpoint
 
     def engine(self):
         return Engine(self.vcmi, self.game_data, self.game_map, replay_ledger=self.keep_game_files)
