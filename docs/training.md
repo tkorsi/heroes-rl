@@ -22,18 +22,25 @@ python3 tools/freeze_runtime.py "$HEROES_ARTIFACTS/runtime/local-v8-quiet-captur
 
 To use a different prepared runtime, set `HEROES_VCMI` to its patched `vcmiclient` executable. For the Torch reference backend, install [the base learner lock](../dependencies/learner.lock) and pass `--backend torch` to both the check and train commands.
 
-## Start from checkpoint 1800
+## Start from checkpoint 2025
 
-Create a new state directory, copy the [published checkpoint](../checkpoints/update-001800.pt) into it and tell the trainer which file to restore. The trainer verifies the saved weight digest when loading. Keep the printed directory name to resume the same run later.
+The default state starts from the [published checkpoint](../checkpoints/update-002025.pt) on the first run. The trainer verifies the saved weight digest when loading. Subsequent runs resume the most recent checkpoint in that state. The default directories are `training-codex-2025-fast` for the Codex checkout and `training-2025-fast` for other checkouts, under `HEROES_ARTIFACTS`. The fast trainer starts its own history from 2025, in a separate directory from any runs started with the earlier default.
 
 ```sh
-state=$(mktemp -d "$HEROES_ARTIFACTS/state-1800.XXXXXX")
+./train.command check
+./train.command 100
+```
+
+For a separate run, create a state directory with its own copy of checkpoint 2025:
+
+```sh
+state=$(mktemp -d "$HEROES_ARTIFACTS/state-2025.XXXXXX")
 echo "$state"
 mkdir "$state/checkpoints"
-cp checkpoints/update-001800.pt "$state/checkpoints/"
-printf '%s\n' '{"checkpoint":"checkpoints/update-001800.pt"}' > "$state/latest.json"
+cp checkpoints/update-002025.pt "$state/checkpoints/"
+printf '%s\n' '{"checkpoint":"checkpoints/update-002025.pt"}' > "$state/latest.json"
 ./train.command check --state "$state"
-./train.command 20 --state "$state"
+./train.command 100 --state "$state"
 ```
 
 To train a randomly initialized network in a separate empty state instead:
@@ -60,7 +67,7 @@ The default MLX update makes one pass over the batch with ten trajectories per o
 
 A verified win scores +1 and a loss scores −1. When neither side wins within 365 days, both seats score −1 and the game counts once as a cutoff. Crashes and inconsistent endings are replaced. Opening and immediately closing the same unchanged window twice in succession costs the trained seat 0.0001 on the second opening, capped at 0.2 per game. Opening a town to recruit or build is free.
 
-Measure collection time and PPO time separately. With 14 actors, a matched 14-game collection of 539,195 decisions took 535 seconds after an engine and observation-processing change, down from 980 seconds. This measures collection. In the later 20-game batch that produced checkpoint 1800, collection took 17 minutes 48 seconds and PPO took 1 hour 23 minutes 33 seconds. [Performance tools](../tools/perf/README.md) · [Update 1800 measurements](research-log.md#2026-11-21--one-20-game-update-from-checkpoint-1799)
+Measure collection time and PPO time separately. Game length and the number of decisions can vary by checkpoint and seed. [Performance tools](../tools/perf/README.md) · [Research journal](research-log.md)
 
 For development, run the existing tests in the learner environment. They exercise the socket protocol, actor, learner and checkpoint code against a scripted engine.
 

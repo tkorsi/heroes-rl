@@ -434,9 +434,10 @@ class ContextualEncoder:
         payload = None
         # Most frames carry a day, a kind and at most a result or an acknowledgement: a consumed action, a
         # result, a view, a decision. Such a payload is a function of those alone and is built once.
-        plain = _KEEP_FRAMES and frame.action is None and frame.event is None and frame.context is None
-        key = (frame.day, kind, frame.result, frame.accepted, frame.outcome) if plain else None
-        if plain and kind not in _METADATA:
+        reuse = (_KEEP_FRAMES and _KEPT_TYPES
+                 and frame.action is None and frame.event is None and frame.context is None)
+        key = (frame.day, kind, frame.result, frame.accepted, frame.outcome) if reuse else None
+        if reuse and kind not in _METADATA:
             payload = _FRAME_TREES.get(key)
         if kind not in _METADATA and payload is None:
             children = [_node("day", _number(frame.day)), _text(kind)]
@@ -462,7 +463,7 @@ class ContextualEncoder:
             # Consumer layer, revisions, sequence numbers, evidence and command
             # counters are deliberately absent. A consumed-action marker remains.
             payload = _node("frame", *children)
-            if plain:
+            if reuse:
                 if len(_FRAME_TREES) >= _KEPT_LIMIT:
                     _FRAME_TREES.clear()  # bounded memory; a miss only builds the payload again
                 payload = _FRAME_TREES[key] = _keep(payload)
@@ -742,7 +743,8 @@ class ContextualActorCritic(nn.Module):
     def _encode_root(self, tree, cache, final=False):
         """Encode one top-level tree with this frame's cache, as ``_encode_tree`` does.
 
-        While this tree and every earlier root of the cache are exact, no
+        Mutable policies fill the frame's cache as they encode each tree.
+        Frozen actors can defer that work. While each root is exact, no
         lookup can match an equal but different tree, so the encoding of every
         subtree is a function of that subtree alone and comes from the
         inference memo (``_encode_exact``): nothing is read from the cache or
@@ -756,6 +758,8 @@ class ContextualActorCritic(nn.Module):
         memo = cache.get(_LEAF_MEMO)
         nodes = memo["node"] if memo is not None and not torch.is_grad_enabled() else None
         if nodes is not None and cache.get(_EXACT_CACHE, True) and _exact_tree(tree):
+            if not self.__dict__.get("_frozen"):
+                return self._encode_tree(tree, cache, nodes)
             cache[_EXACT_CACHE] = True
             if not final:
                 unsettled = cache.get(_UNSETTLED)

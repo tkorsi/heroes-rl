@@ -40,7 +40,7 @@ from .model.policy import weights_sha256
 
 
 def restore(config, *, fresh=False, save=True):
-    """The newest training state: this pipeline's own, else the legacy one, else a new policy.
+    """Load the existing state or initialize it from the selected source.
 
     A state that does not come from this folder is saved as its first checkpoint.
     """
@@ -49,6 +49,8 @@ def restore(config, *, fresh=False, save=True):
         return checkpoint.load(path, learning_rate=config.ppo.learning_rate)
     if fresh:
         state = checkpoint.fresh(learning_rate=config.ppo.learning_rate)
+    elif config.initial_checkpoint is not None:
+        state = checkpoint.load(config.initial_checkpoint, learning_rate=config.ppo.learning_rate)
     else:
         pair = checkpoint.find_legacy(config.legacy)
         if pair is None:

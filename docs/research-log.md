@@ -9923,3 +9923,35 @@ The implementation uses the native CPU policy path, compact rollout recording
 and whole-game MLX PPO. The original map and reward rules are used in the
 end-to-end comparison. Exact experiment commands, checkpoint hashes and replay
 ledgers are recorded in the private research snapshot.
+
+### 2026-11-24 — Checkpoint 2025 becomes the published starting point
+
+The published checkpoint is `checkpoints/update-002025.pt`, file SHA-256
+`d140785d38f10d65711f05486dea648ff08161f7c35702b890fa6579747bd5fc`
+and model-weight SHA-256
+`8437b876d44450973975c543868989d39ec53558ed344acb6f3e7e27597c0a53`.
+Its training batch comprised 100 games on the original map, 53 Red wins and
+47 Blue wins, with no cutoffs or replacements. One MLX PPO update used
+900,608 samples in 20 optimizer steps. A single evaluation game was observed
+afterward. The user's choice of the continuing checkpoint is independent of
+that game's outcome.
+
+The command-line launcher loads this snapshot for a new default state. The
+default state has a separate directory for each of the two local checkouts.
+Explicit state and legacy arguments still select their own training histories.
+
+### 2026-11-24 — Fast trainer with the published 2025 checkpoint
+
+The two failing policy tests exposed two changes in cache behavior. Mutable
+Python policies now materialize their frame cache while frozen actors can
+still defer it. Turning off semantic tree reuse also turns off reuse of
+simple frame payloads. All 90 repository tests passed along with seven
+local native-policy parity tests. The pinned VCMI source and patches passed
+the preparation check.
+
+The default launcher uses the quiet-captures runtime and MLX PPO over whole
+games. A separate default state starts from the published checkpoint 2025
+with its saved optimizer. A read-only launcher check restored that
+checkpoint, and a mocked training entry selected 100 games for one update
+with 14 workers and ten trajectories per optimizer step. No live training
+was launched for this validation.

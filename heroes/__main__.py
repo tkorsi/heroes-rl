@@ -5,7 +5,7 @@ import argparse
 from dataclasses import replace
 from pathlib import Path
 
-from .config import Config, WHOLE_GAMES_MLX_PPO
+from .config import Config, PUBLISHED_CHECKPOINT, WHOLE_GAMES_MLX_PPO
 
 
 def _path(text):
@@ -17,6 +17,8 @@ def _config(arguments):
     changes = {name: getattr(arguments, name) for name in ("state", "legacy", "vcmi", "game_data", "game_map",
                                                            "workers", "games_per_update", "backend", "starts")
                if getattr(arguments, name, None) is not None}
+    if "state" not in changes and "legacy" not in changes:
+        changes["initial_checkpoint"] = PUBLISHED_CHECKPOINT
     if getattr(arguments, "max_days", None) is not None:
         changes["limits"] = replace(config.limits, max_days=arguments.max_days)
     for name in ("keep_game_files", "both_seats", "play_during_update", "new_optimizer"):
@@ -52,7 +54,8 @@ def _check(config):
     print(f"backend    {config.backend} is available")
     state = restore(config, save=False)
     empty = checkpoint.latest(config.state) is None
-    print(f"state      {config.state}" + (f" (empty; starts from {state.origin})" if empty else ""))
+    source = config.initial_checkpoint or state.origin
+    print(f"state      {config.state}" + (f" (empty; starts from {source})" if empty else ""))
     print(f"continues  {state.progress}")
 
 
