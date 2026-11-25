@@ -66,6 +66,7 @@ def _build_folder():
 
 _LIBRARY = None
 _ROOT = None  # fastnet.c's walk over a semantic tree, where it was built against this interpreter
+_CALLS = None  # (used, step, value, query, logits): fastnet.c's per-frame calls as functions of this interpreter
 _PYTHON_WALK = _policy._walk_exact  # the walk the C one stands in for; tests compare the two
 
 
@@ -92,7 +93,7 @@ def _built(source, folder):
 
 def library():
     """The compiled ``fastnet.c``, built once per version of the source; None when it cannot be built here."""
-    global _LIBRARY, _ROOT
+    global _LIBRARY, _ROOT, _CALLS
     if _LIBRARY is not None:
         return _LIBRARY or None
     try:
@@ -128,7 +129,8 @@ def library():
         # also serves the model and the recorder, which ask it of the same trees (policy._exact_tree).
         lib.fn_python.restype = ctypes.py_object
         lib.fn_python.argtypes = (ctypes.py_object, ctypes.c_long, ctypes.c_long, ctypes.c_long)
-        walk, _ROOT = lib.fn_python(_Kept, _policy._LEAF_MEMO_LIMIT, _policy._NODE_MEMO_LIMIT, _policy._KEPT_LIMIT)
+        walk, _ROOT, *calls = lib.fn_python(_Kept, _policy._LEAF_MEMO_LIMIT, _policy._NODE_MEMO_LIMIT, _policy._KEPT_LIMIT)
+        _CALLS = tuple(calls)
         _policy._walk_exact = walk
     _LIBRARY = lib
     return lib
@@ -185,6 +187,9 @@ class FastPolicy:
         self.model, self.config, self.lib = model, model.config, lib
         self.quiet = _Quiet(model)
         self.root = _ROOT
+        # The calls of every frame and choice: fastnet.c's own functions, through ctypes where it was not built with Python.h.
+        self.used, self.step, self.value, self.query, self.c_logits = _CALLS or (
+            lib.fn_used, lib.fn_step, lib.fn_value, lib.fn_query, lib.fn_logits)
         self.net = lib.fn_create(ARENA_SLOTS)
         if not self.net:
             raise MemoryError("No memory for the arena of tree encodings")
@@ -337,8 +342,8 @@ class FastPolicy:
     def forward_step(self, frame, state):
         if frame.semantics is None:
             return StepOutput(state, None)
-        lib, net = self.lib, self.net
-        if lib.fn_used(net) > ARENA_SLOTS - 65536:
+        net = self.net
+        if self.used(net) > ARENA_SLOTS - 65536:
             self._begin()  # nothing outside this object holds a slot number between two frames
         tree, cells = frame.semantics, None
         if frame.observation is None and type(tree) is _Kept:
@@ -358,12 +363,12 @@ class FastPolicy:
             summary, own, cells = self._observation_features(frame.observation)
             root = self._encode_root(tree)
         after = State()
-        lib.fn_step(net, state.address, after.address, root, summary, own)
+        self.step(net, state.address, after.address, root, summary, own)
         decision = None
         if frame.frame.kind == "decision":
             distribution = FastDistribution(self, after, frame.frame.observation, frame.frame.offers,
                                             cells, frame.guard, frame.window_memory)
-            decision = PolicyValue(lib.fn_value(net, after.address), distribution)
+            decision = PolicyValue(self.value(net, after.address), distribution)
         return StepOutput(after, decision)
 
 
@@ -394,12 +399,12 @@ class FastDistribution(ContextualDistribution):
         query = self.query
         if query is None:
             query = self.query = np.empty(32, dtype=np.float32)
-            policy.lib.fn_query(policy.net, self.state.address, query.ctypes.data)
+            policy.query(policy.net, self.state.address, query.ctypes.data)
         count = len(candidates)
         if count > len(policy.logits):
             policy.logits = np.zeros(2 * count, dtype=np.float32)
         children = (ctypes.c_int * count)(*candidates)
-        if policy.lib.fn_logits(policy.net, query.ctypes.data, ctypes.addressof(children), count, policy.logits.ctypes.data):
+        if policy.c_logits(policy.net, query.ctypes.data, ctypes.addressof(children), count, policy.logits.ctypes.data):
             raise MemoryError("No memory for the candidates of a choice")
         return self._tensor(count)
 

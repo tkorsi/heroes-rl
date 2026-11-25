@@ -215,16 +215,20 @@ def _swapped_layouts(layout, armies):
     if known is not None and all(held is army for held, army in zip(known[0], armies)):
         return known[1]
     found = {}
+    # The layout is sorted by subject (each subject once) and a swap keeps the subjects: the swapped layout,
+    # sorted, has its rows in the same places.
+    places = {subject: index for index, (subject, _) in enumerate(layout)}
     for source, destination, _ in c.army_operation_choices(armies, "swap_stacks"):
         key = _swap_key(armies, source, destination)
         if key in found:
             continue
-        rows = dict(layout)
         left, a, right, b = key
-        x, y = rows[left][a], rows[right][b]
-        slots = list(rows[left]); slots[a] = y; rows[left] = tuple(slots)
-        slots = list(rows[right]); slots[b] = x; rows[right] = tuple(slots)
-        found[key] = tuple(sorted(rows.items()))
+        i, j = places[left], places[right]
+        x, y = layout[i][1][a], layout[j][1][b]
+        rows = list(layout)
+        slots = list(rows[i][1]); slots[a] = y; rows[i] = (left, tuple(slots))
+        slots = list(rows[j][1]); slots[b] = x; rows[j] = (right, tuple(slots))
+        found[key] = tuple(rows)
     if len(_SWAPPED) >= 256:
         _SWAPPED.clear()  # bounded memory; a miss only computes again
     _SWAPPED[cache_key] = (armies, tuple(found.items()))  # holds the armies, so their ids name nothing else
