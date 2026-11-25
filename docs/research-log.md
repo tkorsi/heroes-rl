@@ -10698,3 +10698,24 @@ A capture forms a signature of everything its observation is built from besides 
 `HEROES_CAPTURE_CHECK=1` builds every skipped capture anyway and fails the game on any difference. Three games pass it (seed 1, 40 days; seed 3, 120 days; job 37806, 345 days) and give the trajectory digests of main (`1376cd2d…`, `944d06ea…`, `c56caa6c…`). A first version that reset the skip at every action (`claude-g10-e3`) saved 21%; with the shape test, VCMI's processor time per decision on the 120-day game, alternating runtimes on the same game, is 220, 223 µs with `e2` and 133, 145, 139 µs with `e4` (−37%). The actor is unchanged; the games are the same.
 
 **Cython, a first measurement:** compiling the actor's modules unchanged with Cython 3.1 (`scripts/cybuild.py`, a private install) leaves both replays exact and takes the actor from 367 to 294 µs per decision on the 120-day replay (−20%).
+
+**Cython under batch load, and PyPy:** compiled in place (`tools/build_compiled.py`, `22a00b2`; `heroes/__init__.py` refuses a compiled module whose source changed), the actor's instructions per decision fall by only 4%; the 20% it saves alone is mostly fewer stalls, and on a loaded machine (IPC about 2.0 instead of 3.3) it bought nothing measurable in quiet 24-actor windows. PyPy ingests 1.2× faster and has no torch. Both ruled out as the route to the target: the work itself has to go.
+
+### Instructions per decision: what has to go
+
+With the kernel's counters (`proc_pid_rusage`, `scripts/usage.py`, `meter.py`) on a quiet machine, the live actor spends 6.1 M instructions per decision (ingest 1.16 M, observing 2.19 M, the action walk 1.54 M, the environment and answer 1.2 M) and VCMI 1.89 M with `e4` (3.34 M before). At 24 actors the machine runs about 2.0 instructions per cycle, so 100 games in ten minutes needs roughly 3 M instructions per decision in all: the actor near 1.4 M. Piecemeal native observation trees saved 4–13% of a replay; no single stage is enough. The whole seat moves to C++.
+
+### The native seat (`heroes/model/native.cpp`)
+
+One C++ object per seat does what `actor.Seat` with `FastPolicy` does, on hash-consed values instead of contract objects, each part checked against the Python code on every frame or decision of two recorded games (`s1-d40`, 28,131 decisions; `s3-d120`, 45,934):
+
+* the producer: the engine's lines decoded by a strict JSON reader straight into values; all 291,141 frames of s3 equal `protocol.Producer`'s, including submitted, terminal and gold-mine frames (`96a5534`);
+* payload and observation trees from values (all 291,141 payloads equal `ContextualEncoder`'s);
+* the guard's `Tracker` and `GuardSupport` (45,935 supports equal; the world compared as six interned parts, 5–8 µs per decision on first sight instead of 355–387 for a re-sorted tile list), and `WindowMemory` (every decision's keys equal);
+* the action walk: kinds, representatives, `Offers.permits`, `GuardSupport.permits`, every choice, the count tree and coordinates, behind a chooser that scores or replays a step. Replaying every recorded action gives the same action, the same trees in the same order and the same steps (74,065 decisions); 12–17 µs per walk against about 65 µs for the Python walk without scoring;
+* torch's sampling arithmetic, emulated: `log_softmax` in ATen's NEON reduction order with libtorch's own `Sleef_expf4_u10` and `Sleef_logf4_u10`, `exp`, the float32 sum of `cascade_sum`, and the generator's mt19937 `random64` and `exponential_distribution<double>`; bit for bit equal to torch 2.9.1 on 20,000 random inputs and 200 seeded draw sequences;
+* the recorder: recipe nodes made in `_Arena`'s order, the small maps, conditionals of trained decisions and the waiting frames, written straight into `Compact`'s arrays; also `repeated_empty_opens` and the frames `learner_samples` reads.
+
+**Result on the replays:** with the native seats every answer, log-probability and value equals the Python seats' on both games, and the learner's whole trajectory (decisions, probabilities, values, reward, 337 and 606 window repeats, every `Compact` array) is identical. The seat costs 96 µs per decision on s1 and 106 µs on s3 with ingest and the trajectory, against 305–335 µs for the Python seats on the same machine (`scripts/native_seat_replay.py`).
+
+**In training** (`34d42c8`): `NativeEnv` hands each engine line to the native producer as read and sends the producer's own answer line; `actor.play` runs native seats on it. The worker uses it for the update by whole games (`record="arrays"`) on the expanded v8 environment with own army information; `HEROES_NATIVE_SEAT=0` keeps the Python seats. `verify_train.py` now digests every `Compact` array too, so the PPO input check covers the whole input.
