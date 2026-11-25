@@ -10450,3 +10450,35 @@ This seed list gives longer games than the batches before it (16.2 million decis
 | the same | 20 | 10,195 |
 
 From fourteen actors on, the sixteen cores are saturated: two to six more actors change the rate by less than 3%, about the difference between two windows of the same count. The gain of the changes in this window (1.25) is smaller than the one measured on a single game beside a busy machine (1.42); with every core busy each process is slower again, and the early days of a game are mostly map views, whose capture was already short. The full batch below says what it is over whole games.
+
+### 2026-11-25 — The first candidate over a full batch, and what makes two runs comparable
+
+`claude-g10/states/cand20-s1`, `logs/cand20-s1.log` and `.cpu`, the command's own time in `logs/queue-1.log`: the changes as frozen in `src-wip15`, engine `claude-g10-e2`, twenty actors, the baseline's seed list, checkpoint 2036, 02:27 to 03:02, the machine free. `scripts/batch_report.py base14-s1 cand20-s1`:
+
+| | Baseline (main, 14 actors) | Candidate (wip15 + e2, 20 actors) |
+| --- | --- | --- |
+| Collection | 2,474.1 s | **1,863.1 s** (1.33 times less) |
+| PPO | 186.9 s | 187.5 s |
+| The command | 2,663.3 s | 2,053.3 s |
+| Decisions | 16,227,566 | 16,227,553 |
+| Decisions per second | 6,559 | 8,710 |
+| Usable / failed and replaced / day 365 / decision limit | 100 / 0 / 0 / 0 | 100 / 0 / 0 / 0 |
+| Samples, optimizer steps | 8,229,641, 10 | 8,229,641, 10 |
+| Red, blue wins; mean day | 65, 35; 143.9 | 65, 35; 143.9 |
+| Games in by: 50th, 90th, last | 1,048, 2,094, 2,474 s | 840, 1,677, 1,863 s |
+| Longest game | 842.6 s, 417,782 decisions | 910.3 s, 417,782 decisions |
+| Processor use: actors, engines | 942%, 386% | 978%, 283% |
+| Weights after | `031cc85f…` | `26c5abb3…` |
+
+**The same games.** Every one of the 100 seeds gave the same day, outcome and learner sample count in both runs. Twenty-five games differ by exactly one decision in the count of the seat that lost, never in its samples: whether the loser's last decision is counted is a race between the engine's terminal message and that seat's pending request. Main against main shows the same race (game 37811: 76,957 decisions for the loser in the baseline batch, 76,958 in a later run of the same tree), so it is not a change of the candidate. Thirteen decisions out of 16.2 million is no difference in workload.
+
+**Why the weights differ, and how the comparison was made exact.** The trainer hands PPO its games in the order they finished, and PPO's shuffle works on positions; twenty actors finish games in another order than fourteen, so the two updates saw other minibatches. `scripts/verify_train.py` runs the normal command with two additions outside the timed path: the batch put in game-number order before the update, and a digest of every trajectory (actions, log-probabilities, values, rewards, bootstrap, guard, compiled recipe: `tools/perf/profile_game.digest`) and of PPO's whole input. `scripts/verify-pair.sh` runs two trees at once on the same seeded games, each from its own copy of checkpoint 2036.
+
+| Pair (20 and 12 games of seed 2026112501) | Trajectories equal | PPO input equal | Weights after equal | Value loss | Policy loss |
+| --- | --- | --- | --- | --- | --- |
+| v1: main against `src-wip16` + e2 | 20 of 20 | yes | no (`ebe8337b…`, `af6987a8…`) | 0.5421001 / 0.5421008 | equal |
+| v2: main against main | 12 of 12 | yes | no (`75f1177b…`, `58b2c48f…`) | 0.5984908 / 0.5984900 | equal |
+
+The MLX update is not bit-repeatable from one run to the next even on identical input (v2), by the same amount as between main and the candidate (v1). A weight hash therefore shows that an update happened (it changed in every run) but cannot show sameness; the trajectories and PPO's input can, and they are identical. The main runs of v1 and v2 also gave identical digests for their shared games.
+
+**Where the time goes now.** Over the batch the candidate answered about 9,600 decisions a second while twenty games were in play, against 7,200 for the baseline. The last 300 s were the tail: job 92 of the seed list (390,000 decisions) could only start at 1,272 s, when a worker became free, and ended the batch at 1,863 s. A simulation of the batch with the measured game lengths and throughput (`min(10,100, 1,250 × games in play)` decisions a second) gives nearly the same end for 14 to 100 actors (1,655–1,702 s): with game lengths unknown in advance and the job order fixed by the seed list, the number of actors does not shorten the tail. What remains is processor time per decision. The command's processes used 26,084 processor-seconds, 1.6 ms per decision, where one game alone costs about 0.43 ms in the actor and 0.25–0.33 ms in the engine: with every core busy (four of the sixteen are efficiency cores, the performance cores run at a lower clock and share their caches) each decision costs about twice as much.
