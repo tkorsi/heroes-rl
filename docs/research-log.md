@@ -10575,3 +10575,18 @@ Sixteen cores give about 8.6 solo games' worth: the loss grows steadily with the
 | Policy loss, value loss | 3.9197e-06, 0.53021095 | 3.9316e-06, 0.53021053 |
 
 The losses differ by MLX's run-to-run variation (main against main, v2: the same order of difference on identical input).
+
+### 2026-11-25 — Main against the final tree, one game at a time
+
+On a free machine (`logs/queue-9.log`, `results/live-alone.jsonl`), alternating main (`src-2c1672b`, default engine, json) and the final tree (`src-wip41`, engine `claude-g10-e2`, orjson), twice each.
+
+| | main | final tree |
+| --- | --- | --- |
+| Actor replay, 40-day game (one thread, no cyclic collector, as an actor) | 482, 482 µs per decision | 315, 314 µs |
+| Actor replay, 120-day game | 526, 507 µs | 332, 331 µs |
+| Live game alone, seed 1 (35 days, 28,131 decisions): actor, engine | 630 + 343, 626 + 341 µs | 421 + 192, 421 + 191 µs |
+| the same: decisions per second | 1,134, 1,142 | 1,852, 1,861 |
+| Live game alone, seed 3 (50 days, 45,935 decisions): actor, engine | 659 + 347, 657 + 348 µs | 445 + 203, 443 + 202 µs |
+| the same: decisions per second | 1,099, 1,103 | 1,753, 1,764 |
+
+Every replay exact (the same answers and trajectory digests in both trees), and the live games give the same trajectory digest in both trees (`1376cd2d…`, `944d06ea…`). The losing seat of the seed-3 game made 17,870 decisions in main's runs and 17,869 in the final tree's, its samples 17,869 in all four: the terminal race again. Alone, a game is 1.6 times faster (actor 0.67, engine 0.56 of main's processor time per decision); in a full batch the gain is 1.41–1.47 because sixteen busy cores each do less (the scaling above).
