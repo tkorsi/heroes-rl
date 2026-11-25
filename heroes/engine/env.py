@@ -69,8 +69,9 @@ class _Events:
     ``queue.Queue``; ``put`` may be called from any thread.
     """
 
-    def __init__(self, sides):
+    def __init__(self, sides, raw=False):
         self.sides = sides
+        self.raw = raw  # queue each message as its line of bytes, for a producer that reads it itself
         self.items = deque()
         self.lock = threading.Lock()
         self.wake_read, self.wake_write = os.pipe()
@@ -124,7 +125,7 @@ class _Events:
             scanned, begin = start, 0
             while (newline := buffer.find(b"\n", scanned)) >= 0:
                 try:
-                    message = loads(buffer[begin:newline])
+                    message = bytes(buffer[begin:newline]) if self.raw else loads(buffer[begin:newline])
                 except Exception as error:  # a reader reports every failure; it never dies silently
                     self._end(side, ("error", side.player, f"{type(error).__name__}: {error}"))
                     return
@@ -225,6 +226,7 @@ class Request:
     player: int
     frames: tuple  # the seat's frames since its previous request, ending with the decision
     limit: str | None = None  # set when the decision is past a limit: call ``stop`` instead of ``step``
+    decision: int | None = None  # the decision's frame (NativeEnv, whose requests carry no frames)
     done = False
 
 
@@ -249,12 +251,17 @@ class _Side:
 
 
 class Env:
+    raw = False  # whether the producers read the engine's lines themselves (NativeEnv)
+
     def __init__(self, engine, limits=Limits()):
         self.engine, self.limits = engine, limits
         self.process = None
         self.sides = ()
         self.log = None
         self.idle = None  # called with no argument whenever the environment is about to wait for the engine
+
+    def _producer(self, episode, player):
+        return Producer(str(episode), player, interface=self.engine.interface, army_information=self.engine.army_information)
 
     # -- the caller's interface ------------------------------------------------
     def reset(self, directory, episode, seed, game_map=None):
@@ -272,11 +279,9 @@ class Env:
             listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             listener.bind(("127.0.0.1", 0))
             listener.listen(1)
-            producer = Producer(str(episode), player, interface=self.engine.interface,
-                                army_information=self.engine.army_information)
-            sides.append(_Side(player, producer, listener))
+            sides.append(_Side(player, self._producer(episode, player), listener))
         self.sides = tuple(sides)
-        self.events = _Events(self.sides)
+        self.events = _Events(self.sides, raw=self.raw)
         (self.directory / "logs").mkdir()
         self.log = (self.directory / "logs" / "process.log").open("w")
         try:
@@ -568,3 +573,86 @@ class Env:
         if set(outcomes) != {"win", "loss"}:
             return End("failed", "unverified_terminal", detail="Both seats report the same outcome")
         return End("completed", "natural_terminal", tuple(outcomes))
+
+
+class NativeEnv(Env):
+    """``Env`` whose seats' frames are kept by ``heroes.model.native``'s producer.
+
+    The engine's lines go to the producer as they were read, and an answer is
+    an action's value id, written by the producer: no message is decoded into
+    Python objects. The game, its frames and its end are those ``Env`` gives;
+    a request names its decision's frame (``decision``) and carries no frames.
+    """
+    raw = True
+
+    @staticmethod
+    def usable(engine):
+        """Whether native seats can play this engine's games here (``HEROES_NATIVE_SEAT=0`` keeps the Python ones)."""
+        from ..game import contract
+        from ..model import native
+        return (os.environ.get("HEROES_NATIVE_SEAT", "1") != "0" and native.module() is not None
+                and engine.interface == contract.EXPANDED_ENVIRONMENT
+                and engine.army_information == contract.OWN_ARMY_INFORMATION)
+
+    def _producer(self, episode, player):
+        from ..game import contract
+        from ..model import native
+        profile = contract.profile_for(self.engine.interface)
+        return native.module().Producer(str(episode), player, profile.protocol, profile.environment, profile.history_schema,
+                                        profile.action_schema, self.engine.army_information)
+
+    def producer(self, player):
+        return self.sides[player].producer
+
+    def step(self, action):
+        """Answer the current request with the action of value id ``action`` and wait for the next one."""
+        if self.request is None:
+            raise ValueError("There is no request to answer")
+        side = self.sides[self.request.player]
+        line = side.producer.answer(action)  # refuses an action the decision does not offer
+        held = self.request.decision
+        self.request = None
+        self._drain()
+        decision, answered, _ = side.producer.open()
+        if self.failure is None and self.exit_code is None and decision == held and not answered and not self._ending():
+            try:
+                _send(side.connection, line)
+            except OSError as error:
+                self._fail("action_delivery_failed", f"{COLORS[side.player]}: {type(error).__name__}: {error}")
+            else:
+                side.producer.submit(action)
+                side.actions += 1
+        return self._advance()
+
+    def _settle(self):
+        deadline = time.monotonic() + SETTLE_SECONDS
+        while (self.failure is None and self.exit_code is None and not self._ending()
+               and any(side.producer.open()[1] for side in self.sides)):
+            try:
+                self._fold(self.events.get(timeout=max(0.0, deadline - time.monotonic())))
+            except queue.Empty:
+                break
+
+    def frames(self, player):
+        raise ValueError("A native producer keeps its frames; see heroes.model.native")
+
+    received = frames
+
+    def forget(self, player, before):
+        pass  # a native frame holds value ids, not objects
+
+    @property
+    def day(self):
+        return max((side.producer.day for side in self.sides), default=1)
+
+    def _next_request(self):
+        for side in self.sides:
+            decision, answered, day = side.producer.open()
+            if decision < 0 or answered or side.issued == decision:
+                continue
+            side.issued = decision
+            limit = ("game_day_limit" if day > self.limits.max_days else
+                     "agent_action_limit" if side.actions >= self.limits.max_actions else None)
+            self.request = Request(side.player, (), limit, decision)
+            return self.request
+        return None

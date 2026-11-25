@@ -1710,6 +1710,7 @@ PyObject *Producer_get(Producer *self, void *which) {
         case 2: return PyBool_FromLong(self->ready);
         case 3: return PyLong_FromLong(self->gold_mine_captures);
         case 4: if (!self->has_current) Py_RETURN_NONE; return PyLong_FromLongLong(self->current_id);
+        case 5: return PyLong_FromLong(self->frames->empty() ? 1 : self->frames->back().day);  // PlayerHistory.day
     }
     Py_RETURN_NONE;
 }
@@ -1727,6 +1728,7 @@ PyGetSetDef Producer_getset[] = {
     {"ready", (getter)Producer_get, nullptr, nullptr, (void *)2},
     {"gold_mine_captures", (getter)Producer_get, nullptr, nullptr, (void *)3},
     {"current_id", (getter)Producer_get, nullptr, nullptr, (void *)4},
+    {"day", (getter)Producer_get, nullptr, nullptr, (void *)5},
     {nullptr, nullptr, nullptr, nullptr, nullptr}};
 
 PyObject *Producer_answer_forward(PyObject *self, PyObject *arg);
@@ -5284,10 +5286,10 @@ PyObject *Producer_submit(Producer *self, PyObject *arg) {  // submit(action val
     Py_RETURN_NONE;
 }
 
-PyObject *Producer_open(Producer *self, PyObject *) {  // (open decision frame or -1, whether it was answered)
+PyObject *Producer_open(Producer *self, PyObject *) {  // (open decision frame or -1, whether it was answered, its day)
     bool answered;
     const int32_t decision = open_decision(*self->frames, &answered);
-    return Py_BuildValue("(iO)", decision, answered ? Py_True : Py_False);
+    return Py_BuildValue("(iOi)", decision, answered ? Py_True : Py_False, decision >= 0 ? (*self->frames)[(size_t)decision].day : 0);
 }
 
 PyObject *Producer_answer_forward(PyObject *self, PyObject *arg) { return Producer_answer((Producer *)self, arg); }

@@ -263,6 +263,9 @@ def play(env, model, job, directory, *, guard, on_progress=None, both_seats=Fals
     if job.max_days is not None:
         env.limits = replace(limits, max_days=job.max_days)
     try:
+        if getattr(env, "raw", False):  # a NativeEnv: its producers and the seats are heroes.model.native's
+            return _play_native(env, model, job, directory, guard=guard, on_progress=on_progress, both_seats=both_seats,
+                                record=record)
         return _play(env, model, job, directory, guard=guard, on_progress=on_progress, both_seats=both_seats,
                      record=record)
     finally:
@@ -354,3 +357,93 @@ def _play(env, model, job, directory, *, guard, on_progress=None, both_seats=Fal
                 tuple(len(item.choices) for item in seats), time.monotonic() - started,
                 built.get(job.learner), other=built.get(1 - job.learner),
                 gold_mine_captures=env.gold_mine_captures)
+
+
+class _Played:
+    """What ``build_trajectory`` reads of a seat, for a native seat's results."""
+
+    def __init__(self, choices, values, repeats):
+        self.choices, self.values, self._repeats = choices, values, repeats
+        self.repeats = self
+
+    def finish(self, frames):
+        return self._repeats
+
+
+def _play_native(env, model, job, directory, *, guard, on_progress=None, both_seats=False, record=False):
+    """``_play`` with ``heroes.model.native``'s seats on a ``NativeEnv``: the same game, actions and trajectories.
+
+    Each seat follows its producer's frames, answers with the native walk scored by ``FastPolicy``'s arithmetic
+    and sampled with torch's generator arithmetic, and records the learner's recipe as ``Compact`` arrays, which
+    is what the update by whole games reads (``record="arrays"``; the other recordings need Python frames).
+    """
+    from .model import native
+    if record != "arrays":
+        raise ValueError("Native seats record only for the update by whole games (record='arrays')")
+    started = time.monotonic()
+    models = tuple(model) if isinstance(model, (tuple, list)) else (model, model)
+    policies = [fast.acting(item) for item in models]
+    if not all(isinstance(policy, fast.FastPolicy) for policy in policies):
+        raise RuntimeError("Native seats need fastnet.c's policy, which is not available for this model")
+    seats = [None, None]
+
+    def ahead():
+        # While the engine works on an action, both seats read what they have received of it.
+        for seat in seats:
+            if seat is not None:
+                seat.observe_ahead()
+
+    env.idle = ahead
+    try:
+        if job.game_map is None:
+            state = env.reset(directory, job.number, job.engine_seed)
+        else:
+            state = env.reset(directory, job.number, job.engine_seed, game_map=job.game_map)
+        for player, seed in enumerate(job.policy_seeds):
+            seats[player] = native.seat(policies[player], models[player], env.producer(player), seed, guard, True)
+        while isinstance(state, Request):
+            seat = seats[state.player]
+            seat.observe(state.decision + 1)
+            if state.limit is not None:
+                state = env.stop(state.limit)
+                break
+            state = env.step(seat.act())
+            if on_progress is not None:
+                on_progress(env.day, tuple(item.answered for item in seats))
+    finally:
+        env.idle = None
+    choices = tuple(item.answered if item is not None else 0 for item in seats)
+    status, reason, detail = state.status, state.reason, state.detail
+    built = {}
+    if job.learner is None:
+        return Game(job, status, reason, state.outcomes, detail, env.day, choices, time.monotonic() - started, None,
+                    gold_mine_captures=env.gold_mine_captures)
+    if status in ("completed", "truncated"):
+        day_limit_draw = reason == "game_day_limit" and env.limits.max_days == TRAINING_DAY_LIMIT
+        collect_both = both_seats or day_limit_draw
+        unusable = []
+        module = native.module()
+        for player in (job.learner, 1 - job.learner) if collect_both else (job.learner,):
+            try:
+                producer, seat = env.producer(player), seats[player]
+                frames = [native.SampleFrame(*item) for item in module.sample_frames(producer)]
+                played = _Played(*seat.results(), module.repeated_empty_opens(producer))
+                trajectory = build_trajectory(frames, played, natural=status == "completed",
+                                              outcome=state.outcomes[player] if state.outcomes else None, guard=guard,
+                                              day_limit_draw=day_limit_draw)
+                arrays = seat.finish(trajectory.decisions)
+                if arrays is None:
+                    raise Unusable("its recipe could not be recorded while playing, and its frames were not kept")
+                trajectory.frames, trajectory.compact = None, native.compact_of(arrays)
+                built[player] = trajectory
+            except Unusable as error:
+                unusable.append(f"{COLORS[player]}: {error}" if collect_both else str(error))
+        if day_limit_draw and unusable:
+            built.clear()
+        if not built:
+            idle = status == "completed" and not seats[job.learner].answered
+            status, reason = "failed", "learner_never_acted" if idle else "unusable_trajectory"
+        if unusable:
+            detail = "; ".join(unusable)
+    return Game(job, status, reason, state.outcomes, detail, env.day, choices, time.monotonic() - started,
+                built.get(job.learner), other=built.get(1 - job.learner), gold_mine_captures=env.gold_mine_captures)

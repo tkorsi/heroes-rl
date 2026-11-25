@@ -60,6 +60,8 @@ def module():
     extension.configure_values(*_schema(contract))
     theirs = ctypes.CDLL(str(Path(fast.torch.__file__).parent / "lib" / "libtorch_cpu.dylib"))
     extension.configure_math(address(theirs.Sleef_expf4_u10), address(theirs.Sleef_logf4_u10))
+    from ..engine.protocol import NativeFailure
+    extension.set_native_failure(NativeFailure)
     _MODULE = extension
     return extension
 
@@ -141,3 +143,23 @@ class SampleFrame:
 
     def __init__(self, kind, seq, decision_seq, reason):
         self.kind, self.seq, self.decision_seq, self.reason = kind, seq, decision_seq, reason
+
+
+_ADDRESSES = ("fn_used", "fn_step", "fn_value", "fn_query", "fn_logits", "fn_quantity", "fn_coordinate", "fn_map")
+
+
+def seat(policy, model, producer, seed, guard, record):
+    """A native ``Seat`` answering ``producer``'s decisions with ``policy`` (the ``FastPolicy`` of ``model``).
+
+    ``record`` makes it record the learner's recipe as ``Compact`` arrays (``Seat.finish``).
+    """
+    from . import fast
+    from ..game import guard as interaction_guard
+    lib = fast.library()
+    addresses = tuple(ctypes.cast(getattr(lib, name), ctypes.c_void_p).value for name in _ADDRESSES)
+    limits = None
+    if guard is not None:
+        management, windows, decisions = interaction_guard.budgets(guard)
+        limits = (management, -1 if windows is None else windows, -1 if decisions is None else decisions)
+    weight = float(model.window_memory.weight.detach()[0])
+    return module().Seat(producer, policy, policy.net, addresses, seed, limits, weight, model.config.max_map_side, bool(record))
