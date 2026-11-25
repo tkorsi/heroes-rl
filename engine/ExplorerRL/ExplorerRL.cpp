@@ -15,6 +15,7 @@
 #include "../../lib/mapping/TerrainTile.h"
 #include "../../lib/networkPacks/PacksForClient.h"
 #include "../../lib/networkPacks/PacksForClientBattle.h"
+#include "../../lib/serializer/CTypeList.h"
 
 #include "SocketPolicyTransport.h"
 #include <cstdlib>
@@ -166,6 +167,15 @@ void ExplorerRL::initGameInterface(std::shared_ptr<Environment> ENV, std::shared
 		throw std::runtime_error("ExplorerRL requires a player-specific callback");
 	playerID = *callbackPlayer;
 	evidenceActor = "player" + std::to_string(playerID.getNum());
+	{
+		PackageApplied applied;
+		PackageReceived received;
+		PlayerBlocked blocked;
+		auto & types = CTypeList::getInstance();
+		neutralPackTypes = {types.getTypeID(&applied), types.getTypeID(&received), types.getTypeID(&blocked)};
+		const char * check = std::getenv("HEROES_CAPTURE_CHECK");
+		captureCheck = check && std::string(check) == "1";
+	}
 	if(const char * interface = std::getenv("EXPLORER_RL_INTERFACE"))
 	{
 		const std::string name(interface);
@@ -1330,7 +1340,21 @@ void ExplorerRL::showMarketWindow(const IMarket *, const CGHeroInstance *, Query
 void ExplorerRL::showUniversityWindow(const IMarket *, const CGHeroInstance *, QueryID) { unsupported("university"); }
 void ExplorerRL::showTavernWindow(const CGObjectInstance *, const CGHeroInstance *, QueryID) { unsupported("tavern"); }
 
-void ExplorerRL::packApplied() { visibleChangeTrigger(); }
+void ExplorerRL::packApplied()
+{
+	{
+		// The client applies a pack under the game-state lock and notifies after releasing it, one pack at a
+		// time on its network thread. A pack that is the only one since the last notification, and of a type
+		// that changes no game state, leaves the generation as it was; anything else counts as a change.
+		const auto position = experimentPackPosition();
+		std::lock_guard lock(stateMutex);
+		const bool neutral = position.index == notifiedPacks + 1
+			&& std::find(neutralPackTypes.begin(), neutralPackTypes.end(), position.type) != neutralPackTypes.end();
+		stateGeneration += neutral ? 0 : position.index - notifiedPacks;
+		notifiedPacks = position.index;
+	}
+	visibleChangeTrigger();
+}
 
 std::optional<BattleAction> ExplorerRL::makeSurrenderRetreatDecision(const BattleID &, const BattleStateInfoForRetreat &)
 {

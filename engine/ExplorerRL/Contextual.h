@@ -64,6 +64,26 @@ struct ViewPrint
 	bool operator==(const ViewPrint &) const = default;
 };
 
+/// Everything a capture's observation can depend on besides the game state, with the game state's
+/// generation: a capture whose signature equals the one of the capture before it would build the
+/// same observation (see ExplorerRL::captureSignature).
+struct CaptureSignature
+{
+	uint64_t generation = 0; ///< packs applied that can change the game state
+	int day = 0;
+	std::string context, subject, panel, selection, selectedUpgradeRef, capabilityRef;
+	std::vector<size_t> sizes; ///< of the routing tables, which only grow
+	size_t selectedTavernIndex = 0, selectedRecruitIndex = 0;
+	std::map<int, std::string> tavernHandles, upgradeHandles;
+	JsonNode stackParentContext, capabilityParentContext;
+	std::optional<int> capabilityInspected;
+	std::vector<int64_t> exchange; ///< ownHeroExchange's fields, empty without one
+	std::vector<int64_t> dialogs; ///< adventure and capability dialogs' heroes, queries, installed flags
+	JsonNode adventurePanel, capabilityPanel;
+	std::map<std::string, int> adventureReplies, capabilityReplies;
+	bool operator==(const CaptureSignature &) const = default;
+};
+
 /// Per-player adapter bookkeeping. All access is protected by ExplorerRL's
 /// state mutex; engine identifiers never leave these routing tables.
 struct ContextualState
@@ -78,6 +98,13 @@ struct ContextualState
 	/// and no action has run since (an action reads the latest view and may
 	/// leave a mark in it); otherwise empty, and the next capture compares in full.
 	std::optional<ViewPrint> lastPrint;
+	/// The signature of the latest capture, while nothing that the signature leaves out can have
+	/// changed lastObservation since (reset where lastPrint is reset); otherwise empty.
+	std::optional<CaptureSignature> lastSignature;
+	/// The shape (node types and sizes) of lastObservation when it was last known to be as a capture left it.
+	/// Reading it through JsonNode's non-const accessors can only insert members or change a node's type,
+	/// both of which change the shape; an action reads it so (see executeContextualAction).
+	std::optional<uint64_t> lastShape;
 	int lastDay = 0;
 	std::string context = "map";
 	std::string subject;

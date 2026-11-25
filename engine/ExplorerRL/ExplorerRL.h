@@ -67,6 +67,14 @@ public:
 	/// never forwarded: a move can name a hidden endpoint and some removals
 	/// are hidden.
 	void packApplied() override;
+	/// Packs whose application changes no game state (no GameStatePackVisitor case): PackageApplied,
+	/// PackageReceived and PlayerBlocked. Their notifications run the same capture as any pack.
+	std::array<uint16_t, 3> neutralPackTypes{};
+	uint64_t notifiedPacks = 0; ///< the pack index at the latest packApplied (stateMutex)
+	uint64_t stateGeneration = 0; ///< notified packs that may have changed the game state (stateMutex)
+	bool captureCheck = false; ///< HEROES_CAPTURE_CHECK=1: every skipped capture is built anyway and compared
+	explorer_rl::CaptureSignature captureSignature(int day) const;
+	void checkSkippedCapture(int day);
 
 private:
 	std::shared_ptr<CCallback> callback;

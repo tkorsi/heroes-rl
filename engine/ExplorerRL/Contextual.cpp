@@ -14,6 +14,7 @@
 #include "../../lib/mapObjects/army/CStackInstance.h"
 #include "../../lib/mapping/TerrainTile.h"
 #include "../../lib/CPlayerState.h"
+#include "../../lib/callback/ExperimentHooks.h"
 #include "../../lib/networkPacks/ArtifactLocation.h"
 
 #include <algorithm>
@@ -520,11 +521,109 @@ void ExplorerRL::captureContextual()
 	captureContextualLocked();
 }
 
+explorer_rl::CaptureSignature ExplorerRL::captureSignature(int day) const
+{
+	// A pack applied but not yet notified makes the signature unique: it counts as a change until its
+	// notification says otherwise (see packApplied).
+	const auto position = experimentPackPosition();
+	explorer_rl::CaptureSignature signature;
+	signature.generation = stateGeneration * 2 + (position.index != notifiedPacks ? 1 : 0);
+	if(position.index != notifiedPacks)
+		signature.sizes.push_back(position.index);
+	signature.day = day;
+	const auto & state = contextState;
+	signature.context = state.context;
+	signature.subject = state.subject;
+	signature.panel = state.panel;
+	signature.selection = state.selection;
+	signature.selectedUpgradeRef = state.selectedUpgradeRef;
+	signature.capabilityRef = state.capabilityRef;
+	for(const size_t size : {state.handles.size(), state.subjects.size(), state.armyHandles.size(), state.armySlotHandles.size(),
+		state.economy.buildingHandles.size(), state.economy.buildings.size(), state.economy.dwellingHandles.size(),
+		state.economy.dwellings.size(), state.economy.recruitHandles.size(), state.economy.destinationHandles.size()})
+		signature.sizes.push_back(size);
+	signature.selectedTavernIndex = state.selectedTavernIndex;
+	signature.selectedRecruitIndex = state.economy.selectedRecruitIndex;
+	signature.tavernHandles = state.tavernHandles;
+	signature.upgradeHandles = state.upgradeHandles;
+	signature.stackParentContext = state.stackParentContext;
+	signature.capabilityParentContext = state.capabilityParentContext;
+	signature.capabilityInspected = state.capabilityInspected;
+	if(state.ownHeroExchange)
+	{
+		const auto & exchange = *state.ownHeroExchange;
+		signature.exchange = {exchange.first, exchange.second, exchange.query, exchange.installed, exchange.joiningNeutral,
+			exchange.objectGarrison, exchange.removableUnits, exchange.allied};
+	}
+	signature.dialogs = {state.adventureDialog.has_value(), state.capabilityDialog.has_value()};
+	if(state.adventureDialog)
+	{
+		signature.dialogs.insert(signature.dialogs.end(), {state.adventureDialog->hero, state.adventureDialog->query,
+			state.adventureDialog->installed});
+		signature.adventurePanel = state.adventureDialog->panel;
+		signature.adventureReplies = state.adventureDialog->replies;
+	}
+	if(state.capabilityDialog)
+	{
+		signature.dialogs.insert(signature.dialogs.end(), {state.capabilityDialog->hero, state.capabilityDialog->query,
+			state.capabilityDialog->installed});
+		signature.capabilityPanel = state.capabilityDialog->panel;
+		signature.capabilityReplies = state.capabilityDialog->replies;
+	}
+	return signature;
+}
+
+namespace
+{
+uint64_t shapeOf(const JsonNode & node, uint64_t hash = 1469598103934665603ULL)
+{
+	const auto mix = [&hash](uint64_t value) { hash = (hash ^ value) * 1099511628211ULL; };
+	const auto type = node.getType();
+	mix(static_cast<uint64_t>(type));
+	if(type == JsonNode::JsonType::DATA_STRUCT)
+	{
+		mix(node.Struct().size());
+		for(const auto & entry : node.Struct())
+			hash = shapeOf(entry.second, hash);
+	}
+	else if(type == JsonNode::JsonType::DATA_VECTOR)
+	{
+		mix(node.Vector().size());
+		for(const auto & entry : node.Vector())
+			hash = shapeOf(entry, hash);
+	}
+	return hash;
+}
+}
+
+void ExplorerRL::checkSkippedCapture(int day)
+{
+	const auto records = contextState.records.size();
+	explorer_rl::VisibleMap map;
+	const bool mapRead = contextState.context == "map";
+	if(mapRead)
+		mapViewPrint(map);
+	const auto observation = contextualObservation(map, mapRead);
+	if(contextState.records.size() != records || contextState.lastObservation.isNull() || !(map == contextState.lastMap)
+		|| observation != contextState.lastObservation || day != contextState.lastDay)
+		throw std::runtime_error("A skipped capture would have found a changed view");
+}
+
 void ExplorerRL::captureContextualLocked()
 {
 	const int day = callback->getDate(Date::DAY);
 	if(day < 1)
 		return;
+	// The same signature as the capture before it: nothing the observation is built from has changed since,
+	// and that capture left lastObservation, lastMap and lastDay as this one would.
+	auto signature = captureSignature(day);
+	if(contextState.lastSignature && *contextState.lastSignature == signature && contextState.lastShape
+		&& shapeOf(contextState.lastObservation) == *contextState.lastShape)
+	{
+		if(captureCheck)
+			checkSkippedCapture(day);
+		return;
+	}
 	explorer_rl::VisibleMap map;
 	// A view is captured after every pack, and most packs change nothing this player sees. In the map
 	// context the view is a function of its print and its map (see ViewPrint): finding both as the
@@ -536,13 +635,23 @@ void ExplorerRL::captureContextualLocked()
 		print = mapViewPrint(map);
 		if(print && contextState.lastPrint && *print == *contextState.lastPrint && !contextState.lastObservation.isNull()
 			&& map == contextState.lastMap && day == contextState.lastDay)
+		{
+			// lastPrint is kept only while no action has run since the full comparison that set it: unmarked.
+			if(!contextState.lastShape)
+				contextState.lastShape = shapeOf(contextState.lastObservation);
+			contextState.lastSignature = std::move(signature);
 			return;
+		}
 	}
 	auto observation = contextualObservation(map, mapRead);
 	// No view was sent yet while lastObservation is null: the first one always carries its map.
 	const bool sameMap = !contextState.lastObservation.isNull() && map == contextState.lastMap;
 	if(sameMap && observation == contextState.lastObservation && day == contextState.lastDay)
 	{
+		// Equal to a view built just now: whatever reads left in it changed nothing.
+		if(!contextState.lastShape)
+			contextState.lastShape = shapeOf(contextState.lastObservation);
+		contextState.lastSignature = std::move(signature);
 		contextState.lastPrint = std::move(print); // of an observation equal to lastObservation; empty outside the map context
 		return;
 	}
@@ -575,6 +684,8 @@ void ExplorerRL::captureContextualLocked()
 	contextState.lastMap = std::move(map);
 	contextState.lastDay = day;
 	contextState.lastPrint = std::move(print);
+	contextState.lastSignature = std::move(signature);
+	contextState.lastShape = shapeOf(contextState.lastObservation);
 }
 
 JsonNode ExplorerRL::takeContextualRecords()
