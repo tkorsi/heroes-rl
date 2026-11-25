@@ -44,3 +44,8 @@ __pycache__/
 # Native inspector build products.
 /apps/replay-inspector/.build/
 /apps/replay-inspector/.swiftpm/
+
+# Cython-compiled actor modules (tools/build_compiled.py) and their build files.
+/heroes/**/*.so
+/heroes/**/*.srchash
+/build/
