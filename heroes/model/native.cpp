@@ -632,8 +632,11 @@ long encode(void *net, int32_t index) {
 // a tree again), and so do the memos that name nodes.
 const size_t NODE_LIMIT = 4000000;
 
+void clear_value_trees();  // the memos of trees made from values, which name nodes
+
 void reset_if_large() {
     if (nodes.size() < NODE_LIMIT) return;
+    clear_value_trees();
     for (Node &item : nodes) Py_XDECREF(item.python);
     nodes.clear();
     texts.clear();
@@ -1587,6 +1590,12 @@ int Producer_init(Producer *self, PyObject *args, PyObject *) {
     self->army_information = new std::string(army_information);
     self->player = player;
     self->protocol = protocol;
+    self->current_id = -1;  // tp_new zero-fills: the member initializers never ran
+    self->view = -1;
+    self->terminal = -1;
+    self->gold_mine_captures = 0;
+    self->ready = false;
+    self->has_current = false;
     self->python_frames = PyList_New(0);
     return self->python_frames ? 0 : -1;
 }
@@ -1715,11 +1724,18 @@ PyGetSetDef Producer_getset[] = {
     {"current_id", (getter)Producer_get, nullptr, nullptr, (void *)4},
     {nullptr, nullptr, nullptr, nullptr, nullptr}};
 
+PyObject *Producer_answer_forward(PyObject *self, PyObject *arg);
+PyObject *Producer_submit_forward(PyObject *self, PyObject *arg);
+PyObject *Producer_open_forward(PyObject *self, PyObject *);
+
 PyMethodDef Producer_methods[] = {
     {"ingest", (PyCFunction)Producer_ingest, METH_O, "ingest(bytes): fold one engine message; the number of new frames"},
     {"python_frames", (PyCFunction)Producer_python_frames, METH_NOARGS, "the contract Frames so far"},
     {"submitted", (PyCFunction)Producer_submitted, METH_VARARGS, "submitted(action, day): the frame of an answer sent"},
     {"observation_ids", (PyCFunction)Producer_observation_ids, METH_NOARGS, "each frame's observation value (tests)"},
+    {"answer", (PyCFunction)Producer_answer_forward, METH_O, "answer(action value): the response line"},
+    {"submit", (PyCFunction)Producer_submit_forward, METH_O, "submit(action value): the frame of an answer sent"},
+    {"open", (PyCFunction)Producer_open_forward, METH_NOARGS, "(open decision frame or -1, answered)"},
     {nullptr, nullptr, 0, nullptr}};
 
 PyTypeObject ProducerType = {PyVarObject_HEAD_INIT(nullptr, 0)};
@@ -1928,6 +1944,11 @@ int32_t vsubject(int32_t observation, int32_t ref) {
 }
 
 std::unordered_map<int32_t, int32_t> observation_trees;
+
+void clear_value_trees() {
+    tree_of_value.assign(tree_of_value.size(), -1);
+    observation_trees.clear();
+}
 
 int32_t vobservation_tree(int32_t observation) {
     auto known = observation_trees.find(observation);
@@ -4197,6 +4218,552 @@ PyObject *py_exact(PyObject *, PyObject *args) {  // exact(what, float32 bytes[,
     } else { PyErr_SetString(PyExc_ValueError, "unknown"); return nullptr; }
     return PyBytes_FromStringAndSize((const char *)out.data(), n * 4);
 }
+
+// == the seat: frames to fastnet, decisions to sampled actions (actor.Seat with FastPolicy) =======================
+
+typedef long (*UsedFn)(void *);
+typedef void (*StepFn)(void *, const float *, float *, long, long, long);
+typedef float (*ValueFn)(void *, const float *);
+typedef void (*QueryFn)(void *, const float *, float *);
+typedef int (*LogitsFn)(void *, const float *, const int *, long, float *);
+typedef void (*QuantityFn)(void *, const float *, long, const float *, float *);
+typedef int (*CoordinateFn)(void *, const float *, long, const float *, const float *, long, float *);
+typedef long (*MapFn)(void *, const int *, const int *, const float *, const float *, const int *, long, long, long, float *);
+
+struct FastNet {
+    void *net = nullptr;
+    UsedFn used; StepFn step; ValueFn value; QueryFn query; LogitsFn logits; QuantityFn quantity; CoordinateFn coordinate; MapFn map;
+};
+
+const long ARENA_SLOTS = 1L << 21;
+
+struct Ground {  // policy.ground of one tile tuple: terrain and road raised by one, five flags per cell, its content
+    std::vector<int> terrain, road;
+    std::vector<float> rows;
+    std::string content;
+};
+
+const Ground &ground_of(int32_t tiles, int64_t width, int64_t height) {
+    static std::unordered_map<int32_t, Ground> known;
+    static int64_t known_width = -1, known_height = -1;
+    if (width != known_width || height != known_height) { known.clear(); known_width = width; known_height = height; }
+    auto found = known.find(tiles);
+    if (found != known.end()) return found->second;
+    if (known.size() >= 4096) known.clear();
+    Ground made;
+    const int64_t count = width * height;
+    made.terrain.assign((size_t)count, 0); made.road.assign((size_t)count, 0); made.rows.assign((size_t)count * 5, 0.f);
+    for (int32_t tile : items_of(tiles)) {
+        const auto &position = items_of(field(tile, T.tile_position));
+        const int64_t index = num(position[1]) * width + num(position[0]);
+        if (index < 0 || index >= count) { PyErr_SetString(PyExc_IndexError, "tile outside the map"); throw Fail(); }
+        made.terrain[(size_t)index] = (int)num(F(tile, "terrain")) + 1;
+        made.road[(size_t)index] = (int)num(F(tile, "road")) + 1;
+        made.rows[(size_t)index * 5] = 1.f;
+        made.rows[(size_t)index * 5 + 1] = V(F(tile, "blocked")).number ? 1.f : 0.f;
+        made.rows[(size_t)index * 5 + 2] = V(F(tile, "visitable")).number ? 1.f : 0.f;
+    }
+    made.content.reserve((size_t)count * 5);
+    for (int value : made.terrain) { uint16_t v = (uint16_t)value; made.content.append((const char *)&v, 2); }
+    for (int value : made.road) { uint16_t v = (uint16_t)value; made.content.append((const char *)&v, 2); }
+    for (int64_t i = 0; i < count; i++) {
+        const float marks = made.rows[(size_t)i * 5] + 2 * made.rows[(size_t)i * 5 + 1] + 4 * made.rows[(size_t)i * 5 + 2];
+        made.content.push_back((char)(uint8_t)marks);
+    }
+    return known.emplace(tiles, std::move(made)).first->second;
+}
+
+struct Things { std::vector<float> attributes; std::vector<int> indices; std::vector<std::tuple<int64_t, int64_t, int64_t, int64_t, int64_t, int64_t, int32_t>> described; };
+
+const std::vector<float> &object_row(int64_t kind, int64_t subtype, int32_t owner) {  // policy.object_row
+    static std::map<std::tuple<int64_t, int64_t, int32_t>, std::vector<float>> known;
+    auto key = std::make_tuple(kind, subtype, owner);
+    auto found = known.find(key);
+    if (found != known.end()) return found->second;
+    std::vector<float> row;
+    for (int64_t value : {kind, subtype}) for (int bit = 0; bit < 32; bit++) row.push_back((float)((value >> bit) & 1));
+    for (const char *side : {"self", "opponent", "neutral"}) row.push_back(str_is(owner, side) ? 1.f : 0.f);
+    return known.emplace(key, std::move(row)).first->second;
+}
+
+// The objects a map shows, sorted by position, kind, subtype and owner, as fn_map reads them (FastPolicy._encode_map)
+const Things &things_of(int32_t objects, int64_t width) {
+    static std::map<std::pair<int32_t, int64_t>, Things> known;
+    auto key = std::make_pair(objects, width);
+    auto found = known.find(key);
+    if (found != known.end()) return found->second;
+    if (known.size() >= 4096) known.clear();
+    struct Entry { std::tuple<int64_t, int64_t, int64_t> position; int64_t kind, subtype; std::string owner; int32_t owner_value; };
+    std::vector<Entry> entries;
+    for (int32_t item : items_of(objects)) {
+        const auto &position = items_of(F(item, "position"));
+        const int32_t owner = F(item, "owner");
+        entries.push_back(Entry{std::make_tuple(num(position[0]), num(position[1]), num(position[2])), num(F(item, "kind")), num(F(item, "subtype")),
+                                none(owner) ? std::string() : str(owner), owner});
+    }
+    std::stable_sort(entries.begin(), entries.end(), [](const Entry &a, const Entry &b) {
+        return std::tie(a.position, a.kind, a.subtype, a.owner) < std::tie(b.position, b.kind, b.subtype, b.owner); });
+    Things made;
+    for (const Entry &entry : entries) {
+        const auto &row = object_row(entry.kind, entry.subtype, entry.owner_value);
+        made.attributes.insert(made.attributes.end(), row.begin(), row.end());
+        made.indices.push_back((int)(std::get<1>(entry.position) * width + std::get<0>(entry.position)));
+    }
+    return known.emplace(key, std::move(made)).first->second;
+}
+
+struct MapFeatures { long summary; std::vector<float> cells; };
+
+struct Choice { int32_t action; double log_prob; };
+
+struct Scorer : Chooser {  // scores each step with fastnet and samples it as ContextualDistribution._choose does
+    FastNet &fast;
+    const float *state;
+    const std::vector<float> *cells;
+    float window_weight;
+    MT19937 &generator;
+    std::vector<float> trace;  // the selected log-probabilities
+    float query[32];
+    bool has_query = false;
+    std::vector<int> children;
+    std::vector<float> logits, log_probs, probabilities;
+    Scorer(FastNet &fast, const float *state, const std::vector<float> *cells, float window_weight, MT19937 &generator)
+        : fast(fast), state(state), cells(cells), window_weight(window_weight), generator(generator) {}
+
+    long slot(int32_t tree) {
+        const long found = encode(fast.net, tree);
+        if (found < 0) { PyErr_SetString(PyExc_MemoryError, "The arena of tree encodings is full"); throw Fail(); }
+        return found;
+    }
+
+    int choose(WalkStep &step, int hint) override {
+        if (step.kind == 0) {
+            const size_t count = step.roots.size();
+            children.resize(count);
+            for (size_t i = 0; i < count; i++) children[i] = (int)slot(step.roots[i]);
+            if (!has_query) { fast.query(fast.net, state, query); has_query = true; }
+            logits.resize(count);
+            if (fast.logits(fast.net, query, children.data(), (long)count, logits.data())) { PyErr_SetString(PyExc_MemoryError, "No memory for the candidates of a choice"); throw Fail(); }
+            if (!step.flags.empty())
+                for (size_t i = 0; i < count; i++) { const float added = window_weight * (step.flags[i] ? 1.f : 0.f); logits[i] = logits[i] + added; }
+        } else if (step.kind == 1) {
+            logits.resize(2);
+            fast.quantity(fast.net, state, slot(step.root), step.numeric, logits.data());
+            logits[0] = logits[0] + step.offsets[0]; logits[1] = logits[1] + step.offsets[1];
+        } else {
+            const int64_t count = step.width * step.height;
+            std::vector<float> positions((size_t)count * 2);
+            const double across = (double)std::max<int64_t>(step.width - 1, 1), down = (double)std::max<int64_t>(step.height - 1, 1);
+            for (int64_t y = 0, k = 0; y < step.height; y++)
+                for (int64_t x = 0; x < step.width; x++, k++) {
+                    positions[(size_t)k * 2] = (float)((double)(x - step.hx) / across);
+                    positions[(size_t)k * 2 + 1] = (float)((double)(y - step.hy) / down);
+                }
+            std::vector<float> all((size_t)count);
+            if (fast.coordinate(fast.net, state, slot(step.root), cells->data(), positions.data(), (long)count, all.data())) {
+                PyErr_SetString(PyExc_MemoryError, "No memory for the coordinate head"); throw Fail();
+            }
+            if (step.has_indices) {
+                logits.resize(step.indices.size());
+                for (size_t i = 0; i < step.indices.size(); i++) logits[i] = all.at((size_t)step.indices[i]);
+            } else {
+                logits = all;
+            }
+        }
+        const int64_t n = (int64_t)logits.size();
+        log_probs.resize((size_t)n); probabilities.resize((size_t)n);
+        exact_log_softmax(logits.data(), n, log_probs.data());
+        int selected = hint;
+        if (selected < 0) {
+            exact_exp(log_probs.data(), n, probabilities.data());
+            if (n == 0 || std::isnan(probabilities[0])) {
+                PyErr_SetString(PyExc_RuntimeError, "probability tensor contains either `inf`, `nan` or element < 0"); throw Fail();
+            }
+            int best = -1;
+            float best_value = 0.f;
+            for (int64_t i = 0; i < n; i++) {
+                const float noise = generator.exponential();
+                const float value = probabilities[(size_t)i] / noise;
+                if (best < 0 || (std::isnan(value) && !std::isnan(best_value)) || (!std::isnan(best_value) && value > best_value)) { best = (int)i; best_value = value; }
+            }
+            selected = best;
+        }
+        trace.push_back(log_probs.at((size_t)selected));
+        step.selected = selected;
+        return selected;
+    }
+};
+
+struct SeatObject {
+    PyObject_HEAD
+    PyObject *producer;  // a Producer
+    PyObject *policy;    // the FastPolicy whose net this seat computes in
+    FastNet *fast;
+    MT19937 *generator;
+    Tracker *tracker;
+    WindowMemory *memory;
+    bool guarded;
+    float window_weight;
+    int64_t max_side;
+    std::vector<float> *state;
+    size_t observed;
+    int32_t observation, decision_observation;
+    bool held;
+    long epoch;
+    // the open decision
+    int32_t pending_seq, pending_observation, pending_offers;
+    std::vector<float> *pending_state;
+    Support *pending_support;
+    std::set<Key> *pending_keys;
+    const std::vector<float> *pending_cells;
+    std::unordered_map<int32_t, double> *values;
+    std::map<int32_t, Choice> *choices;
+    // the map and observation features of this epoch
+    std::map<std::vector<int32_t>, MapFeatures> *maps;
+    std::unordered_map<int32_t, std::tuple<long, long, const std::vector<float> *>> *features;
+};
+
+void seat_epoch(SeatObject *self) {  // FastPolicy's arena: begin anew when nearly full; slots are valid for one epoch
+    if (self->fast->used(self->fast->net) > ARENA_SLOTS - 65536) {
+        Ref result(PyObject_CallMethod(self->policy, "_begin", nullptr));
+    }
+    Ref epoch(PyObject_GetAttrString(self->policy, "epoch"));
+    const long now = PyLong_AsLong(epoch.get());
+    if (self->fast->net != slot_net || now != slot_epoch) {
+        slots.assign(slots.size(), -1);
+        slot_net = self->fast->net;
+        slot_epoch = now;
+    }
+    if (now != self->epoch) { self->maps->clear(); self->features->clear(); self->epoch = now; }
+}
+
+std::tuple<long, long, const std::vector<float> *> observation_features(SeatObject *self, int32_t observation) {  // FastPolicy._observation_features
+    auto found = self->features->find(observation);
+    if (found != self->features->end()) return found->second;
+    const auto &size = items_of(field(observation, T.o_size));
+    const int64_t width = num(size[0]), height = num(size[1]);
+    if (width > self->max_side || height > self->max_side) { PyErr_SetString(PyExc_ValueError, "Map exceeds declared model configuration"); throw Fail(); }
+    std::vector<int32_t> key = {field(observation, T.o_size), field(observation, T.o_tiles), field(observation, T.o_objects), -1};
+    for (int32_t hero : items_of(field(observation, T.o_heroes))) key.push_back(field(hero, G.hero_position));
+    key.push_back(-2);
+    for (int32_t town : items_of(field(observation, T.o_towns))) key.push_back(F(town, "position"));
+    auto map = self->maps->find(key);
+    if (map == self->maps->end()) {
+        if (self->maps->size() >= 64) self->maps->clear();
+        const Ground &seen = ground_of(field(observation, T.o_tiles), width, height);
+        std::vector<float> flags = seen.rows;
+        for (int32_t hero : items_of(field(observation, T.o_heroes))) {
+            const auto &position = items_of(field(hero, G.hero_position));
+            flags[(size_t)(num(position[1]) * width + num(position[0])) * 5 + 3] += 1.f;
+        }
+        for (int32_t town : items_of(field(observation, T.o_towns))) {
+            const auto &position = items_of(F(town, "position"));
+            flags[(size_t)(num(position[1]) * width + num(position[0])) * 5 + 4] += 1.f;
+        }
+        const Things &things = things_of(field(observation, T.o_objects), width);
+        MapFeatures made;
+        made.cells.assign((size_t)(width * height * 16), 0.f);
+        made.summary = self->fast->map(self->fast->net, seen.terrain.data(), seen.road.data(), flags.data(), things.attributes.data(),
+                                       things.indices.data(), (long)things.indices.size(), (long)width, (long)height, made.cells.data());
+        if (made.summary < 0) { PyErr_SetString(PyExc_MemoryError, "The arena of tree encodings is full"); throw Fail(); }
+        map = self->maps->emplace(key, std::move(made)).first;
+    }
+    const long own = encode(self->fast->net, vobservation_tree(observation));
+    if (own < 0) { PyErr_SetString(PyExc_MemoryError, "The arena of tree encodings is full"); throw Fail(); }
+    if (self->features->size() >= 4096) self->features->clear();
+    auto made = std::make_tuple(map->second.summary, own, &map->second.cells);
+    (*self->features)[observation] = made;
+    return made;
+}
+
+void seat_frame(SeatObject *self, const std::vector<NFrame> &frames, size_t index) {  // one frame: ContextualEncoder.encode + forward_step
+    const NFrame &frame = frames[index];
+    const int32_t basis = self->held ? self->decision_observation : self->observation;
+    const int32_t payload = vpayload(frame, basis, self->observation);
+    Support support;
+    bool decided = false;
+    if (self->guarded) decided = self->tracker->observe(frame, support);
+    std::set<Key> keys;
+    self->memory->observe(frames, (int32_t)index, keys);
+    if (frame.kind == F_DECISION) { self->held = true; self->decision_observation = frame.observation; }
+    else if (frame.kind == F_RESULT || frame.kind == F_SUPERSEDED) self->held = false;
+    if (frame.observation >= 0) self->observation = frame.observation;
+    if (payload < 0) return;  // bookkeeping: the model skips it
+    seat_epoch(self);
+    long summary = 0, own = 0;
+    const std::vector<float> *cells = nullptr;
+    if (frame.observation >= 0) std::tie(summary, own, cells) = observation_features(self, frame.observation);
+    const long root = encode(self->fast->net, payload);
+    if (root < 0) { PyErr_SetString(PyExc_MemoryError, "The arena of tree encodings is full"); throw Fail(); }
+    std::vector<float> after(64, 0.f);
+    self->fast->step(self->fast->net, self->state->data(), after.data(), root, summary, own);
+    *self->state = after;
+    if (frame.kind == F_DECISION) {
+        (*self->values)[frame.seq] = (double)self->fast->value(self->fast->net, self->state->data());
+        self->pending_seq = frame.seq;
+        self->pending_observation = frame.observation;
+        self->pending_offers = frame.offers;
+        *self->pending_state = after;
+        *self->pending_support = support;
+        *self->pending_keys = keys;
+        self->pending_cells = cells;
+        (void)decided;
+    }
+}
+
+PyObject *Seat_new(PyTypeObject *type, PyObject *, PyObject *) {
+    SeatObject *self = (SeatObject *)type->tp_alloc(type, 0);
+    if (!self) return nullptr;
+    self->fast = new FastNet(); self->generator = new MT19937(); self->tracker = new Tracker(); self->memory = new WindowMemory();
+    self->state = new std::vector<float>(64, 0.f); self->pending_state = new std::vector<float>(64, 0.f);
+    self->pending_support = new Support(); self->pending_keys = new std::set<Key>();
+    self->values = new std::unordered_map<int32_t, double>(); self->choices = new std::map<int32_t, Choice>();
+    self->maps = new std::map<std::vector<int32_t>, MapFeatures>();
+    self->features = new std::unordered_map<int32_t, std::tuple<long, long, const std::vector<float> *>>();
+    self->observation = self->decision_observation = -1; self->held = false; self->observed = 0; self->epoch = -1;
+    self->pending_seq = -1; self->pending_observation = self->pending_offers = -1; self->pending_cells = nullptr;
+    return (PyObject *)self;
+}
+
+void Seat_dealloc(SeatObject *self) {
+    Py_XDECREF(self->producer); Py_XDECREF(self->policy);
+    delete self->fast; delete self->generator; delete self->tracker; delete self->memory; delete self->state; delete self->pending_state;
+    delete self->pending_support; delete self->pending_keys; delete self->values; delete self->choices; delete self->maps; delete self->features;
+    Py_TYPE(self)->tp_free((PyObject *)self);
+}
+
+// Seat(producer, policy, net, (used, step, value, query, logits, quantity, coordinate, map), seed, guard limits or None,
+//      window weight, max map side)
+int Seat_init(SeatObject *self, PyObject *args, PyObject *) {
+    PyObject *producer, *policy, *addresses, *limits;
+    unsigned long long net, seed;
+    double weight;
+    long long side;
+    if (!PyArg_ParseTuple(args, "OOKOKOdL", &producer, &policy, &net, &addresses, &seed, &limits, &weight, &side)) return -1;
+    if (Py_TYPE(producer) != &ProducerType) { PyErr_SetString(PyExc_TypeError, "a Producer"); return -1; }
+    unsigned long long a[8];
+    if (!PyArg_ParseTuple(addresses, "KKKKKKKK", &a[0], &a[1], &a[2], &a[3], &a[4], &a[5], &a[6], &a[7])) return -1;
+    Py_INCREF(producer); Py_INCREF(policy);
+    self->producer = producer; self->policy = policy;
+    self->fast->net = (void *)(uintptr_t)net;
+    self->fast->used = (UsedFn)(uintptr_t)a[0]; self->fast->step = (StepFn)(uintptr_t)a[1]; self->fast->value = (ValueFn)(uintptr_t)a[2];
+    self->fast->query = (QueryFn)(uintptr_t)a[3]; self->fast->logits = (LogitsFn)(uintptr_t)a[4]; self->fast->quantity = (QuantityFn)(uintptr_t)a[5];
+    self->fast->coordinate = (CoordinateFn)(uintptr_t)a[6]; self->fast->map = (MapFn)(uintptr_t)a[7];
+    self->generator->seed(seed);
+    self->guarded = limits != Py_None;
+    if (self->guarded) {
+        long long management, windows, decisions;
+        if (!PyArg_ParseTuple(limits, "LLL", &management, &windows, &decisions)) return -1;
+        self->tracker->management_limit = management; self->tracker->window_limit = windows; self->tracker->decision_limit = decisions;
+    }
+    self->window_weight = (float)weight;
+    self->max_side = side;
+    try { prepare_guard(); prepare_actions(); } catch (Fail &) { return -1; }
+    return 0;
+}
+
+PyObject *Seat_observe(SeatObject *self, PyObject *args) {  // observe(stop=-1): read the frames up to ``stop``
+    long long stop = -1;
+    if (!PyArg_ParseTuple(args, "|L", &stop)) return nullptr;
+    const std::vector<NFrame> &frames = *((Producer *)self->producer)->frames;
+    const size_t end = stop < 0 ? frames.size() : std::min((size_t)stop, frames.size());
+    try {
+        reset_if_large();
+        for (; self->observed < end; self->observed++) seat_frame(self, frames, self->observed);
+    } catch (Fail &) {
+        return nullptr;
+    }
+    Py_RETURN_NONE;
+}
+
+PyObject *Seat_observe_ahead(SeatObject *self, PyObject *) {  // read what is there, up to the seat's next decision
+    const std::vector<NFrame> &frames = *((Producer *)self->producer)->frames;
+    try {
+        reset_if_large();
+        while (self->observed < frames.size() && frames[self->observed].kind != F_DECISION) {
+            seat_frame(self, frames, self->observed);
+            self->observed++;
+        }
+    } catch (Fail &) {
+        return nullptr;
+    }
+    Py_RETURN_NONE;
+}
+
+PyObject *Seat_act(SeatObject *self, PyObject *) {  // the action sampled for the decision observed last, its value id
+    if (self->pending_seq < 0) { PyErr_SetString(PyExc_ValueError, "no decision to answer"); return nullptr; }
+    auto known = self->choices->find(self->pending_seq);
+    if (known != self->choices->end()) return PyLong_FromLong(known->second.action);
+    try {
+        Scorer scorer(*self->fast, self->pending_state->data(), self->pending_cells, self->window_weight, *self->generator);
+        Walk walk(self->pending_observation, self->pending_offers, self->guarded ? self->pending_support : nullptr, self->pending_keys, scorer);
+        const int32_t action = walk.run(-1);
+        const float total = exact_sum(scorer.trace.data(), (int64_t)scorer.trace.size());
+        (*self->choices)[self->pending_seq] = Choice{action, (double)total};
+        return PyLong_FromLong(action);
+    } catch (Fail &) {
+        return nullptr;
+    }
+}
+
+PyObject *Seat_results(SeatObject *self, PyObject *) {  // ({seq: (Action, log_prob)}, {seq: value})
+    try {
+        Ref choices(PyDict_New()), values(PyDict_New());
+        for (auto &entry : *self->choices) {
+            Ref key(PyLong_FromLong(entry.first));
+            Ref item(Py_BuildValue("(Od)", python_value(entry.second.action), entry.second.log_prob));
+            if (PyDict_SetItem(choices.get(), key.get(), item.get())) throw Fail();
+        }
+        for (auto &entry : *self->values) {
+            Ref key(PyLong_FromLong(entry.first)), item(PyFloat_FromDouble(entry.second));
+            if (PyDict_SetItem(values.get(), key.get(), item.get())) throw Fail();
+        }
+        return Py_BuildValue("(OO)", choices.get(), values.get());
+    } catch (Fail &) {
+        return nullptr;
+    }
+}
+
+PyObject *Seat_get(SeatObject *self, void *which) {
+    switch ((intptr_t)which) {
+        case 0: return PyLong_FromSize_t(self->observed);
+        case 1: return PyLong_FromSize_t(self->choices->size());
+        case 2: return PyLong_FromLong(self->pending_seq);
+    }
+    Py_RETURN_NONE;
+}
+
+PyMethodDef seat_methods[] = {
+    {"observe", (PyCFunction)Seat_observe, METH_VARARGS, "observe(stop=-1): read the seat's frames up to stop"},
+    {"observe_ahead", (PyCFunction)Seat_observe_ahead, METH_NOARGS, "read the frames there are, up to the next decision"},
+    {"act", (PyCFunction)Seat_act, METH_NOARGS, "the value id of the action sampled for the decision read last"},
+    {"results", (PyCFunction)Seat_results, METH_NOARGS, "({seq: (action, log_prob)}, {seq: value})"},
+    {nullptr, nullptr, 0, nullptr}};
+
+PyGetSetDef seat_getset[] = {
+    {"observed", (getter)Seat_get, nullptr, "frames read", (void *)0},
+    {"answered", (getter)Seat_get, nullptr, "decisions answered", (void *)1},
+    {"pending", (getter)Seat_get, nullptr, "the decision read last, -1 before any", (void *)2},
+    {nullptr, nullptr, nullptr, nullptr, nullptr}};
+
+PyTypeObject SeatType = {PyVarObject_HEAD_INIT(nullptr, 0)};
+
+// -- the producer's answers ------------------------------------------------------------------------------------
+
+int32_t open_decision(const std::vector<NFrame> &frames, bool *answered) {  // PlayerHistory.decision and whether .action is set
+    *answered = false;
+    for (size_t i = frames.size(); i-- > 0;) {
+        const FKind kind = frames[i].kind;
+        if (kind == F_SUBMITTED) *answered = true;
+        if (kind == F_RESULT || kind == F_SUPERSEDED) { *answered = false; return -1; }
+        if (kind == F_DECISION) return (int32_t)i;
+    }
+    return -1;
+}
+
+void json_string(std::string &out, const std::string &text) {  // json.dumps of a str (ensure_ascii)
+    out.push_back('"');
+    for (size_t i = 0; i < text.size();) {
+        const unsigned char c = (unsigned char)text[i];
+        uint32_t code;
+        size_t length;
+        if (c < 0x80) { code = c; length = 1; }
+        else if ((c >> 5) == 6) { code = ((c & 0x1f) << 6) | (text[i + 1] & 0x3f); length = 2; }
+        else if ((c >> 4) == 14) { code = ((c & 0x0f) << 12) | ((text[i + 1] & 0x3f) << 6) | (text[i + 2] & 0x3f); length = 3; }
+        else { code = ((c & 0x07) << 18) | ((text[i + 1] & 0x3f) << 12) | ((text[i + 2] & 0x3f) << 6) | (text[i + 3] & 0x3f); length = 4; }
+        i += length;
+        char buffer[16];
+        switch (code) {
+            case '"': out += "\\\""; continue;
+            case '\\': out += "\\\\"; continue;
+            case '\n': out += "\\n"; continue;
+            case '\r': out += "\\r"; continue;
+            case '\t': out += "\\t"; continue;
+            case '\b': out += "\\b"; continue;
+            case '\f': out += "\\f"; continue;
+        }
+        if (code < 0x20 || (code >= 0x7f && code < 0x10000)) { snprintf(buffer, sizeof buffer, "\\u%04x", code); out += buffer; }
+        else if (code >= 0x10000) {
+            const uint32_t v = code - 0x10000;
+            snprintf(buffer, sizeof buffer, "\\u%04x\\u%04x", 0xd800 + (v >> 10), 0xdc00 + (v & 0x3ff)); out += buffer;
+        } else out.push_back((char)code);
+    }
+    out.push_back('"');
+}
+
+void json_value(std::string &out, int32_t value) {
+    const Val &item = V(value);
+    if (item.kind == V_NONE) out += "null";
+    else if (item.kind == V_BOOL) out += item.number ? "true" : "false";
+    else if (item.kind == V_INT) out += std::to_string(item.number);
+    else if (item.kind == V_STR) json_string(out, strings[(size_t)item.string]);
+    else { PyErr_SetString(PyExc_ValueError, "an action field that is not a scalar"); throw Fail(); }
+}
+
+PyObject *Producer_answer(Producer *self, PyObject *arg) {  // answer(action value): the response line, as bytes
+    const int32_t action = (int32_t)PyLong_AsLong(arg);
+    if (PyErr_Occurred()) return nullptr;
+    try {
+        bool answered;
+        const int32_t decision = open_decision(*self->frames, &answered);
+        if (decision < 0 || answered || !self->has_current || !offers_permit((*self->frames)[(size_t)decision].offers, action))
+            producer_failure("Action does not match the current contextual request");
+        const NFrame &frame = (*self->frames)[(size_t)decision];
+        std::string out = "{\"protocol_version\":" + std::to_string(self->protocol) + ",\"type\":\"context_action\",\"episode\":";
+        json_string(out, *self->episode);
+        out += ",\"player\":" + std::to_string(self->player) + ",\"decision_id\":" + std::to_string(self->current_id) + ",\"revision\":";
+        out += frame.has_revision ? std::to_string(frame.revision) : std::string("null");
+        out += ",\"action\":{";
+        const bool old_schema = str(field(action, AFI.schema)) == "heroes-context-actions-v2";
+        const VType &type = vtypes[(size_t)T.action];
+        bool first = true;
+        for (size_t i = 0; i < type.fields.size(); i++) {
+            const std::string &name = type.fields[i].name;
+            if (old_schema && (name == "panel" || name == "selection" || name == "count" || name == "destination")) continue;
+            if (!first) out.push_back(',');
+            first = false;
+            json_string(out, name);
+            out.push_back(':');
+            json_value(out, V(action).items[i]);
+        }
+        out += "}}\n";
+        return PyBytes_FromStringAndSize(out.data(), (Py_ssize_t)out.size());
+    } catch (Fail &) {
+        return nullptr;
+    }
+}
+
+PyObject *Producer_submit(Producer *self, PyObject *arg) {  // submit(action value): the frame of an answer sent
+    const int32_t action = (int32_t)PyLong_AsLong(arg);
+    if (PyErr_Occurred()) return nullptr;
+    try {
+        bool answered;
+        const int32_t decision = open_decision(*self->frames, &answered);
+        if (decision < 0 || answered || !offers_permit((*self->frames)[(size_t)decision].offers, action))
+            producer_failure("Action does not match the current contextual request");
+        NFrame frame;
+        frame.kind = F_SUBMITTED;
+        frame.seq = (int32_t)self->frames->size();
+        frame.day = self->frames->back().day;
+        frame.decision_seq = decision;
+        frame.action = action;
+        self->frames->push_back(frame);
+    } catch (Fail &) {
+        return nullptr;
+    }
+    Py_RETURN_NONE;
+}
+
+PyObject *Producer_open(Producer *self, PyObject *) {  // (open decision frame or -1, whether it was answered)
+    bool answered;
+    const int32_t decision = open_decision(*self->frames, &answered);
+    return Py_BuildValue("(iO)", decision, answered ? Py_True : Py_False);
+}
+
+PyObject *Producer_answer_forward(PyObject *self, PyObject *arg) { return Producer_answer((Producer *)self, arg); }
+PyObject *Producer_submit_forward(PyObject *self, PyObject *arg) { return Producer_submit((Producer *)self, arg); }
+PyObject *Producer_open_forward(PyObject *self, PyObject *) { return Producer_open((Producer *)self, nullptr); }
+
 PyMethodDef methods[] = {
     {"configure", py_configure, METH_VARARGS, "configure(policy, contract, fn_text, fn_number, fn_node)"},
     {"observation_tree", py_observation_tree, METH_O, "policy.observation_semantics, from the native DAG"},
@@ -4236,5 +4803,16 @@ PyMODINIT_FUNC PyInit_heroes_native(void) {
     if (!made) return nullptr;
     Py_INCREF(&ProducerType);
     if (PyModule_AddObject(made, "Producer", (PyObject *)&ProducerType) < 0) return nullptr;
+    SeatType.tp_name = "heroes_native.Seat";
+    SeatType.tp_basicsize = sizeof(SeatObject);
+    SeatType.tp_flags = Py_TPFLAGS_DEFAULT;
+    SeatType.tp_new = Seat_new;
+    SeatType.tp_init = (initproc)Seat_init;
+    SeatType.tp_dealloc = (destructor)Seat_dealloc;
+    SeatType.tp_methods = seat_methods;
+    SeatType.tp_getset = seat_getset;
+    if (PyType_Ready(&SeatType) < 0) return nullptr;
+    Py_INCREF(&SeatType);
+    if (PyModule_AddObject(made, "Seat", (PyObject *)&SeatType) < 0) return nullptr;
     return made;
 }
