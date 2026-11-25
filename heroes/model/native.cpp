@@ -2997,6 +2997,957 @@ PyObject *py_window_memories(PyObject *, PyObject *object) {  // window_memories
         return nullptr;
     }
 }
+
+// == the action walk (policy.ContextualDistribution._walk) ========================================================
+
+std::unordered_map<uint64_t, int32_t> field_cache;
+
+inline int32_t F(int32_t value, const char *name) {  // value.name, for a literal name
+    const Val &item = V(value);
+    if (item.kind != V_RECORD) { PyErr_Format(PyExc_AttributeError, "no attribute '%s' on a %s", name, item.kind == V_NONE ? "None" : "non-record"); throw Fail(); }
+    const uint64_t key = ((uint64_t)item.type << 48) ^ (uint64_t)(uintptr_t)name;
+    auto found = field_cache.find(key);
+    int32_t index;
+    if (found == field_cache.end()) { index = field_of(item.type, name); field_cache.emplace(key, index); }
+    else index = found->second;
+    return item.items[(size_t)index];
+}
+inline const std::vector<int32_t> &items_of(int32_t value) { return V(value).items; }
+inline bool truthy_tuple(int32_t value) { return V(value).kind == V_TUPLE && !V(value).items.empty(); }
+inline int32_t int_value(int64_t number) { return v_scalar(V_INT, number); }
+int32_t text_value(const char *text) { return str_value(std::string(text)); }
+
+struct ActionSpec { int32_t kind, subject, x, y, panel, selection, count, destination; };
+
+struct AF { int32_t kind, subject, x, y, schema, panel, selection, count, destination; size_t size; bool ready = false; } AFI;
+
+void prepare_actions() {
+    if (!AFI.ready) {
+        AFI.kind = field_of(T.action, "kind"); AFI.subject = field_of(T.action, "subject"); AFI.x = field_of(T.action, "x");
+        AFI.y = field_of(T.action, "y"); AFI.schema = field_of(T.action, "schema"); AFI.panel = field_of(T.action, "panel");
+        AFI.selection = field_of(T.action, "selection"); AFI.count = field_of(T.action, "count"); AFI.destination = field_of(T.action, "destination");
+        AFI.size = vtypes[(size_t)T.action].fields.size();
+        if (AFI.size != 9) { PyErr_SetString(PyExc_ValueError, "Action has fields native.cpp does not know"); throw Fail(); }
+        AFI.ready = true;
+    }
+}
+
+int32_t make_action(const ActionSpec &spec, int32_t schema) {
+    prepare_actions();
+    std::vector<int32_t> items(AFI.size);
+    items[(size_t)AFI.kind] = spec.kind; items[(size_t)AFI.subject] = spec.subject; items[(size_t)AFI.x] = spec.x; items[(size_t)AFI.y] = spec.y;
+    items[(size_t)AFI.schema] = schema; items[(size_t)AFI.panel] = spec.panel; items[(size_t)AFI.selection] = spec.selection;
+    items[(size_t)AFI.count] = spec.count; items[(size_t)AFI.destination] = spec.destination;
+    return v_items(V_RECORD, T.action, std::move(items));
+}
+
+int64_t operation_maximum(const std::string &kind, const SlotPlace &origin, const SlotPlace &target) {  // contract._operation_maximum
+    if (kind == "swap_stacks") return swap_maximum(origin.army, origin.slot, target.army, target.slot);
+    const int32_t source_army = origin.army, source = origin.slot, destination_army = target.army, destination = target.slot;
+    if (kind == "split_stack" && str_is(field(source_army, G.army_role), "joining_neutral")) return 0;
+    const bool crossing = field(source_army, G.army_subject) != field(destination_army, G.army_subject);
+    if (allied_role(source_army) || (crossing && locked_role(source_army))) return 0;
+    const int64_t source_count = num(field(source, G.slot_count)), destination_count = num(field(destination, G.slot_count));
+    if ((kind != "split_stack" && kind != "merge_stacks") || !source_count) return 0;
+    const int32_t creature = field(destination, G.slot_creature);
+    if (!none(creature) && creature != field(source, G.slot_creature)) return 0;
+    if (source_count + destination_count > 2147483647LL) return 0;
+    const int64_t reserve = crossing && V(field(source_army, G.army_requires_nonempty)).number && nonempty_slots(source_army) == 1;
+    const int64_t maximum = source_count - reserve;
+    if (kind == "merge_stacks") return destination_count != 0 && maximum == source_count;
+    return maximum;
+}
+
+struct Pair { int32_t source, destination; int64_t maximum; };
+
+const std::vector<Pair> &operation_choices(int32_t armies, const std::string &kind) {  // contract.army_operation_choices
+    static std::map<std::pair<int32_t, std::string>, std::vector<Pair>> known;
+    auto key = std::make_pair(armies, kind);
+    auto found = known.find(key);
+    if (found != known.end()) return found->second;
+    if (known.size() >= 4096) known.clear();
+    std::vector<Pair> out;
+    const auto places = slot_places(armies);
+    for (int32_t first : items_of(armies))
+        for (int32_t source : items_of(field(first, G.army_slots))) {
+            const int32_t source_ref = field(source, G.slot_ref);
+            const SlotPlace &origin = places.at(source_ref);
+            for (int32_t second : items_of(armies))
+                for (int32_t destination : items_of(field(second, G.army_slots))) {
+                    const int32_t destination_ref = field(destination, G.slot_ref);
+                    if (source_ref == destination_ref) continue;
+                    const int64_t maximum = operation_maximum(kind, origin, places.at(destination_ref));
+                    if (maximum > 0) out.push_back(Pair{source_ref, destination_ref, maximum});
+                }
+        }
+    return known.emplace(key, std::move(out)).first->second;
+}
+
+int64_t army_operation_maximum(int32_t armies, const std::string &kind, int32_t source_ref, int32_t destination_ref) {
+    const auto places = slot_places(armies);
+    auto source = places.find(source_ref), destination = places.find(destination_ref);
+    if (source == places.end() || destination == places.end() || source_ref == destination_ref) return 0;
+    return operation_maximum(kind, source->second, destination->second);
+}
+
+int32_t slot_with_ref(int32_t army, int32_t ref) {
+    for (int32_t slot : items_of(field(army, G.army_slots))) if (field(slot, G.slot_ref) == ref) return slot;
+    return -1;
+}
+
+int64_t exchange_maximum(int32_t exchange, int32_t source_ref, int32_t destination_ref) {  // ArmyExchange.maximum
+    const int32_t destination_army = F(exchange, "destination");
+    if (none(destination_army)) return 0;
+    const int32_t source_army = F(exchange, "source");
+    const int32_t source = slot_with_ref(source_army, source_ref), destination = slot_with_ref(destination_army, destination_ref);
+    if (source < 0 || destination < 0) return 0;
+    const int64_t source_count = num(field(source, G.slot_count)), destination_count = num(field(destination, G.slot_count));
+    if (source_count == 0) return 0;
+    const int32_t creature = field(destination, G.slot_creature);
+    if (!none(creature) && creature != field(source, G.slot_creature)) return 0;
+    if (source_count + destination_count > 2147483647LL) return 0;
+    const int64_t reserve = V(field(source_army, G.army_requires_nonempty)).number && nonempty_slots(source_army) == 1;
+    return source_count - reserve;
+}
+
+std::vector<Pair> exchange_choices(int32_t exchange) {  // ArmyExchange.choices
+    std::vector<Pair> out;
+    const int32_t destination_army = F(exchange, "destination");
+    if (none(destination_army)) return out;
+    for (int32_t source : items_of(field(F(exchange, "source"), G.army_slots)))
+        for (int32_t destination : items_of(field(destination_army, G.army_slots))) {
+            const int64_t maximum = exchange_maximum(exchange, field(source, G.slot_ref), field(destination, G.slot_ref));
+            if (maximum > 0) out.push_back(Pair{field(source, G.slot_ref), field(destination, G.slot_ref), maximum});
+        }
+    return out;
+}
+
+bool contains(int32_t tuple, int32_t value) {
+    if (none(tuple)) return false;
+    for (int32_t item : items_of(tuple)) if (item == value) return true;
+    return false;
+}
+bool ref_in(int32_t items, int32_t ref) {  // ref in {item.ref for item in items}
+    for (int32_t item : items_of(items)) if (F(item, "ref") == ref) return true;
+    return false;
+}
+int64_t count_of(int32_t action) {
+    const int32_t count = field(action, G.action_count);
+    if (none(count)) { PyErr_SetString(PyExc_TypeError, "'<=' not supported between instances of 'NoneType' and 'int'"); throw Fail(); }
+    return num(count);
+}
+
+bool offers_permit(int32_t offers, int32_t action) {  // Offers.permits
+    if (field(action, AFI.schema) != F(offers, "schema")) return false;
+    const int32_t context = field(offers, G.offers_context);
+    const int32_t subject = field(action, G.action_subject), kind = field(action, G.action_kind);
+    const int32_t context_subject = field(context, G.context_subject), context_kind = field(context, T.c_kind);
+    const int32_t selection = field(action, G.action_selection);
+    if (str_is(kind, "open_capability")) {
+        const int32_t controls = F(offers, "capability_controls");
+        return subject == context_subject && !none(controls) && contains(controls, field(action, G.action_panel));
+    }
+    if (str_is(context_kind, "capability")) {
+        const int32_t panel = field(offers, G.offers_capability_panel);
+        if (subject != context_subject) return false;
+        if (str_is(kind, "close_capability")) return !V(F(panel, "mandatory")).number;
+        for (int32_t choice : items_of(F(panel, "choices")))
+            if (F(choice, "ref") == selection && F(choice, "kind") == kind)
+                return !str_is(F(choice, "kind"), "trade_resource") || count_of(action) <= num(F(choice, "max_count"));
+        return false;
+    }
+    if (str_is(context_kind, "dialog"))
+        return str_is(kind, "choose_dialog") && subject == context_subject && ref_in(F(field(offers, G.offers_dialog_panel), "choices"), selection);
+    const int32_t armies = field(offers, G.offers_armies);
+    const int32_t context_panel = field(context, G.context_panel);
+    if (!none(armies)) {
+        if (str_is(kind, "split_stack") || str_is(kind, "merge_stacks") || str_is(kind, "swap_stacks")) {
+            const int64_t maximum = army_operation_maximum(armies, str(kind), selection, field(action, G.action_destination));
+            return subject == context_subject && maximum > 0 && (!str_is(kind, "split_stack") || count_of(action) <= maximum);
+        }
+        if (str_is(kind, "open_stack")) {
+            int32_t army;
+            const int32_t slot = first_slot(armies, selection, &army);
+            return subject == context_subject && slot >= 0 && num(field(slot, G.slot_count)) > 0;
+        }
+        if (str_is(kind, "swap_garrison")) {
+            if (!(str_is(context_kind, "town") && str_is(context_panel, "overview") && subject == context_subject)) return false;
+            for (int32_t army : items_of(armies)) if (role_in(army, "garrison_hero", "visiting_hero")) return true;
+            return false;
+        }
+        if (str_is(context_kind, "stack")) {
+            if (subject != context_subject) return false;
+            if (str_is(kind, "back")) return true;
+            const int32_t stack = field(offers, G.offers_stack_panel);
+            if (str_is(context_panel, "overview")) return str_is(kind, "select_upgrade") && ref_in(F(stack, "offers"), selection);
+            return str_is(kind, "upgrade_stack") && V(F(stack, "affordable")).number && selection == F(stack, "selected_upgrade_ref");
+        }
+    }
+    const int32_t panel = field(offers, G.offers_panel);
+    if (!none(panel)) {
+        if (str_is(context_panel, "overview")) {
+            if (str_is(kind, "transfer_stack")) {
+                const int32_t exchange = F(panel, "armies");
+                return subject == context_subject && !none(exchange)
+                       && count_of(action) <= exchange_maximum(exchange, selection, field(action, G.action_destination));
+            }
+            if (str_is(kind, "close")) return true;
+            if (!(str_is(kind, "open_panel") && subject == context_subject)) return false;
+            const int32_t which = field(action, G.action_panel);
+            for (int32_t control : items_of(F(panel, "controls")))
+                if (F(control, "panel") == which && (str_is(which, "hall") || str_is(which, "tavern") || F(control, "ref") == selection)) return true;
+            return false;
+        }
+        if (subject != context_subject) return false;
+        if (str_is(kind, "back")) return true;
+        if (str_is(context_panel, "hall")) return str_is(kind, "open_building") && ref_in(F(panel, "buildings"), selection);
+        if (str_is(context_panel, "tavern")) {
+            const int32_t tavern = F(panel, "tavern");
+            if (str_is(kind, "select_hero")) return ref_in(F(tavern, "offers"), selection);
+            return str_is(kind, "hire_hero") && selection == F(tavern, "selected_offer_ref") && str_is(F(tavern, "recruit_status"), "allowed");
+        }
+        if (str_is(context_panel, "recruitment")) {
+            const int32_t recruitment = F(panel, "recruitment");
+            if (str_is(kind, "select_recruit")) return ref_in(F(recruitment, "offers"), selection);
+            return str_is(kind, "recruit") && selection == F(recruitment, "selected_offer_ref") && count_of(action) <= num(F(recruitment, "slider_max"))
+                   && field(action, G.action_destination) == F(F(recruitment, "destination"), "ref");
+        }
+        const int32_t building = F(panel, "building");
+        return str_is(kind, "construct") && selection == F(building, "ref") && str_is(F(building, "status"), "allowed");
+    }
+    if (!str_is(context_kind, "map")) return str_is(kind, "close");
+    if (str_is(kind, "end_turn")) return true;
+    if ((str_is(kind, "open_hero") || str_is(kind, "move_to")) && contains(F(offers, "hero_refs"), subject)) {
+        if (str_is(kind, "open_hero")) return true;
+        const int32_t movable = F(offers, "movable_hero_refs");
+        const auto &size = items_of(F(offers, "size"));
+        return (none(movable) || contains(movable, subject)) && num(field(action, G.action_x)) < num(size[0]) && num(field(action, G.action_y)) < num(size[1]);
+    }
+    return str_is(kind, "open_town") && contains(field(offers, G.offers_town_refs), subject);
+}
+
+struct Revealed { std::vector<int64_t> row_major; std::vector<std::pair<int64_t, int64_t>> cells; };
+
+const Revealed &revealed_cells(int32_t tiles, bool has_level, int64_t level, int64_t width) {  // guard._revealed and _row_major
+    static std::map<std::tuple<int32_t, bool, int64_t, int64_t>, Revealed> known;
+    auto key = std::make_tuple(tiles, has_level, level, width);
+    auto found = known.find(key);
+    if (found != known.end()) return found->second;
+    if (known.size() >= 256) known.clear();
+    Revealed made;
+    if (has_level)
+        for (int32_t tile : items_of(tiles)) {
+            const auto &position = items_of(field(tile, T.tile_position));
+            if (num(position[2]) == level) made.cells.push_back({num(position[0]), num(position[1])});
+        }
+    std::sort(made.cells.begin(), made.cells.end());
+    made.cells.erase(std::unique(made.cells.begin(), made.cells.end()), made.cells.end());
+    for (auto &cell : made.cells) made.row_major.push_back(cell.second * width + cell.first);
+    std::sort(made.row_major.begin(), made.row_major.end());
+    return known.emplace(key, std::move(made)).first->second;
+}
+
+struct WalkStep {
+    std::string name;
+    int kind = 0;  // 0 categorical, 1 quantity, 2 coordinate
+    std::vector<int32_t> roots;
+    std::vector<uint8_t> flags;  // window memory bits, empty when none is set
+    int32_t root = -1;
+    float numeric[4] = {0, 0, 0, 0}, offsets[2] = {0, 0};
+    int64_t hx = 0, hy = 0, width = 0, height = 0;
+    bool has_indices = false;
+    std::vector<int64_t> indices;
+    int selected = -1;
+    size_t size() const { return kind == 0 ? roots.size() : kind == 1 ? 2 : has_indices ? indices.size() : (size_t)(width * height); }
+};
+
+struct Chooser {
+    virtual ~Chooser() {}
+    virtual int choose(WalkStep &step, int hint) = 0;  // the selected index; ``hint`` is the evaluated action's, or -1
+};
+
+const char *ARRANGEMENT_KINDS[] = {"split_stack", "merge_stacks", "swap_stacks"};
+const char *ACTION_ORDER[] = {"move_to", "open_hero", "open_town", "end_turn", "close", "open_panel", "open_building", "construct", "back",
+                              "select_recruit", "recruit", "transfer_stack", "select_hero", "hire_hero", "split_stack", "merge_stacks",
+                              "swap_stacks", "open_stack", "select_upgrade", "upgrade_stack", "swap_garrison", "choose_dialog"};
+const char *CAPABILITY_ACTION_LIST[] = {"trade_resource", "buy_artifact", "move_artifact", "assemble_artifact", "disassemble_artifact",
+                                        "cast_adventure_spell", "choose_level_up", "choose_spell_target", "cancel_spell_target", "inspect_object"};
+
+template <class Seq> bool sorted_has(const Seq &items, const typename Seq::value_type &item) { return std::binary_search(items.begin(), items.end(), item); }
+
+struct Walk {
+    int32_t observation, offers;
+    const Support *guard;  // nullptr: no guard
+    const std::set<Key> *memory;
+    Chooser &chooser;
+    std::vector<int32_t> trees;  // the trees the walk asked features of, in order
+    std::unordered_map<int32_t, bool> permits_memo;
+    int32_t context, context_subject, schema, v_count1, v_count2;
+    std::unordered_map<std::string, int32_t> kind_values;
+
+    Walk(int32_t observation, int32_t offers, const Support *guard, const std::set<Key> *memory, Chooser &chooser)
+        : observation(observation), offers(offers), guard(guard), memory(memory), chooser(chooser) {
+        prepare_actions();
+        context = field(offers, G.offers_context);
+        context_subject = field(context, G.context_subject);
+        schema = F(offers, "schema");
+        v_count1 = int_value(1); v_count2 = int_value(2);
+    }
+
+    int32_t kind_value(const std::string &kind) {
+        auto found = kind_values.find(kind);
+        if (found != kind_values.end()) return found->second;
+        return kind_values[kind] = str_value(kind);
+    }
+
+    int32_t action(const std::string &kind, int32_t subject = -2, int32_t x = -1, int32_t y = -1, int32_t panel = -1, int32_t selection = -1,
+                   int32_t count = -1, int32_t destination = -1) {  // _action: subject defaults to the context's
+        if (subject == -2) subject = (kind == "close" || kind == "end_turn") ? v_none : context_subject;
+        auto value = [](int32_t item) { return item < 0 ? v_none : item; };
+        return make_action(ActionSpec{kind_value(kind), subject, value(x), value(y), value(panel), value(selection), value(count), value(destination)}, schema);
+    }
+
+    int32_t features(int32_t tree) { trees.push_back(tree); return tree; }
+
+    // -- the guard (GuardSupport) ---------------------------------------------------------------------
+    std::vector<int64_t> coordinates(int32_t subject, size_t limit) {  // GuardSupport.movement_coordinates
+        const auto &size = items_of(F(offers, "size"));
+        const int64_t width = num(size[0]);
+        const Revealed &revealed = revealed_of(subject, width);
+        std::vector<int64_t> out;
+        for (int64_t index : revealed.row_major) {
+            const int64_t x = index % width, y = index / width;
+            const int32_t move = action("move_to", subject, int_value(x), int_value(y));
+            if (offers_permit(offers, move) && permits_movement(subject, x, y, revealed)) {
+                out.push_back(index);
+                if (out.size() >= limit) break;
+            }
+        }
+        return out;
+    }
+
+    const Revealed &revealed_of(int32_t subject, int64_t width) {
+        bool has_level = false;
+        int64_t level = 0;
+        for (int32_t hero : items_of(field(observation, T.o_heroes)))
+            if (field(hero, T.h_handle) == subject) { has_level = true; level = num(items_of(field(hero, G.hero_position))[2]); break; }
+        return revealed_cells(field(observation, T.o_tiles), has_level, level, width);
+    }
+
+    bool permits_movement(int32_t subject, int64_t x, int64_t y, const Revealed &revealed) {
+        const std::string &handle = str(subject);
+        return sorted_has(guard->movable, handle) && !sorted_has(guard->blocked, Coordinate{handle, x, y})
+               && std::binary_search(revealed.cells.begin(), revealed.cells.end(), std::make_pair(x, y));
+    }
+
+    bool repeats_command(int32_t candidate) {
+        if (!guard->has_previous) return false;
+        const std::string &kind = str(field(candidate, G.action_kind));
+        const size_t cut = guard->previous.find(SEP);
+        if (guard->previous.compare(0, cut, kind) != 0 || cut != kind.size()) return false;
+        return guard->previous == command_key(candidate, offers);
+    }
+
+    bool map_has_alternative() {
+        for (const char *kind : {"open_hero", "open_town"}) {
+            const int32_t refs = std::string(kind) == "open_hero" ? F(offers, "hero_refs") : field(offers, G.offers_town_refs);
+            for (int32_t subject : items_of(refs))
+                if (guard_permits(make_action(ActionSpec{kind_value(kind), subject, v_none, v_none, v_none, v_none, v_none, v_none}, schema))) return true;
+        }
+        for (const std::string &subject : guard->movable)
+            if (!coordinates(str_value(subject), 1).empty()) return true;
+        return false;
+    }
+
+    bool guard_permits(int32_t candidate) {  // GuardSupport.permits
+        const int32_t kind = field(candidate, G.action_kind);
+        const int32_t armies = field(offers, G.offers_armies);
+        const bool forced = mandatory(offers);
+        const int32_t selection = field(candidate, G.action_selection), destination = field(candidate, G.action_destination);
+        if (in_list(kind, ARRANGEMENT_KINDS, 3) && !guard->management.empty() && truthy_tuple(armies) && !forced) {
+            std::set<std::string> subjects;
+            int32_t army;
+            if (first_slot(armies, selection, &army) >= 0) subjects.insert(str(field(army, G.army_subject)));
+            if (first_slot(armies, destination, &army) >= 0) subjects.insert(str(field(army, G.army_subject)));
+            if (subjects.empty()) subjects.insert(none(field(candidate, G.action_subject)) ? NONE_ELEMENT : str(field(candidate, G.action_subject)));
+            for (const std::string &subject : subjects) if (sorted_has(guard->management, subject)) return false;
+        }
+        bool has_swap_key = false;
+        SwapKey swap_key;
+        if (str_is(kind, "swap_stacks") && !guard->swaps.empty() && truthy_tuple(armies) && !forced) {
+            const auto places = slot_places(armies);
+            auto left = places.find(selection), right = places.find(destination);
+            if (left != places.end() && right != places.end()) {
+                swap_key = swap_key_of(left->second, right->second);
+                has_swap_key = true;
+                if (sorted_has(guard->swaps, swap_key)) return false;
+            }
+        }
+        if (!offers_permit(offers, candidate)) return false;
+        if (forced || in_list(kind, CLOSE_KINDS, 3)) return true;
+        if (guard->exhausted) return str_is(kind, "end_turn");
+        if (repeats_command(candidate)) return str_is(kind, "end_turn") && !map_has_alternative();
+        if (str_is(kind, "end_turn")) return true;
+        if (str_is(kind, "move_to")) {
+            const int32_t subject = field(candidate, G.action_subject);
+            const int64_t width = num(items_of(F(offers, "size"))[0]);
+            return permits_movement(subject, num(field(candidate, G.action_x)), num(field(candidate, G.action_y)), revealed_of(subject, width));
+        }
+        if (str_is(kind, "swap_stacks") && !guard->swaps.empty()) {
+            if (!has_swap_key) {
+                const auto places = slot_places(armies);
+                swap_key = swap_key_of(places.at(selection), places.at(destination));
+            }
+            if (sorted_has(guard->swaps, swap_key)) return false;
+        }
+        if (management_kind(kind)) {
+            if (guard->management.empty()) return true;
+            for (const std::string &subject : management_subjects(candidate, offers)) if (sorted_has(guard->management, subject)) return false;
+            return true;
+        }
+        Key key;
+        if (!nav_key(candidate, offers, key)) return true;  // None is never blocked
+        if (sorted_has(guard->navigation, key)) return false;
+        return !sorted_has(guard->windows, split(key)[1]);
+    }
+
+    bool permitted(int32_t candidate) {
+        if (guard == nullptr) return true;
+        auto found = permits_memo.find(candidate);
+        if (found != permits_memo.end()) return found->second;
+        const bool result = guard_permits(candidate);
+        permits_memo.emplace(candidate, result);
+        return result;
+    }
+
+    bool repeated_quantity(int32_t candidate, int64_t &out) {  // GuardSupport.repeated_quantity; false for None
+        if (guard == nullptr || !guard->has_previous || mandatory(offers)) return false;
+        std::vector<std::string> previous = split(guard->previous);
+        if (previous[0] != str(field(candidate, G.action_kind))) return false;
+        std::vector<std::string> now = split(command_key(candidate, offers));
+        if (previous.size() != now.size()) return false;
+        for (size_t i = 0; i + 1 < now.size(); i++) if (previous[i] != now[i]) return false;
+        const std::string &text = previous.back();
+        char *end = nullptr;
+        if (text.empty()) { PyErr_SetString(PyExc_ValueError, "invalid literal for int() with base 10: ''"); throw Fail(); }
+        out = std::strtoll(text.c_str(), &end, 10);
+        return true;
+    }
+
+    int32_t quantity_representative(const std::string &kind, int64_t maximum, int32_t selection, int32_t destination = -1) {
+        const int32_t first = action(kind, -2, -1, -1, -1, selection, v_count1, destination);
+        int64_t repeated;
+        if (maximum > 1 && repeated_quantity(first, repeated) && repeated == 1) return action(kind, -2, -1, -1, -1, selection, v_count2, destination);
+        return first;
+    }
+
+    int32_t pair_action(const std::string &kind, const Pair &pair) {
+        if (kind == "transfer_stack" || kind == "split_stack") return quantity_representative(kind, pair.maximum, pair.source, pair.destination);
+        return action(kind, -2, -1, -1, -1, pair.source, -1, pair.destination);
+    }
+
+    int32_t panel_action(int32_t control) {
+        const int32_t panel = F(control, "panel");
+        return action("open_panel", -2, -1, -1, panel, str_is(panel, "recruitment") ? F(control, "ref") : -1);
+    }
+
+    // -- kinds and representatives ----------------------------------------------------------------------
+    std::vector<std::string> window_kinds() {
+        const int32_t context_kind = field(context, T.c_kind), context_panel = field(context, G.context_panel);
+        const int32_t armies = field(offers, G.offers_armies), panel = field(offers, G.offers_panel);
+        if (str_is(context_kind, "dialog")) return {"choose_dialog"};
+        if (str_is(context_kind, "map")) {
+            const int32_t heroes = F(offers, "hero_refs"), towns = field(offers, G.offers_town_refs), listed = F(offers, "movable_hero_refs");
+            const int32_t movable = none(listed) ? heroes : listed;
+            std::vector<std::string> out;
+            if (truthy_tuple(movable)) out.push_back("move_to");
+            if (truthy_tuple(heroes)) out.push_back("open_hero");
+            if (truthy_tuple(towns)) out.push_back("open_town");
+            out.push_back("end_turn");
+            return out;
+        }
+        if (str_is(context_kind, "stack")) {
+            const int32_t stack = field(offers, G.offers_stack_panel);
+            if (str_is(context_panel, "overview")) return truthy_tuple(F(stack, "offers")) ? std::vector<std::string>{"back", "select_upgrade"} : std::vector<std::string>{"back"};
+            return V(F(stack, "affordable")).number ? std::vector<std::string>{"back", "upgrade_stack"} : std::vector<std::string>{"back"};
+        }
+        if (truthy_tuple(armies)) {
+            std::vector<std::string> kinds = {"close"};
+            if (!none(panel) && truthy_tuple(F(panel, "controls"))) kinds.push_back("open_panel");
+            for (const char *kind : ARRANGEMENT_KINDS) if (!operation_choices(armies, kind).empty()) kinds.push_back(kind);
+            bool stacked = false;
+            for (int32_t army : items_of(armies)) for (int32_t slot : items_of(field(army, G.army_slots))) stacked = stacked || num(field(slot, G.slot_count));
+            if (stacked) kinds.push_back("open_stack");
+            if (str_is(context_kind, "town")) {
+                bool garrison = false;
+                for (int32_t army : items_of(armies)) garrison = garrison || role_in(army, "garrison_hero", "visiting_hero");
+                if (garrison) kinds.push_back("swap_garrison");
+            }
+            return kinds;
+        }
+        if (none(panel)) return {"close"};
+        if (str_is(context_panel, "overview")) {
+            std::vector<std::string> kinds = truthy_tuple(F(panel, "controls")) ? std::vector<std::string>{"close", "open_panel"} : std::vector<std::string>{"close"};
+            const int32_t exchange = F(panel, "armies");
+            if (!none(exchange) && !exchange_choices(exchange).empty()) kinds.push_back("transfer_stack");
+            return kinds;
+        }
+        if (str_is(context_panel, "hall")) return truthy_tuple(F(panel, "buildings")) ? std::vector<std::string>{"open_building", "back"} : std::vector<std::string>{"back"};
+        if (str_is(context_panel, "building"))
+            return str_is(F(F(panel, "building"), "status"), "allowed") ? std::vector<std::string>{"construct", "back"} : std::vector<std::string>{"back"};
+        if (str_is(context_panel, "tavern")) {
+            const int32_t tavern = F(panel, "tavern");
+            std::vector<std::string> kinds = {"back"};
+            if (truthy_tuple(F(tavern, "offers"))) kinds.push_back("select_hero");
+            if (str_is(F(tavern, "recruit_status"), "allowed")) kinds.push_back("hire_hero");
+            return kinds;
+        }
+        const int32_t recruitment = F(panel, "recruitment");
+        return num(F(recruitment, "slider_max")) ? std::vector<std::string>{"back", "select_recruit", "recruit"} : std::vector<std::string>{"back", "select_recruit"};
+    }
+
+    std::vector<std::string> native_kinds() {
+        const int32_t capability = field(offers, G.offers_capability_panel);
+        if (!none(capability)) {
+            std::vector<std::string> kinds;
+            if (!V(F(capability, "mandatory")).number) kinds.push_back("close_capability");
+            for (const char *kind : CAPABILITY_ACTION_LIST) {
+                bool found = false;
+                for (int32_t choice : items_of(F(capability, "choices"))) found = found || str_is(F(choice, "kind"), kind);
+                if (found) kinds.push_back(kind);
+            }
+            return kinds;
+        }
+        std::vector<std::string> kinds = window_kinds();
+        if (truthy_tuple(F(offers, "capability_controls"))) kinds.push_back("open_capability");
+        return kinds;
+    }
+
+    std::vector<int32_t> subjects(const std::string &kind) {  // _subjects
+        const int32_t listed = F(offers, "movable_hero_refs");
+        const int32_t refs = kind == "open_town" ? field(offers, G.offers_town_refs) : (kind == "move_to" && !none(listed)) ? listed : F(offers, "hero_refs");
+        std::vector<int32_t> out;
+        for (int32_t ref : items_of(refs)) {
+            if (guard == nullptr) out.push_back(ref);
+            else if (kind == "move_to") { if (sorted_has(guard->movable, str(ref)) && !coordinates(ref, 1).empty()) out.push_back(ref); }
+            else if (permitted(action(kind, ref))) out.push_back(ref);
+        }
+        return out;
+    }
+
+    // Each representative of ``kind`` in order until ``visit`` returns true (_representatives)
+    template <class Visit> void representatives(const std::string &kind, Visit visit) {
+        if (kind == "move_to" || kind == "open_hero" || kind == "open_town") {
+            const int64_t width = num(items_of(F(offers, "size"))[0]);
+            for (int32_t ref : subjects(kind)) {
+                if (kind == "move_to") {
+                    std::vector<int64_t> first = coordinates(ref, 1);
+                    if (!first.empty() && visit(action(kind, ref, int_value(first[0] % width), int_value(first[0] / width)))) return;
+                } else if (visit(action(kind, ref))) return;
+            }
+        } else if (kind == "open_capability") {
+            for (int32_t panel : items_of(F(offers, "capability_controls"))) if (visit(action(kind, -2, -1, -1, panel))) return;
+        } else if (in_list_text(kind, CAPABILITY_ACTION_LIST, 10)) {
+            for (int32_t choice : items_of(F(field(offers, G.offers_capability_panel), "choices")))
+                if (str_is(F(choice, "kind"), kind.c_str())) {
+                    const int32_t made = kind == "trade_resource" ? quantity_representative(kind, num(F(choice, "max_count")), F(choice, "ref"))
+                                                                  : action(kind, -2, -1, -1, -1, F(choice, "ref"));
+                    if (visit(made)) return;
+                }
+        } else if (kind == "choose_dialog") {
+            for (int32_t choice : items_of(F(field(offers, G.offers_dialog_panel), "choices"))) if (visit(action(kind, -2, -1, -1, -1, F(choice, "ref")))) return;
+        } else if (kind == "open_panel") {
+            for (int32_t control : items_of(F(field(offers, G.offers_panel), "controls"))) if (visit(panel_action(control))) return;
+        } else if (kind == "open_stack") {
+            for (int32_t army : items_of(field(offers, G.offers_armies)))
+                for (int32_t slot : items_of(field(army, G.army_slots)))
+                    if (num(field(slot, G.slot_count)) && visit(action(kind, -2, -1, -1, -1, field(slot, G.slot_ref)))) return;
+        } else if (kind == "select_upgrade" || kind == "open_building" || kind == "select_recruit" || kind == "select_hero") {
+            for (int32_t choice : items_of(selection_choices(kind))) if (visit(action(kind, -2, -1, -1, -1, F(choice, "ref")))) return;
+        } else if (kind == "transfer_stack" || in_list_text(kind, ARRANGEMENT_KINDS, 3)) {
+            const std::vector<Pair> choices = kind == "transfer_stack" ? exchange_choices(F(field(offers, G.offers_panel), "armies"))
+                                                                       : operation_choices(field(offers, G.offers_armies), kind);
+            for (const Pair &pair : choices) if (visit(pair_action(kind, pair))) return;
+        } else if (kind == "recruit") {
+            const int32_t recruit = F(field(offers, G.offers_panel), "recruitment");
+            visit(quantity_representative(kind, num(F(recruit, "slider_max")), F(recruit, "selected_offer_ref"), F(F(recruit, "destination"), "ref")));
+        } else if (kind == "construct") {
+            visit(action(kind, -2, -1, -1, -1, F(F(field(offers, G.offers_panel), "building"), "ref")));
+        } else if (kind == "hire_hero") {
+            visit(action(kind, -2, -1, -1, -1, F(F(field(offers, G.offers_panel), "tavern"), "selected_offer_ref")));
+        } else if (kind == "upgrade_stack") {
+            visit(action(kind, -2, -1, -1, -1, F(field(offers, G.offers_stack_panel), "selected_upgrade_ref")));
+        } else {
+            visit(action(kind));
+        }
+    }
+
+    static bool in_list_text(const std::string &kind, const char *const *list, size_t count) {
+        for (size_t i = 0; i < count; i++) if (kind == list[i]) return true;
+        return false;
+    }
+
+    int32_t selection_choices(const std::string &kind) {
+        if (kind == "select_upgrade") return F(field(offers, G.offers_stack_panel), "offers");
+        const int32_t panel = field(offers, G.offers_panel);
+        if (kind == "open_building") return F(panel, "buildings");
+        if (kind == "select_hero") return F(F(panel, "tavern"), "offers");
+        return F(F(panel, "recruitment"), "offers");
+    }
+
+    std::vector<std::string> kinds() {  // _kinds
+        std::vector<std::string> all = native_kinds();
+        if (guard == nullptr) return all;
+        const int32_t armies = field(offers, G.offers_armies);
+        bool barred = !guard->management.empty() && truthy_tuple(armies) && !mandatory(offers);
+        if (barred)
+            for (int32_t army : items_of(armies)) if (!sorted_has(guard->management, str(field(army, G.army_subject)))) { barred = false; break; }
+        std::vector<std::string> out;
+        for (const std::string &kind : all) {
+            if (barred && in_list_text(kind, ARRANGEMENT_KINDS, 3)) continue;
+            bool any = false;
+            representatives(kind, [&](int32_t candidate) { return any = permitted(candidate); });
+            if (any) out.push_back(kind);
+        }
+        return out;
+    }
+
+    std::map<std::string, std::vector<uint8_t>> window_flags(const std::vector<std::string> &kinds) {  // _window_flags
+        std::map<std::string, std::vector<uint8_t>> flags;
+        std::set<std::string> remembered;
+        for (const Key &key : *memory) remembered.insert(split(key)[0]);
+        for (const std::string &kind : kinds) {
+            if (!remembered.count(kind)) continue;
+            std::vector<uint8_t> bits;
+            representatives(kind, [&](int32_t candidate) {
+                if (permitted(candidate)) {
+                    Key key;
+                    const bool has = nav_key(candidate, offers, key);
+                    bits.push_back(has && memory->count(key) ? 1 : 0);
+                }
+                return false;
+            });
+            flags[kind] = bits;
+        }
+        return flags;
+    }
+
+    // -- choices ---------------------------------------------------------------------------------------
+    int categorical(const char *name, std::vector<int32_t> semantics, const std::vector<uint8_t> &flags, int hint) {
+        WalkStep step;
+        step.name = name;
+        for (int32_t tree : semantics) step.roots.push_back(features(tree));
+        bool any = false;
+        for (uint8_t bit : flags) any = any || bit;
+        if (any) step.flags = flags;
+        return chooser.choose(step, hint);
+    }
+
+    int64_t choose_count(int32_t feature, int64_t maximum, int64_t selected, bool has_excluded, int64_t excluded) {  // _choose_count
+        int64_t low = 1, high = maximum, depth = 0;
+        while (low < high) {
+            const int64_t middle = floor_div(low + high, 2);
+            int branch;
+            if (has_excluded && excluded == low && low == middle) branch = 1;
+            else if (has_excluded && excluded == high && high == middle + 1) branch = 0;
+            else {
+                WalkStep step;
+                step.name = "count:" + std::to_string(low) + ":" + std::to_string(high);
+                step.kind = 1;
+                step.root = feature;
+                step.numeric[0] = (float)((double)low / (double)maximum); step.numeric[1] = (float)((double)high / (double)maximum);
+                step.numeric[2] = (float)std::log1p((double)maximum); step.numeric[3] = (float)((double)depth / 31.0);
+                const int64_t centre = floor_div(low + high, 2);
+                step.offsets[0] = (float)std::log1p((double)(centre - low)); step.offsets[1] = (float)std::log1p((double)(high - centre - 1));
+                branch = chooser.choose(step, selected > 0 ? (int)(selected > middle) : -1);
+            }
+            if (branch) low = middle + 1; else high = middle;
+            depth++;
+        }
+        return low;
+    }
+
+    static int64_t floor_div(int64_t a, int64_t b) { int64_t q = a / b; if ((a % b != 0) && ((a < 0) != (b < 0))) q--; return q; }
+
+    int index_of(const std::vector<int32_t> &items, int32_t item) {
+        for (size_t i = 0; i < items.size(); i++) if (items[i] == item) return (int)i;
+        PyErr_SetString(PyExc_ValueError, "the evaluated action is not among the choices"); throw Fail();
+    }
+
+    int32_t run(int32_t given) {  // _walk: the action (sampled, or ``given`` evaluated)
+        if (given >= 0 && (!offers_permit(offers, given) || !permitted(given))) {
+            PyErr_SetString(PyExc_ValueError, "Action is outside this exact behavior support"); throw Fail();
+        }
+        auto hint = [&](int index) { return given >= 0 ? index : -1; };
+        const std::vector<std::string> all = kinds();
+        const auto flags = (memory != nullptr && !memory->empty()) ? window_flags(all) : std::map<std::string, std::vector<uint8_t>>();
+        std::set<std::string> fully;
+        for (auto &entry : flags) {
+            bool every = !entry.second.empty();
+            for (uint8_t bit : entry.second) every = every && bit;
+            if (every) fully.insert(entry.first);
+        }
+        std::vector<uint8_t> stale;
+        if (!fully.empty()) for (const std::string &kind : all) stale.push_back(fully.count(kind) ? 1 : 0);
+        std::vector<int32_t> kind_trees;
+        const int32_t kind_tag = text_node("action_kind");
+        for (const std::string &kind : all) kind_trees.push_back(node(kind_tag, {text_node(kind.c_str())}));
+        int given_kind = -1;
+        if (given >= 0) {
+            const std::string &wanted = str(field(given, G.action_kind));
+            for (size_t i = 0; i < all.size(); i++) if (all[i] == wanted) given_kind = (int)i;
+            if (given_kind < 0) { PyErr_SetString(PyExc_ValueError, "kind is not in list"); throw Fail(); }
+        }
+        const std::string kind = all.at((size_t)categorical("kind", kind_trees, stale, given_kind));
+        auto found_flags = flags.find(kind);
+        const std::vector<uint8_t> no_flags, &target_flags = found_flags == flags.end() ? no_flags : found_flags->second;
+        int32_t subject = v_none, panel = v_none, selection = v_none, destination = v_none, x = v_none, y = v_none, count = v_none;
+        auto given_field = [&](int32_t index) { return given >= 0 ? field(given, index) : -1; };
+        if (kind == "open_capability") {
+            std::vector<int32_t> controls, semantics;
+            for (int32_t item : items_of(F(offers, "capability_controls"))) if (permitted(action(kind, -2, -1, -1, item))) controls.push_back(item);
+            for (int32_t item : controls) semantics.push_back(node("capability_panel", {vtext(item)}));
+            const int index = categorical("capability_panel", semantics, target_flags, given >= 0 ? index_of(controls, given_field(G.action_panel)) : -1);
+            subject = context_subject; panel = controls.at((size_t)index);
+        } else if (kind == "close_capability") {
+            subject = context_subject;
+        } else if (in_list_text(kind, CAPABILITY_ACTION_LIST, 10)) {
+            std::vector<int32_t> choices, semantics, refs;
+            for (int32_t item : items_of(F(field(offers, G.offers_capability_panel), "choices"))) {
+                if (!str_is(F(item, "kind"), kind.c_str())) continue;
+                const int32_t made = kind == "trade_resource" ? quantity_representative(kind, num(F(item, "max_count")), F(item, "ref"))
+                                                              : action(kind, -2, -1, -1, -1, F(item, "ref"));
+                if (permitted(made)) { choices.push_back(item); refs.push_back(F(item, "ref")); }
+            }
+            for (int32_t item : choices) semantics.push_back(vcapability_choice(item));
+            const int index = categorical("capability_choice", semantics, {}, given >= 0 ? index_of(refs, given_field(G.action_selection)) : -1);
+            const int32_t choice = choices.at((size_t)index);
+            subject = context_subject; selection = F(choice, "ref");
+            if (kind == "trade_resource") {
+                const int32_t feature = features(vcapability_choice(choice));
+                int64_t excluded = 0;
+                const bool has = repeated_quantity(action(kind, -2, -1, -1, -1, selection, v_count1), excluded);
+                count = int_value(choose_count(feature, num(F(choice, "max_count")), given >= 0 ? count_of(given) : 0, has, excluded));
+            }
+        } else if (kind == "choose_dialog") {
+            const int32_t delivered = field(offers, G.offers_dialog_panel);
+            std::vector<int32_t> semantics, refs;
+            for (int32_t item : items_of(F(delivered, "choices"))) { semantics.push_back(vdialog_choice(delivered, item)); refs.push_back(F(item, "ref")); }
+            const int index = categorical("dialog_choice", semantics, {}, given >= 0 ? index_of(refs, given_field(G.action_selection)) : -1);
+            subject = context_subject; selection = refs.at((size_t)index);
+        } else if (kind == "move_to" || kind == "open_hero" || kind == "open_town") {
+            const std::vector<int32_t> refs = subjects(kind);
+            std::vector<int32_t> semantics;
+            const int32_t tag = text_node(kind.c_str());
+            for (int32_t ref : refs) semantics.push_back(node(tag, {vsubject(observation, ref)}));
+            int index = categorical("subject", semantics, target_flags, given >= 0 ? index_of(refs, given_field(G.action_subject)) : -1);
+            subject = refs.at((size_t)index);
+            if (kind == "move_to") {
+                const auto &size = items_of(F(offers, "size"));
+                const int64_t width = num(size[0]), height = num(size[1]);
+                WalkStep step;
+                step.name = "coordinate"; step.kind = 2; step.width = width; step.height = height;
+                step.root = features(semantics[(size_t)index]);
+                if (guard != nullptr) {
+                    bool found = false;
+                    for (int32_t hero : items_of(field(observation, T.o_heroes)))
+                        if (field(hero, T.h_handle) == subject) {
+                            const auto &position = items_of(field(hero, G.hero_position));
+                            step.hx = num(position[0]); step.hy = num(position[1]); found = true; break;
+                        }
+                    if (!found) { PyErr_SetString(PyExc_StopIteration, "the moving hero"); throw Fail(); }
+                }
+                const int64_t wanted = given >= 0 ? num(field(given, G.action_y)) * width + num(field(given, G.action_x)) : -1;
+                int64_t cell;
+                if (guard == nullptr) {
+                    cell = chooser.choose(step, (int)wanted);
+                } else {
+                    step.has_indices = true;
+                    step.indices = coordinates(subject, (size_t)-1);
+                    int position = -1;
+                    if (given >= 0) {
+                        for (size_t i = 0; i < step.indices.size(); i++) if (step.indices[i] == wanted) position = (int)i;
+                        if (position < 0) { PyErr_SetString(PyExc_ValueError, "coordinate is not in tuple"); throw Fail(); }
+                    }
+                    const std::vector<int64_t> indices = step.indices;
+                    cell = indices.at((size_t)chooser.choose(step, position));
+                }
+                x = int_value(cell % width); y = int_value(cell / width);
+            }
+        } else if (kind == "open_panel") {
+            const int32_t delivered = field(offers, G.offers_panel);
+            std::vector<int32_t> all_controls = items_of(F(delivered, "controls"));
+            for (const char *which : {"hall", "tavern"}) {
+                int copies = 0;
+                for (int32_t control : all_controls) copies += str_is(F(control, "panel"), which);
+                if (copies > 1) { PyErr_SetString(PyExc_ValueError, "Duplicate semantic town panel controls"); throw Fail(); }
+            }
+            std::vector<int32_t> controls, semantics;
+            for (int32_t control : all_controls) if (permitted(panel_action(control))) controls.push_back(control);
+            int selected = -1;
+            if (given >= 0)
+                for (size_t i = 0; i < controls.size(); i++) {
+                    const int32_t which = F(controls[i], "panel");
+                    if (which == field(given, G.action_panel) && (str_is(which, "hall") || str_is(which, "tavern") || F(controls[i], "ref") == field(given, G.action_selection))) {
+                        selected = (int)i; break;
+                    }
+                }
+            for (int32_t control : controls) semantics.push_back(vsemantic(control));
+            const int index = categorical("control", semantics, target_flags, selected);
+            const int32_t control = controls.at((size_t)index);
+            subject = context_subject; panel = F(control, "panel");
+            selection = str_is(panel, "recruitment") ? F(control, "ref") : v_none;
+        } else if (kind == "open_stack") {
+            std::vector<int32_t> choices, semantics;
+            for (int32_t army : items_of(field(offers, G.offers_armies)))
+                for (int32_t slot : items_of(field(army, G.army_slots)))
+                    if (num(field(slot, G.slot_count)) && permitted(action(kind, -2, -1, -1, -1, field(slot, G.slot_ref)))) choices.push_back(field(slot, G.slot_ref));
+            for (int32_t ref : choices) semantics.push_back(varmy_slot(observation, ref, false));
+            const int index = categorical("selection", semantics, target_flags, given >= 0 ? index_of(choices, given_field(G.action_selection)) : -1);
+            subject = context_subject; selection = choices.at((size_t)index);
+        } else if (kind == "select_upgrade" || kind == "open_building" || kind == "select_recruit" || kind == "select_hero") {
+            std::vector<int32_t> choices, semantics, refs;
+            for (int32_t item : items_of(selection_choices(kind)))
+                if (permitted(action(kind, -2, -1, -1, -1, F(item, "ref")))) { choices.push_back(item); refs.push_back(F(item, "ref")); }
+            for (int32_t item : choices) semantics.push_back(vsemantic(item));
+            const int index = categorical("selection", semantics, kind == "select_upgrade" ? no_flags : target_flags,
+                                          given >= 0 ? index_of(refs, given_field(G.action_selection)) : -1);
+            subject = context_subject; selection = refs.at((size_t)index);
+        } else if (kind == "transfer_stack" || in_list_text(kind, ARRANGEMENT_KINDS, 3)) {
+            const int32_t exchange = kind == "transfer_stack" ? F(field(offers, G.offers_panel), "armies") : -1;
+            const std::vector<Pair> listed = exchange >= 0 ? exchange_choices(exchange) : operation_choices(field(offers, G.offers_armies), kind);
+            std::vector<Pair> choices;
+            for (const Pair &pair : listed) if (permitted(pair_action(kind, pair))) choices.push_back(pair);
+            std::vector<int32_t> sources;
+            for (const Pair &pair : choices) if (std::find(sources.begin(), sources.end(), pair.source) == sources.end()) sources.push_back(pair.source);
+            std::vector<int32_t> source_semantics;
+            const int32_t kind_tag_node = text_node(kind.c_str());
+            for (int32_t ref : sources) {
+                const int32_t slot = varmy_slot(observation, ref, false);
+                source_semantics.push_back(kind != "transfer_stack" ? node(kind_tag_node, {slot}) : slot);
+            }
+            const int source_index = categorical("source_slot", source_semantics, {}, given >= 0 ? index_of(sources, given_field(G.action_selection)) : -1);
+            selection = sources.at((size_t)source_index);
+            std::vector<int32_t> destinations, destination_semantics;
+            for (const Pair &pair : choices) if (pair.source == selection) destinations.push_back(pair.destination);
+            const int32_t pair_tag = text_node(kind == "transfer_stack" ? "transfer_pair" : (kind + "_pair").c_str());
+            for (int32_t ref : destinations)
+                destination_semantics.push_back(node(pair_tag, {varmy_slot(observation, selection, false), varmy_slot(observation, ref, true)}));
+            const int destination_index = categorical("destination_slot", destination_semantics, {},
+                                                      given >= 0 ? index_of(destinations, given_field(G.action_destination)) : -1);
+            destination = destinations.at((size_t)destination_index);
+            subject = context_subject;
+            const int64_t maximum = exchange >= 0 ? exchange_maximum(exchange, selection, destination)
+                                                  : army_operation_maximum(field(offers, G.offers_armies), kind, selection, destination);
+            const int32_t feature = features(node(kind == "transfer_stack" ? "transfer_quantity" : (kind + "_quantity").c_str(),
+                                                  {varmy_slot(observation, selection, false), varmy_slot(observation, destination, true)}));
+            if (kind == "transfer_stack" || kind == "split_stack") {
+                int64_t excluded = 0;
+                const bool has = repeated_quantity(action(kind, -2, -1, -1, -1, selection, v_count1, destination), excluded);
+                count = int_value(choose_count(feature, maximum, given >= 0 ? count_of(given) : 0, has, excluded));
+            }
+        } else if (kind == "construct" || kind == "back" || kind == "recruit" || kind == "hire_hero" || kind == "swap_garrison" || kind == "upgrade_stack") {
+            subject = context_subject;
+            if (kind == "upgrade_stack") selection = F(field(offers, G.offers_stack_panel), "selected_upgrade_ref");
+            else if (kind == "construct") selection = F(F(field(offers, G.offers_panel), "building"), "ref");
+            else if (kind == "hire_hero") selection = F(F(field(offers, G.offers_panel), "tavern"), "selected_offer_ref");
+            else if (kind == "recruit") {
+                const int32_t recruit = F(field(offers, G.offers_panel), "recruitment");
+                selection = F(recruit, "selected_offer_ref"); destination = F(F(recruit, "destination"), "ref");
+                const int32_t chosen = find_by_ref(F(recruit, "offers"), selection);
+                const int32_t feature = features(node("quantity", {vsemantic(chosen), vsemantic(F(recruit, "destination"))}));
+                int64_t excluded = 0;
+                const bool has = repeated_quantity(action(kind, -2, -1, -1, -1, selection, v_count1, destination), excluded);
+                count = int_value(choose_count(feature, num(F(recruit, "slider_max")), given >= 0 ? count_of(given) : 0, has, excluded));
+            }
+        }
+        const int32_t chosen = make_action(ActionSpec{kind_value(kind), subject, x, y, panel, selection, count, destination}, schema);
+        if (!offers_permit(offers, chosen) || !permitted(chosen) || (given >= 0 && chosen != given)) {
+            PyErr_SetString(PyExc_ValueError, "Conditional action construction disagrees with support"); throw Fail();
+        }
+        return chosen;
+    }
+
+    int32_t vcapability_choice(int32_t choice) {  // policy._capability_choice
+        const int32_t destination = F(choice, "destination");
+        return node("capability_choice", {vsemantic(choice), node("actor", {vsubject(observation, F(choice, "subject"))}),
+                                          !none(destination) ? node("recipient", {vsubject(observation, destination)}) : node("no_recipient")});
+    }
+};
+
+struct Replay : Chooser {  // evaluates a given action: each step takes the action's own index
+    std::vector<WalkStep> steps;
+    int choose(WalkStep &step, int hint) override {
+        if (hint < 0 || (size_t)hint >= step.size()) { PyErr_SetString(PyExc_ValueError, "Recorded action is outside the compiled conditional support"); throw Fail(); }
+        step.selected = hint;
+        steps.push_back(step);
+        return hint;
+    }
+};
+
+PyObject *py_step(const WalkStep &step) {
+    Ref roots(PyList_New(0));
+    for (int32_t root : step.roots) if (PyList_Append(roots.get(), python_tree(root))) throw Fail();
+    Ref flags(PyTuple_New((Py_ssize_t)step.flags.size()));
+    for (size_t i = 0; i < step.flags.size(); i++) PyTuple_SET_ITEM(flags.get(), (Py_ssize_t)i, PyBool_FromLong(step.flags[i]));
+    Ref indices(PyTuple_New((Py_ssize_t)step.indices.size()));
+    for (size_t i = 0; i < step.indices.size(); i++) PyTuple_SET_ITEM(indices.get(), (Py_ssize_t)i, PyLong_FromLongLong(step.indices[i]));
+    PyObject *root = step.root >= 0 ? python_tree(step.root) : Py_None;
+    return Py_BuildValue("{s:s#,s:i,s:O,s:O,s:O,s:(ffff),s:(ff),s:(LLLL),s:O,s:i}", "name", step.name.data(), (Py_ssize_t)step.name.size(),
+                         "kind", step.kind, "roots", roots.get(), "flags", flags.get(), "root", root,
+                         "numeric", step.numeric[0], step.numeric[1], step.numeric[2], step.numeric[3], "offsets", step.offsets[0], step.offsets[1],
+                         "coordinate", (long long)step.hx, (long long)step.hy, (long long)step.width, (long long)step.height,
+                         "indices", step.has_indices ? indices.get() : Py_None, "selected", step.selected);
+}
+
+PyObject *py_walks(PyObject *, PyObject *args) {  // walks(producer, guarded): (action, trees, steps) at each answered decision (tests)
+    PyObject *object;
+    int guarded;
+    if (!PyArg_ParseTuple(args, "Op", &object, &guarded)) return nullptr;
+    if (Py_TYPE(object) != &ProducerType) { PyErr_SetString(PyExc_TypeError, "a Producer"); return nullptr; }
+    Producer *producer = (Producer *)object;
+    try {
+        prepare_guard();
+        const std::vector<NFrame> &frames = *producer->frames;
+        Tracker tracker;
+        WindowMemory memory;
+        Ref out(PyList_New(0));
+        Support support;
+        std::set<Key> keys;
+        for (size_t i = 0; i < frames.size(); i++) {
+            const bool decided = guarded ? tracker.observe(frames[i], support) : frames[i].kind == F_DECISION;
+            memory.observe(frames, (int32_t)i, keys);
+            if (!decided) continue;
+            int32_t given = -1;
+            for (size_t j = i + 1; j < frames.size() && frames[j].kind != F_DECISION; j++)
+                if (frames[j].kind == F_SUBMITTED && frames[j].decision_seq == frames[i].seq) { given = frames[j].action; break; }
+            if (given < 0) continue;
+            Replay replay;
+            Walk walk(frames[i].observation, frames[i].offers, guarded ? &support : nullptr, &keys, replay);
+            int32_t chosen;
+            try {
+                chosen = walk.run(given);
+            } catch (Fail &) {  // the decision's error in place of its walk
+                PyObject *type, *value, *trace;
+                PyErr_Fetch(&type, &value, &trace);
+                Ref entry(Py_BuildValue("(iOOO)", frames[i].seq, value ? value : Py_None, python_value(given), Py_None));
+                Py_XDECREF(type); Py_XDECREF(value); Py_XDECREF(trace);
+                if (PyList_Append(out.get(), entry.get())) throw Fail();
+                continue;
+            }
+            Ref trees(PyList_New(0));
+            for (int32_t tree : walk.trees) if (PyList_Append(trees.get(), python_tree(tree))) throw Fail();
+            Ref steps(PyList_New(0));
+            for (const WalkStep &step : replay.steps) { Ref item(py_step(step)); if (PyList_Append(steps.get(), item.get())) throw Fail(); }
+            Ref entry(Py_BuildValue("(iOOO)", frames[i].seq, python_value(chosen), trees.get(), steps.get()));
+            if (PyList_Append(out.get(), entry.get())) throw Fail();
+        }
+        Py_INCREF(out.get());
+        return out.get();
+    } catch (Fail &) {
+        return nullptr;
+    }
+}
 PyMethodDef methods[] = {
     {"configure", py_configure, METH_VARARGS, "configure(policy, contract, fn_text, fn_number, fn_node)"},
     {"observation_tree", py_observation_tree, METH_O, "policy.observation_semantics, from the native DAG"},
@@ -3011,6 +3962,7 @@ PyMethodDef methods[] = {
     {"value_tree", py_value_tree, METH_VARARGS, "value_tree(value, observation=0): the semantic tree of a value"},
     {"payloads", py_payloads, METH_O, "payloads(producer): each frame's payload tree (tests)"},
     {"window_memories", py_window_memories, METH_O, "window_memories(producer): WindowMemory keys at each decision (tests)"},
+    {"walks", py_walks, METH_VARARGS, "walks(producer, guarded): the walk of each answered decision (tests)"},
     {"guard_supports", py_guard_supports, METH_VARARGS, "guard_supports(producer, management, windows, decisions): GuardSupport fields (tests)"},
     {nullptr, nullptr, 0, nullptr}};
 
