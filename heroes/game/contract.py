@@ -2258,6 +2258,7 @@ class Frame:
             raise ValueError("Offers must preserve complete context and all coordinate support")
 
 
+_FRAME_BASE = frozenset(("schema", "episode", "player", "seq", "day", "kind"))
 _FRAME_TEMPLATE = None  # (every field of Frame in order, with its default or None, the fields without a default)
 
 
@@ -3479,12 +3480,16 @@ def decode_frame(raw, *, observation=None, offers=None):
     observation, already decoded by the caller: from this raw's own, or from
     the earlier view that a decision without one refers to. ``offers``, when
     given, are the frame's typed offers (raw then carries none)."""
-    data = _record(raw, Frame)
+    return _decode_frame_record(_record(raw, Frame), observation, offers)
+
+
+def _decode_frame_record(data, observation=None, offers=None):
+    """``decode_frame`` of a record that ``_record`` checked and that the caller hands over: it is changed here."""
     if offers is not None:
-        if type(offers) is not Offers or "offers" in raw:
+        if type(offers) is not Offers or "offers" in data:
             raise ValueError("Typed offers replace the wire offers")
         data["offers"] = offers
-    if not {"schema", "episode", "player", "seq", "day", "kind"} <= data.keys():
+    if not _FRAME_BASE <= data.keys():
         raise ValueError("History JSON requires explicit schema and base fields")
     profile = profile_for(data["schema"])
     if data["schema"] != profile.history_schema:

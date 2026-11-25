@@ -210,7 +210,10 @@ class Producer:
                 # wire form and decoding that again gave an equal value, built twice.
                 offers = contract.Offers.from_observation(observation, schema=self.profile.action_schema)
             # An observation is decoded once: here, or for a decision when its view arrived.
-            frame = contract.decode_frame(raw, observation=observation, offers=offers)
+            # decode_frame(raw, ...) without its copy of raw, a dict made above for this frame alone.
+            if not contract._field_set(contract.Frame).issuperset(raw):
+                raise ValueError("Unknown fields in Frame")
+            frame = contract._decode_frame_record(raw, observation, offers)
             self.history.append(frame)
             appended.append(frame)
             if record_kind == "view":
