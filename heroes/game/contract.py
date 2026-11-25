@@ -545,6 +545,8 @@ def army_slot(armies, ref):
     One decision asks this some hundred times about the same two tuples of
     frozen armies, the window's and the offers', so each is indexed once.
     """
+    if armies is _LAST_SLOT_PLACES[0]:
+        return _LAST_SLOT_PLACES[1].get(ref, _NO_SLOT)
     if type(armies) is not tuple:
         return next(((army, slot) for army in armies for slot in army.slots if slot.ref == ref), (None, None))
     known = _SLOT_PLACES.get(id(armies))
@@ -556,7 +558,12 @@ def army_slot(armies, ref):
         if len(_SLOT_PLACES) >= 8:
             _SLOT_PLACES.clear()  # the entry holds its tuple, so an id names nothing else while it is kept
         known = _SLOT_PLACES[id(armies)] = (armies, found)
-    return known[1].get(ref, (None, None))
+    _LAST_SLOT_PLACES[:] = known  # the tuple asked about last, which this holds, and its index
+    return known[1].get(ref, _NO_SLOT)
+
+
+_LAST_SLOT_PLACES = [None, None]
+_NO_SLOT = (None, None)
 
 
 def army_operation_maximum(armies, kind, source_ref, destination_ref):

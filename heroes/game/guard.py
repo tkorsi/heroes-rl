@@ -337,10 +337,24 @@ class GuardSupport:
         """The coordinates the hero may move to, as row-major indices in ascending order."""
         width, height, _ = offers.size
         revealed = self._revealed_coordinates(subject, observation)
-        return (index for index in sorted(y * width + x for x, y in revealed)
+        return (index for index in _row_major(revealed, width)
                 if offers.permits(c.Action("move_to", subject, index % width, index // width,
                                            schema=offers.schema))
                 and self._permits_movement(subject, index % width, index // width, revealed))
+
+
+_ROW_MAJOR = {}  # (id of a set of revealed cells, width) -> (the set, its cells as row-major indices in ascending order)
+
+
+def _row_major(revealed, width):
+    """``sorted(y * width + x for x, y in revealed)``, once for the same set (``_revealed`` keeps it per tile tuple)."""
+    known = _ROW_MAJOR.get((id(revealed), width))
+    if known is None or known[0] is not revealed:
+        known = (revealed, tuple(sorted(y * width + x for x, y in revealed)))
+        if len(_ROW_MAJOR) >= 16:
+            _ROW_MAJOR.clear()  # the entry holds its set, so an id names nothing else while it is kept
+        _ROW_MAJOR[id(revealed), width] = known
+    return known[1]
 
 
 _REVEALED = {}  # (id of a tile tuple, level) -> (the tuple, the cells of that level it shows)
