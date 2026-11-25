@@ -10436,3 +10436,17 @@ On the same live game (seed 1, 40 days, the machine busy with the other run) the
 | Peak memory footprint of the command | 57.7 GB |
 
 This seed list gives longer games than the batches before it (16.2 million decisions against 13.2 million in update 2036), so the baseline is 41 minutes. Ten minutes is a factor of 4.1. The last 380 s were the tail: ten games still in play after the 90th was in.
+
+### 2026-11-25 — Throughput windows: the number of actors
+
+`scripts/window_bench.py` (the training configuration: actors recording the learner as arrays, the training guard and limits) keeps every actor busy on the same seeded games and counts the decisions answered in 150 s after 40 s of warm-up; the machine free; `results/windows.jsonl`. These are the first minutes of games, which are cheaper per decision than their later days, so they compare versions and actor counts, not batches.
+
+| Tree and engine | Actors | Decisions per second |
+| --- | --- | --- |
+| main, default engine | 14 | 7,950 |
+| `src-wip15` (the changes so far), engine `claude-g10-e2` | 14 | 9,902 (+25%) |
+| the same | 16 | 10,134 |
+| the same | 18 | 9,929 |
+| the same | 20 | 10,195 |
+
+From fourteen actors on, the sixteen cores are saturated: two to six more actors change the rate by less than 3%, about the difference between two windows of the same count. The gain of the changes in this window (1.25) is smaller than the one measured on a single game beside a busy machine (1.42); with every core busy each process is slower again, and the early days of a game are mostly map views, whose capture was already short. The full batch below says what it is over whole games.
