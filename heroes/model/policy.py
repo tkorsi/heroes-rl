@@ -552,7 +552,12 @@ class ContextualEncoder:
             self.decision = None
         if frame.observation is not None:
             self.observation = frame.observation
-        return ContextualInput(frame, payload, frame.observation, guard, self.window_memory.observe(frame))
+        # ContextualInput(frame, payload, frame.observation, guard, memory): the same frozen value, its fields put in
+        # place at once (in field order) instead of one object.__setattr__ each; it has no checks of its own.
+        item = object.__new__(ContextualInput)
+        item.__dict__.update(frame=frame, semantics=payload, observation=frame.observation, guard=guard,
+                             window_memory=self.window_memory.observe(frame))
+        return item
 
 
 def encode_history(frames, *, guard=None):
