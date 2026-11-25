@@ -3136,6 +3136,10 @@ def _decoded_once(decoder, raw, *context):
     return value
 
 
+def _decode_objects(raw):
+    return tuple(_decode_simple(item, ObjectView, ("position",)) for item in _array(raw))
+
+
 def _decode_own_stack(raw):
     return OwnArmyStack(**_exact_record(raw, OwnArmyStack))
 
@@ -3289,7 +3293,8 @@ def decode_observation(raw, *, schema=SCHEMA, unchanged_map=None):
     elif changed is not None:
         data["tiles"] = changed
     if "objects" in data:
-        data["objects"] = tuple(_decode_simple(item, ObjectView, ("position",)) for item in _array(data["objects"]))
+        # The objects of a view that are exactly those of an earlier one are that tuple: decoded and checked once.
+        data["objects"] = _decoded_once(_decode_objects, data["objects"])
     for name, decoder in (("heroes", _decode_hero), ("towns", _decode_town)):
         if name in data:
             data[name] = tuple(_decoded_once(decoder, item) for item in _array(data[name]))
