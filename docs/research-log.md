@@ -10661,3 +10661,18 @@ Final = `src-wip41` (commit `3c58cab`), engine `claude-g10-e2`, orjson, 24 actor
 - The engine `claude-g10-e2`: this branch's `engine/ExplorerRL` copied into `vcmi/AI/ExplorerRL` and its patches applied (`python3 tools/prepare_vcmi.py --check`), `cmake --build vcmi/build --target vcmiclient vcmiserver ExplorerRL Nullkiller BattleAI vcmireplay`, `python3 tools/freeze_runtime.py $A/runtime/NAME` (`$G/scripts/build-e2.sh`).
 
 **Logs.** All under `Heroes-artifacts/claude-g10/`: batches `states/LABEL/log.jsonl` (the trainer's own records, every game and the update) with `logs/LABEL.log` (the command's output and `/usr/bin/time -l`) and `logs/LABEL.cpu` (processor of actors and engines every 5 s), for `base14-s1`, `base14-s2` (main), `cand20-s1` (01:45 tree), `cand24-s1`, `cand24-s2` (04:25 tree), `int24-s1`, `int24-s2` (05:40 tree), `fin24-s1`, `fin24-s2` (final tree); queues `logs/queue-*.log`; exactness `results/verify-v1…v6*.jsonl` with `logs/verify-*.log`; windows `results/windows.jsonl`; replays and profiles `replays/`, `results/*.prof`; live games alone `results/live-alone.jsonl`.
+
+**Addendum (10:48): a third seed list, not used during the work.** `--seed 2026112503`, checkpoint 2036, main at 14 actors (`base14-s3`, 09:47–10:23) then the final tree at 24 (`fin24-s3`, 10:23–10:48), nothing else running (`logs/queue-11.log`).
+
+| | main | final tree |
+| --- | --- | --- |
+| Collection | 1,989.1 s | **1,370.1 s** (1.45x) |
+| PPO | 145.0 s | 144.1 s |
+| The command | 2,136.0 s | 1,516.2 s |
+| Decisions; per second | 13,779,808; 6,928 | 13,779,784; 10,058 |
+| Usable / failed / day 365 / decision limit | 100 / 0 / 0 / 0 | 100 / 0 / 0 / 0 |
+| Samples, optimizer steps | 7,382,031, 10 | 7,382,031, 10 |
+| Games in by: 50th, 90th, last | 1,100, 1,727, 1,989 s | 748, 1,227, 1,370 s |
+| Processor-seconds of the command; peak memory | 26,538; 55.4 GB | 19,513; 55.8 GB |
+
+All 100 games the same in day, outcome, samples, training reward and status; 34 differ by one decision in one seat's count (the terminal race). Over the three seed lists the final configuration collects in 0.685, 0.699 and 0.689 of main's time.
