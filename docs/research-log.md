@@ -10561,3 +10561,17 @@ All 200 games the same in day, outcome and samples; 18 and 25 differ by one deci
 Sixteen cores give about 8.6 solo games' worth: the loss grows steadily with the load (busy performance cores run at a lower clock and share their caches; four of the sixteen cores are efficiency cores), not at one software limit.
 
 **A test the tree failed, and what the final tree is.** The full test suite, run again after the last changes, found one failure introduced at 05:33 (`b0ee441`, a view's objects decoded once when identical to an earlier view's): `tests/test_env.py::test_an_engine_that_repeats_the_map_plays_the_same_game` checks that each view of a map-repeating engine brings its own object tuple, and sharing identical tuples breaks that check (values and games were unchanged: the replays and the live game kept their digests). The change measured no faster, so it is reverted (`3c58cab`) rather than the test changed. The final tree is `src-wip41` = `3c58cab`: wip39 without that change, plus a submitted answer checked without encoding its message again and emitted frames built directly (`926ef22`); both replays exact, the live 40-day game's digest unchanged, 84 tests passed, 3 skipped. Its own batches on both seed lists and a 100-game exactness comparison against main are queued (`logs/queue-8.log` to `queue-10.log`).
+
+### 2026-11-25 — The final tree against main on all 100 games of a batch
+
+`scripts/verify-pair.sh v5 100 2026112501 8 src-2c1672b - src-wip41 claude-g10-e2` (07:16 to 08:30, both runs at once, eight actors each, each from its own copy of checkpoint 2036; `results/verify-v5-a.jsonl` main, `-b.jsonl` the final tree; not a timing run): the normal command with the batch put in game-number order before PPO and every trajectory digested.
+
+| | main | final tree |
+| --- | --- | --- |
+| Trajectories | 100 | 100, **all 100 identical** to main's (actions, log-probabilities, values, rewards, bootstrap, guard, compiled recipe) |
+| PPO input (digest over the 100 trajectories in order) | | **identical** |
+| Samples, optimizer steps | 8,229,641, 10 | 8,229,641, 10 |
+| Weights before → after | `bc8e07f3…` → changed | `bc8e07f3…` → changed |
+| Policy loss, value loss | 3.9197e-06, 0.53021095 | 3.9316e-06, 0.53021053 |
+
+The losses differ by MLX's run-to-run variation (main against main, v2: the same order of difference on identical input).
