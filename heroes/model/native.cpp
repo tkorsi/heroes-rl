@@ -12,6 +12,8 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 
+#include <arm_neon.h>
+
 #include <algorithm>
 #include <cctype>
 #include <chrono>
@@ -4006,6 +4008,195 @@ PyObject *py_walk_times(PyObject *, PyObject *object) {  // walk_times(producer)
         return nullptr;
     }
 }
+
+// == torch's CPU arithmetic of the sampling step, bit for bit (torch 2.9, aarch64 without MKL) ===================
+// log_softmax: ATen's _vec_log_softmax_lastdim over 4-lane NEON vectors (reduce_all, map_reduce_all, the aarch64
+// VecReduceAllSIMD), with Sleef_expf4_u10 and Sleef_logf4_u10 taken from libtorch_cpu itself. exp: vml's vec::map.
+// sum: SumKernel's cascade_sum for one contiguous row. exponential_: CPUGeneratorImpl's mt19937, random64 and
+// exponential_distribution<double>.
+
+typedef float32x4_t (*Sleef4)(float32x4_t);
+Sleef4 sleef_exp = nullptr, sleef_log = nullptr;
+
+inline float32x4_t loadu_n(const float *p, int64_t count) {
+    float tmp[4] = {0.f, 0.f, 0.f, 0.f};
+    std::memcpy(tmp, p, (size_t)count * sizeof(float));
+    return vld1q_f32(tmp);
+}
+inline float32x4_t set_n(float32x4_t a, float32x4_t b, int64_t count) {  // Vectorized<float>::set
+    float x[4], y[4];
+    vst1q_f32(x, a); vst1q_f32(y, b);
+    for (int64_t i = 0; i < count; i++) x[i] = y[i];
+    return vld1q_f32(x);
+}
+template <class Op> float reduce_small(Op op, float32x4_t acc, int64_t size) {  // vec_reduce_all(fun, acc, size)
+    float lanes[4];
+    vst1q_f32(lanes, acc);
+    for (int64_t i = 1; i < size; i++) {
+        float next[4] = {lanes[i], 0.f, 0.f, 0.f};
+        acc = op(acc, vld1q_f32(next));
+    }
+    return vgetq_lane_f32(acc, 0);
+}
+template <class Op> float reduce_simd(Op op, float32x4_t v) {  // VecReduceAllSIMD<float, Op> on aarch64
+    float32x4_t other = vextq_f32(v, v, 2);
+    v = op(v, other);
+    other = vrev64q_f32(v);
+    v = op(v, other);
+    return vgetq_lane_f32(v, 0);
+}
+template <class Map, class Op> float map_reduce_all(Map map, Op op, const float *data, int64_t size) {
+    if (size < 4) return reduce_small(op, map(loadu_n(data, size)), size);
+    int64_t d = 4;
+    float32x4_t acc = map(vld1q_f32(data));
+    for (; d < size - (size % 4); d += 4) acc = op(acc, map(vld1q_f32(data + d)));
+    if (size - d > 0) acc = set_n(acc, op(acc, map(loadu_n(data + d, size - d))), size - d);
+    return reduce_simd(op, acc);
+}
+
+void exact_log_softmax(const float *x, int64_t n, float *out) {
+    auto same = [](float32x4_t v) { return v; };
+    auto maximum = [](float32x4_t a, float32x4_t b) { return vmaxq_f32(a, b); };
+    const float max_input = map_reduce_all(same, maximum, x, n);
+    const float32x4_t max_vector = vdupq_n_f32(max_input);
+    const float sum = map_reduce_all([&](float32x4_t v) { return sleef_exp(vsubq_f32(v, max_vector)); },
+                                     [](float32x4_t a, float32x4_t b) { return vaddq_f32(a, b); }, x, n);
+    const float log_sum = vgetq_lane_f32(sleef_log(loadu_n(&sum, 1)), 0);
+    const float32x4_t sum_vector = vdupq_n_f32(log_sum);
+    int64_t i = 0;
+    for (; i + 4 <= n; i += 4) vst1q_f32(out + i, vsubq_f32(vsubq_f32(vld1q_f32(x + i), max_vector), sum_vector));
+    if (i < n) {
+        float tmp[4];
+        vst1q_f32(tmp, vsubq_f32(vsubq_f32(loadu_n(x + i, n - i), max_vector), sum_vector));
+        std::memcpy(out + i, tmp, (size_t)(n - i) * sizeof(float));
+    }
+}
+
+void exact_exp(const float *x, int64_t n, float *out) {  // at::vml::vexp: vec::map with Sleef
+    int64_t i = 0;
+    for (; i + 4 <= n; i += 4) vst1q_f32(out + i, sleef_exp(vld1q_f32(x + i)));
+    if (i < n) {
+        float tmp[4];
+        vst1q_f32(tmp, sleef_exp(loadu_n(x + i, n - i)));
+        std::memcpy(out + i, tmp, (size_t)(n - i) * sizeof(float));
+    }
+}
+
+int64_t ceil_log2(int64_t x) { int64_t r = 0; while (((int64_t)1 << r) < x) r++; return r; }
+
+// SumKernel's multi_row_sum over ``nrows`` interleaved rows of T (float or a 4-lane vector)
+template <class T, int nrows, class Load, class Add> void multi_row_sum(T (&out)[nrows], Load load, Add add, T zero, int64_t size) {
+    const int64_t num_levels = 4;
+    const int64_t level_power = std::max<int64_t>(4, ceil_log2(size) / num_levels);
+    const int64_t level_step = (int64_t)1 << level_power;
+    const int64_t level_mask = level_step - 1;
+    T acc[4][nrows];
+    for (auto &row : acc) for (auto &item : row) item = zero;
+    int64_t i = 0;
+    for (; i + level_step <= size;) {
+        for (int64_t j = 0; j < level_step; ++j, ++i)
+            for (int k = 0; k < nrows; ++k) acc[0][k] = add(acc[0][k], load(i, k));
+        for (int64_t j = 1; j < num_levels; ++j) {
+            for (int k = 0; k < nrows; ++k) { acc[j][k] = add(acc[j][k], acc[j - 1][k]); acc[j - 1][k] = zero; }
+            const int64_t mask = level_mask << (j * level_power);
+            if ((i & mask) != 0) break;
+        }
+    }
+    for (; i < size; ++i) for (int k = 0; k < nrows; ++k) acc[0][k] = add(acc[0][k], load(i, k));
+    for (int64_t j = 1; j < num_levels; ++j) for (int k = 0; k < nrows; ++k) acc[0][k] = add(acc[0][k], acc[j][k]);
+    for (int k = 0; k < nrows; ++k) out[k] = acc[0][k];
+}
+
+template <class T, class Load, class Add> T row_sum(Load load, Add add, T zero, int64_t size) {  // SumKernel's row_sum
+    T partial[4];
+    const int64_t size_ilp = size / 4;
+    multi_row_sum<T, 4>(partial, [&](int64_t i, int k) { return load(i * 4 + k); }, add, zero, size_ilp);
+    for (int64_t i = size_ilp * 4; i < size; ++i) partial[0] = add(partial[0], load(i));
+    for (int k = 1; k < 4; ++k) partial[0] = add(partial[0], partial[k]);
+    return partial[0];
+}
+
+float exact_sum(const float *x, int64_t n) {  // torch.sum of a contiguous float32 vector (cascade_sum)
+    auto add = [](float a, float b) { return a + b; };
+    float total;
+    if (n >= 4) {
+        const int64_t vec_size = n / 4;
+        const float32x4_t lanes = row_sum<float32x4_t>([&](int64_t i) { return vld1q_f32(x + 4 * i); },
+                                                       [](float32x4_t a, float32x4_t b) { return vaddq_f32(a, b); }, vdupq_n_f32(0.f), vec_size);
+        float final_acc = 0.f;
+        for (int64_t k = vec_size * 4; k < n; ++k) final_acc += x[k];
+        float partials[4];
+        vst1q_f32(partials, lanes);
+        for (int k = 0; k < 4; ++k) final_acc += partials[k];
+        total = final_acc;
+    } else {
+        total = row_sum<float>([&](int64_t i) { return x[i]; }, add, 0.f, n);
+    }
+    return 0.f + total;  // accumulated into the zero-filled output
+}
+
+struct MT19937 {  // at::mt19937 as CPUGeneratorImpl seeds and draws it
+    uint32_t state[624];
+    int left = 1;
+    uint32_t next = 0;
+    void seed(uint64_t value) {
+        state[0] = (uint32_t)(value & 0xffffffffu);
+        for (int j = 1; j < 624; j++) state[j] = 1812433253u * (state[j - 1] ^ (state[j - 1] >> 30)) + (uint32_t)j;
+        left = 1; next = 0;
+    }
+    static uint32_t twist(uint32_t u, uint32_t v) { return (((u & 0x80000000u) | (v & 0x7fffffffu)) >> 1) ^ ((v & 1) ? 0x9908b0dfu : 0u); }
+    void next_state() {
+        uint32_t *p = state;
+        left = 624; next = 0;
+        for (int j = 624 - 397 + 1; --j; p++) *p = p[397] ^ twist(p[0], p[1]);
+        for (int j = 397; --j; p++) *p = p[397 - 624] ^ twist(p[0], p[1]);
+        *p = p[397 - 624] ^ twist(p[0], state[0]);
+    }
+    uint32_t operator()() {
+        if (--left == 0) next_state();
+        uint32_t y = state[next++];
+        y ^= (y >> 11);
+        y ^= (y << 7) & 0x9d2c5680u;
+        y ^= (y << 15) & 0xefc60000u;
+        y ^= (y >> 18);
+        return y;
+    }
+    uint64_t random64() { const uint32_t high = (*this)(); const uint32_t low = (*this)(); return ((uint64_t)high << 32) | low; }
+    float exponential() {  // exponential_distribution<double>(1) cast to float
+        const double uniform = (double)(random64() & ((1ULL << 53) - 1)) * (1.0 / (double)(1ULL << 53));
+        return (float)(-1.0 / 1.0 * std::log1p(-uniform));
+    }
+};
+
+PyObject *py_configure_math(PyObject *, PyObject *args) {
+    unsigned long long exp_address, log_address;
+    if (!PyArg_ParseTuple(args, "KK", &exp_address, &log_address)) return nullptr;
+    sleef_exp = (Sleef4)(uintptr_t)exp_address; sleef_log = (Sleef4)(uintptr_t)log_address;
+    Py_RETURN_NONE;
+}
+
+PyObject *py_exact(PyObject *, PyObject *args) {  // exact(what, float32 bytes[, seed, draws]): tests of the emulations
+    const char *what;
+    Py_buffer buffer;
+    unsigned long long seed = 0;
+    long draws = 0;
+    if (!PyArg_ParseTuple(args, "sy*|Kl", &what, &buffer, &seed, &draws)) return nullptr;
+    const int64_t n = buffer.len / 4;
+    std::vector<float> in(n), out(std::max<int64_t>(n, draws));
+    std::memcpy(in.data(), buffer.buf, (size_t)n * 4);
+    PyBuffer_Release(&buffer);
+    const std::string kind = what;
+    if (kind == "sum") return PyFloat_FromDouble(exact_sum(in.data(), n));
+    if (kind == "log_softmax") exact_log_softmax(in.data(), n, out.data());
+    else if (kind == "exp") exact_exp(in.data(), n, out.data());
+    else if (kind == "exponential") {  // draws numbers from a generator seeded with ``seed``, in batches of n
+        MT19937 generator;
+        generator.seed(seed);
+        for (long i = 0; i < draws; i++) out[(size_t)i] = generator.exponential();
+        return PyBytes_FromStringAndSize((const char *)out.data(), draws * 4);
+    } else { PyErr_SetString(PyExc_ValueError, "unknown"); return nullptr; }
+    return PyBytes_FromStringAndSize((const char *)out.data(), n * 4);
+}
 PyMethodDef methods[] = {
     {"configure", py_configure, METH_VARARGS, "configure(policy, contract, fn_text, fn_number, fn_node)"},
     {"observation_tree", py_observation_tree, METH_O, "policy.observation_semantics, from the native DAG"},
@@ -4020,6 +4211,8 @@ PyMethodDef methods[] = {
     {"value_tree", py_value_tree, METH_VARARGS, "value_tree(value, observation=0): the semantic tree of a value"},
     {"payloads", py_payloads, METH_O, "payloads(producer): each frame's payload tree (tests)"},
     {"window_memories", py_window_memories, METH_O, "window_memories(producer): WindowMemory keys at each decision (tests)"},
+    {"configure_math", py_configure_math, METH_VARARGS, "configure_math(Sleef_expf4_u10, Sleef_logf4_u10)"},
+    {"exact", py_exact, METH_VARARGS, "exact(what, float32 bytes[, seed, draws]): torch's arithmetic, emulated (tests)"},
     {"walk_times", py_walk_times, METH_O, "walk_times(producer): seconds following frames and walking (tests)"},
     {"walks", py_walks, METH_VARARGS, "walks(producer, guarded): the walk of each answered decision (tests)"},
     {"guard_supports", py_guard_supports, METH_VARARGS, "guard_supports(producer, management, windows, decisions): GuardSupport fields (tests)"},

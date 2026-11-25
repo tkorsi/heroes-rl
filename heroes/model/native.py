@@ -58,6 +58,8 @@ def module():
     address = lambda function: ctypes.cast(function, ctypes.c_void_p).value  # noqa: E731
     extension.configure(policy, contract, address(lib.fn_text), address(lib.fn_number), address(lib.fn_node))
     extension.configure_values(*_schema(contract))
+    theirs = ctypes.CDLL(str(Path(fast.torch.__file__).parent / "lib" / "libtorch_cpu.dylib"))
+    extension.configure_math(address(theirs.Sleef_expf4_u10), address(theirs.Sleef_logf4_u10))
     _MODULE = extension
     return extension
 
