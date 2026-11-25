@@ -949,6 +949,26 @@ int32_t v_items(VKind kind, int32_t type, std::vector<int32_t> items) {
 
 struct JsonError {};
 
+
+// Decoded JSON subtrees by their bytes: a view repeats most of the view before it (objects, heroes, towns, armies,
+// panels), and a repeated stretch of at least SUBTREE_MIN bytes is found by a skip, a hash and a byte compare
+// instead of being decoded and interned again. Equal bytes decode to the equal value; entries name values, so
+// the memo is emptied with the values (FRESH) and when it holds too many bytes.
+const size_t SUBTREE_MIN = 64, SUBTREE_BYTES = 64u << 20;
+struct SubtreeEntry { int32_t spec; int32_t value; std::string bytes; };
+std::unordered_map<uint64_t, SubtreeEntry> subtrees;
+size_t subtree_bytes = 0;
+
+inline uint64_t hash_bytes(const char *data, size_t size) {
+    uint64_t h = 0x9E3779B97F4A7C15ULL ^ (size * 0xff51afd7ed558ccdULL);
+    size_t i = 0;
+    for (; i + 8 <= size; i += 8) { uint64_t v; std::memcpy(&v, data + i, 8); h = (h ^ v) * 0xff51afd7ed558ccdULL; h ^= h >> 29; }
+    uint64_t tail = 0;
+    std::memcpy(&tail, data + i, size - i);
+    h = (h ^ tail) * 0xc4ceb9fe1a85ec53ULL;
+    return mix64(h);
+}
+
 struct Json {  // a strict JSON reader over one message, decoding by the contract's specs
     const char *p, *end;
     std::string scratch;
@@ -1072,6 +1092,33 @@ struct Json {  // a strict JSON reader over one message, decoding by the contrac
 
     int32_t value(int32_t spec_index) {
         const Spec &spec = specs[(size_t)spec_index];
+        if ((spec.kind == S_TUPLE || spec.kind == S_RECORD) && end - p >= (long)SUBTREE_MIN) {
+            ws();
+            const char *start = p;
+            skip();
+            const size_t size = (size_t)(p - start);
+            if (size >= SUBTREE_MIN) {
+                FRESH(subtrees);
+                if (subtrees.empty()) subtree_bytes = 0;
+                const uint64_t key = hash_bytes(start, size) ^ ((uint64_t)(uint32_t)spec_index * 0x9E3779B97F4A7C15ULL);
+                auto found = subtrees.find(key);
+                if (found != subtrees.end() && found->second.spec == spec_index && found->second.bytes.size() == size
+                    && std::memcmp(found->second.bytes.data(), start, size) == 0)
+                    return found->second.value;  // p is past it already
+                p = start;
+                const int32_t decoded = decode(spec);
+                if (subtree_bytes + size > SUBTREE_BYTES) { subtrees.clear(); subtree_bytes = 0; }
+                SubtreeEntry &entry = subtrees[key];
+                subtree_bytes += size - entry.bytes.size();
+                entry.spec = spec_index; entry.value = decoded; entry.bytes.assign(start, size);
+                return decoded;
+            }
+            p = start;
+        }
+        return decode(spec);
+    }
+
+    int32_t decode(const Spec &spec) {
         switch (spec.kind) {
             case S_OPTIONAL: if (literal("null")) return v_none; return value(spec.inner[0]);
             case S_STR: { const std::string &text = string(); return v_scalar(V_STR, 0, string_id(text.data(), text.size())); }
@@ -1101,15 +1148,19 @@ struct Json {  // a strict JSON reader over one message, decoding by the contrac
         std::vector<int32_t> items(type.fields.size(), -1);
         expect('{');
         if (!take('}')) {
+            size_t guess = 0;  // fields usually come in the schema's order
             do {
                 const std::string &key = string();
-                auto found = type.by_name.find(key);
-                if (found == type.by_name.end()) {
+                size_t index = type.fields.size();
+                if (guess < type.fields.size() && type.fields[guess].name == key) index = guess;
+                else for (size_t i = 0; i < type.fields.size(); i++) if (type.fields[i].name == key) { index = i; break; }
+                if (index == type.fields.size()) {
                     PyErr_Format(PyExc_ValueError, "Unknown fields in %s", type.name.c_str());
                     fail("unknown field");
                 }
+                guess = index + 1;
                 expect(':');
-                items[(size_t)found->second] = value(type.fields[(size_t)found->second].spec);
+                items[index] = value(type.fields[index].spec);
             } while (take(','));
             expect('}');
         }
