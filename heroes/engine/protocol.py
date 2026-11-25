@@ -67,7 +67,7 @@ def loads(data):
     range, a byte order mark, invalid text) and every message with a run of 19 digits is left to json, with its
     result or its error.
     """
-    if _orjson_loads is not None and _LONG_RUN not in data.translate(_DIGIT_ONES):
+    if _orjson_loads is not None and type(data) in (bytes, bytearray) and _LONG_RUN not in data.translate(_DIGIT_ONES):
         try:
             return _orjson_loads(data)
         except _OrjsonError:

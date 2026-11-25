@@ -3552,7 +3552,7 @@ def _decode_frame_record(data, observation=None, offers=None):
         if event.get("capability") is not None:
             event["capability"] = decode_capability_panel(event["capability"], schema=profile.history_schema)
         data["event"] = _decode_simple(event, VisibleEvent)
-    if data.get("offers") is not None and type(data["offers"]) is not Offers:
+    if offers is None and data.get("offers") is not None:
         offer = _record(data["offers"], Offers)
         if "schema" in offer or profile == WINDOWS_PROFILE and "panel" in offer:
             raise ValueError("Unsupported offer schema/panel wire field")

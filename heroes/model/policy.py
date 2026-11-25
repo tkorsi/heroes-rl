@@ -14,7 +14,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, fields, is_dataclass
 import hashlib
 import json
-from math import copysign, log1p, sqrt
+from math import copysign, isnan, log1p, sqrt
 
 import torch
 from torch import Tensor, nn
@@ -1289,11 +1289,16 @@ class ContextualDistribution:
     def _choose(self, name, logits, selected, generator, trace):
         log_probs = torch.log_softmax(logits, 0)
         if selected is None:
-            # torch.multinomial(p, 1, generator) without its checks of p (finite, non-negative, not all zero,
-            # which exp(log_softmax) always is): the same exponential draw from the generator and the same
-            # float32 division and argmax that ATen's single-sample path computes, so the same index.
             probabilities = log_probs.detach().exp()
-            selected = int(torch.argmax(probabilities / torch.empty_like(probabilities).exponential_(1, generator=generator)))
+            # A NaN, +inf or entirely -inf input makes every log-softmax entry NaN.
+            # Let torch diagnose invalid inputs before drawing from the game generator.
+            if (probabilities.device.type == "cpu" and probabilities.dtype == torch.float32
+                    and probabilities.numel() and not isnan(probabilities[0].item())):
+                # Same exponential draw, division and argmax as ATen's single-sample CPU path.
+                noise = torch.empty_like(probabilities).exponential_(1, generator=generator)
+                selected = int(torch.argmax(probabilities / noise))
+            else:
+                selected = int(torch.multinomial(probabilities, 1, generator=generator).item())
         trace.append(ConditionalProbability(name, selected, logits.numel(), log_probs[selected]))
         recording = self.recording
         if recording is not None:
