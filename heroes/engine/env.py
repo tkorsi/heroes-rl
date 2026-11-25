@@ -604,6 +604,15 @@ class NativeEnv(Env):
     def producer(self, player):
         return self.sides[player].producer
 
+    def reset(self, directory, episode, seed, game_map=None):
+        # The values and trees of the games before are dropped once nothing of theirs is alive: a worker plays
+        # game after game, and every game interns its own observations.
+        self.close()
+        self.sides = ()
+        from ..model import native
+        native.module().reset_values()
+        return super().reset(directory, episode, seed, game_map=game_map)
+
     def step(self, action):
         """Answer the current request with the action of value id ``action`` and wait for the next one."""
         if self.request is None:

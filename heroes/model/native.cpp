@@ -639,9 +639,9 @@ void clear_value_trees();  // the memos of trees made from values, which name no
 
 int live_recorders = 0;  // recorders hold node ids across frames: no reset while one is open
 
-void reset_if_large() {
-    if (nodes.size() < NODE_LIMIT || live_recorders > 0) return;
+void clear_nodes() {  // every node, and every memo that names nodes (plans hold the nodes of their tags)
     clear_value_trees();
+    plans.clear();
     for (Node &item : nodes) Py_XDECREF(item.python);
     nodes.clear();
     texts.clear();
@@ -651,6 +651,11 @@ void reset_if_large() {
     observations.clear();
     slots.clear();
     slot_net = nullptr;
+}
+
+void reset_if_large() {
+    if (nodes.size() < NODE_LIMIT || live_recorders > 0) return;
+    clear_nodes();
 }
 
 PyObject *intern_name(const char *name) {
@@ -798,6 +803,11 @@ std::vector<Spec> specs;
 std::vector<VType> vtypes;
 std::unordered_map<std::string, int32_t> vtype_index;
 int32_t v_none = -1, v_true = -1, v_false = -1, v_empty = -1;
+size_t base_values = 0;  // values made by configure_values (constants, field defaults): they outlive every game
+uint64_t value_generation = 0;  // advanced when the values of the games so far are dropped (reset_values)
+int live_producers = 0, live_seats = 0;
+// A memo whose keys or contents name values is emptied when the generation advances.
+#define FRESH(table) do { static uint64_t seen_generation = 0; if (seen_generation != value_generation) { (table).clear(); seen_generation = value_generation; } } while (0)
 
 int32_t string_id(const char *bytes, size_t size) {
     std::string key(bytes, size);
@@ -1159,6 +1169,7 @@ PyObject *py_configure_values(PyObject *, PyObject *args) {
     } catch (Fail &) {
         return nullptr;
     }
+    base_values = vals.size();
     Py_RETURN_NONE;
 }
 
@@ -1284,6 +1295,8 @@ inline bool str_is(int32_t value, const char *text) {
 
 int32_t default_context() {  // Context()
     static int32_t made = -1;
+    static uint64_t made_generation = 0;
+    if (made_generation != value_generation) { made = -1; made_generation = value_generation; }
     if (made < 0) {
         std::vector<int32_t> items;
         for (const VField &item : vtypes[(size_t)T.context].fields) items.push_back(item.fallback);
@@ -1305,6 +1318,7 @@ int32_t str_value(const std::string &text) { return v_scalar(V_STR, 0, string_id
 
 int32_t offers_of(int32_t observation, const std::string &action_schema) {  // Offers.from_observation (v8 profile)
     static std::unordered_map<int64_t, int32_t> built;
+    FRESH(built);
     const int64_t key = ((int64_t)observation << 20) ^ (int64_t)string_id(action_schema.data(), action_schema.size());
     auto found = built.find(key);
     if (found != built.end()) return found->second;
@@ -1586,6 +1600,7 @@ int Producer_init(Producer *self, PyObject *args, PyObject *) {
     if (!PyArg_ParseTuple(args, "sLLssss", &episode, &player, &protocol, &interface, &history_schema, &action_schema,
                           &army_information))
         return -1;
+    if (!self->frames) live_producers++;
     self->frames = new std::vector<NFrame>();
     self->decision_ids = new std::unordered_map<int64_t, int32_t>();
     self->episode = new std::string(episode);
@@ -1606,6 +1621,7 @@ int Producer_init(Producer *self, PyObject *args, PyObject *) {
 }
 
 void Producer_dealloc(Producer *self) {
+    if (self->frames) live_producers--;
     delete self->frames; delete self->decision_ids; delete self->episode; delete self->interface;
     delete self->history_schema; delete self->action_schema; delete self->army_information;
     Py_XDECREF(self->python_frames);
@@ -1955,6 +1971,8 @@ std::unordered_map<int32_t, int32_t> observation_trees;
 void clear_value_trees() {
     tree_of_value.assign(tree_of_value.size(), -1);
     observation_trees.clear();
+    value_plans.clear();
+    plan_ready.clear();
 }
 
 int32_t vobservation_tree(int32_t observation) {
@@ -2466,6 +2484,7 @@ SwapKey swap_key_of(const SlotPlace &left, const SlotPlace &right) {  // guard._
 
 const std::vector<SwapKey> &swap_keys(int32_t armies) {  // guard._swap_keys: a function of the armies value
     static std::unordered_map<int32_t, std::vector<SwapKey>> known;
+    FRESH(known);
     auto found = known.find(armies);
     if (found != known.end()) return found->second;
     if (known.size() >= 4096) known.clear();
@@ -2603,6 +2622,7 @@ struct World { int32_t parts[6]; bool operator==(const World &o) const { return 
 World world_of(int32_t observation) {  // guard._world, as interned components
     static std::unordered_map<int32_t, int32_t> tiles, objects, heroes, towns;
     static std::unordered_map<int32_t, World> known;
+    FRESH(known); FRESH(tiles); FRESH(objects); FRESH(heroes); FRESH(towns);
     auto found = known.find(observation);
     if (found != known.end()) return found->second;
     if (known.size() >= 65536) known.clear();
@@ -2819,6 +2839,7 @@ bool binding_field(const std::string &name) { return name == "ref" || (name.size
 
 const std::vector<int32_t> &bound_refs(int32_t value) {  // the strings _same_window binds in a value compared with itself
     static std::unordered_map<int32_t, std::vector<int32_t>> known;
+    FRESH(known);
     auto found = known.find(value);
     if (found != known.end()) return found->second;
     std::vector<int32_t> out;
@@ -2882,6 +2903,7 @@ bool same_window(int32_t left, int32_t right) { return left == right || SameWind
 
 const std::vector<int32_t> &members(int32_t tuple) {  // set(tuple), as sorted distinct value ids
     static std::unordered_map<int32_t, std::vector<int32_t>> known;
+    FRESH(known);
     auto found = known.find(tuple);
     if (found != known.end()) return found->second;
     std::vector<int32_t> out = V(tuple).items;
@@ -3120,6 +3142,7 @@ struct Pair { int32_t source, destination; int64_t maximum; };
 
 const std::vector<Pair> &operation_choices(int32_t armies, const std::string &kind) {  // contract.army_operation_choices
     static std::map<std::pair<int32_t, std::string>, std::vector<Pair>> known;
+    FRESH(known);
     auto key = std::make_pair(armies, kind);
     auto found = known.find(key);
     if (found != known.end()) return found->second;
@@ -3288,6 +3311,7 @@ struct Revealed { std::vector<int64_t> row_major; std::vector<std::pair<int64_t,
 
 const Revealed &revealed_cells(int32_t tiles, bool has_level, int64_t level, int64_t width) {  // guard._revealed and _row_major
     static std::map<std::tuple<int32_t, bool, int64_t, int64_t>, Revealed> known;
+    FRESH(known);
     auto key = std::make_tuple(tiles, has_level, level, width);
     auto found = known.find(key);
     if (found != known.end()) return found->second;
@@ -4260,6 +4284,7 @@ struct Ground {  // policy.ground of one tile tuple: terrain and road raised by 
 const Ground &ground_of(int32_t tiles, int64_t width, int64_t height) {
     static std::unordered_map<int32_t, Ground> known;
     static int64_t known_width = -1, known_height = -1;
+    FRESH(known);
     if (width != known_width || height != known_height) { known.clear(); known_width = width; known_height = height; }
     auto found = known.find(tiles);
     if (found != known.end()) return found->second;
@@ -4291,6 +4316,7 @@ struct Things { std::vector<float> attributes; std::vector<int> indices; std::ve
 
 const std::vector<float> &object_row(int64_t kind, int64_t subtype, int32_t owner) {  // policy.object_row
     static std::map<std::tuple<int64_t, int64_t, int32_t>, std::vector<float>> known;
+    FRESH(known);
     auto key = std::make_tuple(kind, subtype, owner);
     auto found = known.find(key);
     if (found != known.end()) return found->second;
@@ -4303,6 +4329,7 @@ const std::vector<float> &object_row(int64_t kind, int64_t subtype, int32_t owne
 // The objects a map shows, sorted by position, kind, subtype and owner, as fn_map reads them (FastPolicy._encode_map)
 const Things &things_of(int32_t objects, int64_t width) {
     static std::map<std::pair<int32_t, int64_t>, Things> known;
+    FRESH(known);
     auto key = std::make_pair(objects, width);
     auto found = known.find(key);
     if (found != known.end()) return found->second;
@@ -5012,6 +5039,7 @@ void seat_frame(SeatObject *self, const std::vector<NFrame> &frames, size_t inde
 PyObject *Seat_new(PyTypeObject *type, PyObject *, PyObject *) {
     SeatObject *self = (SeatObject *)type->tp_alloc(type, 0);
     if (!self) return nullptr;
+    live_seats++;
     self->fast = new FastNet(); self->generator = new MT19937(); self->tracker = new Tracker(); self->memory = new WindowMemory();
     self->state = new std::vector<float>(64, 0.f); self->pending_state = new std::vector<float>(64, 0.f);
     self->pending_support = new Support(); self->pending_keys = new std::set<Key>();
@@ -5025,6 +5053,7 @@ PyObject *Seat_new(PyTypeObject *type, PyObject *, PyObject *) {
 }
 
 void Seat_dealloc(SeatObject *self) {
+    live_seats--;
     Py_XDECREF(self->producer); Py_XDECREF(self->policy);
     delete self->fast; delete self->generator; delete self->tracker; delete self->memory; delete self->state; delete self->pending_state;
     delete self->pending_support; delete self->pending_keys; delete self->values; delete self->choices; delete self->maps; delete self->features;
@@ -5296,6 +5325,25 @@ PyObject *Producer_answer_forward(PyObject *self, PyObject *arg) { return Produc
 PyObject *Producer_submit_forward(PyObject *self, PyObject *arg) { return Producer_submit((Producer *)self, arg); }
 PyObject *Producer_open_forward(PyObject *self, PyObject *) { return Producer_open((Producer *)self, nullptr); }
 
+
+PyObject *py_reset_values(PyObject *, PyObject *) {  // reset_values(): drop the values and nodes of the games so far
+    // Only while no producer, seat or recorder is alive, which may name them; True when it was done.
+    if (live_producers || live_seats || live_recorders) Py_RETURN_FALSE;
+    clear_nodes();
+    for (size_t i = base_values; i < vals.size(); i++) Py_XDECREF(vals[i].python);
+    vals.resize(base_values);
+    for (auto entry = val_index.begin(); entry != val_index.end();) {
+        if ((size_t)entry->second >= base_values) entry = val_index.erase(entry);
+        else ++entry;
+    }
+    tree_of_value.clear();
+    tile_places.clear();
+    observation_texts.clear();
+    handle_tables.clear();
+    value_generation++;
+    Py_RETURN_TRUE;
+}
+
 PyMethodDef methods[] = {
     {"configure", py_configure, METH_VARARGS, "configure(policy, contract, fn_text, fn_number, fn_node)"},
     {"observation_tree", py_observation_tree, METH_O, "policy.observation_semantics, from the native DAG"},
@@ -5314,6 +5362,7 @@ PyMethodDef methods[] = {
     {"exact", py_exact, METH_VARARGS, "exact(what, float32 bytes[, seed, draws]): torch's arithmetic, emulated (tests)"},
     {"repeated_empty_opens", py_repeated_empty_opens, METH_O, "window_repeats.repeated_empty_opens of a producer's frames"},
     {"sample_frames", py_sample_frames, METH_O, "the frames actor.learner_samples reads, as (kind, seq, decision_seq, reason)"},
+    {"reset_values", py_reset_values, METH_NOARGS, "drop the values and nodes of the games so far, when nothing holds them"},
     {"walk_times", py_walk_times, METH_O, "walk_times(producer): seconds following frames and walking (tests)"},
     {"walks", py_walks, METH_VARARGS, "walks(producer, guarded): the walk of each answered decision (tests)"},
     {"guard_supports", py_guard_supports, METH_VARARGS, "guard_supports(producer, management, windows, decisions): GuardSupport fields (tests)"},
