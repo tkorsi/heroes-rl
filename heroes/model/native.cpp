@@ -2747,6 +2747,256 @@ PyObject *py_guard_supports(PyObject *, PyObject *args) {  // guard_supports(pro
         return nullptr;
     }
 }
+
+// == window memory (heroes.game.window_repeats) ===================================================================
+
+bool binding_field(const std::string &name) { return name == "ref" || (name.size() >= 4 && name.compare(name.size() - 4, 4, "_ref") == 0); }
+
+const std::vector<int32_t> &bound_refs(int32_t value) {  // the strings _same_window binds in a value compared with itself
+    static std::unordered_map<int32_t, std::vector<int32_t>> known;
+    auto found = known.find(value);
+    if (found != known.end()) return found->second;
+    std::vector<int32_t> out;
+    const Val &x = V(value);
+    if (x.kind == V_TUPLE) {
+        for (int32_t item : x.items) { const auto &inner = bound_refs(item); out.insert(out.end(), inner.begin(), inner.end()); }
+    } else if (x.kind == V_RECORD) {
+        const VType &type = vtypes[(size_t)x.type];
+        const bool context = x.type == T.context;
+        const bool exchange = context && str_is(x.items[(size_t)T.c_kind], "exchange");
+        for (size_t i = 0; i < type.fields.size(); i++) {
+            const std::string &name = type.fields[i].name;
+            const int32_t item = x.items[i];
+            if ((binding_field(name) || (name == "selection" && context && !exchange)) && V(item).kind == V_STR) out.push_back(item);
+            else { const auto &inner = bound_refs(item); out.insert(out.end(), inner.begin(), inner.end()); }
+        }
+    }
+    std::sort(out.begin(), out.end());
+    out.erase(std::unique(out.begin(), out.end()), out.end());
+    if (known.size() >= (1u << 20)) known.clear();
+    return known.emplace(value, std::move(out)).first->second;
+}
+
+struct SameWindow {  // window_repeats._same_window's equal: equal but for a consistent renaming of control refs
+    std::unordered_map<int32_t, int32_t> forward, reverse;
+    bool bind(int32_t left, int32_t right) {
+        auto f = forward.emplace(left, right).first;
+        auto r = reverse.emplace(right, left).first;
+        return f->second == right && r->second == left;
+    }
+    bool equal(int32_t a, int32_t b) {
+        if (a == b) {  // Python walks it anyway and binds each of its refs to itself
+            for (int32_t ref : bound_refs(a)) if (!bind(ref, ref)) return false;
+            return true;
+        }
+        const Val &x = V(a), &y = V(b);
+        if (x.kind != y.kind) return false;
+        if (x.kind == V_TUPLE) {
+            if (x.items.size() != y.items.size()) return false;
+            for (size_t i = 0; i < x.items.size(); i++) if (!equal(x.items[i], y.items[i])) return false;
+            return true;
+        }
+        if (x.kind != V_RECORD || x.type != y.type) return false;  // unequal scalars, or two types
+        const VType &type = vtypes[(size_t)x.type];
+        const bool context = x.type == T.context;
+        const bool exchange = context && str_is(x.items[(size_t)T.c_kind], "exchange");
+        for (size_t i = 0; i < type.fields.size(); i++) {
+            const std::string &name = type.fields[i].name;
+            const int32_t left = x.items[i], right = y.items[i];
+            if ((binding_field(name) || (name == "selection" && context && !exchange)) && V(left).kind == V_STR && V(right).kind == V_STR) {
+                if (!bind(left, right)) return false;
+            } else if (!equal(left, right)) {
+                return false;
+            }
+        }
+        return true;
+    }
+};
+
+bool same_window(int32_t left, int32_t right) { return left == right || SameWindow().equal(left, right); }
+
+const std::vector<int32_t> &members(int32_t tuple) {  // set(tuple), as sorted distinct value ids
+    static std::unordered_map<int32_t, std::vector<int32_t>> known;
+    auto found = known.find(tuple);
+    if (found != known.end()) return found->second;
+    std::vector<int32_t> out = V(tuple).items;
+    std::sort(out.begin(), out.end());
+    out.erase(std::unique(out.begin(), out.end()), out.end());
+    if (known.size() >= 65536) known.clear();
+    return known.emplace(tuple, std::move(out)).first->second;
+}
+
+bool same_members(int32_t left, int32_t right) {
+    return left == right || (!none(left) && !none(right) && members(left) == members(right));
+}
+
+struct WF { int32_t o_resources, o_army_information, context_panel, result_accepted, result_status; bool ready = false; } WFI;
+
+bool same_world(int32_t a, int32_t b) {  // window_repeats._same_world
+    if (a == b) return true;
+    if (!WFI.ready) {
+        WFI.o_resources = field_of(T.observation, "resources"); WFI.o_army_information = field_of(T.observation, "army_information");
+        WFI.ready = true;
+    }
+    return field(a, T.o_size) == field(b, T.o_size) && field(a, WFI.o_resources) == field(b, WFI.o_resources)
+           && field(a, T.o_heroes) == field(b, T.o_heroes) && field(a, T.o_towns) == field(b, T.o_towns)
+           && field(a, WFI.o_army_information) == field(b, WFI.o_army_information)
+           && same_members(field(a, T.o_own_armies), field(b, T.o_own_armies)) && same_members(field(a, T.o_tiles), field(b, T.o_tiles))
+           && same_members(field(a, T.o_objects), field(b, T.o_objects));
+}
+
+int32_t observation_context(int32_t observation) {  // Observation.context
+    const int32_t window = field(observation, T.o_window);
+    return none(window) ? default_context() : field(window, T.w_context);
+}
+
+struct Step { int32_t before = -1, after = -1; bool has_target = false; Key target; };
+
+const char *OPEN_KINDS[] = {"open_hero", "open_town", "open_panel", "open_building", "open_stack", "open_capability"};
+const char *CLOSE_KINDS[] = {"close", "back", "close_capability"};
+
+bool same_view(const NFrame &left, const NFrame &right) {  // window_repeats._same_view
+    return left.day == right.day && same_world(left.observation, right.observation)
+           && same_window(field(left.observation, T.o_window), field(right.observation, T.o_window));
+}
+
+// window_repeats._navigation_step over frames[order[start]] .. ; ``order`` lists frame indices
+bool navigation_step(const std::vector<NFrame> &all, const std::vector<int32_t> &order, size_t start, size_t stop, Step &out) {
+    const NFrame &before = all[(size_t)order[start]];
+    int32_t action = -1, after = -1;
+    int32_t context = observation_context(before.observation);
+    for (size_t i = start + 1; i < stop; i++) {
+        const NFrame &frame = all[(size_t)order[i]];
+        if (frame.kind == F_SUBMITTED) {
+            if (frame.decision_seq != before.seq) return false;
+            action = frame.action;
+            const int32_t kind = field(action, G.action_kind);
+            if (!in_list(kind, OPEN_KINDS, 6) && !in_list(kind, CLOSE_KINDS, 3)) return false;
+        } else if (frame.kind == F_CONTEXT) {
+            context = frame.context;
+        } else if (frame.kind == F_VIEW) {
+            after = order[i];
+        } else if (frame.kind == F_RESULT) {
+            if (action < 0 || frame.decision_seq != before.seq || !V(field(frame.result, G.result_accepted)).number) return false;
+            const int32_t kind = field(action, G.action_kind), status = field(frame.result, G.result_status);
+            Key target;
+            bool has_target = false;
+            if (in_list(kind, OPEN_KINDS, 6) && str_is(status, "opened")) {
+                if (!nav_key(action, before.offers, target)) return false;
+                has_target = true;
+            } else if (!(in_list(kind, CLOSE_KINDS, 3) && str_is(status, "closed"))) {
+                return false;
+            }
+            if (after < 0 || observation_context(all[(size_t)after].observation) != context) {
+                after = -1;
+                const size_t limit = std::min(stop + 1, order.size());
+                for (size_t j = i + 1; j < limit; j++) {
+                    const FKind k = all[(size_t)order[j]].kind;
+                    if (k == F_VIEW || k == F_DECISION) { after = order[j]; break; }
+                }
+            }
+            if (after >= 0 && observation_context(all[(size_t)after].observation) == context) {
+                out.before = order[start]; out.after = after; out.has_target = has_target; out.target = target;
+                return true;
+            }
+            return false;
+        }
+    }
+    return false;
+}
+
+struct WindowMemory {
+    bool has_day = false;
+    int32_t day = 0, observation = -1;
+    std::map<std::vector<int32_t>, std::pair<int32_t, std::set<Key>>> parents;  // (kind, subject, panel) or {} -> (window, keys)
+    std::vector<int32_t> frames;  // frame indices: one decision through its successor
+    bool has_opened = false;
+    Step opened;
+
+    std::vector<int32_t> parent_of(int32_t window) {
+        if (none(window)) return {};
+        const int32_t context = field(window, T.w_context);
+        return {field(context, T.c_kind), field(context, G.context_subject), field(context, G.context_panel)};
+    }
+
+    std::set<Key> at(int32_t observation_value, std::vector<int32_t> *parent_out) {  // WindowMemory._at
+        const int32_t window = field(observation_value, T.o_window);
+        std::vector<int32_t> parent = parent_of(window);
+        if (parent_out) *parent_out = parent;
+        auto found = parents.find(parent);
+        if (found != parents.end()) {
+            if (same_window(found->second.first, window)) return found->second.second;
+            parents.erase(found);
+        }
+        return {};
+    }
+
+    // WindowMemory.observe: true at a decision, with its keys
+    bool observe(const std::vector<NFrame> &all, int32_t index, std::set<Key> &out) {
+        const NFrame &frame = all[(size_t)index];
+        const bool changed_world = frame.observation >= 0 && observation >= 0 && !same_world(observation, frame.observation);
+        bool changed_by_action = false;
+        if (frame.result >= 0 && V(field(frame.result, G.result_accepted)).number) {
+            const int32_t status = field(frame.result, G.result_status);
+            for (const char *name : {"built", "recruited", "hired", "upgraded", "transferred", "split", "merged", "swapped",
+                                     "garrison_swapped", "capability_applied", "dialog_answered", "interaction"})
+                if (str_is(status, name)) { changed_by_action = true; break; }
+        }
+        if (!has_day || frame.day != day || changed_world || changed_by_action || frame.kind == F_EVENT) {
+            parents.clear(); frames.clear(); has_opened = false;
+        }
+        has_day = true; day = frame.day;
+        if (frame.observation >= 0) observation = frame.observation;
+        if (!frames.empty()) frames.push_back(index);
+        if (frame.kind != F_DECISION) return false;
+        Step step;
+        const bool stepped = !frames.empty() && navigation_step(all, frames, 0, frames.size() - 1, step);
+        frames.assign(1, index);
+        const bool had_previous = has_opened;
+        const Step previous = opened;
+        has_opened = stepped && step.has_target;
+        if (has_opened) opened = step;
+        if (has_opened) {
+            const int32_t source = all[(size_t)step.before].observation;
+            std::vector<int32_t> parent;
+            std::set<Key> keys = at(source, &parent);
+            if (keys.count(step.target)) {
+                keys.erase(step.target);
+                parents[parent] = {field(source, T.o_window), keys};
+            }
+        } else if (stepped && had_previous && same_view(all[(size_t)previous.after], all[(size_t)step.before])) {
+            if (same_view(all[(size_t)previous.before], all[(size_t)step.after]) && same_view(all[(size_t)step.after], frame)) {
+                std::vector<int32_t> parent;
+                std::set<Key> keys = at(frame.observation, &parent);
+                keys.insert(previous.target);
+                parents[parent] = {field(frame.observation, T.o_window), keys};
+            }
+        }
+        out = at(frame.observation, nullptr);
+        return true;
+    }
+};
+
+PyObject *py_window_memories(PyObject *, PyObject *object) {  // window_memories(producer): each decision's keys (tests)
+    if (Py_TYPE(object) != &ProducerType) { PyErr_SetString(PyExc_TypeError, "a Producer"); return nullptr; }
+    Producer *producer = (Producer *)object;
+    try {
+        prepare_guard();
+        WindowMemory memory;
+        Ref out(PyList_New(0));
+        std::set<Key> keys;
+        for (size_t i = 0; i < producer->frames->size(); i++) {
+            if (!memory.observe(*producer->frames, (int32_t)i, keys)) continue;
+            Ref set(PyFrozenSet_New(nullptr));
+            for (const Key &key : keys) { Ref item(key_tuple(key)); if (PySet_Add(set.get(), item.get())) throw Fail(); }
+            if (PyList_Append(out.get(), set.get())) throw Fail();
+        }
+        Py_INCREF(out.get());
+        return out.get();
+    } catch (Fail &) {
+        return nullptr;
+    }
+}
 PyMethodDef methods[] = {
     {"configure", py_configure, METH_VARARGS, "configure(policy, contract, fn_text, fn_number, fn_node)"},
     {"observation_tree", py_observation_tree, METH_O, "policy.observation_semantics, from the native DAG"},
@@ -2760,6 +3010,7 @@ PyMethodDef methods[] = {
     {"set_native_failure", py_set_native_failure, METH_O, "the exception an engine error message raises"},
     {"value_tree", py_value_tree, METH_VARARGS, "value_tree(value, observation=0): the semantic tree of a value"},
     {"payloads", py_payloads, METH_O, "payloads(producer): each frame's payload tree (tests)"},
+    {"window_memories", py_window_memories, METH_O, "window_memories(producer): WindowMemory keys at each decision (tests)"},
     {"guard_supports", py_guard_supports, METH_VARARGS, "guard_supports(producer, management, windows, decisions): GuardSupport fields (tests)"},
     {nullptr, nullptr, 0, nullptr}};
 
