@@ -241,10 +241,14 @@ def _handles(observation):
 
     Most views carry the very hero, town and object tuples of the view before.
     """
+    last = _LAST_HANDLES[0]
+    if last is observation:
+        return _LAST_HANDLES[1]
     parts = (observation.heroes, observation.towns, observation.objects)
     key = (id(parts[0]), id(parts[1]), id(parts[2]))
     known = _HANDLES.get(key)
     if known is not None and known[0][0] is parts[0] and known[0][1] is parts[1] and known[0][2] is parts[2]:
+        _LAST_HANDLES[:] = observation, known[1]
         return known[1]
     found = {}
     for group in parts:
@@ -253,7 +257,11 @@ def _handles(observation):
     if len(_HANDLES) >= 64:
         _HANDLES.clear()  # bounded memory; a miss only indexes again
     _HANDLES[key] = (parts, found)  # holds the tuples, so their ids name nothing else
+    _LAST_HANDLES[:] = observation, found  # holds the observation, which holds the tuples
     return found
+
+
+_LAST_HANDLES = [None, None]  # the observation asked about last, and its index
 
 
 def _selection(observation, ref):
@@ -360,6 +368,11 @@ def _semantic(value):
     random initialization, not ordinal utility or pretrained text embeddings.
     Ordered sequences use a separate recurrent reduction (notice substitutions).
     """
+    if type(value) in _KEPT_TYPES:
+        # A kept value's tree was built once (below); the entry holds the value, so its id names nothing else.
+        hit = _KEPT_VALUES.get(id(value))
+        if hit is not None:
+            return hit[1]
     if value is None:
         return _node("absent")
     if type(value) is bool:
