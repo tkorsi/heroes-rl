@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <chrono>
 #include <cmath>
 #include <cstdlib>
 #include <cstdint>
@@ -2156,6 +2157,20 @@ PyObject *py_payloads(PyObject *, PyObject *object) {  // payloads(producer): ea
     }
 }
 
+std::unordered_map<uint64_t, int32_t> field_cache;
+
+inline int32_t F(int32_t value, const char *name) {  // value.name, for a literal name
+    const Val &item = V(value);
+    if (item.kind != V_RECORD) { PyErr_Format(PyExc_AttributeError, "no attribute '%s' on a %s", name, item.kind == V_NONE ? "None" : "non-record"); throw Fail(); }
+    const uint64_t key = ((uint64_t)item.type << 48) ^ (uint64_t)(uintptr_t)name;
+    auto found = field_cache.find(key);
+    int32_t index;
+    if (found == field_cache.end()) { index = field_of(item.type, name); field_cache.emplace(key, index); }
+    else index = found->second;
+    return item.items[(size_t)index];
+}
+inline const std::vector<int32_t> &items_of(int32_t value) { return V(value).items; }
+
 // == the interaction guard (heroes.game.guard) =====================================================================
 // Keys of strings are joined with \x1f, below every character the engine sends, so joined keys compare as the
 // tuples do; a None element is \x01NONE\x01.
@@ -2537,36 +2552,55 @@ std::vector<std::string> management_subjects(int32_t action, int32_t offers) {  
     return std::vector<std::string>(subjects.begin(), subjects.end());
 }
 
-const std::vector<int32_t> &world_of(int32_t observation) {  // guard._world, as value ids (equal worlds, equal ids)
-    static std::unordered_map<int32_t, std::vector<int32_t>> known;
+// A component of the world, sorted as guard._build_world sorts it, interned: equal components, equal ids.
+template <class KeyOf> int32_t sorted_component(int32_t tuple, std::unordered_map<int32_t, int32_t> &known, KeyOf key_of) {
+    auto found = known.find(tuple);
+    if (found != known.end()) return found->second;
+    if (known.size() >= 65536) known.clear();
+    const std::vector<int32_t> &items = items_of(tuple);
+    std::vector<std::pair<decltype(key_of(0)), size_t>> keyed;
+    keyed.reserve(items.size());
+    for (size_t i = 0; i < items.size(); i++) keyed.push_back({key_of(items[i]), i});
+    std::stable_sort(keyed.begin(), keyed.end(), [](const auto &a, const auto &b) { return a.first < b.first; });
+    std::vector<int32_t> sorted;
+    sorted.reserve(items.size());
+    for (auto &entry : keyed) sorted.push_back(items[entry.second]);
+    return known[tuple] = v_items(V_TUPLE, -1, std::move(sorted));
+}
+
+struct World { int32_t parts[6]; bool operator==(const World &o) const { return std::equal(parts, parts + 6, o.parts); } bool operator!=(const World &o) const { return !(*this == o); } };
+
+World world_of(int32_t observation) {  // guard._world, as interned components
+    static std::unordered_map<int32_t, int32_t> tiles, objects, heroes, towns;
+    static std::unordered_map<int32_t, World> known;
     auto found = known.find(observation);
     if (found != known.end()) return found->second;
     if (known.size() >= 65536) known.clear();
-    std::vector<int32_t> world;
-    world.push_back(field(observation, T.o_size));
-    std::vector<int32_t> tiles = V(field(observation, T.o_tiles)).items;
-    auto position = [](int32_t tile) {
-        std::vector<int64_t> out;
-        for (int32_t item : V(field(tile, T.tile_position)).items) out.push_back(num(item));
-        return out;
-    };
-    std::stable_sort(tiles.begin(), tiles.end(), [&](int32_t a, int32_t b) { return position(a) < position(b); });
-    world.push_back(-1); world.insert(world.end(), tiles.begin(), tiles.end());
-    std::vector<int32_t> objects = V(field(observation, T.o_objects)).items;
-    std::stable_sort(objects.begin(), objects.end(), [](int32_t a, int32_t b) {
-        return str(vfield(a, V(a).type, "handle")) < str(vfield(b, V(b).type, "handle")); });
-    world.push_back(-2); world.insert(world.end(), objects.begin(), objects.end());
-    world.push_back(-3); world.push_back(vfield(observation, T.observation, "resources"));
-    std::vector<int32_t> heroes = V(field(observation, T.o_heroes)).items;
-    std::stable_sort(heroes.begin(), heroes.end(), [](int32_t a, int32_t b) {
-        return str(field(a, T.h_handle)) < str(field(b, T.h_handle)); });
-    world.push_back(-4);
-    for (int32_t hero : heroes) { world.push_back(field(hero, T.h_handle)); world.push_back(field(hero, G.hero_position)); world.push_back(field(hero, G.hero_movement)); }
-    std::vector<int32_t> towns = V(field(observation, T.o_towns)).items;
-    std::stable_sort(towns.begin(), towns.end(), [](int32_t a, int32_t b) {
-        return str(field(a, T.t_handle)) < str(field(b, T.t_handle)); });
-    world.push_back(-5); world.insert(world.end(), towns.begin(), towns.end());
-    return known.emplace(observation, std::move(world)).first->second;
+    World world;
+    world.parts[0] = field(observation, T.o_size);
+    world.parts[1] = sorted_component(field(observation, T.o_tiles), tiles, [](int32_t tile) {
+        const auto &position = items_of(field(tile, T.tile_position));
+        return std::make_tuple(num(position[0]), num(position[1]), num(position[2])); });
+    world.parts[2] = sorted_component(field(observation, T.o_objects), objects, [](int32_t item) { return str(F(item, "handle")); });
+    world.parts[3] = F(observation, "resources");
+    const int32_t hero_tuple = field(observation, T.o_heroes);
+    auto known_heroes = heroes.find(hero_tuple);
+    if (known_heroes != heroes.end()) world.parts[4] = known_heroes->second;
+    else {
+        std::vector<std::pair<std::string, size_t>> keyed;
+        const auto &items = items_of(hero_tuple);
+        for (size_t i = 0; i < items.size(); i++) keyed.push_back({str(field(items[i], T.h_handle)), i});
+        std::stable_sort(keyed.begin(), keyed.end(), [](const auto &a, const auto &b) { return a.first < b.first; });
+        std::vector<int32_t> flat;
+        for (auto &entry : keyed) {
+            const int32_t hero = items[entry.second];
+            flat.push_back(field(hero, T.h_handle)); flat.push_back(field(hero, G.hero_position)); flat.push_back(field(hero, G.hero_movement));
+        }
+        if (heroes.size() >= 65536) heroes.clear();
+        world.parts[4] = heroes[hero_tuple] = v_items(V_TUPLE, -1, std::move(flat));
+    }
+    world.parts[5] = sorted_component(field(observation, T.o_towns), towns, [](int32_t town) { return str(field(town, T.t_handle)); });
+    return known[observation] = world;
 }
 
 struct Tracker {
@@ -2576,7 +2610,8 @@ struct Tracker {
     int64_t decisions = 0;
     bool has_day = false;
     int32_t day = 0, last_seq = -1;
-    const std::vector<int32_t> *world = nullptr;
+    bool has_world = false;
+    World world;
     std::set<Coordinate> failed;
     std::set<Layout> layouts;
     bool town_reopen_blocked = false, has_previous = false, has_move = false, consumed = false;
@@ -2597,10 +2632,10 @@ struct Tracker {
             progress();
         }
         if (frame.observation >= 0) {
-            const std::vector<int32_t> &now = world_of(frame.observation);
+            const World now = world_of(frame.observation);
             const bool managing = consumed && action >= 0 && management_kind(field(action, G.action_kind));
-            if (world != nullptr && *world != now && !managing) progress();
-            world = &now;
+            if (has_world && world != now && !managing) progress();
+            world = now; has_world = true;
         }
         if (frame.kind == F_DECISION) {
             decision_observation = frame.observation; decision_offers = frame.offers; action = -1; consumed = false;
@@ -3000,19 +3035,6 @@ PyObject *py_window_memories(PyObject *, PyObject *object) {  // window_memories
 
 // == the action walk (policy.ContextualDistribution._walk) ========================================================
 
-std::unordered_map<uint64_t, int32_t> field_cache;
-
-inline int32_t F(int32_t value, const char *name) {  // value.name, for a literal name
-    const Val &item = V(value);
-    if (item.kind != V_RECORD) { PyErr_Format(PyExc_AttributeError, "no attribute '%s' on a %s", name, item.kind == V_NONE ? "None" : "non-record"); throw Fail(); }
-    const uint64_t key = ((uint64_t)item.type << 48) ^ (uint64_t)(uintptr_t)name;
-    auto found = field_cache.find(key);
-    int32_t index;
-    if (found == field_cache.end()) { index = field_of(item.type, name); field_cache.emplace(key, index); }
-    else index = found->second;
-    return item.items[(size_t)index];
-}
-inline const std::vector<int32_t> &items_of(int32_t value) { return V(value).items; }
 inline bool truthy_tuple(int32_t value) { return V(value).kind == V_TUPLE && !V(value).items.empty(); }
 inline int32_t int_value(int64_t number) { return v_scalar(V_INT, number); }
 int32_t text_value(const char *text) { return str_value(std::string(text)); }
@@ -3948,6 +3970,42 @@ PyObject *py_walks(PyObject *, PyObject *args) {  // walks(producer, guarded): (
         return nullptr;
     }
 }
+
+PyObject *py_walk_times(PyObject *, PyObject *object) {  // walk_times(producer): seconds in (tracker and memory, walks) (tests)
+    if (Py_TYPE(object) != &ProducerType) { PyErr_SetString(PyExc_TypeError, "a Producer"); return nullptr; }
+    Producer *producer = (Producer *)object;
+    try {
+        prepare_guard();
+        const std::vector<NFrame> &frames = *producer->frames;
+        Tracker tracker;
+        WindowMemory memory;
+        Support support;
+        std::set<Key> keys;
+        double follow = 0, walking = 0;
+        long walks = 0;
+        for (size_t i = 0; i < frames.size(); i++) {
+            auto start = std::chrono::steady_clock::now();
+            const bool decided = tracker.observe(frames[i], support);
+            memory.observe(frames, (int32_t)i, keys);
+            auto middle = std::chrono::steady_clock::now();
+            follow += std::chrono::duration<double>(middle - start).count();
+            if (!decided) continue;
+            int32_t given = -1;
+            for (size_t j = i + 1; j < frames.size() && frames[j].kind != F_DECISION; j++)
+                if (frames[j].kind == F_SUBMITTED && frames[j].decision_seq == frames[i].seq) { given = frames[j].action; break; }
+            if (given < 0) continue;
+            middle = std::chrono::steady_clock::now();
+            Replay replay;
+            Walk walk(frames[i].observation, frames[i].offers, &support, &keys, replay);
+            walk.run(given);
+            walking += std::chrono::duration<double>(std::chrono::steady_clock::now() - middle).count();
+            walks++;
+        }
+        return Py_BuildValue("(ddl)", follow, walking, walks);
+    } catch (Fail &) {
+        return nullptr;
+    }
+}
 PyMethodDef methods[] = {
     {"configure", py_configure, METH_VARARGS, "configure(policy, contract, fn_text, fn_number, fn_node)"},
     {"observation_tree", py_observation_tree, METH_O, "policy.observation_semantics, from the native DAG"},
@@ -3962,6 +4020,7 @@ PyMethodDef methods[] = {
     {"value_tree", py_value_tree, METH_VARARGS, "value_tree(value, observation=0): the semantic tree of a value"},
     {"payloads", py_payloads, METH_O, "payloads(producer): each frame's payload tree (tests)"},
     {"window_memories", py_window_memories, METH_O, "window_memories(producer): WindowMemory keys at each decision (tests)"},
+    {"walk_times", py_walk_times, METH_O, "walk_times(producer): seconds following frames and walking (tests)"},
     {"walks", py_walks, METH_VARARGS, "walks(producer, guarded): the walk of each answered decision (tests)"},
     {"guard_supports", py_guard_supports, METH_VARARGS, "guard_supports(producer, management, windows, decisions): GuardSupport fields (tests)"},
     {nullptr, nullptr, 0, nullptr}};
