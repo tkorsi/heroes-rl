@@ -8,7 +8,7 @@ about visibility. Routing handles and revisions are bookkeeping, never features.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, fields, replace
+from dataclasses import MISSING, dataclass, fields, replace
 import marshal
 import re
 
@@ -2258,6 +2258,33 @@ class Frame:
             raise ValueError("Offers must preserve complete context and all coordinate support")
 
 
+_FRAME_TEMPLATE = None  # (every field of Frame in order, with its default or None, the fields without a default)
+
+
+def _new_frame(data):
+    """``Frame(**data)``: the same frozen object, its fields put in its ``__dict__`` at once and in field order instead
+    of one ``object.__setattr__`` each, then the same ``__post_init__``."""
+    global _FRAME_TEMPLATE
+    if _FRAME_TEMPLATE is None:
+        every = fields(Frame)
+        if any(item.default_factory is not MISSING for item in every):
+            raise TypeError("Frame fields with a default factory are built by Frame itself")
+        _FRAME_TEMPLATE = ({item.name: None if item.default is MISSING else item.default for item in every},
+                           frozenset(item.name for item in every if item.default is MISSING))
+    template, required = _FRAME_TEMPLATE
+    if not required <= data.keys() or not template.keys() >= data.keys():
+        try:
+            return Frame(**data)  # raises what a missing or unknown field raises
+        except TypeError as exc:
+            raise ValueError("Incomplete contextual frame") from exc
+    frame = object.__new__(Frame)
+    values = dict(template)
+    values.update(data)  # existing keys keep their place: the field order
+    frame.__dict__.update(values)
+    frame.__post_init__()
+    return frame
+
+
 _TYPED_PAYLOADS = (("observation", Observation), ("context", Context), ("offers", Offers),
                    ("action", Action), ("result", Result), ("event", VisibleEvent))
 _OFFERS_BUILT = {}  # (id of an observation, schema) -> (the observation, the offers Offers.from_observation built)
@@ -3506,7 +3533,4 @@ def decode_frame(raw, *, observation=None, offers=None):
             data["offers"] = Offers(**offer)
         except TypeError as exc:
             raise ValueError("Incomplete offers") from exc
-    try:
-        return Frame(**data)
-    except TypeError as exc:
-        raise ValueError("Incomplete contextual frame") from exc
+    return _new_frame(data)
