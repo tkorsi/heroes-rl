@@ -23,9 +23,9 @@ frames are equal either way.
 """
 from __future__ import annotations
 
-import marshal
-
 import json
+import marshal
+import re
 
 from ..game import contract
 
@@ -45,11 +45,32 @@ RECORD_FIELDS = {
 }
 
 
+try:  # optional: decodes an engine message two to three times faster than json, to the same value
+    from orjson import JSONDecodeError as _OrjsonError, loads as _orjson_loads
+except ImportError:
+    _orjson_loads = None
+# orjson reads an integer beyond 64 bits as a float, where json keeps it an int: such a message goes to json.
+_LONG_NUMBER = re.compile(rb"[0-9]{19}")
+
+
+def _invalid(value):
+    raise ValueError(f"Nonfinite JSON number: {value}")
+
+
 def loads(data):
-    """One engine message. The engine writes every object from a map, so no key repeats."""
-    def invalid(value):
-        raise ValueError(f"Nonfinite JSON number: {value}")
-    return json.loads(data, parse_constant=invalid)
+    """One engine message. The engine writes every object from a map, so no key repeats.
+
+    With orjson importable, a message it decodes is decoded by it: the same dicts (keys in the same order), lists,
+    strings, ints and floats (bit for bit) that json gives. Anything it refuses (NaN, infinities, numbers out of
+    range, a byte order mark, invalid text) and every message with a run of 19 digits is left to json, with its
+    result or its error.
+    """
+    if _orjson_loads is not None and _LONG_NUMBER.search(data) is None:
+        try:
+            return _orjson_loads(data)
+        except _OrjsonError:
+            pass
+    return json.loads(data, parse_constant=_invalid)
 
 
 def exact(raw, fields, name):
