@@ -147,7 +147,10 @@ class _Events:
             self._pump(side)
 
     def get_nowait(self):
-        self.pump()
+        # The oldest queued event is the one to hand out whether or not the connections are read first;
+        # they are read when nothing is queued.
+        if not self.items:
+            self.pump()
         try:
             with self.lock:
                 return self.items.popleft()
@@ -175,6 +178,11 @@ class _Events:
                         pass
                 except (BlockingIOError, OSError):
                     pass
+            else:
+                # Only a connection that has something is read; the next round reads every one if nothing came.
+                for side in self._readable():
+                    if side.connection in ready:
+                        self._pump(side)
 
     def read_to_end(self, deadline):
         """Read every connection to its end, or until ``deadline``; the events stay queued in their order."""
