@@ -10676,3 +10676,25 @@ Final = `src-wip41` (commit `3c58cab`), engine `claude-g10-e2`, orjson, 24 actor
 | Processor-seconds of the command; peak memory | 26,538; 55.4 GB | 19,513; 55.8 GB |
 
 All 100 games the same in day, outcome, samples, training reward and status; 34 differ by one decision in one seat's count (the terminal race). Over the three seed lists the final configuration collects in 0.685, 0.699 and 0.689 of main's time.
+
+## 2026-11-25 — Under ten minutes: the work paid for on every decision
+
+**Task** (Yehor, 2026-11-25 about 12:25): collect 100 usable games in under ten minutes by reducing the processor cost of each decision, from `src-wip41` with engine `claude-g10-e2`; the same experiment in every respect; demonstrated on two fresh seed lists with training equivalence verified; PPO timed separately. Baseline: collection 22:50–28:16; one game alone 421 µs (actor) + 191 µs (VCMI) per decision, about 1.45 ms together under batch load.
+
+### One decision end to end, alone and late in a long game
+
+`scripts/play_job.py` plays one job of a batch as an actor does, with the processor time of actor and engine every N decisions, a Python profile and a `sample` of VCMI in chosen windows (`results/job37806-wip41*`). The longest game of seed list 1 (37806: 417,782 decisions, 345 days), alone: actor 613 µs and VCMI 260 µs per decision on average; the actor about 525 µs early and 620 µs after day 130. Its trajectory digest equals main's (`c56caa6c…`, `verify-v5-a`).
+
+Where the actor's time goes (`scripts/stages.py`, timers around each stage of a replay of the 120-day game; the machine shared, so shares rather than times): action selection 33%; ingesting the engine's messages 26%; the recurrent step's encoding of new views 21% (230 µs per new view: observation tree, map); encoding frames 15% (98 µs per decision frame, mostly the guard's bookkeeping); recording the recipe for PPO 5%. Late in the long game: ingesting 25% (decoding new views 12%), observing 44% (recipe recording 12%), selection 22%. Of the 6.3 frames per decision, 5.3 carry no observation; their bookkeeping (record checks, frame objects, the history's checks, guard and window counters) is about 37% of the actor.
+
+Where VCMI's time goes (`sample` of the long game, and a diagnostic runtime `claude-g10-capdiag2` counting every capture by its trigger and outcome; `results/capdiag/`): about two thirds of its processor time is the observation capture, 4.8 per decision, 74.8 s over the long game. Half of all capture time (903,000 captures, 2.2 per decision, 41.5 µs each) was spent by captures the adapter makes around every action (after the result, before the next decision, before sending a command) that built a whole observation only to find it equal to the last one. Captures after PackageReceived, PackageApplied and PlayerBlocked packs took another 21%.
+
+**Ruled out:** caching the action walk by situation: the walk's inputs other than the recurrent state (observation, offers, guard state, window memory) repeat in 0.1–0.2% of decisions (`scripts/situations.py`), the guard state changing every decision.
+
+### Engine: captures whose inputs have not changed are not built again (`6bd879b`, runtime `claude-g10-e4`)
+
+A capture forms a signature of everything its observation is built from besides the game state (the adapter's context, subject, panel and selection, dialogs and capability panels with their replies, tavern and upgrade selections, the sizes of the routing tables, which only grow) and a generation of the game state: packs applied, less PackageApplied, PackageReceived and PlayerBlocked, which have no case in VCMI's game-state visitor. The client notifies a pack after releasing the game-state lock, so a pack applied but not yet notified makes the signature unique. An action reads the stored observation through VCMI's non-const `JsonNode` accessors, which can insert members or change a node's type and so make the next comparison find a difference; the stored observation's shape (types and sizes of every node) is therefore part of the condition. A capture with the signature of the capture before it, the stored observation's shape unchanged, returns: it would have built an equal observation and changed nothing.
+
+`HEROES_CAPTURE_CHECK=1` builds every skipped capture anyway and fails the game on any difference. Three games pass it (seed 1, 40 days; seed 3, 120 days; job 37806, 345 days) and give the trajectory digests of main (`1376cd2d…`, `944d06ea…`, `c56caa6c…`). A first version that reset the skip at every action (`claude-g10-e3`) saved 21%; with the shape test, VCMI's processor time per decision on the 120-day game, alternating runtimes on the same game, is 220, 223 µs with `e2` and 133, 145, 139 µs with `e4` (−37%). The actor is unchanged; the games are the same.
+
+**Cython, a first measurement:** compiling the actor's modules unchanged with Cython 3.1 (`scripts/cybuild.py`, a private install) leaves both replays exact and takes the actor from 367 to 294 µs per decision on the 120-day replay (−20%).
