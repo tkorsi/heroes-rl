@@ -25,7 +25,6 @@ from __future__ import annotations
 
 import json
 import marshal
-import re
 
 from ..game import contract
 
@@ -50,7 +49,10 @@ try:  # optional: decodes an engine message two to three times faster than json,
 except ImportError:
     _orjson_loads = None
 # orjson reads an integer beyond 64 bits as a float, where json keeps it an int: such a message goes to json.
-_LONG_NUMBER = re.compile(rb"[0-9]{19}")
+# A run of 19 digits is found as a run of 19 ones once every digit is a one and every other byte a zero: two
+# linear passes in C, where a regular expression for the run costs more than the decoding saves.
+_DIGIT_ONES = bytes(0x31 if 0x30 <= byte <= 0x39 else 0x30 for byte in range(256))
+_LONG_RUN = b"1" * 19
 
 
 def _invalid(value):
@@ -65,7 +67,7 @@ def loads(data):
     range, a byte order mark, invalid text) and every message with a run of 19 digits is left to json, with its
     result or its error.
     """
-    if _orjson_loads is not None and _LONG_NUMBER.search(data) is None:
+    if _orjson_loads is not None and _LONG_RUN not in data.translate(_DIGIT_ONES):
         try:
             return _orjson_loads(data)
         except _OrjsonError:
