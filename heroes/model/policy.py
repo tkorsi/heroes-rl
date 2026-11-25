@@ -681,7 +681,9 @@ def observation_semantics(observation):
     found = _SEMANTICS.get(id(observation))
     if found is not None and found[0] is observation:
         return found[1]
-    tree = _observation_semantics(observation)
+    from . import native  # the same tree from native.cpp's DAG, where it is built
+    trees = native.module()
+    tree = trees.observation_tree(observation) if trees is not None else _observation_semantics(observation)
     if len(_SEMANTICS) >= _SEMANTICS_LIMIT:
         del _SEMANTICS[next(iter(_SEMANTICS))]  # the oldest; it holds its observation, so no id is reused meanwhile
     _SEMANTICS[id(observation)] = (observation, tree)
