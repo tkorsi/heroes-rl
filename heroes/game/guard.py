@@ -199,19 +199,36 @@ def _blocked_swaps(observation, offers, seen):
     if not armies:
         return ()
     layout = _army_layout(observation, armies)
-    result = set()
+    return tuple(sorted({key for key, swapped in _swapped_layouts(layout, armies) if swapped in seen}))
+
+
+_SWAPPED = {}  # (layout, ids of the armies) -> (the armies, ((swap key, the layout after that swap), ...))
+
+
+def _swapped_layouts(layout, armies):
+    """Each swap the armies offer, by its key, with the layout it would leave: a function of the two alone.
+
+    A seat decides again and again in the same window; only the layouts it has seen grow.
+    """
+    cache_key = (layout, *map(id, armies))
+    known = _SWAPPED.get(cache_key)
+    if known is not None and all(held is army for held, army in zip(known[0], armies)):
+        return known[1]
+    found = {}
     for source, destination, _ in c.army_operation_choices(armies, "swap_stacks"):
         key = _swap_key(armies, source, destination)
-        if key in result:
+        if key in found:
             continue
         rows = dict(layout)
         left, a, right, b = key
         x, y = rows[left][a], rows[right][b]
         slots = list(rows[left]); slots[a] = y; rows[left] = tuple(slots)
         slots = list(rows[right]); slots[b] = x; rows[right] = tuple(slots)
-        if tuple(sorted(rows.items())) in seen:
-            result.add(key)
-    return tuple(sorted(result))
+        found[key] = tuple(sorted(rows.items()))
+    if len(_SWAPPED) >= 256:
+        _SWAPPED.clear()  # bounded memory; a miss only computes again
+    _SWAPPED[cache_key] = (armies, tuple(found.items()))  # holds the armies, so their ids name nothing else
+    return _SWAPPED[cache_key][1]
 
 
 @dataclass(frozen=True)

@@ -2199,9 +2199,9 @@ class Frame:
         payload = {name for name in _PAYLOAD_NAMES if getattr(self, name) is not None}
         if payload != _PAYLOADS[self.kind]:
             raise ValueError("Missing or extraneous frame payload")
-        for name, cls in (("observation", Observation), ("context", Context), ("offers", Offers),
-                          ("action", Action), ("result", Result), ("event", VisibleEvent)):
-            if getattr(self, name) is not None and type(getattr(self, name)) is not cls:
+        for name, cls in _TYPED_PAYLOADS:
+            value = getattr(self, name)
+            if value is not None and type(value) is not cls:
                 raise ValueError(f"Expected typed {name}")
         for name in ("revision", "command_index"):
             if getattr(self, name) is not None:
@@ -2232,11 +2232,12 @@ class Frame:
                 or self.event is not None and self.event.kind == "army_exchange_requested"
                 or self.result is not None and self.result.status in ("split", "merged", "swapped", "garrison_swapped", "upgraded")):
             raise ValueError("Army management records require v6")
-        opened_contexts = (("own_hero_exchange", "exchange"),) + ((("adventure_dialog", "dialog"),) if profile.dialogs else ())
-        if profile.capabilities:
-            opened_contexts += (("capability_dialog", "capability"), ("neutral_join", "exchange"), ("object_garrison", "exchange"))
-        if self.kind == "context_opened" and (self.reason, self.context.kind) not in opened_contexts:
-            raise ValueError("Only a supported delivered query can open a context asynchronously")
+        if self.kind == "context_opened":
+            opened_contexts = (("own_hero_exchange", "exchange"),) + ((("adventure_dialog", "dialog"),) if profile.dialogs else ())
+            if profile.capabilities:
+                opened_contexts += (("capability_dialog", "capability"), ("neutral_join", "exchange"), ("object_garrison", "exchange"))
+            if (self.reason, self.context.kind) not in opened_contexts:
+                raise ValueError("Only a supported delivered query can open a context asynchronously")
         if not profile.dialogs and (self.event is not None and self.event.kind == "dialog_requested"
                                    or self.result is not None and self.result.status == "dialog_answered"):
             raise ValueError("Adventure dialog records require v7")
@@ -2250,6 +2251,8 @@ class Frame:
             raise ValueError("Offers must preserve complete context and all coordinate support")
 
 
+_TYPED_PAYLOADS = (("observation", Observation), ("context", Context), ("offers", Offers),
+                   ("action", Action), ("result", Result), ("event", VisibleEvent))
 _OFFERS_BUILT = {}  # (id of an observation, schema) -> (the observation, the offers Offers.from_observation built)
 
 
@@ -3258,43 +3261,51 @@ def decode_observation(raw, *, schema=SCHEMA, unchanged_map=None):
     if unchanged_map is not None and "tiles" not in data and "objects" not in data:
         data["tiles"], data["objects"] = unchanged_map
     if data.get("window") is not None:
-        window = _record(data["window"], Window)
-        if (profile.capabilities != ("capability_controls" in window)
-                or profile.capabilities != ("capability_panel" in window)):
-            raise ValueError("Capability controls and contents are explicit only in v8 windows")
-        if "capability_controls" in window:
-            window["capability_controls"] = _array(window["capability_controls"])
-        if window.get("capability_panel") is not None:
-            window["capability_panel"] = _decoded_once(_decode_capability_panel, window["capability_panel"], schema)
-        if profile.dialogs != ("dialog_panel" in window):
-            raise ValueError("dialog_panel is explicit in v7 windows and absent in older profiles")
-        if window.get("dialog_panel") is not None:
-            window["dialog_panel"] = decode_dialog_panel(window["dialog_panel"], schema=schema)
-        window["context"] = _decode_context(window.get("context"), profile)
-        if profile == WINDOWS_PROFILE or window["context"].kind != "town":
-            if "town_panel" in window:
-                raise ValueError("Town economy fields are absent from this context/schema")
-        else:
-            window["town_panel"] = _decoded_once(_decode_town_panel, window.get("town_panel"), profile.history_schema)
-        if "armies" in window:
-            window["armies"] = tuple(_decoded_once(decode_army, item) for item in _array(window["armies"]))
-        if window.get("stack_panel") is not None:
-            window["stack_panel"] = decode_stack_panel(window["stack_panel"], profile)
-        if window.get("army") is not None:
-            window["army"] = tuple(_decode_simple(item, Stack) for item in _array(window["army"]))
-        for name in ("primary_skills", "buildings"):
-            if window.get(name) is not None:
-                window[name] = _array(window[name])
-        try:
-            data["window"] = Window(**window)
-        except TypeError as exc:
-            raise ValueError("Incomplete window") from exc
+        # A window that is exactly the window of an earlier view is that window: the same frozen value, decoded
+        # once, so the model builds its tree once (policy._KEPT_TYPES).
+        data["window"] = _decoded_once(_decode_window, data["window"], schema)
     try:
         observation = Observation(**data)
         _validate_observation(observation, profile)
         return observation
     except TypeError as exc:
         raise ValueError("Incomplete observation") from exc
+
+
+
+def _decode_window(raw, schema):
+    profile = profile_for(schema)
+    window = _record(raw, Window)
+    if (profile.capabilities != ("capability_controls" in window)
+            or profile.capabilities != ("capability_panel" in window)):
+        raise ValueError("Capability controls and contents are explicit only in v8 windows")
+    if "capability_controls" in window:
+        window["capability_controls"] = _array(window["capability_controls"])
+    if window.get("capability_panel") is not None:
+        window["capability_panel"] = _decoded_once(_decode_capability_panel, window["capability_panel"], schema)
+    if profile.dialogs != ("dialog_panel" in window):
+        raise ValueError("dialog_panel is explicit in v7 windows and absent in older profiles")
+    if window.get("dialog_panel") is not None:
+        window["dialog_panel"] = decode_dialog_panel(window["dialog_panel"], schema=schema)
+    window["context"] = _decode_context(window.get("context"), profile)
+    if profile == WINDOWS_PROFILE or window["context"].kind != "town":
+        if "town_panel" in window:
+            raise ValueError("Town economy fields are absent from this context/schema")
+    else:
+        window["town_panel"] = _decoded_once(_decode_town_panel, window.get("town_panel"), profile.history_schema)
+    if "armies" in window:
+        window["armies"] = tuple(_decoded_once(decode_army, item) for item in _array(window["armies"]))
+    if window.get("stack_panel") is not None:
+        window["stack_panel"] = decode_stack_panel(window["stack_panel"], profile)
+    if window.get("army") is not None:
+        window["army"] = tuple(_decode_simple(item, Stack) for item in _array(window["army"]))
+    for name in ("primary_skills", "buildings"):
+        if window.get(name) is not None:
+            window[name] = _array(window[name])
+    try:
+        return Window(**window)
+    except TypeError as exc:
+        raise ValueError("Incomplete window") from exc
 
 
 def decode_notice(raw, *, schema=SCHEMA):

@@ -102,6 +102,11 @@ def _decoded_view(raw, schema, unchanged_map):
     return observation
 
 
+# Every field a record of each kind carries, "kind" and "day" included; True: a decision without its observation.
+_EXACT_FIELDS = {(kind, bare): frozenset({"kind", "day"} | (fields - {"observation"} if bare else fields))
+                 for kind, fields in RECORD_FIELDS.items() for bare in (False, True)}
+
+
 class Producer:
     """One seat's stream. No other player's state is available here."""
 
@@ -148,10 +153,8 @@ class Producer:
             if type(record) is not dict or record.get("kind") not in RECORD_FIELDS:
                 raise ValueError("Unsupported contextual record kind")
             record_kind = record["kind"]
-            fields = RECORD_FIELDS[record_kind]
-            if record_kind == "decision" and "observation" not in record:
-                fields = fields - {"observation"}  # it is the one of the latest view
-            exact(record, {"kind", "day"} | fields, record_kind)
+            # The decision without an observation has the one of the latest view.
+            exact(record, _EXACT_FIELDS[record_kind, record_kind == "decision" and "observation" not in record], record_kind)
             raw = dict(record)
             if "decision_id" in raw:
                 native_id = raw.pop("decision_id")

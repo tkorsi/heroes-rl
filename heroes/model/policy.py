@@ -421,7 +421,7 @@ def _semantic(value):
 # describes a panel's controls, buildings and offers for every decision taken in it.
 _KEPT_TYPES = frozenset((c.OwnArmyStack, c.OwnArmy, c.ArmyView, c.Hero, c.Town, c.TownPanel, c.CapabilityPanel,
                          c.PanelControl, c.BuildingChoice, c.BuildingDetails, c.RecruitChoice, c.HeroRecruitChoice,
-                         c.UpgradeChoice, c.ArmySlot))
+                         c.UpgradeChoice, c.ArmySlot, c.Window))
 
 
 @dataclass(frozen=True)
@@ -1229,7 +1229,11 @@ class ContextualDistribution:
     def _choose(self, name, logits, selected, generator, trace):
         log_probs = torch.log_softmax(logits, 0)
         if selected is None:
-            selected = int(torch.multinomial(log_probs.detach().exp(), 1, generator=generator).item())
+            # torch.multinomial(p, 1, generator) without its checks of p (finite, non-negative, not all zero,
+            # which exp(log_softmax) always is): the same exponential draw from the generator and the same
+            # float32 division and argmax that ATen's single-sample path computes, so the same index.
+            probabilities = log_probs.detach().exp()
+            selected = int(torch.argmax(probabilities / torch.empty_like(probabilities).exponential_(1, generator=generator)))
         trace.append(ConditionalProbability(name, selected, logits.numel(), log_probs[selected]))
         recording = self.recording
         if recording is not None:
@@ -1241,7 +1245,15 @@ class ContextualDistribution:
         kinds = self._native_kinds()
         if self.guard is None:
             return kinds
-        return tuple(kind for kind in kinds if any(self._permitted(action) for action in self._representatives(kind)))
+        guard, offers = self.guard, self.offers
+        blocked = guard.blocked_management_subjects
+        # A rearrangement (split, merge, swap) is charged to the displayed armies of its two slots; when every
+        # displayed army's subject is past its budget, the guard refuses each pair (GuardSupport.permits, first
+        # test), so the kind has no permitted representative and its pairs need not be asked one by one.
+        barred = bool(blocked and offers.armies and not interaction_guard._mandatory(offers)
+                      and all(army.subject in blocked for army in offers.armies))
+        return tuple(kind for kind in kinds if not (barred and kind in interaction_guard._ARRANGEMENTS)
+                     and any(self._permitted(action) for action in self._representatives(kind)))
 
     def _native_kinds(self):
         if self.offers.capability_panel is not None:

@@ -134,13 +134,28 @@ def library():
     return lib
 
 
+_ROWS = 4096  # states cut from one block of zeros
+_BLOCK = [None, 0, 0]  # the block states are cut from now, its address, the next row
+
+
 class State:
-    """A recurrent state: 64 numbers of the caller's own, with their address for the C calls."""
+    """A recurrent state: 64 numbers of the caller's own, with their address for the C calls.
+
+    Every frame makes one. A state is a row of a block of zeros made once for 4,096 of them, its
+    address the block's plus the row's offset: no array and no ctypes object of its own for each
+    frame. A row is handed out once and the block stays alive while any of its rows does.
+    """
     __slots__ = ("values", "address")
 
     def __init__(self):
-        self.values = np.zeros(64, dtype=np.float32)
-        self.address = self.values.ctypes.data
+        block, base, row = _BLOCK
+        if row == _ROWS or block is None:
+            block = np.zeros((_ROWS, 64), dtype=np.float32)
+            base, row = block.ctypes.data, 0
+            _BLOCK[0], _BLOCK[1] = block, base
+        _BLOCK[2] = row + 1
+        self.values = block[row]
+        self.address = base + 256 * row
 
     def tensor(self):
         return torch.from_numpy(self.values.copy())
