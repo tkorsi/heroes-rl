@@ -2419,8 +2419,14 @@ class PlayerHistory:
         self._forgotten = max(self._forgotten, before)
 
     def emit(self, kind, day=None, **payload):
-        frame = Frame(self.episode, self.player, len(self._frames), self.day if day is None else day, kind,
-                      schema=self.schema, **payload)
+        data = {"episode": self.episode, "player": self.player, "seq": len(self._frames),
+                "day": self.day if day is None else day, "kind": kind, "schema": self.schema}
+        if payload.keys() <= _field_set(Frame) and not payload.keys() & data.keys():
+            data.update(payload)
+            frame = _new_frame(data)  # Frame(...) with these fields, as decode_frame builds one
+        else:
+            frame = Frame(self.episode, self.player, len(self._frames), self.day if day is None else day, kind,
+                          schema=self.schema, **payload)
         self.append(frame)
         return frame
 

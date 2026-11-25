@@ -237,18 +237,22 @@ class Producer:
                     self.gold_mine_captures += 1
         return tuple(appended)
 
-    def response(self, action):
+    def _check_answer(self, action):
         decision = self.history.decision
         if (type(action) is not contract.Action or decision is None or self.history.action is not None
                 or self.current_id is None or not decision.offers.permits(action)):
             raise ValueError("Action does not match the current contextual request")
+        return decision
+
+    def response(self, action):
+        decision = self._check_answer(action)
         return {"protocol_version": self.profile.protocol, "type": "context_action", "episode": self.episode,
                 "player": self.player, "decision_id": self.current_id, "revision": decision.revision,
                 "action": contract.encode_action(action)}
 
     def submitted(self, action):
         """Record an answer after it was written to the socket."""
-        self.response(action)
+        self._check_answer(action)  # what response() checks; its message was built and sent already
         return self.history.emit("submitted", action=action, decision_seq=self.history.decision.seq)
 
 
