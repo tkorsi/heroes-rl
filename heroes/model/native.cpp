@@ -31,6 +31,7 @@
 #include <map>
 #include <set>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace {
@@ -231,7 +232,6 @@ int32_t interior_node(Kind kind, int32_t tag, const std::vector<int32_t> &childr
 int32_t node(const char *tag, std::vector<int32_t> children = {}) { return interior_node(NODE, text_node(tag), children); }
 int32_t node(int32_t tag, std::vector<int32_t> children = {}) { return interior_node(NODE, tag, children); }
 
-const std::string &repr_of(int32_t index);
 
 void float_repr(double value, std::string &out) {
     char *text = PyOS_double_to_string(value, 'r', 0, Py_DTSF_ADD_DOT_0, nullptr);
@@ -240,36 +240,76 @@ void float_repr(double value, std::string &out) {
     PyMem_Free(text);
 }
 
-const std::string &repr_of(int32_t index) {
-    Node *item = &nodes[(size_t)index];
-    if (item->has_repr) return item->repr;
-    std::string out;
-    switch (item->kind) {
-        case TEXT: out = "('text', " + item->text_repr + ")"; break;
-        case NUMBER: out = "('number', "; float_repr(item->number, out); out += ")"; break;
-        default: {
-            out = item->kind == NODE ? "('node', " : "('ordered', ";
-            out += nodes[(size_t)item->tag].text_repr;
-            out += ", (";
-            const std::vector<int32_t> children = item->children;  // repr_of may grow the vector of nodes
-            for (size_t i = 0; i < children.size(); i++) {
-                if (i) out += ", ";
-                out += repr_of(children[i]);
-            }
-            out += children.size() == 1 ? ",))" : "))";
+// The repr of a node's tree, as Python writes the tuple, produced piece by piece: two trees are ordered by their
+// reprs (policy._set) without either repr being built. A number's repr is kept on its node.
+struct ReprStream {
+    struct Frame { int32_t node; int32_t step; };  // step: -1 not started, i >= 0 next child, children.size() closing
+    std::vector<Frame> stack;
+    std::string_view piece;
+    size_t offset = 0;
+
+    explicit ReprStream(int32_t root) { stack.push_back({root, -1}); advance(); }
+
+    static std::string_view number_repr(int32_t index) {
+        Node &item = nodes[(size_t)index];
+        if (!item.has_repr) {
+            std::string out = "('number', ";
+            float_repr(item.number, out);
+            out += ")";
+            item.repr = std::move(out);
+            item.has_repr = true;
         }
+        return item.repr;
     }
-    item = &nodes[(size_t)index];
-    item->repr = std::move(out);
-    item->has_repr = true;
-    return item->repr;
+
+    void advance() {  // the next nonempty piece, or an empty piece at the end
+        offset = 0;
+        while (!stack.empty()) {
+            Frame &top = stack.back();
+            const Node &item = nodes[(size_t)top.node];
+            if (item.kind == TEXT) {
+                if (top.step == -1) { top.step = 0; piece = "('text', "; return; }
+                if (top.step == 0) { top.step = 1; piece = item.text_repr; if (!piece.empty()) return; continue; }
+                stack.pop_back(); piece = ")"; return;
+            }
+            if (item.kind == NUMBER) { stack.pop_back(); piece = number_repr((int32_t)(&item - nodes.data())); return; }
+            const int32_t count = (int32_t)item.children.size();
+            if (top.step == -1) { top.step = -2; piece = item.kind == NODE ? "('node', " : "('ordered', "; return; }
+            if (top.step == -2) { top.step = -3; piece = nodes[(size_t)item.tag].text_repr; if (!piece.empty()) return; continue; }
+            if (top.step == -3) { top.step = 0; piece = ", ("; return; }
+            if (top.step < count) {
+                const int32_t child = item.children[(size_t)top.step];
+                const bool comma = top.step > 0;
+                top.step++;
+                stack.push_back({child, -1});
+                if (comma) { piece = ", "; return; }
+                continue;
+            }
+            const bool single = count == 1;
+            stack.pop_back();
+            piece = single ? ",))" : "))";
+            return;
+        }
+        piece = std::string_view();
+    }
+};
+
+bool repr_less(int32_t a, int32_t b) {  // repr(tree a) < repr(tree b), by bytes as Python compares their UTF-8
+    if (a == b) return false;
+    ReprStream x(a), y(b);
+    while (true) {
+        if (x.piece.empty() || y.piece.empty()) return x.piece.empty() && !y.piece.empty();
+        const size_t n = std::min(x.piece.size() - x.offset, y.piece.size() - y.offset);
+        const int c = std::memcmp(x.piece.data() + x.offset, y.piece.data() + y.offset, n);
+        if (c != 0) return c < 0;
+        x.offset += n; y.offset += n;
+        if (x.offset == x.piece.size()) x.advance();
+        if (y.offset == y.piece.size()) y.advance();
+    }
 }
 
 int32_t sorted_set(int32_t tag, std::vector<int32_t> children) {
-    for (int32_t child : children) repr_of(child);
-    std::stable_sort(children.begin(), children.end(), [](int32_t a, int32_t b) {
-        return nodes[(size_t)a].repr < nodes[(size_t)b].repr;
-    });
+    std::stable_sort(children.begin(), children.end(), repr_less);
     return interior_node(NODE, tag, children);
 }
 
@@ -2595,55 +2635,81 @@ const std::vector<SwapKey> &swap_keys(int32_t armies) {  // guard._swap_keys: a 
     return known.emplace(armies, std::move(keys)).first->second;
 }
 
-typedef std::vector<std::pair<int32_t, int64_t>> LayoutRow;  // (creature value, count) per slot
-typedef std::vector<std::pair<std::string, LayoutRow>> Layout;  // sorted by subject
+// guard._army_layout as a flat vector: for each row in the order of its subject, the subject's string id, the
+// number of slots, then each slot's creature (value id) and count. Equal layouts, equal vectors.
+struct LayoutHash { size_t operator()(const std::vector<int64_t> &v) const {
+    uint64_t h = 0xcbf29ce484222325ULL ^ v.size();
+    for (int64_t x : v) h = (h ^ (uint64_t)x) * 0x100000001b3ULL;
+    return (size_t)mix64(h);
+} };
+typedef std::unordered_set<std::vector<int64_t>, LayoutHash> Layouts;
 
-Layout army_layout(int32_t observation, int32_t armies) {  // guard._army_layout
-    std::map<std::string, LayoutRow> rows;
+struct LayoutRows {  // a layout and where each row's slots start in it
+    std::vector<int64_t> flat;
+    std::vector<std::pair<int32_t, std::pair<size_t, size_t>>> rows;  // subject string id -> (first slot's index, slots)
+};
+
+void army_layout(int32_t observation, int32_t armies, LayoutRows &out) {
+    static std::vector<std::pair<int32_t, std::vector<std::pair<int32_t, int64_t>>>> rows;  // reused
+    size_t used = 0;
+    auto row_of = [&](int32_t subject) -> std::vector<std::pair<int32_t, int64_t>> & {
+        for (size_t i = 0; i < used; i++) if (rows[i].first == subject) return rows[i].second;
+        if (used == rows.size()) rows.emplace_back();
+        rows[used].first = subject;
+        return rows[used++].second;
+    };
     const int32_t own = field(observation, T.o_own_armies);
     if (!none(own))
         for (int32_t army : V(own).items) {
-            LayoutRow slots(7, std::make_pair(v_none, (int64_t)0));
-            const int32_t type = V(army).type;
-            for (int32_t slot : V(vfield(army, type, "slots")).items) {
+            auto &slots = row_of(V(F(army, "subject")).string);
+            slots.assign(7, std::make_pair(v_none, (int64_t)0));
+            for (int32_t slot : V(F(army, "slots")).items) {
                 const int64_t index = num(field(slot, G.own_slot_slot));
                 if (index < -7 || index >= 7) { PyErr_SetString(PyExc_IndexError, "own army slot"); throw Fail(); }
                 slots[(size_t)(index < 0 ? index + 7 : index)] = {field(slot, G.own_slot_creature), num(field(slot, G.own_slot_count))};
             }
-            rows[str(vfield(army, type, "subject"))] = std::move(slots);
         }
     if (!none(armies))
         for (int32_t army : V(armies).items) {
-            LayoutRow slots;
+            auto &slots = row_of(V(field(army, G.army_subject)).string);
+            slots.clear();
             for (int32_t slot : V(field(army, G.army_slots)).items) slots.push_back({field(slot, G.slot_creature), num(field(slot, G.slot_count))});
-            rows[str(field(army, G.army_subject))] = std::move(slots);
         }
-    return Layout(rows.begin(), rows.end());
+    std::vector<size_t> order(used);
+    for (size_t i = 0; i < used; i++) order[i] = i;
+    std::sort(order.begin(), order.end(), [&](size_t a, size_t b) { return strings[(size_t)rows[a].first] < strings[(size_t)rows[b].first]; });
+    out.flat.clear(); out.rows.clear();
+    for (size_t i : order) {
+        out.flat.push_back(rows[i].first);
+        out.flat.push_back((int64_t)rows[i].second.size());
+        out.rows.push_back({rows[i].first, {out.flat.size(), rows[i].second.size()}});
+        for (auto &slot : rows[i].second) { out.flat.push_back(slot.first); out.flat.push_back(slot.second); }
+    }
 }
 
-std::vector<SwapKey> blocked_swaps(int32_t observation, int32_t offers, const std::set<Layout> &seen) {  // guard._blocked_swaps
+void blocked_swaps(int32_t offers, const LayoutRows &layout, const Layouts &seen, std::vector<SwapKey> &out) {  // guard._blocked_swaps
+    out.clear();
     const int32_t armies = field(offers, G.offers_armies);
-    std::vector<SwapKey> out;
-    if (none(armies) || V(armies).items.empty()) return out;
-    const Layout layout = army_layout(observation, armies);
-    std::unordered_map<std::string, size_t> places;
-    for (size_t i = 0; i < layout.size(); i++) places[layout[i].first] = i;
+    if (none(armies) || V(armies).items.empty()) return;
+    static std::vector<int64_t> swapped;
+    auto place = [&](const std::string &subject, int64_t index) -> size_t {
+        for (auto &row : layout.rows)
+            if (strings[(size_t)row.first] == subject) {
+                const int64_t size = (int64_t)row.second.second;
+                if (index < -size || index >= size) { PyErr_SetString(PyExc_IndexError, "layout slot"); throw Fail(); }
+                return row.second.first + 2 * (size_t)(index < 0 ? index + size : index);
+            }
+        PyErr_SetString(PyExc_KeyError, "layout subject"); throw Fail();
+    };
     for (const SwapKey &key : swap_keys(armies)) {
-        const size_t i = places.at(key.left), j = places.at(key.right);
-        Layout rows = layout;
-        auto at = [](LayoutRow &row, int64_t index) -> std::pair<int32_t, int64_t> & {
-            const int64_t size = (int64_t)row.size();
-            if (index < -size || index >= size) { PyErr_SetString(PyExc_IndexError, "layout slot"); throw Fail(); }
-            return row[(size_t)(index < 0 ? index + size : index)];
-        };
-        const auto x = at(rows[i].second, key.a), y = at(rows[j].second, key.b);
-        at(rows[i].second, key.a) = y;
-        at(rows[j].second, key.b) = x;
-        if (seen.count(rows)) out.push_back(key);
+        const size_t x = place(key.left, key.a), y = place(key.right, key.b);
+        swapped = layout.flat;
+        std::swap(swapped[x], swapped[y]);
+        std::swap(swapped[x + 1], swapped[y + 1]);
+        if (seen.count(swapped)) out.push_back(key);
     }
     std::sort(out.begin(), out.end());
     out.erase(std::unique(out.begin(), out.end()), out.end());
-    return out;
 }
 
 std::vector<std::string> management_subjects(int32_t action, int32_t offers) {  // guard.management_subjects
@@ -2748,7 +2814,8 @@ struct Tracker {
     bool has_world = false;
     World world;
     std::set<Coordinate> failed;
-    std::set<Layout> layouts;
+    Layouts layouts;
+    LayoutRows layout;  // reused
     bool town_reopen_blocked = false, has_previous = false, has_move = false, consumed = false;
     Key previous;
     Coordinate previous_move;
@@ -2797,8 +2864,9 @@ struct Tracker {
             for (auto &entry : management) if (entry.second >= management_limit) out.management.push_back(entry.first);
             out.has_previous = has_previous; out.previous = previous;
             const int32_t armies = field(offers, G.offers_armies);
-            layouts.insert(army_layout(observation, armies));
-            out.swaps = blocked_swaps(observation, offers, layouts);
+            army_layout(observation, armies, layout);
+            layouts.insert(layout.flat);
+            blocked_swaps(offers, layout, layouts, out.swaps);
             if (window_limit >= 0) for (auto &entry : windows) if (entry.second >= window_limit) out.windows.push_back(entry.first);
             out.exhausted = decision_limit >= 0 && decisions >= decision_limit;
             return true;
