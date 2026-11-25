@@ -13,10 +13,13 @@
 #include <Python.h>
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
+#include <cstdlib>
 #include <cstdint>
 #include <cstring>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -733,6 +736,986 @@ PyObject *py_stats(PyObject *, PyObject *) {
                          "observations", (Py_ssize_t)observations.map.size());
 }
 
+
+// == contract values ==============================================================================================
+// Every decoded contract value as one node per distinct content: equal values have one id, so comparing two
+// observations, windows or armies is comparing two numbers. The schema is the contract's dataclasses, given by
+// native.py at configure: each type's fields in order with their kinds, and the defaults of absent fields.
+
+enum VKind : uint8_t { V_NONE = 0, V_BOOL = 1, V_INT = 2, V_STR = 3, V_TUPLE = 4, V_RECORD = 5 };
+
+struct Val {
+    VKind kind;
+    int32_t type = -1;      // V_RECORD: the type's index
+    int64_t number = 0;     // V_BOOL, V_INT
+    int32_t string = -1;    // V_STR: the string's index
+    std::vector<int32_t> items;  // V_TUPLE: elements; V_RECORD: fields in schema order
+    PyObject *python = nullptr;  // the Python value, once asked (owned)
+};
+
+enum SKind : uint8_t { S_STR, S_INT, S_BOOL, S_OPTIONAL, S_TUPLE, S_FIXED, S_RECORD };
+
+struct Spec {
+    SKind kind;
+    int32_t type = -1;            // S_RECORD
+    std::vector<int32_t> inner;   // S_OPTIONAL, S_TUPLE: one spec; S_FIXED: one per element (indices into specs)
+};
+
+struct VField {
+    std::string name;
+    PyObject *python_name = nullptr;  // interned
+    int32_t spec;
+    int32_t fallback = -1;            // value id of the default, -1 when the field is required
+};
+
+struct VType {
+    std::string name;
+    PyObject *python = nullptr;   // the dataclass
+    std::vector<VField> fields;
+    std::unordered_map<std::string, int32_t> by_name;
+};
+
+std::vector<Val> vals;
+std::unordered_map<std::string, int32_t> val_index;   // kind, type, scalar and items as bytes -> value
+std::vector<std::string> strings;
+std::vector<PyObject *> string_objects;               // the Python str of each string, once asked
+std::unordered_map<std::string, int32_t> string_index;
+std::vector<Spec> specs;
+std::vector<VType> vtypes;
+std::unordered_map<std::string, int32_t> vtype_index;
+int32_t v_none = -1, v_true = -1, v_false = -1, v_empty = -1;
+
+int32_t string_id(const char *bytes, size_t size) {
+    std::string key(bytes, size);
+    auto found = string_index.find(key);
+    if (found != string_index.end()) return found->second;
+    const int32_t index = (int32_t)strings.size();
+    strings.push_back(key);
+    string_objects.push_back(nullptr);
+    string_index.emplace(std::move(key), index);
+    return index;
+}
+
+int32_t intern_val(Val &&value) {
+    std::string key;
+    key.reserve(16 + 4 * value.items.size());
+    key.push_back((char)value.kind);
+    key.append((const char *)&value.type, 4);
+    key.append((const char *)&value.number, 8);
+    key.append((const char *)&value.string, 4);
+    key.append((const char *)value.items.data(), 4 * value.items.size());
+    auto found = val_index.find(key);
+    if (found != val_index.end()) return found->second;
+    const int32_t index = (int32_t)vals.size();
+    vals.push_back(std::move(value));
+    val_index.emplace(std::move(key), index);
+    return index;
+}
+
+int32_t v_scalar(VKind kind, int64_t number, int32_t string = -1) {
+    Val value;
+    value.kind = kind;
+    value.number = number;
+    value.string = string;
+    return intern_val(std::move(value));
+}
+
+int32_t v_items(VKind kind, int32_t type, std::vector<int32_t> items) {
+    Val value;
+    value.kind = kind;
+    value.type = type;
+    value.items = std::move(items);
+    return intern_val(std::move(value));
+}
+
+struct JsonError {};
+
+struct Json {  // a strict JSON reader over one message, decoding by the contract's specs
+    const char *p, *end;
+    std::string scratch;
+
+    void fail(const char *what) {
+        if (!PyErr_Occurred()) PyErr_Format(PyExc_ValueError, "Engine message: %s", what);
+        throw JsonError();
+    }
+    void ws() { while (p < end && (*p == ' ' || *p == '\n' || *p == '\r' || *p == '\t')) p++; }
+    bool take(char c) { ws(); if (p < end && *p == c) { p++; return true; } return false; }
+    void expect(char c) { if (!take(c)) fail("unexpected character"); }
+    bool literal(const char *word) {
+        ws();
+        const size_t n = strlen(word);
+        if ((size_t)(end - p) >= n && memcmp(p, word, n) == 0) { p += n; return true; }
+        return false;
+    }
+    static void utf8(std::string &out, uint32_t code) {
+        if (code < 0x80) out.push_back((char)code);
+        else if (code < 0x800) { out.push_back((char)(0xC0 | (code >> 6))); out.push_back((char)(0x80 | (code & 0x3F))); }
+        else if (code < 0x10000) { out.push_back((char)(0xE0 | (code >> 12))); out.push_back((char)(0x80 | ((code >> 6) & 0x3F)));
+                                   out.push_back((char)(0x80 | (code & 0x3F))); }
+        else { out.push_back((char)(0xF0 | (code >> 18))); out.push_back((char)(0x80 | ((code >> 12) & 0x3F)));
+               out.push_back((char)(0x80 | ((code >> 6) & 0x3F))); out.push_back((char)(0x80 | (code & 0x3F))); }
+    }
+    uint32_t hex4() {
+        if (end - p < 4) fail("short escape");
+        uint32_t value = 0;
+        for (int i = 0; i < 4; i++) {
+            const char c = *p++;
+            value <<= 4;
+            if (c >= '0' && c <= '9') value |= (uint32_t)(c - '0');
+            else if (c >= 'a' && c <= 'f') value |= (uint32_t)(c - 'a' + 10);
+            else if (c >= 'A' && c <= 'F') value |= (uint32_t)(c - 'A' + 10);
+            else fail("bad escape");
+        }
+        return value;
+    }
+    const std::string &string() {  // into scratch, UTF-8
+        ws();
+        if (p >= end || *p != '"') fail("expected a string");
+        p++;
+        scratch.clear();
+        {   // the common case: no escape before the closing quote, copied at once
+            const char *quote = (const char *)memchr(p, '"', (size_t)(end - p));
+            if (quote && !memchr(p, '\\', (size_t)(quote - p))) {
+                for (const char *c = p; c < quote; c++) if ((unsigned char)*c < 0x20) fail("control character in string");
+                scratch.assign(p, (size_t)(quote - p));
+                p = quote + 1;
+                return scratch;
+            }
+        }
+        while (true) {
+            if (p >= end) fail("unterminated string");
+            const char c = *p++;
+            if (c == '"') break;
+            if ((unsigned char)c < 0x20) fail("control character in string");
+            if (c != '\\') { scratch.push_back(c); continue; }
+            if (p >= end) fail("bad escape");
+            const char e = *p++;
+            switch (e) {
+                case '"': scratch.push_back('"'); break;
+                case '\\': scratch.push_back('\\'); break;
+                case '/': scratch.push_back('/'); break;
+                case 'b': scratch.push_back('\b'); break;
+                case 'f': scratch.push_back('\f'); break;
+                case 'n': scratch.push_back('\n'); break;
+                case 'r': scratch.push_back('\r'); break;
+                case 't': scratch.push_back('\t'); break;
+                case 'u': {
+                    uint32_t code = hex4();
+                    if (code >= 0xD800 && code < 0xDC00 && end - p >= 6 && p[0] == '\\' && p[1] == 'u') {
+                        const char *mark = p;
+                        p += 2;
+                        const uint32_t low = hex4();
+                        if (low >= 0xDC00 && low < 0xE000) code = 0x10000 + ((code - 0xD800) << 10) + (low - 0xDC00);
+                        else p = mark;
+                    }
+                    if (code >= 0xD800 && code < 0xE000) fail("lone surrogate");  // json would keep it; no engine sends one
+                    utf8(scratch, code);
+                    break;
+                }
+                default: fail("bad escape");
+            }
+        }
+        return scratch;
+    }
+    int64_t integer() {
+        ws();
+        const char *start = p;
+        if (p < end && *p == '-') p++;
+        if (p >= end || *p < '0' || *p > '9') fail("expected an integer");
+        if (*p == '0' && p + 1 < end && p[1] >= '0' && p[1] <= '9') fail("leading zero");
+        while (p < end && *p >= '0' && *p <= '9') p++;
+        if (p < end && (*p == '.' || *p == 'e' || *p == 'E')) fail("expected an integer, not a float");
+        if (p - start > 18) fail("integer out of range");
+        return std::strtoll(std::string(start, (size_t)(p - start)).c_str(), nullptr, 10);
+    }
+    void skip_string() {  // a string, not kept
+        if (p >= end || *p != '"') fail("expected a string");
+        p++;
+        while (true) {
+            const char *quote = (const char *)memchr(p, '"', (size_t)(end - p));
+            if (!quote) fail("unterminated string");
+            const char *back = quote;  // a quote preceded by an odd number of backslashes is escaped
+            while (back > p && back[-1] == '\\') back--;
+            p = quote + 1;
+            if (((quote - back) & 1) == 0) return;
+        }
+    }
+    void skip() {  // any value
+        ws();
+        if (p >= end) fail("unexpected end");
+        const char c = *p;
+        if (c == '{') { p++; if (take('}')) return; do { ws(); skip_string(); expect(':'); skip(); } while (take(',')); expect('}'); }
+        else if (c == '[') { p++; if (take(']')) return; do { skip(); } while (take(',')); expect(']'); }
+        else if (c == '"') skip_string();
+        else if (literal("true") || literal("false") || literal("null")) return;
+        else { if (*p == '-') p++; while (p < end && (std::isdigit((unsigned char)*p) || *p == '.' || *p == 'e' || *p == 'E' || *p == '+' || *p == '-')) p++; }
+    }
+
+    int32_t value(int32_t spec_index) {
+        const Spec &spec = specs[(size_t)spec_index];
+        switch (spec.kind) {
+            case S_OPTIONAL: if (literal("null")) return v_none; return value(spec.inner[0]);
+            case S_STR: { const std::string &text = string(); return v_scalar(V_STR, 0, string_id(text.data(), text.size())); }
+            case S_INT: return v_scalar(V_INT, integer());
+            case S_BOOL: if (literal("true")) return v_true; if (literal("false")) return v_false; fail("expected a boolean");
+            case S_TUPLE: {
+                expect('[');
+                std::vector<int32_t> items;
+                if (!take(']')) { do items.push_back(value(spec.inner[0])); while (take(',')); expect(']'); }
+                return items.empty() ? v_empty : v_items(V_TUPLE, -1, std::move(items));
+            }
+            case S_FIXED: {
+                expect('[');
+                std::vector<int32_t> items;
+                for (size_t i = 0; i < spec.inner.size(); i++) { if (i) expect(','); items.push_back(value(spec.inner[i])); }
+                expect(']');
+                return v_items(V_TUPLE, -1, std::move(items));
+            }
+            case S_RECORD: return record(spec.type);
+        }
+        fail("bad spec");
+        return -1;
+    }
+
+    int32_t record(int32_t type_index) {
+        const VType &type = vtypes[(size_t)type_index];
+        std::vector<int32_t> items(type.fields.size(), -1);
+        expect('{');
+        if (!take('}')) {
+            do {
+                const std::string &key = string();
+                auto found = type.by_name.find(key);
+                if (found == type.by_name.end()) {
+                    PyErr_Format(PyExc_ValueError, "Unknown fields in %s", type.name.c_str());
+                    fail("unknown field");
+                }
+                expect(':');
+                items[(size_t)found->second] = value(type.fields[(size_t)found->second].spec);
+            } while (take(','));
+            expect('}');
+        }
+        for (size_t i = 0; i < items.size(); i++) {
+            if (items[i] >= 0) continue;
+            if (type.fields[i].fallback < 0) {
+                PyErr_Format(PyExc_ValueError, "Missing or invalid %s fields", type.name.c_str());
+                fail("missing field");
+            }
+            items[i] = type.fields[i].fallback;
+        }
+        return v_items(V_RECORD, type_index, std::move(items));
+    }
+};
+
+PyObject *string_object(int32_t index) {  // borrowed
+    PyObject *&slot = string_objects[(size_t)index];
+    if (!slot) {
+        slot = PyUnicode_DecodeUTF8(strings[(size_t)index].data(), (Py_ssize_t)strings[(size_t)index].size(), "strict");
+        if (!slot) throw Fail();
+        PyUnicode_InternInPlace(&slot);
+    }
+    return slot;
+}
+
+PyObject *python_value(int32_t index) {  // borrowed: the contract object this value stands for
+    Val *value = &vals[(size_t)index];
+    if (value->python) return value->python;
+    PyObject *made = nullptr;
+    switch (value->kind) {
+        case V_NONE: made = Py_None; Py_INCREF(made); break;
+        case V_BOOL: made = value->number ? Py_True : Py_False; Py_INCREF(made); break;
+        case V_INT: made = PyLong_FromLongLong(value->number); break;
+        case V_STR: made = string_object(value->string); Py_INCREF(made); break;
+        case V_TUPLE: {
+            const std::vector<int32_t> items = value->items;
+            made = PyTuple_New((Py_ssize_t)items.size());
+            if (!made) throw Fail();
+            for (size_t i = 0; i < items.size(); i++) {
+                PyObject *item = python_value(items[i]);
+                Py_INCREF(item);
+                PyTuple_SET_ITEM(made, (Py_ssize_t)i, item);
+            }
+            break;
+        }
+        case V_RECORD: {
+            const std::vector<int32_t> items = value->items;
+            const VType &type = vtypes[(size_t)value->type];
+            Ref arguments(PyTuple_New(0));
+            Ref keywords(PyDict_New());
+            for (size_t i = 0; i < items.size(); i++)
+                if (PyDict_SetItem(keywords.get(), type.fields[i].python_name, python_value(items[i]))) throw Fail();
+            made = PyObject_Call(type.python, arguments.get(), keywords.get());
+            break;
+        }
+    }
+    if (!made) throw Fail();
+    vals[(size_t)index].python = made;
+    return made;
+}
+
+// configure_values(types, specs): types = [(name, dataclass, [(field, spec index, default or a marker)])],
+// specs = [(kind, type index, [inner spec indices])]; the defaults are Python values of the schema.
+int32_t value_of_python(PyObject *object, int32_t spec_index);
+
+int32_t value_of_python(PyObject *object, int32_t spec_index) {
+    const Spec spec = specs[(size_t)spec_index];
+    switch (spec.kind) {
+        case S_OPTIONAL: return object == Py_None ? v_none : value_of_python(object, spec.inner[0]);
+        case S_STR: { Py_ssize_t size; const char *chars = PyUnicode_AsUTF8AndSize(object, &size); if (!chars) throw Fail();
+                      return v_scalar(V_STR, 0, string_id(chars, (size_t)size)); }
+        case S_INT: { const long long number = PyLong_AsLongLong(object); if (number == -1 && PyErr_Occurred()) throw Fail();
+                      return v_scalar(V_INT, number); }
+        case S_BOOL: return object == Py_True ? v_true : v_false;
+        case S_TUPLE: case S_FIXED: {
+            Ref fast(PySequence_Fast(object, "tuple"));
+            std::vector<int32_t> items;
+            for (Py_ssize_t i = 0; i < PySequence_Fast_GET_SIZE(fast.get()); i++)
+                items.push_back(value_of_python(PySequence_Fast_GET_ITEM(fast.get(), i),
+                                                spec.kind == S_TUPLE ? spec.inner[0] : spec.inner[(size_t)i]));
+            return spec.kind == S_TUPLE && items.empty() ? v_empty : v_items(V_TUPLE, -1, std::move(items));
+        }
+        case S_RECORD: {
+            const VType &type = vtypes[(size_t)spec.type];
+            std::vector<int32_t> items;
+            for (const VField &field : type.fields) {
+                Ref item(attr(object, field.python_name));
+                items.push_back(value_of_python(item.get(), field.spec));
+            }
+            return v_items(V_RECORD, spec.type, std::move(items));
+        }
+    }
+    return -1;
+}
+
+PyObject *py_configure_values(PyObject *, PyObject *args) {
+    PyObject *type_list, *spec_list, *missing;
+    if (!PyArg_ParseTuple(args, "OOO", &type_list, &spec_list, &missing)) return nullptr;
+    try {
+        specs.clear();
+        for (Py_ssize_t i = 0; i < PyList_GET_SIZE(spec_list); i++) {
+            PyObject *entry = PyList_GET_ITEM(spec_list, i);
+            Spec spec;
+            spec.kind = (SKind)PyLong_AsLong(PyTuple_GET_ITEM(entry, 0));
+            spec.type = (int32_t)PyLong_AsLong(PyTuple_GET_ITEM(entry, 1));
+            PyObject *inner = PyTuple_GET_ITEM(entry, 2);
+            for (Py_ssize_t j = 0; j < PyList_GET_SIZE(inner); j++) spec.inner.push_back((int32_t)PyLong_AsLong(PyList_GET_ITEM(inner, j)));
+            specs.push_back(spec);
+        }
+        vtypes.clear();
+        vtype_index.clear();
+        for (Py_ssize_t i = 0; i < PyList_GET_SIZE(type_list); i++) {
+            PyObject *entry = PyList_GET_ITEM(type_list, i);
+            VType type;
+            Py_ssize_t size;
+            const char *name = PyUnicode_AsUTF8AndSize(PyTuple_GET_ITEM(entry, 0), &size);
+            type.name.assign(name, (size_t)size);
+            type.python = PyTuple_GET_ITEM(entry, 1);
+            Py_INCREF(type.python);
+            vtype_index[type.name] = (int32_t)i;
+            vtypes.push_back(std::move(type));
+        }
+        v_none = v_scalar(V_NONE, 0);
+        v_true = v_scalar(V_BOOL, 1);
+        v_false = v_scalar(V_BOOL, 0);
+        v_empty = v_items(V_TUPLE, -1, {});
+        for (Py_ssize_t i = 0; i < PyList_GET_SIZE(type_list); i++) {  // fields after every type exists (defaults)
+            PyObject *fields = PyTuple_GET_ITEM(PyList_GET_ITEM(type_list, i), 2);
+            VType &type = vtypes[(size_t)i];
+            for (Py_ssize_t j = 0; j < PyList_GET_SIZE(fields); j++) {
+                PyObject *field_entry = PyList_GET_ITEM(fields, j);
+                VField field;
+                Py_ssize_t size;
+                const char *name = PyUnicode_AsUTF8AndSize(PyTuple_GET_ITEM(field_entry, 0), &size);
+                field.name.assign(name, (size_t)size);
+                field.python_name = PyTuple_GET_ITEM(field_entry, 0);
+                Py_INCREF(field.python_name);
+                PyUnicode_InternInPlace(&field.python_name);
+                field.spec = (int32_t)PyLong_AsLong(PyTuple_GET_ITEM(field_entry, 1));
+                type.by_name[field.name] = (int32_t)type.fields.size();
+                type.fields.push_back(field);
+            }
+        }
+        for (Py_ssize_t i = 0; i < PyList_GET_SIZE(type_list); i++) {
+            PyObject *fields = PyTuple_GET_ITEM(PyList_GET_ITEM(type_list, i), 2);
+            for (Py_ssize_t j = 0; j < PyList_GET_SIZE(fields); j++) {
+                PyObject *fallback = PyTuple_GET_ITEM(PyList_GET_ITEM(fields, j), 2);
+                if (fallback != missing)
+                    vtypes[(size_t)i].fields[(size_t)j].fallback = value_of_python(fallback, vtypes[(size_t)i].fields[(size_t)j].spec);
+            }
+        }
+    } catch (Fail &) {
+        return nullptr;
+    }
+    Py_RETURN_NONE;
+}
+
+// decode(bytes, type name): the value of one JSON document of that contract type (tests)
+PyObject *py_decode(PyObject *, PyObject *args) {
+    Py_buffer buffer;
+    const char *type_name;
+    if (!PyArg_ParseTuple(args, "y*s", &buffer, &type_name)) return nullptr;
+    auto found = vtype_index.find(type_name);
+    if (found == vtype_index.end()) { PyBuffer_Release(&buffer); PyErr_SetString(PyExc_KeyError, type_name); return nullptr; }
+    Json reader{(const char *)buffer.buf, (const char *)buffer.buf + buffer.len, {}};
+    int32_t result;
+    try {
+        result = reader.record(found->second);
+        reader.ws();
+        if (reader.p != reader.end) reader.fail("trailing data");
+    } catch (JsonError &) {
+        PyBuffer_Release(&buffer);
+        return nullptr;
+    } catch (Fail &) {
+        PyBuffer_Release(&buffer);
+        return nullptr;
+    }
+    PyBuffer_Release(&buffer);
+    return PyLong_FromLong(result);
+}
+
+PyObject *py_python_value(PyObject *, PyObject *index) {
+    const long value = PyLong_AsLong(index);
+    if (value == -1 && PyErr_Occurred()) return nullptr;
+    if (value < 0 || (size_t)value >= vals.size()) { PyErr_SetString(PyExc_IndexError, "no such value"); return nullptr; }
+    try {
+        PyObject *made = python_value((int32_t)value);
+        Py_INCREF(made);
+        return made;
+    } catch (Fail &) {
+        return nullptr;
+    }
+}
+
+
+// == the producer: one seat's stream of engine messages as frames ==================================================
+// protocol.Producer.ingest, for the training interface: each record of a contextual message becomes a frame of the
+// contract's Frame shape, its payloads values of the contract's types (decision ids made frame numbers, a decision
+// without an observation holding its view's, a view without its map holding the previous view's, tile changes laid
+// on the previous tiles). Its frames turn into contract Frames for the Python path and for checks.
+
+enum FKind : int8_t { F_DECISION, F_VIEW, F_EVENT, F_CONSUMED, F_ISSUED, F_ACKNOWLEDGED, F_RESULT, F_CONTEXT,
+                      F_CONTEXT_INVALIDATED, F_CONTEXT_OPENED, F_SUPERSEDED, F_TERMINAL, F_SUBMITTED, F_KINDS };
+const char *KIND_NAMES[F_KINDS] = {"decision", "view", "event", "consumed", "issued", "acknowledged", "result", "context",
+                                   "context_invalidated", "context_opened", "superseded", "terminal", "submitted"};
+
+struct NFrame {
+    FKind kind;
+    int32_t seq = 0, day = 0;
+    int32_t observation = -1, context = -1, offers = -1, action = -1, result = -1, event = -1;  // values
+    int32_t decision_seq = -1;
+    int64_t revision = -1, command_index = -1;
+    bool has_revision = false, has_command = false;
+    int32_t consumer = -1, reason = -1, outcome = -1;  // strings
+    int8_t accepted = -1;
+};
+
+struct Producer {
+    PyObject_HEAD
+    std::vector<NFrame> *frames;
+    std::unordered_map<int64_t, int32_t> *decision_ids;
+    std::string *episode;
+    int64_t player = 0, protocol = 0, current_id = -1;
+    int32_t view = -1, terminal = -1, gold_mine_captures = 0;
+    bool ready = false, has_current = false;
+    std::string *interface, *history_schema, *action_schema, *army_information;
+    PyObject *python_frames;  // list: contract Frames made so far (frames before ``made`` are converted)
+};
+
+int32_t type_named(const char *name) {
+    auto found = vtype_index.find(name);
+    if (found == vtype_index.end()) { PyErr_Format(PyExc_KeyError, "contract type %s", name); throw Fail(); }
+    return found->second;
+}
+
+int32_t field_of(int32_t type, const char *name) {
+    const VType &found = vtypes[(size_t)type];
+    auto entry = found.by_name.find(name);
+    if (entry == found.by_name.end()) { PyErr_Format(PyExc_KeyError, "field %s.%s", found.name.c_str(), name); throw Fail(); }
+    return entry->second;
+}
+
+struct Types {  // indices of the types and fields the producer reads
+    int32_t observation, offers, context, action, result, event, window, hero, town, tile;
+    int32_t o_size, o_tiles, o_objects, o_heroes, o_towns, o_window, o_own_armies;
+    int32_t w_context, w_town_panel, w_armies, w_stack_panel, w_dialog_panel, w_capability_controls, w_capability_panel;
+    int32_t c_kind, h_handle, h_in_garrison, t_handle, tile_position;
+    int32_t event_kind, event_notice;
+    bool ready = false;
+} T;
+
+void prepare_types() {
+    if (T.ready) return;
+    T.observation = type_named("Observation"); T.offers = type_named("Offers"); T.context = type_named("Context");
+    T.action = type_named("Action"); T.result = type_named("Result"); T.event = type_named("VisibleEvent");
+    T.window = type_named("Window"); T.hero = type_named("Hero"); T.town = type_named("Town"); T.tile = type_named("Tile");
+    T.o_size = field_of(T.observation, "size"); T.o_tiles = field_of(T.observation, "tiles");
+    T.o_objects = field_of(T.observation, "objects"); T.o_heroes = field_of(T.observation, "heroes");
+    T.o_towns = field_of(T.observation, "towns"); T.o_window = field_of(T.observation, "window");
+    T.o_own_armies = field_of(T.observation, "own_armies");
+    T.w_context = field_of(T.window, "context"); T.w_town_panel = field_of(T.window, "town_panel");
+    T.w_armies = field_of(T.window, "armies"); T.w_stack_panel = field_of(T.window, "stack_panel");
+    T.w_dialog_panel = field_of(T.window, "dialog_panel"); T.w_capability_controls = field_of(T.window, "capability_controls");
+    T.w_capability_panel = field_of(T.window, "capability_panel");
+    T.c_kind = field_of(T.context, "kind"); T.h_handle = field_of(T.hero, "handle"); T.h_in_garrison = field_of(T.hero, "in_garrison");
+    T.t_handle = field_of(T.town, "handle"); T.tile_position = field_of(T.tile, "position");
+    T.event_kind = field_of(T.event, "kind"); T.event_notice = field_of(T.event, "notice");
+    T.ready = true;
+}
+
+inline const Val &V(int32_t index) { return vals[(size_t)index]; }
+inline int32_t field(int32_t value, int32_t index) { return V(value).items[(size_t)index]; }
+inline bool str_is(int32_t value, const char *text) {
+    const Val &item = V(value);
+    return item.kind == V_STR && strings[(size_t)item.string] == text;
+}
+
+int32_t default_context() {  // Context()
+    static int32_t made = -1;
+    if (made < 0) {
+        std::vector<int32_t> items;
+        for (const VField &item : vtypes[(size_t)T.context].fields) items.push_back(item.fallback);
+        made = v_items(V_RECORD, T.context, items);
+    }
+    return made;
+}
+
+int32_t record_of(int32_t type, std::vector<std::pair<const char *, int32_t>> given) {
+    const VType &found = vtypes[(size_t)type];
+    std::vector<int32_t> items;
+    for (const VField &item : found.fields) items.push_back(item.fallback);
+    for (auto &entry : given) items[(size_t)field_of(type, entry.first)] = entry.second;
+    for (int32_t item : items) if (item < 0) { PyErr_Format(PyExc_ValueError, "Missing %s fields", found.name.c_str()); throw Fail(); }
+    return v_items(V_RECORD, type, items);
+}
+
+int32_t str_value(const std::string &text) { return v_scalar(V_STR, 0, string_id(text.data(), text.size())); }
+
+int32_t offers_of(int32_t observation, const std::string &action_schema) {  // Offers.from_observation (v8 profile)
+    static std::unordered_map<int64_t, int32_t> built;
+    const int64_t key = ((int64_t)observation << 20) ^ (int64_t)string_id(action_schema.data(), action_schema.size());
+    auto found = built.find(key);
+    if (found != built.end()) return found->second;
+    const int32_t window = field(observation, T.o_window);
+    const bool windowed = V(window).kind == V_RECORD;
+    const int32_t context = windowed ? field(window, T.w_context) : default_context();
+    const bool map = str_is(field(context, T.c_kind), "map");
+    std::vector<int32_t> movable;
+    if (map)
+        for (int32_t hero : V(field(observation, T.o_heroes)).items)
+            if (V(field(hero, T.h_in_garrison)).kind != V_BOOL || !V(field(hero, T.h_in_garrison)).number) movable.push_back(field(hero, T.h_handle));
+    std::vector<std::pair<const char *, int32_t>> given = {
+        {"context", context}, {"size", field(observation, T.o_size)}, {"schema", str_value(action_schema)},
+        {"armies", windowed ? field(window, T.w_armies) : v_empty},
+        {"stack_panel", windowed ? field(window, T.w_stack_panel) : v_none},
+        {"movable_hero_refs", movable.empty() ? v_empty : v_items(V_TUPLE, -1, movable)},
+        {"dialog_panel", windowed ? field(window, T.w_dialog_panel) : v_none},
+        {"capability_controls", windowed ? field(window, T.w_capability_controls) : v_empty},
+        {"capability_panel", windowed ? field(window, T.w_capability_panel) : v_none}};
+    if (!map) {
+        given.push_back({"panel", field(window, T.w_town_panel)});
+    } else {
+        std::vector<int32_t> heroes, towns;
+        for (int32_t hero : V(field(observation, T.o_heroes)).items) heroes.push_back(field(hero, T.h_handle));
+        for (int32_t town : V(field(observation, T.o_towns)).items) towns.push_back(field(town, T.t_handle));
+        given.push_back({"hero_refs", heroes.empty() ? v_empty : v_items(V_TUPLE, -1, heroes)});
+        given.push_back({"town_refs", towns.empty() ? v_empty : v_items(V_TUPLE, -1, towns)});
+    }
+    const int32_t offers = record_of(T.offers, given);
+    built.emplace(key, offers);
+    return offers;
+}
+
+std::unordered_map<int32_t, std::unordered_map<int32_t, int32_t>> tile_places;  // tile tuple -> position value -> place
+
+int32_t changed_tiles(int32_t previous, const std::vector<int32_t> &changes) {  // contract._changed_tiles
+    if (changes.empty()) return previous;
+    std::unordered_map<int32_t, int32_t> places;  // a copy: the table below is changed before this function ends
+    {
+        auto known = tile_places.find(previous);
+        if (known != tile_places.end()) places = known->second;
+        else for (size_t place = 0; place < V(previous).items.size(); place++)
+            places.emplace(field(V(previous).items[place], T.tile_position), (int32_t)place);
+    }
+    std::vector<int32_t> items = V(previous).items;
+    std::vector<bool> replaced(items.size(), false);
+    for (int32_t tile : changes) {
+        auto found = places.find(field(tile, T.tile_position));
+        if (found == places.end() || replaced[(size_t)found->second] || items[(size_t)found->second] == tile) {
+            PyErr_SetString(PyExc_ValueError, "A changed tile must replace a different tile of the previous view, once");
+            throw Fail();
+        }
+        replaced[(size_t)found->second] = true;
+        items[(size_t)found->second] = tile;
+    }
+    const int32_t made = v_items(V_TUPLE, -1, items);
+    if (tile_places.size() > 64) tile_places.clear();
+    tile_places[made] = std::move(places);  // a changed tile keeps its position
+    return made;
+}
+
+struct Envelope {
+    int64_t protocol = -1, player = -1;
+    std::string type, episode, interface, history_schema, action_schema, army_information, message;
+    bool has_army_information = false;
+};
+
+// One observation object: the fields of Observation, a missing map taken from the previous view, tile changes
+// laid on the previous view's tiles (decode_observation with unchanged_map).
+int32_t parse_observation(Json &reader, int32_t previous) {
+    const VType &type = vtypes[(size_t)T.observation];
+    std::vector<int32_t> items(type.fields.size(), -1);
+    bool has_changes = false;
+    std::vector<int32_t> changes;
+    reader.expect('{');
+    if (!reader.take('}')) {
+        do {
+            const std::string key = reader.string();
+            reader.expect(':');
+            if (key == "tile_changes") {
+                has_changes = true;
+                reader.expect('[');
+                if (!reader.take(']')) { do changes.push_back(reader.record(T.tile)); while (reader.take(',')); reader.expect(']'); }
+                continue;
+            }
+            auto found = type.by_name.find(key);
+            if (found == type.by_name.end()) { PyErr_SetString(PyExc_ValueError, "Unknown fields in Observation"); reader.fail("unknown field"); }
+            items[(size_t)found->second] = reader.value(type.fields[(size_t)found->second].spec);
+        } while (reader.take(','));
+        reader.expect('}');
+    }
+    const bool has_tiles = items[(size_t)T.o_tiles] >= 0, has_objects = items[(size_t)T.o_objects] >= 0;
+    if (has_changes) {
+        if (previous < 0 || has_tiles || !has_objects) {
+            PyErr_SetString(PyExc_ValueError, "Tile changes need the previous view's tiles and this view's objects");
+            throw Fail();
+        }
+        items[(size_t)T.o_tiles] = changed_tiles(field(previous, T.o_tiles), changes);
+    } else if (!has_tiles && !has_objects && previous >= 0) {
+        items[(size_t)T.o_tiles] = field(previous, T.o_tiles);
+        items[(size_t)T.o_objects] = field(previous, T.o_objects);
+    }
+    for (size_t i = 0; i < items.size(); i++) {
+        if (items[i] >= 0) continue;
+        if (type.fields[i].fallback < 0) { PyErr_SetString(PyExc_ValueError, "Incomplete observation"); throw Fail(); }
+        items[i] = type.fields[i].fallback;
+    }
+    return v_items(V_RECORD, T.observation, items);
+}
+
+// CGMine::flagMine sends this notice to the player taking ownership (protocol.Producer.ingest).
+bool gold_mine_notice(int32_t event) {
+    static int32_t notice_type = -1, n_mode, n_text, n_components, t_op, t_text_id, c_kind, c_resource;
+    if (notice_type < 0) {
+        notice_type = type_named("Notice");
+        n_mode = field_of(notice_type, "display_mode"); n_text = field_of(notice_type, "text");
+        n_components = field_of(notice_type, "components");
+        const int32_t token = type_named("NoticeToken"), component = type_named("NoticeComponent");
+        t_op = field_of(token, "op"); t_text_id = field_of(token, "text_id");
+        c_kind = field_of(component, "kind"); c_resource = field_of(component, "resource");
+    }
+    if (!str_is(field(event, T.event_kind), "notice")) return false;
+    const int32_t notice = field(event, T.event_notice);
+    if (V(notice).kind != V_RECORD || !str_is(field(notice, n_mode), "auto")) return false;
+    const std::vector<int32_t> &text = V(field(notice, n_text)).items;
+    const std::vector<int32_t> &components = V(field(notice, n_components)).items;
+    return text.size() == 1 && str_is(field(text[0], t_op), "append_text") && str_is(field(text[0], t_text_id), "core.mineevnt.6")
+        && components.size() == 1 && str_is(field(components[0], c_kind), "resource_per_day")
+        && str_is(field(components[0], c_resource), "gold");
+}
+
+// The raw text of an observation decodes to one value given the view before it when it names no map of its own,
+// and to one value regardless of it otherwise: a text met again (about half the views repeat one) is not decoded again.
+struct TextMemo { std::string text; int32_t previous; int32_t value; };
+std::unordered_map<uint64_t, TextMemo> observation_texts;
+
+int32_t observation_from_text(Json &reader, int32_t previous) {
+    reader.ws();
+    const char *start = reader.p;
+    Json probe{reader.p, reader.end, {}};
+    probe.skip();
+    const size_t size = (size_t)(probe.p - start);
+    uint64_t hash = 0x9E3779B97F4A7C15ULL ^ size;
+    size_t i = 0;
+    for (; i + 8 <= size; i += 8) {
+        uint64_t word;
+        memcpy(&word, start + i, 8);
+        hash = (hash ^ word) * 0xff51afd7ed558ccdULL;
+        hash ^= hash >> 32;
+    }
+    for (; i < size; i++) hash = (hash ^ (uint8_t)start[i]) * 1099511628211ULL;
+    const std::string_view text(start, size);
+    const int32_t context = previous;  // a view without its own map takes the previous view's
+    hash ^= (uint64_t)(uint32_t)context * 0x9E3779B97F4A7C15ULL;
+    auto found = observation_texts.find(hash);
+    if (found != observation_texts.end() && found->second.previous == context && found->second.text == text) {
+        reader.p = probe.p;
+        return found->second.value;
+    }
+    const int32_t value = parse_observation(reader, previous);
+    if (observation_texts.size() > 65536) observation_texts.clear();
+    observation_texts[hash] = TextMemo{std::string(text), context, value};
+    return value;
+}
+
+void producer_failure(const char *text) { PyErr_SetString(PyExc_ValueError, text); throw Fail(); }
+
+PyObject *native_failure = nullptr;  // protocol.NativeFailure
+
+void ingest_record(Producer *self, Json &reader) {
+    NFrame frame;
+    int64_t native_id = -1;
+    bool has_id = false, has_observation = false;
+    int kind = -1;
+    reader.expect('{');
+    // One pass: nothing read here depends on the kind (the decision id is mapped after the record).
+    if (!reader.take('}')) {
+        do {
+            const std::string key = reader.string();
+            reader.expect(':');
+            if (key == "kind") {
+                const std::string &name = reader.string();
+                for (int k = 0; k < F_SUBMITTED; k++) if (name == KIND_NAMES[k]) kind = k;
+                if (kind < 0) producer_failure("Unsupported contextual record kind");
+            }
+            else if (key == "day") frame.day = (int32_t)reader.integer();
+            else if (key == "decision_id") { native_id = reader.integer(); has_id = true; }
+            else if (key == "revision") { frame.revision = reader.integer(); frame.has_revision = true; }
+            else if (key == "command_index") { frame.command_index = reader.integer(); frame.has_command = true; }
+            else if (key == "accepted") { if (reader.literal("true")) frame.accepted = 1; else if (reader.literal("false")) frame.accepted = 0; else producer_failure("accepted"); }
+            else if (key == "consumer") { const std::string &text = reader.string(); frame.consumer = string_id(text.data(), text.size()); }
+            else if (key == "reason") { const std::string &text = reader.string(); frame.reason = string_id(text.data(), text.size()); }
+            else if (key == "outcome") { const std::string &text = reader.string(); frame.outcome = string_id(text.data(), text.size()); }
+            else if (key == "observation") { frame.observation = observation_from_text(reader, self->view); has_observation = true; }
+            else if (key == "context") frame.context = reader.record(T.context);
+            else if (key == "result") frame.result = reader.record(T.result);
+            else if (key == "event") frame.event = reader.record(T.event);
+            else producer_failure("Unexpected or missing record fields");
+        } while (reader.take(','));
+        reader.expect('}');
+    }
+    if (kind < 0) producer_failure("Unsupported contextual record kind");
+    frame.kind = (FKind)kind;
+    frame.seq = (int32_t)self->frames->size();
+    if (has_id) {
+        if (native_id < 0) producer_failure("decision_id must be a nonnegative native-local integer");
+        if (frame.kind == F_DECISION) {
+            if (self->decision_ids->count(native_id)) producer_failure("Repeated native decision_id");
+        } else {
+            auto found = self->decision_ids->find(native_id);
+            if (found == self->decision_ids->end()) producer_failure("Unknown native decision reference");
+            frame.decision_seq = found->second;
+        }
+    }
+    if (frame.kind == F_DECISION) {
+        if (!has_observation) {
+            if (self->view < 0) producer_failure("A decision without an observation needs an earlier view");
+            frame.observation = self->view;
+        }
+        frame.offers = offers_of(frame.observation, *self->action_schema);
+    }
+    self->frames->push_back(frame);
+    if (frame.kind == F_VIEW) self->view = frame.observation;
+    else if (frame.kind == F_DECISION) { (*self->decision_ids)[native_id] = frame.seq; self->current_id = native_id; self->has_current = true; }
+    else if (frame.kind == F_RESULT || frame.kind == F_SUPERSEDED) self->has_current = false;
+    else if (frame.kind == F_TERMINAL) self->terminal = frame.outcome;
+    else if (frame.kind == F_EVENT && gold_mine_notice(frame.event)) self->gold_mine_captures++;
+}
+
+void ingest_message(Producer *self, const char *bytes, Py_ssize_t size) {
+    prepare_types();
+    Json reader{bytes, bytes + size, {}};
+    Envelope envelope;
+    const char *records_start = nullptr, *records_end = nullptr;
+    reader.expect('{');
+    if (!reader.take('}')) {
+        do {
+            const std::string key = reader.string();
+            reader.expect(':');
+            if (key == "protocol_version") envelope.protocol = reader.integer();
+            else if (key == "type") envelope.type = reader.string();
+            else if (key == "episode") envelope.episode = reader.string();
+            else if (key == "player") envelope.player = reader.integer();
+            else if (key == "interface") envelope.interface = reader.string();
+            else if (key == "history_schema") envelope.history_schema = reader.string();
+            else if (key == "action_schema") envelope.action_schema = reader.string();
+            else if (key == "army_information") { envelope.army_information = reader.string(); envelope.has_army_information = true; }
+            else if (key == "message") envelope.message = reader.string();
+            else if (key == "records") { reader.ws(); records_start = reader.p; reader.skip(); records_end = reader.p; }
+            else producer_failure("Unexpected envelope fields");
+        } while (reader.take(','));
+        reader.expect('}');
+    }
+    if (envelope.protocol != self->protocol) producer_failure("Contextual mode requires its explicit protocol_version");
+    if (envelope.episode != *self->episode || envelope.player != self->player) producer_failure("Cross-player or cross-episode contextual envelope");
+    if (envelope.type == "ready") {
+        if (self->ready || envelope.interface != *self->interface || envelope.history_schema != *self->history_schema
+                || envelope.action_schema != *self->action_schema || envelope.has_army_information != !self->army_information->empty()
+                || envelope.army_information != *self->army_information)
+            producer_failure("Duplicate ready or mismatched contextual schema");
+        self->ready = true;
+        return;
+    }
+    if (envelope.type == "error") {
+        PyErr_SetString(native_failure ? native_failure : PyExc_ValueError, envelope.message.c_str());
+        throw Fail();
+    }
+    if (envelope.type != "contextual" || !self->ready || !records_start) producer_failure("Expected a nonempty contextual record batch after ready");
+    Json records{records_start, records_end, {}};
+    records.expect('[');
+    if (records.take(']')) producer_failure("Expected a nonempty contextual record batch after ready");
+    do ingest_record(self, records); while (records.take(','));
+    records.expect(']');
+}
+
+int Producer_init(Producer *self, PyObject *args, PyObject *) {
+    const char *episode, *interface, *history_schema, *action_schema, *army_information;
+    long long player, protocol;
+    if (!PyArg_ParseTuple(args, "sLLssss", &episode, &player, &protocol, &interface, &history_schema, &action_schema,
+                          &army_information))
+        return -1;
+    self->frames = new std::vector<NFrame>();
+    self->decision_ids = new std::unordered_map<int64_t, int32_t>();
+    self->episode = new std::string(episode);
+    self->interface = new std::string(interface);
+    self->history_schema = new std::string(history_schema);
+    self->action_schema = new std::string(action_schema);
+    self->army_information = new std::string(army_information);
+    self->player = player;
+    self->protocol = protocol;
+    self->python_frames = PyList_New(0);
+    return self->python_frames ? 0 : -1;
+}
+
+void Producer_dealloc(Producer *self) {
+    delete self->frames; delete self->decision_ids; delete self->episode; delete self->interface;
+    delete self->history_schema; delete self->action_schema; delete self->army_information;
+    Py_XDECREF(self->python_frames);
+    Py_TYPE(self)->tp_free((PyObject *)self);
+}
+
+PyObject *Producer_ingest(Producer *self, PyObject *data) {
+    Py_buffer buffer;
+    if (PyObject_GetBuffer(data, &buffer, PyBUF_SIMPLE)) return nullptr;
+    const size_t before = self->frames->size();
+    try {
+        ingest_message(self, (const char *)buffer.buf, buffer.len);
+    } catch (JsonError &) {
+        PyBuffer_Release(&buffer);
+        return nullptr;
+    } catch (Fail &) {
+        PyBuffer_Release(&buffer);
+        return nullptr;
+    }
+    PyBuffer_Release(&buffer);
+    return PyLong_FromSize_t(self->frames->size() - before);
+}
+
+PyObject *python_frame(Producer *self, const NFrame &frame) {
+    static int32_t frame_type = -1;
+    if (frame_type < 0) frame_type = type_named("Frame");
+    Ref keywords(PyDict_New());
+    auto put = [&](const char *name, PyObject *value) {  // value borrowed
+        if (PyDict_SetItemString(keywords.get(), name, value)) throw Fail();
+    };
+    auto put_new = [&](const char *name, PyObject *value) { Ref held(value); put(name, held.get()); };
+    put_new("episode", PyUnicode_FromString(self->episode->c_str()));
+    put_new("player", PyLong_FromLongLong(self->player));
+    put_new("seq", PyLong_FromLong(frame.seq));
+    put_new("day", PyLong_FromLong(frame.day));
+    put_new("kind", PyUnicode_FromString(KIND_NAMES[frame.kind]));
+    put_new("schema", PyUnicode_FromString(self->history_schema->c_str()));
+    if (frame.observation >= 0) put("observation", python_value(frame.observation));
+    if (frame.context >= 0) put("context", python_value(frame.context));
+    if (frame.offers >= 0) put("offers", python_value(frame.offers));
+    if (frame.action >= 0) put("action", python_value(frame.action));
+    if (frame.result >= 0) put("result", python_value(frame.result));
+    if (frame.event >= 0) put("event", python_value(frame.event));
+    if (frame.decision_seq >= 0) put_new("decision_seq", PyLong_FromLong(frame.decision_seq));
+    if (frame.has_revision) put_new("revision", PyLong_FromLongLong(frame.revision));
+    if (frame.has_command) put_new("command_index", PyLong_FromLongLong(frame.command_index));
+    if (frame.consumer >= 0) put("consumer", string_object(frame.consumer));
+    if (frame.reason >= 0) put("reason", string_object(frame.reason));
+    if (frame.outcome >= 0) put("outcome", string_object(frame.outcome));
+    if (frame.accepted >= 0) put("accepted", frame.accepted ? Py_True : Py_False);
+    Ref arguments(PyTuple_New(0));
+    PyObject *made = PyObject_Call(vtypes[(size_t)frame_type].python, arguments.get(), keywords.get());
+    if (!made) throw Fail();
+    return made;
+}
+
+// python_frames(): the contract Frames of every frame so far (converted once, in order)
+PyObject *Producer_python_frames(Producer *self, PyObject *) {
+    try {
+        for (size_t i = (size_t)PyList_GET_SIZE(self->python_frames); i < self->frames->size(); i++) {
+            Ref made(python_frame(self, (*self->frames)[i]));
+            if (PyList_Append(self->python_frames, made.get())) throw Fail();
+        }
+    } catch (Fail &) {
+        return nullptr;
+    }
+    Py_INCREF(self->python_frames);
+    return self->python_frames;
+}
+
+// submitted(action, day): the frame of the answer written to the engine, for the decision held now
+PyObject *Producer_submitted(Producer *self, PyObject *args) {
+    PyObject *action;
+    long day;
+    if (!PyArg_ParseTuple(args, "Ol", &action, &day)) return nullptr;
+    try {
+        prepare_types();
+        int32_t decision = -1;
+        for (size_t i = self->frames->size(); i-- > 0;) if ((*self->frames)[i].kind == F_DECISION) { decision = (int32_t)i; break; }
+        if (decision < 0) producer_failure("Action does not match the current contextual request");
+        NFrame frame;
+        frame.kind = F_SUBMITTED;
+        frame.seq = (int32_t)self->frames->size();
+        frame.day = self->frames->empty() ? (int32_t)day : self->frames->back().day;  // PlayerHistory.emit: the history's day
+        frame.decision_seq = decision;
+        frame.action = value_of_python(action, [&] {
+            for (size_t i = 0; i < specs.size(); i++) if (specs[i].kind == S_RECORD && specs[i].type == T.action) return (int32_t)i;
+            producer_failure("no Action spec");
+            return -1;
+        }());
+        self->frames->push_back(frame);
+    } catch (Fail &) {
+        return nullptr;
+    }
+    Py_RETURN_NONE;
+}
+
+PyObject *Producer_get(Producer *self, void *which) {
+    switch ((intptr_t)which) {
+        case 0: return PyLong_FromSize_t(self->frames->size());
+        case 1: if (self->terminal < 0) Py_RETURN_NONE; try { PyObject *t = string_object(self->terminal); Py_INCREF(t); return t; } catch (Fail &) { return nullptr; }
+        case 2: return PyBool_FromLong(self->ready);
+        case 3: return PyLong_FromLong(self->gold_mine_captures);
+        case 4: if (!self->has_current) Py_RETURN_NONE; return PyLong_FromLongLong(self->current_id);
+    }
+    Py_RETURN_NONE;
+}
+
+PyGetSetDef Producer_getset[] = {
+    {"frame_count", (getter)Producer_get, nullptr, nullptr, (void *)0},
+    {"terminal", (getter)Producer_get, nullptr, nullptr, (void *)1},
+    {"ready", (getter)Producer_get, nullptr, nullptr, (void *)2},
+    {"gold_mine_captures", (getter)Producer_get, nullptr, nullptr, (void *)3},
+    {"current_id", (getter)Producer_get, nullptr, nullptr, (void *)4},
+    {nullptr, nullptr, nullptr, nullptr, nullptr}};
+
+PyMethodDef Producer_methods[] = {
+    {"ingest", (PyCFunction)Producer_ingest, METH_O, "ingest(bytes): fold one engine message; the number of new frames"},
+    {"python_frames", (PyCFunction)Producer_python_frames, METH_NOARGS, "the contract Frames so far"},
+    {"submitted", (PyCFunction)Producer_submitted, METH_VARARGS, "submitted(action, day): the frame of an answer sent"},
+    {nullptr, nullptr, 0, nullptr}};
+
+PyTypeObject ProducerType = {PyVarObject_HEAD_INIT(nullptr, 0)};
+
+PyObject *py_set_native_failure(PyObject *, PyObject *type) {
+    Py_XDECREF(native_failure);
+    native_failure = type;
+    Py_INCREF(type);
+    Py_RETURN_NONE;
+}
 PyMethodDef methods[] = {
     {"configure", py_configure, METH_VARARGS, "configure(policy, contract, fn_text, fn_number, fn_node)"},
     {"observation_tree", py_observation_tree, METH_O, "policy.observation_semantics, from the native DAG"},
@@ -740,10 +1723,29 @@ PyMethodDef methods[] = {
     {"observation_slot", (PyCFunction)(void (*)(void))py_observation_slot, METH_FASTCALL,
      "observation_slot(net, epoch, observation): the arena slot of the observation's tree"},
     {"stats", py_stats, METH_NOARGS, "sizes of the native tables"},
+    {"configure_values", py_configure_values, METH_VARARGS, "configure_values(types, specs, missing): the contract schema"},
+    {"decode", py_decode, METH_VARARGS, "decode(bytes, type name): the value id of one JSON document"},
+    {"python_value", py_python_value, METH_O, "python_value(id): the contract object a value stands for"},
+    {"set_native_failure", py_set_native_failure, METH_O, "the exception an engine error message raises"},
     {nullptr, nullptr, 0, nullptr}};
 
 PyModuleDef module = {PyModuleDef_HEAD_INIT, "heroes_native", nullptr, -1, methods};
 
 }  // namespace
 
-PyMODINIT_FUNC PyInit_heroes_native(void) { return PyModule_Create(&module); }
+PyMODINIT_FUNC PyInit_heroes_native(void) {
+    ProducerType.tp_name = "heroes_native.Producer";
+    ProducerType.tp_basicsize = sizeof(Producer);
+    ProducerType.tp_flags = Py_TPFLAGS_DEFAULT;
+    ProducerType.tp_new = PyType_GenericNew;
+    ProducerType.tp_init = (initproc)Producer_init;
+    ProducerType.tp_dealloc = (destructor)Producer_dealloc;
+    ProducerType.tp_methods = Producer_methods;
+    ProducerType.tp_getset = Producer_getset;
+    if (PyType_Ready(&ProducerType) < 0) return nullptr;
+    PyObject *made = PyModule_Create(&module);
+    if (!made) return nullptr;
+    Py_INCREF(&ProducerType);
+    if (PyModule_AddObject(made, "Producer", (PyObject *)&ProducerType) < 0) return nullptr;
+    return made;
+}

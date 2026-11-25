@@ -57,5 +57,64 @@ def module():
     spec.loader.exec_module(extension)
     address = lambda function: ctypes.cast(function, ctypes.c_void_p).value  # noqa: E731
     extension.configure(policy, contract, address(lib.fn_text), address(lib.fn_number), address(lib.fn_node))
+    extension.configure_values(*_schema(contract))
     _MODULE = extension
     return extension
+
+
+_SPEC_KINDS = {"str": 0, "int": 1, "bool": 2, "optional": 3, "tuple": 4, "fixed": 5, "record": 6}
+
+
+def _schema(contract):
+    """The contract's dataclasses for native.cpp: ``(types, specs, missing)``.
+
+    ``types`` lists ``(name, class, [(field, spec, default)])`` with each field's default (or ``missing``);
+    ``specs`` lists ``(kind, type index, [inner specs])``, read from the fields' annotations.
+    """
+    import dataclasses
+
+    classes = [value for value in vars(contract).values()
+               if isinstance(value, type) and dataclasses.is_dataclass(value) and value.__module__ == contract.__name__]
+    index = {cls.__name__: position for position, cls in enumerate(classes)}
+    specs, known = [], {}
+
+    def spec(text):
+        text = text.strip()
+        if text in known:
+            return known[text]
+        if text.endswith("| None"):
+            entry = (_SPEC_KINDS["optional"], -1, [spec(text[: -len("| None")])])
+        elif text.startswith("tuple[") and text.endswith("]"):
+            parts, depth, start = [], 0, 6
+            for position, char in enumerate(text[6:-1], 6):
+                depth += char == "["
+                depth -= char == "]"
+                if char == "," and depth == 0:
+                    parts.append(text[start:position])
+                    start = position + 1
+            parts.append(text[start:-1])
+            parts = [part.strip() for part in parts]
+            if len(parts) == 2 and parts[1] == "...":
+                entry = (_SPEC_KINDS["tuple"], -1, [spec(parts[0])])
+            else:
+                entry = (_SPEC_KINDS["fixed"], -1, [spec(part) for part in parts])
+        elif text in ("str", "int", "bool"):
+            entry = (_SPEC_KINDS[text], -1, [])
+        elif text in index:
+            entry = (_SPEC_KINDS["record"], index[text], [])
+        else:
+            raise ValueError(f"native values: unsupported annotation {text!r}")
+        known[text] = len(specs)
+        specs.append(entry)
+        return known[text]
+
+    missing = object()
+    types = []
+    for cls in classes:
+        fields = []
+        for item in dataclasses.fields(cls):
+            default = (item.default if item.default is not dataclasses.MISSING else item.default_factory()
+                       if item.default_factory is not dataclasses.MISSING else missing)
+            fields.append((item.name, spec(str(item.type)), default))
+        types.append((cls.__name__, cls, fields))
+    return types, specs, missing
