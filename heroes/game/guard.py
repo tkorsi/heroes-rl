@@ -202,6 +202,23 @@ def _blocked_swaps(observation, offers, seen):
     return tuple(sorted({key for key, swapped in _swapped_layouts(layout, armies) if swapped in seen}))
 
 
+_SWAP_KEYS = {}  # ids of the armies -> (the armies, the keys of the swaps they offer, each once, in order)
+
+
+def _swap_keys(armies):
+    """The key of every swap ``armies`` offer, each once, in the order the offers list them: a function of the armies."""
+    cache_key = tuple(map(id, armies))
+    known = _SWAP_KEYS.get(cache_key)
+    if known is not None and all(held is army for held, army in zip(known[0], armies)):
+        return known[1]
+    keys = tuple(dict.fromkeys(_swap_key(armies, source, destination)
+                               for source, destination, _ in c.army_operation_choices(armies, "swap_stacks")))
+    if len(_SWAP_KEYS) >= 256:
+        _SWAP_KEYS.clear()  # bounded memory; a miss only computes again
+    _SWAP_KEYS[cache_key] = (armies, keys)  # holds the armies, so their ids name nothing else
+    return keys
+
+
 _SWAPPED = {}  # (layout, ids of the armies) -> (the armies, ((swap key, the layout after that swap), ...))
 
 
@@ -218,10 +235,7 @@ def _swapped_layouts(layout, armies):
     # The layout is sorted by subject (each subject once) and a swap keeps the subjects: the swapped layout,
     # sorted, has its rows in the same places.
     places = {subject: index for index, (subject, _) in enumerate(layout)}
-    for source, destination, _ in c.army_operation_choices(armies, "swap_stacks"):
-        key = _swap_key(armies, source, destination)
-        if key in found:
-            continue
+    for key in _swap_keys(armies):
         left, a, right, b = key
         i, j = places[left], places[right]
         x, y = layout[i][1][a], layout[j][1][b]
