@@ -403,29 +403,18 @@ def _semantic(value):
             if hit is not None:
                 return hit[1]
         children = []
-        for name in c._field_names(type(value)):
+        plan = _PLANS.get(type(value))
+        if plan is None:
+            plan = _PLANS[type(value)] = _field_plan(type(value))
+        for name, absent_skipped, category, amount, as_set in plan:
             item = getattr(value, name)
-            # Additive profile fields must not add even an "absent" node to
-            # old observations: archived values/probabilities remain exact.
-            if item is None and (type(value) is c.TownPanel and name in ("armies", "tavern")
-                                 or type(value) is c.Hero and name == "in_garrison"
-                                 or type(value) is c.Window and name in ("armies", "stack_panel", "dialog_panel", "capability_panel", "capability_controls")
-                                 or type(value) is c.VisibleEvent and name in ("partner", "dialog", "capability")
-                                 or type(value) is c.NoticeComponent and name == "skill"):
+            if absent_skipped and item is None:
                 continue
-            if type(value) is c.TownPanel and name in ("armies", "tavern") and item is None:
-                continue
-            if name in ("handle", "ref", "control_ref", "selected_offer_ref", "selected_upgrade_ref", "subject", "selection", "partner", "schema", "inspected_subject"):
-                continue
-            if type(value) is c.CapabilityChoice and name == "destination":
-                continue  # requires its displayed recipient binding, never handle bytes
-            if (name in ("creature", "terrain", "road", "kind", "subtype", "object_kind", "object_subtype", "faction", "portrait", "hero_class")
-                    or type(value) in (c.CapabilityChoice, c.CapabilityItem, c.CapabilityPanel)
-                    and name in ("id", "artifact", "spell", "skill", "slot", "destination_slot", "resource_from", "resource_to", "primary_skill")) and type(item) is int:
+            if category and type(item) is int:
                 encoded = _text(f"category:{item}")
-            elif type(value) is c.CapabilityItem and value.kind == "world_object" and name == "amount" and type(item) is int:
+            elif amount and value.kind == "world_object" and type(item) is int:
                 encoded = _text(f"category:{item}")  # delivered object subtype, not an amount
-            elif name in ("children", "controls", "buildings", "army", "items", "choices", "capability_controls") and type(item) is tuple:
+            elif as_set and type(item) is tuple:
                 encoded = _set(name, [_semantic(entry) for entry in item])
             else:
                 encoded = _semantic(item)
@@ -438,6 +427,36 @@ def _semantic(value):
             _KEPT_VALUES[id(value)] = (value, tree)
         return tree
     raise ValueError("Unsupported model semantic payload")
+
+
+_PLANS = {}  # dataclass type -> _field_plan(type)
+
+
+def _field_plan(cls):
+    """How ``_semantic`` treats each field of a dataclass, decided once per type from the field's name and the type:
+    ``(name, skipped when None, a category when an int, an object subtype when an int of a world object, a set
+    when a tuple)``, in field order; the fields it never encodes are left out.
+    """
+    plan = []
+    for name in c._field_names(cls):
+        # Additive profile fields must not add even an "absent" node to
+        # old observations: archived values/probabilities remain exact.
+        absent_skipped = (cls is c.TownPanel and name in ("armies", "tavern")
+                          or cls is c.Hero and name == "in_garrison"
+                          or cls is c.Window and name in ("armies", "stack_panel", "dialog_panel", "capability_panel", "capability_controls")
+                          or cls is c.VisibleEvent and name in ("partner", "dialog", "capability")
+                          or cls is c.NoticeComponent and name == "skill")
+        if name in ("handle", "ref", "control_ref", "selected_offer_ref", "selected_upgrade_ref", "subject", "selection", "partner", "schema", "inspected_subject"):
+            continue
+        if cls is c.CapabilityChoice and name == "destination":
+            continue  # requires its displayed recipient binding, never handle bytes
+        category = (name in ("creature", "terrain", "road", "kind", "subtype", "object_kind", "object_subtype", "faction", "portrait", "hero_class")
+                    or cls in (c.CapabilityChoice, c.CapabilityItem, c.CapabilityPanel)
+                    and name in ("id", "artifact", "spell", "skill", "slot", "destination_slot", "resource_from", "resource_to", "primary_skill"))
+        amount = cls is c.CapabilityItem and name == "amount"
+        as_set = name in ("children", "controls", "buildings", "army", "items", "choices", "capability_controls")
+        plan.append((name, absent_skipped, category, amount, as_set))
+    return tuple(plan)
 
 
 # The values contract._decoded_once shares between observations, and the entries of a shared town panel: the walk

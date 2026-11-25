@@ -203,6 +203,7 @@ class FastPolicy:
         self.children = (ctypes.c_int * 4096)()
         self.children_address = ctypes.addressof(self.children)
         self.logits = np.zeros(4096, dtype=np.float32)
+        self.logits_address = self.logits.ctypes.data  # kept with the array: a ctypes view is made once, not per choice
         self._begin()
 
     def __del__(self):
@@ -378,6 +379,7 @@ class FastDistribution(ContextualDistribution):
     def __init__(self, policy, state, observation, offers, cells, guard=None, window_memory=frozenset()):
         super().__init__(policy.quiet, state, observation, offers, cells, {}, guard, window_memory)
         self.policy = policy
+        self.query_address = None  # of the query array, once the first categorical choice computed it
 
     def _features(self, semantic):
         result = self.policy._encode_root(semantic)
@@ -396,15 +398,17 @@ class FastDistribution(ContextualDistribution):
         candidates = [self._features(item) for item in semantics]
         if recording is not None:
             recording.pending = {"kind": "categorical", "roots": range(first, len(recording.trees))}
-        query = self.query
-        if query is None:
+        address = self.query_address
+        if address is None:
             query = self.query = np.empty(32, dtype=np.float32)
-            policy.query(policy.net, self.state.address, query.ctypes.data)
+            address = self.query_address = query.ctypes.data
+            policy.query(policy.net, self.state.address, address)
         count = len(candidates)
         if count > len(policy.logits):
             policy.logits = np.zeros(2 * count, dtype=np.float32)
+            policy.logits_address = policy.logits.ctypes.data
         children = (ctypes.c_int * count)(*candidates)
-        if policy.c_logits(policy.net, query.ctypes.data, ctypes.addressof(children), count, policy.logits.ctypes.data):
+        if policy.c_logits(policy.net, address, ctypes.addressof(children), count, policy.logits_address):
             raise MemoryError("No memory for the candidates of a choice")
         return self._tensor(count)
 
@@ -417,7 +421,7 @@ class FastDistribution(ContextualDistribution):
             self.recording.pending = {"kind": "quantity", "root": self.recording.feature[features],
                                       "numeric": numeric, "offsets": offsets}
         given = numeric.numpy()
-        policy.lib.fn_quantity(policy.net, self.state.address, features, given.ctypes.data, policy.logits.ctypes.data)
+        policy.lib.fn_quantity(policy.net, self.state.address, features, given.ctypes.data, policy.logits_address)
         return self._tensor(2) + offsets
 
     def _coordinate_logits(self, semantic, subject, width, height):
@@ -430,9 +434,10 @@ class FastDistribution(ContextualDistribution):
         count = width * height
         if count > len(policy.logits):
             policy.logits = np.zeros(2 * count, dtype=np.float32)
+            policy.logits_address = policy.logits.ctypes.data
         given = positions.numpy()
         if policy.lib.fn_coordinate(policy.net, self.state.address, target, self.cells.ctypes.data, given.ctypes.data,
-                                    count, policy.logits.ctypes.data):
+                                    count, policy.logits_address):
             raise MemoryError("No memory for the coordinate head")
         return self._tensor(count)
 
