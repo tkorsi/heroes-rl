@@ -10533,3 +10533,31 @@ The MLX update is not bit-repeatable from one run to the next even on identical 
 | Actors, engines (processor) | 942%, 386% | 941%, 304% | 914%, 365% | 945%, 308% |
 
 The same seeds gave the same games: same day, outcome and samples in all 200; 18 and 19 games differ by one decision in the losing seat's count (the terminal race described above). PPO's time is not part of the change (the update is main's); its spread here (163–199 s) is that of the GPU update with other work beside it.
+
+### 2026-11-25 — The tree of 05:40 on both seed lists, nothing else running
+
+`src-wip39` (everything up to `42af1db`, including two changes since: engine messages decoded by orjson when it is importable, with any message holding a run of 19 digits or refused by orjson left to json; the connections read only when nothing is queued and only when ready), engine `claude-g10-e2`, orjson from `claude-g10/pylib` on `PYTHONPATH`, 24 actors; `states/int24-s1`, `int24-s2`, `logs/int24-s1.log`, `int24-s2.log`, launched by `logs/queue-6.log` on a free machine (nothing of mine ran beside them).
+
+| | Seed list 1: main | wip39 | Seed list 2: main | wip39 |
+| --- | --- | --- | --- | --- |
+| Collection | 2,474.1 s | **1,688.4 s** (1.47x) | 2,057.2 s | **1,454.9 s** (1.41x) |
+| PPO | 186.9 s | 204.0 s | 163.3 s | 180.8 s |
+| Decisions | 16,227,566 | 16,227,556 | 14,176,906 | 14,176,889 |
+| Decisions per second | 6,559 | 9,611 | 6,891 | 9,744 |
+| Usable / failed / day 365 / decision limit | 100 / 0 / 0 / 0 | 100 / 0 / 0 / 0 | 100 / 0 / 1 / 0 | 100 / 0 / 1 / 0 |
+| Samples, optimizer steps | 8,229,641, 10 | 8,229,641, 10 | 7,213,383, 11 | 7,213,383, 11 |
+| Games in by: 50th, 90th, last | 1,048, 2,094, 2,474 | 777, 1,529, 1,688 | 1,070, 1,810, 2,058 | 703, 1,295, 1,455 |
+| Actors, engines (processor) | 942%, 386% | 884%, 344% | 914%, 365% | 877%, 341% |
+
+All 200 games the same in day, outcome and samples; 18 and 25 differ by one decision in the losing seat (the terminal race). The 19-digit guard was first a regular expression; in a live profile it cost about 50 µs per decision, more than orjson saved, and two linear passes in C (translate, then a substring search) cost 3–4 µs.
+
+**One actor's speed as more play at once** (windows of `src-wip39`, 150 s after 40 s of warm-up, the machine free; `results/windows.jsonl`, labels `scale39-*`):
+
+| Actors at once | 1 | 4 | 8 | 12 | 16 |
+| --- | --- | --- | --- | --- | --- |
+| Decisions per second, all | 1,333 | 4,517 | 8,007 | 10,147 | 11,411 |
+| Per actor, against one alone | 100% | 85% | 75% | 63% | 53% |
+
+Sixteen cores give about 8.6 solo games' worth: the loss grows steadily with the load (busy performance cores run at a lower clock and share their caches; four of the sixteen cores are efficiency cores), not at one software limit.
+
+**A test the tree failed, and what the final tree is.** The full test suite, run again after the last changes, found one failure introduced at 05:33 (`b0ee441`, a view's objects decoded once when identical to an earlier view's): `tests/test_env.py::test_an_engine_that_repeats_the_map_plays_the_same_game` checks that each view of a map-repeating engine brings its own object tuple, and sharing identical tuples breaks that check (values and games were unchanged: the replays and the live game kept their digests). The change measured no faster, so it is reverted (`3c58cab`) rather than the test changed. The final tree is `src-wip41` = `3c58cab`: wip39 without that change, plus a submitted answer checked without encoding its message again and emitted frames built directly (`926ef22`); both replays exact, the live 40-day game's digest unchanged, 84 tests passed, 3 skipped. Its own batches on both seed lists and a 100-game exactness comparison against main are queued (`logs/queue-8.log` to `queue-10.log`).
