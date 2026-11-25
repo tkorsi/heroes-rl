@@ -24,6 +24,7 @@
 #include <string>
 #include <string_view>
 #include <tuple>
+#include <functional>
 #include <memory>
 #include <array>
 #include <deque>
@@ -84,7 +85,52 @@ struct Plan {
 std::vector<Node> nodes;
 std::unordered_map<std::string, int32_t> texts;
 std::unordered_map<uint64_t, int32_t> numbers;
-std::unordered_map<std::string, int32_t> interior;  // kind, tag and children as bytes -> node
+// Ids by the hash of their content, open addressing; the content itself is compared by the caller's test.
+struct IdTable {
+    std::vector<uint64_t> slots;  // (hash's high 32 bits << 32) | (id + 1); 0 is empty
+    size_t used = 0;
+    void clear() { slots.clear(); used = 0; }
+    template <class Same> int32_t find(uint64_t hash, Same same) const {
+        if (slots.empty()) return -1;
+        const size_t mask = slots.size() - 1;
+        const uint64_t mark = hash & 0xffffffff00000000ULL;
+        for (size_t i = (size_t)hash & mask;; i = (i + 1) & mask) {
+            const uint64_t slot = slots[i];
+            if (!slot) return -1;
+            if ((slot & 0xffffffff00000000ULL) == mark) {
+                const int32_t id = (int32_t)(slot & 0xffffffffULL) - 1;
+                if (same(id)) return id;
+            }
+        }
+    }
+    void insert(uint64_t hash, int32_t id) {
+        if ((used + 1) * 2 > slots.size()) grow();
+        place(hash, id);
+        used++;
+    }
+    void place(uint64_t hash, int32_t id) {
+        const size_t mask = slots.size() - 1;
+        size_t i = (size_t)hash & mask;
+        while (slots[i]) i = (i + 1) & mask;
+        slots[i] = (hash & 0xffffffff00000000ULL) | (uint64_t)(uint32_t)(id + 1);
+    }
+    void grow();  // needs the hashes again: defined by each table's owner below
+    std::function<uint64_t(int32_t)> rehash;
+};
+void IdTable::grow() {
+    std::vector<uint64_t> old;
+    old.swap(slots);
+    slots.assign(old.empty() ? 1024 : old.size() * 2, 0);
+    for (uint64_t slot : old) if (slot) { const int32_t id = (int32_t)(slot & 0xffffffffULL) - 1; place(rehash(id), id); }
+}
+
+inline uint64_t mix64(uint64_t h) { h ^= h >> 33; h *= 0xff51afd7ed558ccdULL; h ^= h >> 33; h *= 0xc4ceb9fe1a85ec53ULL; h ^= h >> 33; return h; }
+inline uint64_t hash_ints(uint64_t h, const int32_t *items, size_t count) {
+    for (size_t i = 0; i < count; i++) h = (h ^ (uint32_t)items[i]) * 0x100000001b3ULL;
+    return mix64(h);
+}
+
+IdTable interior;  // interior nodes by kind, tag and children
 Held kept_values(65536), observations(8192);
 std::unordered_map<PyTypeObject *, Plan> plans;
 struct HandleIndex { PyObject *heroes = nullptr, *towns = nullptr, *objects = nullptr, *index = nullptr; } handles;
@@ -158,14 +204,18 @@ int32_t number_node(double value) {
     return index;
 }
 
+uint64_t interior_hash(Kind kind, int32_t tag, const int32_t *children, size_t count) {
+    return hash_ints(((uint64_t)kind * 0x9E3779B97F4A7C15ULL) ^ (uint32_t)tag ^ ((uint64_t)count << 40), children, count);
+}
+
 int32_t interior_node(Kind kind, int32_t tag, const std::vector<int32_t> &children) {
-    std::string key;
-    key.reserve(5 + 4 * children.size());
-    key.push_back((char)kind);
-    key.append((const char *)&tag, 4);
-    key.append((const char *)children.data(), 4 * children.size());
-    auto found = interior.find(key);
-    if (found != interior.end()) return found->second;
+    const uint64_t hash = interior_hash(kind, tag, children.data(), children.size());
+    const int32_t known = interior.find(hash, [&](int32_t id) {
+        const Node &item = nodes[(size_t)id];
+        return item.kind == kind && item.tag == tag && item.children == children;
+    });
+    if (known >= 0) return known;
+    if (!interior.rehash) interior.rehash = [](int32_t id) { const Node &item = nodes[(size_t)id]; return interior_hash(item.kind, item.tag, item.children.data(), item.children.size()); };
     Node node;
     node.kind = kind;
     node.tag = tag;
@@ -174,7 +224,7 @@ int32_t interior_node(Kind kind, int32_t tag, const std::vector<int32_t> &childr
     for (int32_t child : children) node.exact = node.exact && nodes[(size_t)child].exact;
     const int32_t index = (int32_t)nodes.size();
     nodes.push_back(std::move(node));
-    interior.emplace(std::move(key), index);
+    interior.insert(hash, index);
     return index;
 }
 
@@ -795,7 +845,7 @@ struct VType {
 };
 
 std::vector<Val> vals;
-std::unordered_map<std::string, int32_t> val_index;   // kind, type, scalar and items as bytes -> value
+IdTable val_index;   // values by kind, type, scalar and items
 std::vector<std::string> strings;
 std::vector<PyObject *> string_objects;               // the Python str of each string, once asked
 std::unordered_map<std::string, int32_t> string_index;
@@ -820,19 +870,24 @@ int32_t string_id(const char *bytes, size_t size) {
     return index;
 }
 
+uint64_t val_hash(const Val &value) {
+    uint64_t h = ((uint64_t)value.kind * 0x9E3779B97F4A7C15ULL) ^ ((uint64_t)(uint32_t)value.type << 8) ^ ((uint64_t)(uint32_t)value.string << 24);
+    h = (h ^ (uint64_t)value.number) * 0x100000001b3ULL;
+    return hash_ints(h ^ ((uint64_t)value.items.size() << 48), value.items.data(), value.items.size());
+}
+
 int32_t intern_val(Val &&value) {
-    std::string key;
-    key.reserve(16 + 4 * value.items.size());
-    key.push_back((char)value.kind);
-    key.append((const char *)&value.type, 4);
-    key.append((const char *)&value.number, 8);
-    key.append((const char *)&value.string, 4);
-    key.append((const char *)value.items.data(), 4 * value.items.size());
-    auto found = val_index.find(key);
-    if (found != val_index.end()) return found->second;
+    const uint64_t hash = val_hash(value);
+    const int32_t known = val_index.find(hash, [&](int32_t id) {
+        const Val &item = vals[(size_t)id];
+        return item.kind == value.kind && item.type == value.type && item.number == value.number && item.string == value.string
+               && item.items == value.items;
+    });
+    if (known >= 0) return known;
+    if (!val_index.rehash) val_index.rehash = [](int32_t id) { return val_hash(vals[(size_t)id]); };
     const int32_t index = (int32_t)vals.size();
     vals.push_back(std::move(value));
-    val_index.emplace(std::move(key), index);
+    val_index.insert(hash, index);
     return index;
 }
 
@@ -1251,7 +1306,19 @@ int32_t type_named(const char *name) {
     return found->second;
 }
 
-int32_t field_of(int32_t type, const char *name) {
+int32_t field_of_name(int32_t type, const char *name);
+
+int32_t field_of(int32_t type, const char *name) {  // name is a literal: its address names it
+    static std::unordered_map<uint64_t, int32_t> cache;
+    const uint64_t key = ((uint64_t)(uint32_t)type << 48) ^ (uint64_t)(uintptr_t)name;
+    auto hit = cache.find(key);
+    if (hit != cache.end()) return hit->second;
+    const int32_t index = field_of_name(type, name);
+    cache.emplace(key, index);
+    return index;
+}
+
+int32_t field_of_name(int32_t type, const char *name) {
     const VType &found = vtypes[(size_t)type];
     auto entry = found.by_name.find(name);
     if (entry == found.by_name.end()) { PyErr_Format(PyExc_KeyError, "field %s.%s", found.name.c_str(), name); throw Fail(); }
@@ -1288,10 +1355,18 @@ void prepare_types() {
 
 inline const Val &V(int32_t index) { return vals[(size_t)index]; }
 inline int32_t field(int32_t value, int32_t index) { return V(value).items[(size_t)index]; }
-inline bool str_is(int32_t value, const char *text) {
+inline bool str_is_text(int32_t value, const char *text) {  // a value is this str (text not a literal)
     const Val &item = V(value);
     return item.kind == V_STR && strings[(size_t)item.string] == text;
 }
+inline bool str_is_id(int32_t value, int32_t id) {
+    const Val &item = V(value);
+    return item.kind == V_STR && item.string == id;
+}
+// The string id of a literal, interned once per place it is written (strings are never dropped); and a value
+// compared with a literal by that id. ``"" lit`` admits only literals.
+#define LIT_ID(lit) ([]() -> int32_t { static const int32_t lit_id = string_id("" lit, sizeof(lit) - 1); return lit_id; }())
+#define str_is(value, lit) str_is_id((value), LIT_ID(lit))
 
 int32_t default_context() {  // Context()
     static int32_t made = -1;
@@ -2129,7 +2204,7 @@ int32_t vselection(int32_t observation, int32_t ref) {  // policy._selection
 }
 
 bool kind_in(int32_t kind, std::initializer_list<const char *> names) {
-    for (const char *name : names) if (str_is(kind, name)) return true;
+    for (const char *name : names) if (str_is_text(kind, name)) return true;
     return false;
 }
 
@@ -2323,8 +2398,17 @@ const char *NAVIGATION_KINDS[] = {"open_hero", "open_town", "open_panel", "open_
 const char *MANAGEMENT_KINDS_LIST[] = {"split_stack", "merge_stacks", "swap_stacks", "transfer_stack", "swap_garrison",
                                        "move_artifact", "assemble_artifact", "disassemble_artifact"};
 
-bool in_list(int32_t kind, const char *const *list, size_t count) {
-    for (size_t i = 0; i < count; i++) if (str_is(kind, list[i])) return true;
+bool in_list(int32_t kind, const char *const *list, size_t count) {  // kind is one of the strings of a constant list
+    static std::unordered_map<const char *const *, std::vector<int32_t>> ids;
+    auto found = ids.find(list);
+    if (found == ids.end()) {
+        std::vector<int32_t> made;
+        for (size_t i = 0; i < count; i++) made.push_back(string_id(list[i], strlen(list[i])));
+        found = ids.emplace(list, std::move(made)).first;
+    }
+    const Val &item = V(kind);
+    if (item.kind != V_STR) return false;
+    for (int32_t id : found->second) if (item.string == id) return true;
     return false;
 }
 bool navigation_kind(int32_t kind) { return in_list(kind, NAVIGATION_KINDS, 10); }
@@ -2441,10 +2525,11 @@ Key command_key(int32_t action, int32_t offers) {  // guard._command_key
     return join(parts);
 }
 
-bool role_in(int32_t army, const char *a, const char *b) {
+bool role_in_ids(int32_t army, int32_t a, int32_t b) {
     const int32_t role = field(army, G.army_role);
-    return str_is(role, a) || str_is(role, b);
+    return str_is_id(role, a) || str_is_id(role, b);
 }
+#define role_in(army, a, b) role_in_ids((army), LIT_ID(a), LIT_ID(b))
 bool allied_role(int32_t army) { return role_in(army, "allied_garrison", "allied_locked_garrison"); }
 bool locked_role(int32_t army) { return role_in(army, "locked_garrison", "allied_locked_garrison"); }
 int nonempty_slots(int32_t army) {
@@ -2690,22 +2775,25 @@ struct Tracker {
         if (frame.kind == F_DECISION) {
             decision_observation = frame.observation; decision_offers = frame.offers; action = -1; consumed = false;
             const int32_t observation = frame.observation, offers = frame.offers;
-            out = Support();
-            std::set<Coordinate> blocked = failed;
+            // the support's vectors are refilled in place: no allocation once they have grown
+            out.movable.clear(); out.blocked.clear(); out.navigation.clear(); out.management.clear(); out.windows.clear();
+            out.blocked.insert(out.blocked.end(), failed.begin(), failed.end());
             for (int32_t hero : V(field(observation, T.o_heroes)).items) {
-                const std::string handle = str(field(hero, T.h_handle));
+                const std::string &handle = str(field(hero, T.h_handle));
                 if (num(field(hero, G.hero_movement)) > 0 && !V(field(hero, T.h_in_garrison)).number) out.movable.push_back(handle);
                 const auto &position = V(field(hero, G.hero_position)).items;
-                blocked.insert(Coordinate{handle, num(position[0]), num(position[1])});
+                out.blocked.push_back(Coordinate{handle, num(position[0]), num(position[1])});
             }
             std::sort(out.movable.begin(), out.movable.end());
-            if (has_move) blocked.insert(previous_move);
-            out.blocked.assign(blocked.begin(), blocked.end());
-            std::set<Key> nav;
-            for (auto &entry : navigation) if (entry.second >= 2) nav.insert(entry.first);
-            if (town_reopen_blocked)
-                for (int32_t subject : V(field(offers, G.offers_town_refs)).items) nav.insert(join({"open_town", str(subject)}));
-            out.navigation.assign(nav.begin(), nav.end());
+            if (has_move) out.blocked.push_back(previous_move);
+            std::sort(out.blocked.begin(), out.blocked.end());
+            out.blocked.erase(std::unique(out.blocked.begin(), out.blocked.end()), out.blocked.end());
+            for (auto &entry : navigation) if (entry.second >= 2) out.navigation.push_back(entry.first);
+            if (town_reopen_blocked) {
+                for (int32_t subject : V(field(offers, G.offers_town_refs)).items) out.navigation.push_back(join({"open_town", str(subject)}));
+                std::sort(out.navigation.begin(), out.navigation.end());
+                out.navigation.erase(std::unique(out.navigation.begin(), out.navigation.end()), out.navigation.end());
+            }
             for (auto &entry : management) if (entry.second >= management_limit) out.management.push_back(entry.first);
             out.has_previous = has_previous; out.previous = previous;
             const int32_t armies = field(offers, G.offers_armies);
@@ -3033,7 +3121,7 @@ struct WindowMemory {
             const int32_t status = field(frame.result, G.result_status);
             for (const char *name : {"built", "recruited", "hired", "upgraded", "transferred", "split", "merged", "swapped",
                                      "garrison_swapped", "capability_applied", "dialog_answered", "interaction"})
-                if (str_is(status, name)) { changed_by_action = true; break; }
+                if (str_is_text(status, name)) { changed_by_action = true; break; }
         }
         if (!has_day || frame.day != day || changed_world || changed_by_action || frame.kind == F_EVENT) {
             parents.clear(); frames.clear(); has_opened = false;
@@ -3595,7 +3683,7 @@ struct Walk {
             if (!V(F(capability, "mandatory")).number) kinds.push_back("close_capability");
             for (const char *kind : CAPABILITY_ACTION_LIST) {
                 bool found = false;
-                for (int32_t choice : items_of(F(capability, "choices"))) found = found || str_is(F(choice, "kind"), kind);
+                for (int32_t choice : items_of(F(capability, "choices"))) found = found || str_is_text(F(choice, "kind"), kind);
                 if (found) kinds.push_back(kind);
             }
             return kinds;
@@ -3631,7 +3719,7 @@ struct Walk {
             for (int32_t panel : items_of(F(offers, "capability_controls"))) if (visit(action(kind, -2, -1, -1, panel))) return;
         } else if (in_list_text(kind, CAPABILITY_ACTION_LIST, 10)) {
             for (int32_t choice : items_of(F(field(offers, G.offers_capability_panel), "choices")))
-                if (str_is(F(choice, "kind"), kind.c_str())) {
+                if (str_is_text(F(choice, "kind"), kind.c_str())) {
                     const int32_t made = kind == "trade_resource" ? quantity_representative(kind, num(F(choice, "max_count")), F(choice, "ref"))
                                                                   : action(kind, -2, -1, -1, -1, F(choice, "ref"));
                     if (visit(made)) return;
@@ -3796,7 +3884,7 @@ struct Walk {
         } else if (in_list_text(kind, CAPABILITY_ACTION_LIST, 10)) {
             std::vector<int32_t> choices, semantics, refs;
             for (int32_t item : items_of(F(field(offers, G.offers_capability_panel), "choices"))) {
-                if (!str_is(F(item, "kind"), kind.c_str())) continue;
+                if (!str_is_text(F(item, "kind"), kind.c_str())) continue;
                 const int32_t made = kind == "trade_resource" ? quantity_representative(kind, num(F(item, "max_count")), F(item, "ref"))
                                                               : action(kind, -2, -1, -1, -1, F(item, "ref"));
                 if (permitted(made)) { choices.push_back(item); refs.push_back(F(item, "ref")); }
@@ -3861,7 +3949,7 @@ struct Walk {
             std::vector<int32_t> all_controls = items_of(F(delivered, "controls"));
             for (const char *which : {"hall", "tavern"}) {
                 int copies = 0;
-                for (int32_t control : all_controls) copies += str_is(F(control, "panel"), which);
+                for (int32_t control : all_controls) copies += str_is_text(F(control, "panel"), which);
                 if (copies > 1) { PyErr_SetString(PyExc_ValueError, "Duplicate semantic town panel controls"); throw Fail(); }
             }
             std::vector<int32_t> controls, semantics;
@@ -4322,7 +4410,7 @@ const std::vector<float> &object_row(int64_t kind, int64_t subtype, int32_t owne
     if (found != known.end()) return found->second;
     std::vector<float> row;
     for (int64_t value : {kind, subtype}) for (int bit = 0; bit < 32; bit++) row.push_back((float)((value >> bit) & 1));
-    for (const char *side : {"self", "opponent", "neutral"}) row.push_back(str_is(owner, side) ? 1.f : 0.f);
+    for (const char *side : {"self", "opponent", "neutral"}) row.push_back(str_is_text(owner, side) ? 1.f : 0.f);
     return known.emplace(key, std::move(row)).first->second;
 }
 
@@ -5003,11 +5091,10 @@ void seat_frame(SeatObject *self, const std::vector<NFrame> &frames, size_t inde
     const NFrame &frame = frames[index];
     const int32_t basis = self->held ? self->decision_observation : self->observation;
     const int32_t payload = vpayload(frame, basis, self->observation);
-    Support support;
+    // the guard's support and the window keys are filled in place at a decision; the seat's walk reads them there
     bool decided = false;
-    if (self->guarded) decided = self->tracker->observe(frame, support);
-    std::set<Key> keys;
-    self->memory->observe(frames, (int32_t)index, keys);
+    if (self->guarded) decided = self->tracker->observe(frame, *self->pending_support);
+    self->memory->observe(frames, (int32_t)index, *self->pending_keys);
     seat_track(self, frame);
     if (payload < 0) {  // bookkeeping: the model skips it
         if (self->recorder) self->recorder->feed(Pending{frame.seq, frame.kind, -1, frame.observation, frame.decision_seq});
@@ -5019,17 +5106,15 @@ void seat_frame(SeatObject *self, const std::vector<NFrame> &frames, size_t inde
     if (frame.observation >= 0) std::tie(summary, own, cells) = observation_features(self, frame.observation);
     const long root = encode(self->fast->net, payload);
     if (root < 0) { PyErr_SetString(PyExc_MemoryError, "The arena of tree encodings is full"); throw Fail(); }
-    std::vector<float> after(64, 0.f);
-    self->fast->step(self->fast->net, self->state->data(), after.data(), root, summary, own);
-    *self->state = after;
+    float after[64];
+    self->fast->step(self->fast->net, self->state->data(), after, root, summary, own);
+    std::copy(after, after + 64, self->state->begin());
     if (frame.kind == F_DECISION) {
         (*self->values)[frame.seq] = (double)self->fast->value(self->fast->net, self->state->data());
         self->pending_seq = frame.seq;
         self->pending_observation = frame.observation;
         self->pending_offers = frame.offers;
-        *self->pending_state = after;
-        *self->pending_support = support;
-        *self->pending_keys = keys;
+        std::copy(after, after + 64, self->pending_state->begin());
         self->pending_cells = cells;
         (void)decided;
     }
@@ -5332,10 +5417,8 @@ PyObject *py_reset_values(PyObject *, PyObject *) {  // reset_values(): drop the
     clear_nodes();
     for (size_t i = base_values; i < vals.size(); i++) Py_XDECREF(vals[i].python);
     vals.resize(base_values);
-    for (auto entry = val_index.begin(); entry != val_index.end();) {
-        if ((size_t)entry->second >= base_values) entry = val_index.erase(entry);
-        else ++entry;
-    }
+    val_index.clear();
+    for (size_t i = 0; i < vals.size(); i++) val_index.insert(val_hash(vals[i]), (int32_t)i);
     tree_of_value.clear();
     tile_places.clear();
     observation_texts.clear();
