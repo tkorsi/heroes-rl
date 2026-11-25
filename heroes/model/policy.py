@@ -14,7 +14,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, fields, is_dataclass
 import hashlib
 import json
-from math import copysign, log1p, sqrt
+from math import copysign, isnan, log1p, sqrt
 
 import torch
 from torch import Tensor, nn
@@ -227,10 +227,41 @@ def _set(tag, children):
 def _subject(observation, ref):
     if ref is None or observation is None:
         return _node("unresolved_reference")
-    for entry in (*observation.heroes, *observation.towns, *observation.objects):
-        if entry.handle == ref:
-            return _semantic(entry)
+    entry = _handles(observation).get(ref)
+    if entry is not None:
+        return _semantic(entry)
     return _node("unresolved_reference")
+
+
+_HANDLES = {}  # ids of (heroes, towns, objects) -> (those tuples, the first entry of each handle in that order)
+
+
+def _handles(observation):
+    """The first hero, town or object (in that order) that carries each handle: what a scan finds first.
+
+    Most views carry the very hero, town and object tuples of the view before.
+    """
+    last = _LAST_HANDLES[0]
+    if last is observation:
+        return _LAST_HANDLES[1]
+    parts = (observation.heroes, observation.towns, observation.objects)
+    key = (id(parts[0]), id(parts[1]), id(parts[2]))
+    known = _HANDLES.get(key)
+    if known is not None and known[0][0] is parts[0] and known[0][1] is parts[1] and known[0][2] is parts[2]:
+        _LAST_HANDLES[:] = observation, known[1]
+        return known[1]
+    found = {}
+    for group in parts:
+        for entry in group:
+            found.setdefault(entry.handle, entry)
+    if len(_HANDLES) >= 64:
+        _HANDLES.clear()  # bounded memory; a miss only indexes again
+    _HANDLES[key] = (parts, found)  # holds the tuples, so their ids name nothing else
+    _LAST_HANDLES[:] = observation, found  # holds the observation, which holds the tuples
+    return found
+
+
+_LAST_HANDLES = [None, None]  # the observation asked about last, and its index
 
 
 def _selection(observation, ref):
@@ -274,7 +305,21 @@ def _action(action, observation):
     return _node("action", *children)
 
 
+_ARMY_SLOTS = [None, {}]  # the observation whose army slots were described last, and those descriptions
+
+
 def _army_slot(observation, ref, *, receiving):
+    # A walk describes the same few slots of one observation for many candidate actions; the description is a
+    # function of the observation (a frozen value, held here so that its id stays its own) and of its arguments.
+    if observation is not _ARMY_SLOTS[0]:
+        _ARMY_SLOTS[0], _ARMY_SLOTS[1] = observation, {}
+    known = _ARMY_SLOTS[1].get((ref, receiving))
+    if known is None:
+        known = _ARMY_SLOTS[1][ref, receiving] = _describe_army_slot(observation, ref, receiving)
+    return known
+
+
+def _describe_army_slot(observation, ref, receiving):
     window = observation.window if observation else None
     if window is not None and window.armies is not None:
         army, slot = c.army_slot(window.armies, ref)
@@ -323,6 +368,11 @@ def _semantic(value):
     random initialization, not ordinal utility or pretrained text embeddings.
     Ordered sequences use a separate recurrent reduction (notice substitutions).
     """
+    if type(value) in _KEPT_TYPES:
+        # A kept value's tree was built once (below); the entry holds the value, so its id names nothing else.
+        hit = _KEPT_VALUES.get(id(value))
+        if hit is not None:
+            return hit[1]
     if value is None:
         return _node("absent")
     if type(value) is bool:
@@ -366,29 +416,18 @@ def _semantic(value):
             if hit is not None:
                 return hit[1]
         children = []
-        for name in c._field_names(type(value)):
+        plan = _PLANS.get(type(value))
+        if plan is None:
+            plan = _PLANS[type(value)] = _field_plan(type(value))
+        for name, absent_skipped, category, amount, as_set in plan:
             item = getattr(value, name)
-            # Additive profile fields must not add even an "absent" node to
-            # old observations: archived values/probabilities remain exact.
-            if item is None and (type(value) is c.TownPanel and name in ("armies", "tavern")
-                                 or type(value) is c.Hero and name == "in_garrison"
-                                 or type(value) is c.Window and name in ("armies", "stack_panel", "dialog_panel", "capability_panel", "capability_controls")
-                                 or type(value) is c.VisibleEvent and name in ("partner", "dialog", "capability")
-                                 or type(value) is c.NoticeComponent and name == "skill"):
+            if absent_skipped and item is None:
                 continue
-            if type(value) is c.TownPanel and name in ("armies", "tavern") and item is None:
-                continue
-            if name in ("handle", "ref", "control_ref", "selected_offer_ref", "selected_upgrade_ref", "subject", "selection", "partner", "schema", "inspected_subject"):
-                continue
-            if type(value) is c.CapabilityChoice and name == "destination":
-                continue  # requires its displayed recipient binding, never handle bytes
-            if (name in ("creature", "terrain", "road", "kind", "subtype", "object_kind", "object_subtype", "faction", "portrait", "hero_class")
-                    or type(value) in (c.CapabilityChoice, c.CapabilityItem, c.CapabilityPanel)
-                    and name in ("id", "artifact", "spell", "skill", "slot", "destination_slot", "resource_from", "resource_to", "primary_skill")) and type(item) is int:
+            if category and type(item) is int:
                 encoded = _text(f"category:{item}")
-            elif type(value) is c.CapabilityItem and value.kind == "world_object" and name == "amount" and type(item) is int:
+            elif amount and value.kind == "world_object" and type(item) is int:
                 encoded = _text(f"category:{item}")  # delivered object subtype, not an amount
-            elif name in ("children", "controls", "buildings", "army", "items", "choices", "capability_controls") and type(item) is tuple:
+            elif as_set and type(item) is tuple:
                 encoded = _set(name, [_semantic(entry) for entry in item])
             else:
                 encoded = _semantic(item)
@@ -403,8 +442,41 @@ def _semantic(value):
     raise ValueError("Unsupported model semantic payload")
 
 
-# The values contract._decoded_once shares between observations.
-_KEPT_TYPES = frozenset((c.OwnArmyStack, c.OwnArmy, c.ArmyView, c.Hero, c.Town, c.TownPanel, c.CapabilityPanel))
+_PLANS = {}  # dataclass type -> _field_plan(type)
+
+
+def _field_plan(cls):
+    """How ``_semantic`` treats each field of a dataclass, decided once per type from the field's name and the type:
+    ``(name, skipped when None, a category when an int, an object subtype when an int of a world object, a set
+    when a tuple)``, in field order; the fields it never encodes are left out.
+    """
+    plan = []
+    for name in c._field_names(cls):
+        # Additive profile fields must not add even an "absent" node to
+        # old observations: archived values/probabilities remain exact.
+        absent_skipped = (cls is c.TownPanel and name in ("armies", "tavern")
+                          or cls is c.Hero and name == "in_garrison"
+                          or cls is c.Window and name in ("armies", "stack_panel", "dialog_panel", "capability_panel", "capability_controls")
+                          or cls is c.VisibleEvent and name in ("partner", "dialog", "capability")
+                          or cls is c.NoticeComponent and name == "skill")
+        if name in ("handle", "ref", "control_ref", "selected_offer_ref", "selected_upgrade_ref", "subject", "selection", "partner", "schema", "inspected_subject"):
+            continue
+        if cls is c.CapabilityChoice and name == "destination":
+            continue  # requires its displayed recipient binding, never handle bytes
+        category = (name in ("creature", "terrain", "road", "kind", "subtype", "object_kind", "object_subtype", "faction", "portrait", "hero_class")
+                    or cls in (c.CapabilityChoice, c.CapabilityItem, c.CapabilityPanel)
+                    and name in ("id", "artifact", "spell", "skill", "slot", "destination_slot", "resource_from", "resource_to", "primary_skill"))
+        amount = cls is c.CapabilityItem and name == "amount"
+        as_set = name in ("children", "controls", "buildings", "army", "items", "choices", "capability_controls")
+        plan.append((name, absent_skipped, category, amount, as_set))
+    return tuple(plan)
+
+
+# The values contract._decoded_once shares between observations, and the entries of a shared town panel: the walk
+# describes a panel's controls, buildings and offers for every decision taken in it.
+_KEPT_TYPES = frozenset((c.OwnArmyStack, c.OwnArmy, c.ArmyView, c.Hero, c.Town, c.TownPanel, c.CapabilityPanel,
+                         c.PanelControl, c.BuildingChoice, c.BuildingDetails, c.RecruitChoice, c.HeroRecruitChoice,
+                         c.UpgradeChoice, c.ArmySlot, c.Window, c.ObjectView))
 
 
 @dataclass(frozen=True)
@@ -480,7 +552,12 @@ class ContextualEncoder:
             self.decision = None
         if frame.observation is not None:
             self.observation = frame.observation
-        return ContextualInput(frame, payload, frame.observation, guard, self.window_memory.observe(frame))
+        # ContextualInput(frame, payload, frame.observation, guard, memory): the same frozen value, its fields put in
+        # place at once (in field order) instead of one object.__setattr__ each; it has no checks of its own.
+        item = object.__new__(ContextualInput)
+        item.__dict__.update(frame=frame, semantics=payload, observation=frame.observation, guard=guard,
+                             window_memory=self.window_memory.observe(frame))
+        return item
 
 
 def encode_history(frames, *, guard=None):
@@ -591,7 +668,7 @@ def object_row(kind, subtype, owner):
     return row
 
 
-_SEMANTICS_LIMIT = 64
+_SEMANTICS_LIMIT = 2048  # a seat returns to the same window often, and a repeated view is the same object (protocol)
 _SEMANTICS = {}  # id of an observation -> (the observation, its semantic tree), the latest few
 
 
@@ -611,11 +688,32 @@ def observation_semantics(observation):
     return tree
 
 
+_PARTS = {}  # (part, ids of the frozen values it is a function of) -> (those values, the part's tree)
+
+
+def _part(name, values, build):
+    """The tree ``build()`` makes of ``values``, built once for the same frozen objects.
+
+    From one view to the next most heroes, towns and armies are the very objects of the view before
+    (``contract._decoded_once``); a part of the tree that reads nothing else is the same tree.
+    """
+    key = (name, *map(id, values))
+    known = _PARTS.get(key)
+    if known is not None and all(held is value for held, value in zip(known[0], values)):
+        return known[1]
+    tree = build()
+    if len(_PARTS) >= 256:
+        _PARTS.clear()  # bounded memory; a miss only builds again
+    _PARTS[key] = (tuple(values), tree)  # holds the values, so their ids name nothing else
+    return tree
+
+
 def _observation_semantics(observation):
+    heroes, towns = observation.heroes, observation.towns
     own = _node("observation", _node("size", _semantic(observation.size)),
                 _node("resources", _semantic(observation.resources)),
-                _set("heroes", [_semantic(hero) for hero in observation.heroes]),
-                _set("towns", [_semantic(town) for town in observation.towns]),
+                _part("heroes", heroes, lambda: _set("heroes", [_semantic(hero) for hero in heroes])),
+                _part("towns", towns, lambda: _set("towns", [_semantic(town) for town in towns])),
                 _window_semantic(observation),
                 _node("current_window_subject", _subject(observation, observation.context.subject)))
     if observation.window is not None and observation.window.armies is not None:
@@ -629,9 +727,19 @@ def _observation_semantics(observation):
             bindings.append(_node("exchange_partner", _subject(observation, window.context.selection)))
         own = _node("management_observation", own, _set("army_bindings", bindings))
     if observation.own_armies is not None:
-        bindings = [_pair("own_army", _semantic(army), _subject(observation, army.subject))
-                    for army in observation.own_armies]
-        own = _node("passive_army_observation", own, _set("own_army_bindings", bindings))
+        # Each passive army belongs to an owned hero or town (the observation checks that it covers exactly those),
+        # so its subject resolves among the heroes and towns, never among the other objects.
+        armies = observation.own_armies
+
+        def bindings():
+            return _set("own_army_bindings", [_pair("own_army", _semantic(army), _subject(observation, army.subject))
+                                              for army in armies])
+
+        if {army.subject for army in armies} <= {entry.handle for entry in (*heroes, *towns)}:
+            tree = _part("own_armies", (len(armies), *armies, len(heroes), *heroes, *towns), bindings)
+        else:
+            tree = bindings()
+        own = _node("passive_army_observation", own, tree)
     return own
 
 
@@ -1104,6 +1212,9 @@ class ContextualDistribution:
         self.window_memory = window_memory
         self.recording = None  # a ``Recording`` to fill while an action is sampled
         self.query = None  # the state's policy query, computed at the first categorical choice
+        # What the guard said of an action at this decision: a walk asks of the same action more than once (a kind
+        # is tested on its representatives, then its permitted choices are listed), and the answer cannot change.
+        self._permits = {}
 
     def _features(self, semantic):
         result = self.model._encode_root(semantic, self.cache)
@@ -1178,7 +1289,16 @@ class ContextualDistribution:
     def _choose(self, name, logits, selected, generator, trace):
         log_probs = torch.log_softmax(logits, 0)
         if selected is None:
-            selected = int(torch.multinomial(log_probs.detach().exp(), 1, generator=generator).item())
+            probabilities = log_probs.detach().exp()
+            # A NaN, +inf or entirely -inf input makes every log-softmax entry NaN.
+            # Let torch diagnose invalid inputs before drawing from the game generator.
+            if (probabilities.device.type == "cpu" and probabilities.dtype == torch.float32
+                    and probabilities.numel() and not isnan(probabilities[0].item())):
+                # Same exponential draw, division and argmax as ATen's single-sample CPU path.
+                noise = torch.empty_like(probabilities).exponential_(1, generator=generator)
+                selected = int(torch.argmax(probabilities / noise))
+            else:
+                selected = int(torch.multinomial(probabilities, 1, generator=generator).item())
         trace.append(ConditionalProbability(name, selected, logits.numel(), log_probs[selected]))
         recording = self.recording
         if recording is not None:
@@ -1190,7 +1310,15 @@ class ContextualDistribution:
         kinds = self._native_kinds()
         if self.guard is None:
             return kinds
-        return tuple(kind for kind in kinds if any(self._permitted(action) for action in self._representatives(kind)))
+        guard, offers = self.guard, self.offers
+        blocked = guard.blocked_management_subjects
+        # A rearrangement (split, merge, swap) is charged to the displayed armies of its two slots; when every
+        # displayed army's subject is past its budget, the guard refuses each pair (GuardSupport.permits, first
+        # test), so the kind has no permitted representative and its pairs need not be asked one by one.
+        barred = bool(blocked and offers.armies and not interaction_guard._mandatory(offers)
+                      and all(army.subject in blocked for army in offers.armies))
+        return tuple(kind for kind in kinds if not (barred and kind in interaction_guard._ARRANGEMENTS)
+                     and any(self._permitted(action) for action in self._representatives(kind)))
 
     def _native_kinds(self):
         if self.offers.capability_panel is not None:
@@ -1249,7 +1377,12 @@ class ContextualDistribution:
         return action
 
     def _permitted(self, action):
-        return self.guard is None or self.guard.permits(action, self.observation, self.offers)
+        if self.guard is None:
+            return True
+        known = self._permits.get(action)
+        if known is None:
+            known = self._permits[action] = self.guard.permits(action, self.observation, self.offers)
+        return known
 
     def _filtered(self, choices, action_for):
         # Quantity-bearing choices supply a permitted representative; their

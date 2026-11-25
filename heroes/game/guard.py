@@ -73,6 +73,9 @@ MANAGEMENT_KINDS = frozenset({
 })
 
 
+_ARRANGEMENTS = frozenset(("split_stack", "merge_stacks", "swap_stacks"))  # charged to the armies of offers.armies
+
+
 def _mandatory(offers):
     return (offers.context.kind == "dialog" or
             offers.capability_panel is not None and offers.capability_panel.mandatory)
@@ -196,19 +199,54 @@ def _blocked_swaps(observation, offers, seen):
     if not armies:
         return ()
     layout = _army_layout(observation, armies)
-    result = set()
-    for source, destination, _ in c.army_operation_choices(armies, "swap_stacks"):
-        key = _swap_key(armies, source, destination)
-        if key in result:
-            continue
-        rows = dict(layout)
+    return tuple(sorted({key for key, swapped in _swapped_layouts(layout, armies) if swapped in seen}))
+
+
+_SWAP_KEYS = {}  # ids of the armies -> (the armies, the keys of the swaps they offer, each once, in order)
+
+
+def _swap_keys(armies):
+    """The key of every swap ``armies`` offer, each once, in the order the offers list them: a function of the armies."""
+    cache_key = tuple(map(id, armies))
+    known = _SWAP_KEYS.get(cache_key)
+    if known is not None and all(held is army for held, army in zip(known[0], armies)):
+        return known[1]
+    keys = tuple(dict.fromkeys(_swap_key(armies, source, destination)
+                               for source, destination, _ in c.army_operation_choices(armies, "swap_stacks")))
+    if len(_SWAP_KEYS) >= 256:
+        _SWAP_KEYS.clear()  # bounded memory; a miss only computes again
+    _SWAP_KEYS[cache_key] = (armies, keys)  # holds the armies, so their ids name nothing else
+    return keys
+
+
+_SWAPPED = {}  # (layout, ids of the armies) -> (the armies, ((swap key, the layout after that swap), ...))
+
+
+def _swapped_layouts(layout, armies):
+    """Each swap the armies offer, by its key, with the layout it would leave: a function of the two alone.
+
+    A seat decides again and again in the same window; only the layouts it has seen grow.
+    """
+    cache_key = (layout, *map(id, armies))
+    known = _SWAPPED.get(cache_key)
+    if known is not None and all(held is army for held, army in zip(known[0], armies)):
+        return known[1]
+    found = {}
+    # The layout is sorted by subject (each subject once) and a swap keeps the subjects: the swapped layout,
+    # sorted, has its rows in the same places.
+    places = {subject: index for index, (subject, _) in enumerate(layout)}
+    for key in _swap_keys(armies):
         left, a, right, b = key
-        x, y = rows[left][a], rows[right][b]
-        slots = list(rows[left]); slots[a] = y; rows[left] = tuple(slots)
-        slots = list(rows[right]); slots[b] = x; rows[right] = tuple(slots)
-        if tuple(sorted(rows.items())) in seen:
-            result.add(key)
-    return tuple(sorted(result))
+        i, j = places[left], places[right]
+        x, y = layout[i][1][a], layout[j][1][b]
+        rows = list(layout)
+        slots = list(rows[i][1]); slots[a] = y; rows[i] = (left, tuple(slots))
+        slots = list(rows[j][1]); slots[b] = x; rows[j] = (right, tuple(slots))
+        found[key] = tuple(rows)
+    if len(_SWAPPED) >= 256:
+        _SWAPPED.clear()  # bounded memory; a miss only computes again
+    _SWAPPED[cache_key] = (armies, tuple(found.items()))  # holds the armies, so their ids name nothing else
+    return _SWAPPED[cache_key][1]
 
 
 @dataclass(frozen=True)
@@ -223,6 +261,25 @@ class GuardSupport:
     exhausted: bool = False  # the seat is past its daily decision budget
 
     def permits(self, action, observation, offers):
+        kind = action.kind if type(action) is c.Action else None
+        if (kind in _ARRANGEMENTS and self.blocked_management_subjects and offers.armies
+                and not _mandatory(offers) and kind not in ("close", "back", "close_capability")):
+            # Every path below ends in False for a rearrangement whose subject is past its budget, whether or not
+            # the offers permit it: answered here without the offers' and the repeat's checks.
+            army_slot = c.army_slot
+            subjects = {army.subject for army, _ in (army_slot(offers.armies, action.selection),
+                                                     army_slot(offers.armies, action.destination)) if army is not None}
+            if (subjects or {action.subject}) & set(self.blocked_management_subjects):
+                return False
+        swap_key = None
+        if kind == "swap_stacks" and self.blocked_swaps and offers.armies and not _mandatory(offers):
+            # So does a swap the layouts already seen exclude.
+            left, a = c.army_slot(offers.armies, action.selection)
+            right, b = c.army_slot(offers.armies, action.destination)
+            if a is not None and b is not None:
+                swap_key = _swap_key(offers.armies, action.selection, action.destination)
+                if swap_key in self.blocked_swaps:
+                    return False
         if not offers.permits(action):
             return False
         if _mandatory(offers) or action.kind in ("close", "back", "close_capability"):
@@ -237,10 +294,13 @@ class GuardSupport:
             return self._permits_movement(action.subject, action.x, action.y,
                                           self._revealed_coordinates(action.subject, observation))
         if action.kind == "swap_stacks":
-            if _swap_key(offers.armies, action.selection, action.destination) in self.blocked_swaps:
+            if self.blocked_swaps and (swap_key if swap_key is not None else
+                                       _swap_key(offers.armies, action.selection, action.destination)) in self.blocked_swaps:
                 return False
         if action.kind in MANAGEMENT_KINDS:
-            return not set(management_subjects(action, observation, offers)).intersection(self.blocked_management_subjects)
+            # Nothing is blocked: no subject can be. Otherwise the subjects charged, as management_subjects lists them.
+            return not self.blocked_management_subjects or not set(
+                management_subjects(action, observation, offers)).intersection(self.blocked_management_subjects)
         key = nav_key(action, observation, offers)
         return key not in self.blocked_navigation and (key is None or key[1] not in self.blocked_window_subjects)
 
@@ -266,8 +326,7 @@ class GuardSupport:
         # Membership in the current observation is the whole rule. Blocked and
         # visitable flags and route feasibility are not consulted.
         level = next((hero.position[2] for hero in observation.heroes if hero.handle == subject), None)
-        return frozenset((tile.position[0], tile.position[1]) for tile in observation.tiles
-                         if tile.position[2] == level)
+        return _revealed(observation.tiles, level)
 
     def _permits_movement(self, subject, x, y, revealed):
         return (subject in self.movable_heroes
@@ -278,10 +337,38 @@ class GuardSupport:
         """The coordinates the hero may move to, as row-major indices in ascending order."""
         width, height, _ = offers.size
         revealed = self._revealed_coordinates(subject, observation)
-        return (index for index in sorted(y * width + x for x, y in revealed)
+        return (index for index in _row_major(revealed, width)
                 if offers.permits(c.Action("move_to", subject, index % width, index // width,
                                            schema=offers.schema))
                 and self._permits_movement(subject, index % width, index // width, revealed))
+
+
+_ROW_MAJOR = {}  # (id of a set of revealed cells, width) -> (the set, its cells as row-major indices in ascending order)
+
+
+def _row_major(revealed, width):
+    """``sorted(y * width + x for x, y in revealed)``, once for the same set (``_revealed`` keeps it per tile tuple)."""
+    known = _ROW_MAJOR.get((id(revealed), width))
+    if known is None or known[0] is not revealed:
+        known = (revealed, tuple(sorted(y * width + x for x, y in revealed)))
+        if len(_ROW_MAJOR) >= 16:
+            _ROW_MAJOR.clear()  # the entry holds its set, so an id names nothing else while it is kept
+        _ROW_MAJOR[id(revealed), width] = known
+    return known[1]
+
+
+_REVEALED = {}  # (id of a tile tuple, level) -> (the tuple, the cells of that level it shows)
+
+
+def _revealed(tiles, level):
+    """The ``(x, y)`` of every tile of ``level`` in ``tiles``. Most observations carry the tile tuple of the one before."""
+    known = _REVEALED.get((id(tiles), level))
+    if known is None or known[0] is not tiles:
+        known = (tiles, frozenset((tile.position[0], tile.position[1]) for tile in tiles if tile.position[2] == level))
+        if len(_REVEALED) >= 8:
+            _REVEALED.clear()  # the entry holds its tuple, so an id names nothing else while it is kept
+        _REVEALED[id(tiles), level] = known
+    return known[1]
 
 
 _SORTED_TILES = [None, None]  # the tile tuple sorted last, and its tiles by position
@@ -294,7 +381,22 @@ def _tiles_by_position(tiles):
     return _SORTED_TILES[1]
 
 
+_WORLDS = {}  # id of an observation -> (the observation, its world)
+
+
 def _world(observation):
+    # A repeated view is the same observation object (protocol): its world is built once.
+    known = _WORLDS.get(id(observation))
+    if known is not None and known[0] is observation:
+        return known[1]
+    world = _build_world(observation)
+    if len(_WORLDS) >= 2048:
+        _WORLDS.clear()  # bounded memory; a miss only builds again
+    _WORLDS[id(observation)] = (observation, world)  # holds the observation, so its id names nothing else
+    return world
+
+
+def _build_world(observation):
     # No window, army layout, artifact inventory, query reference or revision.
     # Garrison swaps and artifact-derived movement maxima do not renew budgets.
     return (observation.size, _tiles_by_position(observation.tiles),

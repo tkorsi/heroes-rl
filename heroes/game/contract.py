@@ -8,7 +8,7 @@ about visibility. Routing handles and revisions are bookkeeping, never features.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, fields, replace
+from dataclasses import MISSING, dataclass, fields, replace
 import marshal
 import re
 
@@ -84,10 +84,21 @@ DIALOGS_PROFILE = InterfaceProfile(DIALOGS_ENVIRONMENT, DIALOGS_SCHEMA, DIALOGS_
 EXPANDED_PROFILE = InterfaceProfile(EXPANDED_ENVIRONMENT, EXPANDED_SCHEMA, EXPANDED_ACTION_SCHEMA, 10, 8)
 
 
+_PROFILES = {}  # a name already looked up -> its profile; every value checked frames carry is one of a handful
+
+
 def profile_for(value):
     """Select an explicit interface/history/action version; v2 remains the default."""
+    try:
+        found = _PROFILES.get(value)
+    except TypeError:  # an unhashable value names no profile; the search below says so
+        found = None
+    if found is not None:
+        return found
     for profile in (WINDOWS_PROFILE, TOWN_PROFILE, ARMIES_PROFILE, HEROES_PROFILE, MANAGEMENT_PROFILE, DIALOGS_PROFILE, EXPANDED_PROFILE):
         if value in (profile.environment, profile.history_schema, profile.action_schema):
+            if type(value) is str:
+                _PROFILES[value] = profile
             return profile
     raise ValueError("Unsupported contextual interface/schema")
 
@@ -534,6 +545,8 @@ def army_slot(armies, ref):
     One decision asks this some hundred times about the same two tuples of
     frozen armies, the window's and the offers', so each is indexed once.
     """
+    if armies is _LAST_SLOT_PLACES[0]:
+        return _LAST_SLOT_PLACES[1].get(ref, _NO_SLOT)
     if type(armies) is not tuple:
         return next(((army, slot) for army in armies for slot in army.slots if slot.ref == ref), (None, None))
     known = _SLOT_PLACES.get(id(armies))
@@ -545,7 +558,12 @@ def army_slot(armies, ref):
         if len(_SLOT_PLACES) >= 8:
             _SLOT_PLACES.clear()  # the entry holds its tuple, so an id names nothing else while it is kept
         known = _SLOT_PLACES[id(armies)] = (armies, found)
-    return known[1].get(ref, (None, None))
+    _LAST_SLOT_PLACES[:] = known  # the tuple asked about last, which this holds, and its index
+    return known[1].get(ref, _NO_SLOT)
+
+
+_LAST_SLOT_PLACES = [None, None]
+_NO_SLOT = (None, None)
 
 
 def army_operation_maximum(armies, kind, source_ref, destination_ref):
@@ -607,6 +625,37 @@ def _operation_maxima(armies, kind):
                            _operation_maximum(kind, *origin, *found[destination_ref]))
 
 
+def _positive_operations(armies, kind):
+    """``tuple(item for item in _operation_maxima(armies, kind) if item[2] > 0)``, in the same order, without asking
+    ``_operation_maximum`` about pairs it answers 0 whatever else holds: a split or merge from an empty slot, a swap of
+    two empty slots."""
+    found = {}  # what army_slot returns for a reference: the first slot that carries it
+    for army in armies:
+        for slot in army.slots:
+            found.setdefault(slot.ref, (army, slot))
+    swap = kind == "swap_stacks"
+    moves = kind in ("split_stack", "merge_stacks")
+    result = []
+    for first in armies:
+        for source in first.slots:
+            source_ref, origin = source.ref, found[source.ref]  # the slot _operation_maximum is asked about
+            empty = not origin[1].count
+            if moves and empty:
+                continue
+            for second in armies:
+                for destination in second.slots:
+                    destination_ref = destination.ref
+                    if source_ref == destination_ref:
+                        continue
+                    target = found[destination_ref]
+                    if swap and empty and not target[1].count:
+                        continue
+                    maximum = _operation_maximum(kind, *origin, *target)
+                    if maximum > 0:
+                        result.append((source_ref, destination_ref, maximum))
+    return tuple(result)
+
+
 _LAST_CHOICES = {}  # kind -> (the armies asked about last, their choices)
 
 
@@ -617,10 +666,25 @@ def army_operation_choices(armies, kind):
     kinds exist, which swaps the guard excludes, which pairs are offered. The
     armies are frozen, so the same tuple has the same choices.
     """
+    if type(armies) is not tuple:
+        return tuple(item for item in _operation_maxima(armies, kind) if item[2] > 0)
     last = _LAST_CHOICES.get(kind)
-    if last is None or last[0] is not armies or type(armies) is not tuple:
-        last = _LAST_CHOICES[kind] = (armies, tuple(item for item in _operation_maxima(armies, kind) if item[2] > 0))
-    return last[1]
+    if last is not None and last[0] is armies:
+        return last[1]
+    # A new tuple of the same frozen armies has the same choices: from one view to the next most armies are the
+    # very objects of the view before (``_decoded_once``). The entry holds them, so their ids name nothing else.
+    key = (kind, *map(id, armies))
+    known = _CHOICES_BY_ARMIES.get(key)
+    if known is None or any(held is not army for held, army in zip(known[0], armies)):
+        known = (armies, _positive_operations(armies, kind))
+        if len(_CHOICES_BY_ARMIES) >= 64:
+            _CHOICES_BY_ARMIES.clear()  # bounded memory; a miss only computes again
+        _CHOICES_BY_ARMIES[key] = known
+    _LAST_CHOICES[kind] = (armies, known[1])
+    return known[1]
+
+
+_CHOICES_BY_ARMIES = {}  # (kind, ids of the armies) -> (those armies, their choices)
 
 
 def has_army_operation(armies, kind):
@@ -1199,6 +1263,7 @@ class OwnArmy:
 
 
 _CHECKED_TILES = [None, None, None]  # the tile tuple checked last, the map size it was checked for, its positions
+_CHECKED_OBJECTS = [None, None]  # the object tuple checked last, and the tile tuple it was checked against
 
 
 @dataclass(frozen=True)
@@ -1220,9 +1285,12 @@ class Observation:
         # Most observations carry the very tile tuple of the one before. Its
         # checks passed then and depend on nothing but the tuple and the size.
         checked = self.tiles is _CHECKED_TILES[0] and self.size == _CHECKED_TILES[1]
+        # So do the objects: a view that left the map as it was carries the object tuple of the one before, and its
+        # checks (types, bounds, on a visible tile, unique handles) depend on nothing but it and the tiles.
+        objects_checked = checked and self.objects is _CHECKED_OBJECTS[0] and self.tiles is _CHECKED_OBJECTS[1]
         width, height, levels = self.size
         for name, cls in (("tiles", Tile), ("objects", ObjectView), ("heroes", Hero), ("towns", Town)):
-            if checked and name == "tiles":
+            if checked and name == "tiles" or objects_checked and name == "objects":
                 continue
             _tuple(getattr(self, name), cls, name)
             # Every entry checked its own position: three exact integers.
@@ -1234,9 +1302,12 @@ class Observation:
             _unique([t.position for t in self.tiles], "visible tile")
             visible = frozenset(t.position for t in self.tiles)
             _CHECKED_TILES[:] = self.tiles, self.size, visible
-        if any(obj.position not in visible for obj in self.objects):
-            raise ValueError("Current object must be on a currently visible tile")
-        for name in ("objects", "heroes", "towns"):
+        if not objects_checked:
+            if any(obj.position not in visible for obj in self.objects):
+                raise ValueError("Current object must be on a currently visible tile")
+            _unique([entry.handle for entry in self.objects], "objects handle")
+            _CHECKED_OBJECTS[:] = self.objects, self.tiles
+        for name in ("heroes", "towns"):
             _unique([entry.handle for entry in getattr(self, name)], name + " handle")
         _unique([x.handle for x in (*self.heroes, *self.towns)], "own subject handle")
         if self.army_information is None:
@@ -1423,6 +1494,11 @@ class Offers:
 
     @classmethod
     def from_observation(cls, observation, *, schema=ACTION_SCHEMA):
+        if cls is Offers and type(observation) is Observation:
+            # The offers are a function of the frozen observation; a repeated view is the same object.
+            known = _OFFERS_BUILT.get((id(observation), schema))
+            if known is not None and known[0] is observation:
+                return known[1]
         if type(observation) is not Observation:
             raise ValueError("Expected typed observation")
         profile = profile_for(schema)
@@ -1439,9 +1515,15 @@ class Offers:
             extra["capability_controls"] = observation.window.capability_controls if observation.window else ()
             extra["capability_panel"] = observation.window.capability_panel if observation.window else None
         if observation.context.kind != "map":
-            return cls(observation.context, observation.size, panel=observation.window.town_panel, schema=schema, **extra)
-        return cls(Context(), observation.size, tuple(h.handle for h in observation.heroes),
-                   tuple(t.handle for t in observation.towns), schema=schema, **extra)
+            built = cls(observation.context, observation.size, panel=observation.window.town_panel, schema=schema, **extra)
+        else:
+            built = cls(Context(), observation.size, tuple(h.handle for h in observation.heroes),
+                        tuple(t.handle for t in observation.towns), schema=schema, **extra)
+        if cls is Offers:
+            if len(_OFFERS_BUILT) >= 2048:
+                _OFFERS_BUILT.clear()  # bounded memory; a miss only builds again
+            _OFFERS_BUILT[id(observation), schema] = (observation, built)  # holds the observation: its id is its own
+        return built
 
     def permits(self, action):
         if type(action) is not Action or action.schema != self.schema:
@@ -2045,6 +2127,9 @@ _PAYLOADS = {
 }
 
 
+_PAYLOAD_NAMES = tuple(sorted(set().union(*_PAYLOADS.values())))  # every field that is some kind's payload
+
+
 def _validate_context(context, profile):
     if context.kind == "capability" and not profile.capabilities:
         raise ValueError("Expanded capability windows require v8")
@@ -2068,7 +2153,24 @@ def _validate_panel(panel, profile):
         raise ValueError("Explicit displayed armies belong only to v4 town overview")
 
 
+_VALIDATED = {}  # (id of an observation, profile) -> the observation, for the few validated last
+
+
 def _validate_observation(observation, profile):
+    # An observation is frozen, and it is checked against one profile several times on its way in (decoded, given
+    # its offers, put in a view and a decision frame): once is the same answer. The entry holds the observation,
+    # so its id names nothing else while it is kept, and only an observation that passed is kept.
+    key = (id(observation), profile)
+    known = _VALIDATED.get(key)
+    if known is not None and known is observation:
+        return
+    _check_observation(observation, profile)
+    if len(_VALIDATED) >= 4096:
+        _VALIDATED.clear()  # bounded memory; a miss only checks again
+    _VALIDATED[key] = observation
+
+
+def _check_observation(observation, profile):
     _validate_context(observation.context, profile)
     if observation.army_information is not None and not profile.capabilities:
         raise ValueError("Passive own army information requires history v8")
@@ -2132,12 +2234,12 @@ class Frame:
         _integer(self.player, high=1)
         _integer(self.seq)
         _integer(self.day, low=1)
-        payload = {name for name in set().union(*_PAYLOADS.values()) if getattr(self, name) is not None}
+        payload = {name for name in _PAYLOAD_NAMES if getattr(self, name) is not None}
         if payload != _PAYLOADS[self.kind]:
             raise ValueError("Missing or extraneous frame payload")
-        for name, cls in (("observation", Observation), ("context", Context), ("offers", Offers),
-                          ("action", Action), ("result", Result), ("event", VisibleEvent)):
-            if getattr(self, name) is not None and type(getattr(self, name)) is not cls:
+        for name, cls in _TYPED_PAYLOADS:
+            value = getattr(self, name)
+            if value is not None and type(value) is not cls:
                 raise ValueError(f"Expected typed {name}")
         for name in ("revision", "command_index"):
             if getattr(self, name) is not None:
@@ -2168,11 +2270,12 @@ class Frame:
                 or self.event is not None and self.event.kind == "army_exchange_requested"
                 or self.result is not None and self.result.status in ("split", "merged", "swapped", "garrison_swapped", "upgraded")):
             raise ValueError("Army management records require v6")
-        opened_contexts = (("own_hero_exchange", "exchange"),) + ((("adventure_dialog", "dialog"),) if profile.dialogs else ())
-        if profile.capabilities:
-            opened_contexts += (("capability_dialog", "capability"), ("neutral_join", "exchange"), ("object_garrison", "exchange"))
-        if self.kind == "context_opened" and (self.reason, self.context.kind) not in opened_contexts:
-            raise ValueError("Only a supported delivered query can open a context asynchronously")
+        if self.kind == "context_opened":
+            opened_contexts = (("own_hero_exchange", "exchange"),) + ((("adventure_dialog", "dialog"),) if profile.dialogs else ())
+            if profile.capabilities:
+                opened_contexts += (("capability_dialog", "capability"), ("neutral_join", "exchange"), ("object_garrison", "exchange"))
+            if (self.reason, self.context.kind) not in opened_contexts:
+                raise ValueError("Only a supported delivered query can open a context asynchronously")
         if not profile.dialogs and (self.event is not None and self.event.kind == "dialog_requested"
                                    or self.result is not None and self.result.status == "dialog_answered"):
             raise ValueError("Adventure dialog records require v7")
@@ -2182,8 +2285,52 @@ class Frame:
             raise ValueError("Expanded capability records require v8")
         if self.event is not None and self.event.notice is not None:
             _validate_notice(self.event.notice, profile)
-        if self.kind == "decision" and self.offers != Offers.from_observation(self.observation, schema=profile.action_schema):
+        if self.kind == "decision" and not _offers_of(self.offers, self.observation, profile.action_schema):
             raise ValueError("Offers must preserve complete context and all coordinate support")
+
+
+_FRAME_BASE = frozenset(("schema", "episode", "player", "seq", "day", "kind"))
+_FRAME_TEMPLATE = None  # (every field of Frame in order, with its default or None, the fields without a default)
+
+
+def _new_frame(data):
+    """``Frame(**data)``: the same frozen object, its fields put in its ``__dict__`` at once and in field order instead
+    of one ``object.__setattr__`` each, then the same ``__post_init__``."""
+    global _FRAME_TEMPLATE
+    if _FRAME_TEMPLATE is None:
+        every = fields(Frame)
+        if any(item.default_factory is not MISSING for item in every):
+            raise TypeError("Frame fields with a default factory are built by Frame itself")
+        _FRAME_TEMPLATE = ({item.name: None if item.default is MISSING else item.default for item in every},
+                           frozenset(item.name for item in every if item.default is MISSING))
+    template, required = _FRAME_TEMPLATE
+    if not required <= data.keys() or not template.keys() >= data.keys():
+        try:
+            return Frame(**data)  # raises what a missing or unknown field raises
+        except TypeError as exc:
+            raise ValueError("Incomplete contextual frame") from exc
+    frame = object.__new__(Frame)
+    values = dict(template)
+    values.update(data)  # existing keys keep their place: the field order
+    frame.__dict__.update(values)
+    frame.__post_init__()
+    return frame
+
+
+_TYPED_PAYLOADS = (("observation", Observation), ("context", Context), ("offers", Offers),
+                   ("action", Action), ("result", Result), ("event", VisibleEvent))
+_OFFERS_BUILT = {}  # (id of an observation, schema) -> (the observation, the offers Offers.from_observation built)
+
+
+def _offers_of(offers, observation, schema):
+    """Whether ``offers`` are those of ``observation``: equal to what ``Offers.from_observation`` builds from it.
+
+    The offers it built for the same observation are those: the very object needs no second building.
+    """
+    known = _OFFERS_BUILT.get((id(observation), schema))
+    if known is not None and known[0] is observation and known[1] is offers:
+        return True
+    return offers == Offers.from_observation(observation, schema=schema)
 
 
 class Forgotten:
@@ -2272,8 +2419,14 @@ class PlayerHistory:
         self._forgotten = max(self._forgotten, before)
 
     def emit(self, kind, day=None, **payload):
-        frame = Frame(self.episode, self.player, len(self._frames), self.day if day is None else day, kind,
-                      schema=self.schema, **payload)
+        data = {"episode": self.episode, "player": self.player, "seq": len(self._frames),
+                "day": self.day if day is None else day, "kind": kind, "schema": self.schema}
+        if payload.keys() <= _field_set(Frame) and not payload.keys() & data.keys():
+            data.update(payload)
+            frame = _new_frame(data)  # Frame(...) with these fields, as decode_frame builds one
+        else:
+            frame = Frame(self.episode, self.player, len(self._frames), self.day if day is None else day, kind,
+                          schema=self.schema, **payload)
         self.append(frame)
         return frame
 
@@ -3180,43 +3333,51 @@ def decode_observation(raw, *, schema=SCHEMA, unchanged_map=None):
     if unchanged_map is not None and "tiles" not in data and "objects" not in data:
         data["tiles"], data["objects"] = unchanged_map
     if data.get("window") is not None:
-        window = _record(data["window"], Window)
-        if (profile.capabilities != ("capability_controls" in window)
-                or profile.capabilities != ("capability_panel" in window)):
-            raise ValueError("Capability controls and contents are explicit only in v8 windows")
-        if "capability_controls" in window:
-            window["capability_controls"] = _array(window["capability_controls"])
-        if window.get("capability_panel") is not None:
-            window["capability_panel"] = _decoded_once(_decode_capability_panel, window["capability_panel"], schema)
-        if profile.dialogs != ("dialog_panel" in window):
-            raise ValueError("dialog_panel is explicit in v7 windows and absent in older profiles")
-        if window.get("dialog_panel") is not None:
-            window["dialog_panel"] = decode_dialog_panel(window["dialog_panel"], schema=schema)
-        window["context"] = _decode_context(window.get("context"), profile)
-        if profile == WINDOWS_PROFILE or window["context"].kind != "town":
-            if "town_panel" in window:
-                raise ValueError("Town economy fields are absent from this context/schema")
-        else:
-            window["town_panel"] = _decoded_once(_decode_town_panel, window.get("town_panel"), profile.history_schema)
-        if "armies" in window:
-            window["armies"] = tuple(_decoded_once(decode_army, item) for item in _array(window["armies"]))
-        if window.get("stack_panel") is not None:
-            window["stack_panel"] = decode_stack_panel(window["stack_panel"], profile)
-        if window.get("army") is not None:
-            window["army"] = tuple(_decode_simple(item, Stack) for item in _array(window["army"]))
-        for name in ("primary_skills", "buildings"):
-            if window.get(name) is not None:
-                window[name] = _array(window[name])
-        try:
-            data["window"] = Window(**window)
-        except TypeError as exc:
-            raise ValueError("Incomplete window") from exc
+        # A window that is exactly the window of an earlier view is that window: the same frozen value, decoded
+        # once, so the model builds its tree once (policy._KEPT_TYPES).
+        data["window"] = _decoded_once(_decode_window, data["window"], schema)
     try:
         observation = Observation(**data)
         _validate_observation(observation, profile)
         return observation
     except TypeError as exc:
         raise ValueError("Incomplete observation") from exc
+
+
+
+def _decode_window(raw, schema):
+    profile = profile_for(schema)
+    window = _record(raw, Window)
+    if (profile.capabilities != ("capability_controls" in window)
+            or profile.capabilities != ("capability_panel" in window)):
+        raise ValueError("Capability controls and contents are explicit only in v8 windows")
+    if "capability_controls" in window:
+        window["capability_controls"] = _array(window["capability_controls"])
+    if window.get("capability_panel") is not None:
+        window["capability_panel"] = _decoded_once(_decode_capability_panel, window["capability_panel"], schema)
+    if profile.dialogs != ("dialog_panel" in window):
+        raise ValueError("dialog_panel is explicit in v7 windows and absent in older profiles")
+    if window.get("dialog_panel") is not None:
+        window["dialog_panel"] = decode_dialog_panel(window["dialog_panel"], schema=schema)
+    window["context"] = _decode_context(window.get("context"), profile)
+    if profile == WINDOWS_PROFILE or window["context"].kind != "town":
+        if "town_panel" in window:
+            raise ValueError("Town economy fields are absent from this context/schema")
+    else:
+        window["town_panel"] = _decoded_once(_decode_town_panel, window.get("town_panel"), profile.history_schema)
+    if "armies" in window:
+        window["armies"] = tuple(_decoded_once(decode_army, item) for item in _array(window["armies"]))
+    if window.get("stack_panel") is not None:
+        window["stack_panel"] = decode_stack_panel(window["stack_panel"], profile)
+    if window.get("army") is not None:
+        window["army"] = tuple(_decode_simple(item, Stack) for item in _array(window["army"]))
+    for name in ("primary_skills", "buildings"):
+        if window.get(name) is not None:
+            window[name] = _array(window[name])
+    try:
+        return Window(**window)
+    except TypeError as exc:
+        raise ValueError("Incomplete window") from exc
 
 
 def decode_notice(raw, *, schema=SCHEMA):
@@ -3351,12 +3512,21 @@ def encode_frame(frame):
     return data
 
 
-def decode_frame(raw, *, observation=None):
+def decode_frame(raw, *, observation=None, offers=None):
     """The typed frame of raw. ``observation``, when given, is the frame's
     observation, already decoded by the caller: from this raw's own, or from
-    the earlier view that a decision without one refers to."""
-    data = _record(raw, Frame)
-    if not {"schema", "episode", "player", "seq", "day", "kind"} <= data.keys():
+    the earlier view that a decision without one refers to. ``offers``, when
+    given, are the frame's typed offers (raw then carries none)."""
+    return _decode_frame_record(_record(raw, Frame), observation, offers)
+
+
+def _decode_frame_record(data, observation=None, offers=None):
+    """``decode_frame`` of a record that ``_record`` checked and that the caller hands over: it is changed here."""
+    if offers is not None:
+        if type(offers) is not Offers or "offers" in data:
+            raise ValueError("Typed offers replace the wire offers")
+        data["offers"] = offers
+    if not _FRAME_BASE <= data.keys():
         raise ValueError("History JSON requires explicit schema and base fields")
     profile = profile_for(data["schema"])
     if data["schema"] != profile.history_schema:
@@ -3382,7 +3552,7 @@ def decode_frame(raw, *, observation=None):
         if event.get("capability") is not None:
             event["capability"] = decode_capability_panel(event["capability"], schema=profile.history_schema)
         data["event"] = _decode_simple(event, VisibleEvent)
-    if data.get("offers") is not None:
+    if offers is None and data.get("offers") is not None:
         offer = _record(data["offers"], Offers)
         if "schema" in offer or profile == WINDOWS_PROFILE and "panel" in offer:
             raise ValueError("Unsupported offer schema/panel wire field")
@@ -3405,7 +3575,4 @@ def decode_frame(raw, *, observation=None):
             data["offers"] = Offers(**offer)
         except TypeError as exc:
             raise ValueError("Incomplete offers") from exc
-    try:
-        return Frame(**data)
-    except TypeError as exc:
-        raise ValueError("Incomplete contextual frame") from exc
+    return _new_frame(data)

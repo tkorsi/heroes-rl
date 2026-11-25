@@ -40,7 +40,7 @@ def _artifacts():
 
 
 def _vcmi():
-    return Path(os.environ.get("HEROES_VCMI", _artifacts() / "runtime/local-v8-equipment-controls-v1/bin/vcmiclient")).expanduser()
+    return Path(os.environ.get("HEROES_VCMI", _artifacts() / "runtime/local-v8-games-fast-v1/bin/vcmiclient")).expanduser()
 
 
 def _training_state():
@@ -58,7 +58,7 @@ class Config:
     legacy: Path = field(default_factory=lambda: _artifacts() / "selfplay-ten-then-check")  # imported once
 
     # How games are played.
-    workers: int = 14  # games in play at once, one process each; 16 cores carry no more
+    workers: int = 24  # concurrent games, capped at the requested batch size
     limits: Limits = Limits()
     guard: str | None = guard.VERSION  # repeated no-progress actions the policy may not sample; None for none
     keep_game_files: bool = False  # keep every game's engine folder instead of deleting it

@@ -16,11 +16,14 @@ failed     anything else: a crash, a protocol error, a silent engine.
 """
 from __future__ import annotations
 
+from collections import deque
 from dataclasses import dataclass
 import json
+import os
 from pathlib import Path
 import queue
 import re
+import select
 import socket
 import subprocess
 import threading
@@ -41,6 +44,173 @@ ENGINE_FAILURE_MARKERS = (
     "Headless game start failed:", "Headless run received a silent game end",
     "ExplorerRL: ", "ExplorerRL terminal delivery failed",
 )
+
+
+def _send(connection, data):
+    """Send all of ``data`` on a non-blocking connection, waiting while the engine's buffer is full."""
+    view = memoryview(data)
+    while view:
+        try:
+            view = view[connection.send(view):]
+        except (BlockingIOError, InterruptedError):
+            select.select([], [connection], [], 1.0)
+
+
+class _Events:
+    """The engine's events in the order they are read, as a queue the caller's thread fills itself.
+
+    Each seat's connection is accepted by a thread of its own, and a thread
+    waits for the engine's exit; every message is read and parsed here, in the
+    thread that asks for the next event. Handing each message from a reader
+    thread to this one cost two thread switches per message, more than the
+    parsing itself. The events and their order per connection are those the
+    reader threads queued: a seat's messages, its end of stream or a read
+    failure, and the engine's exit. ``get`` and ``get_nowait`` are those of
+    ``queue.Queue``; ``put`` may be called from any thread.
+    """
+
+    def __init__(self, sides):
+        self.sides = sides
+        self.items = deque()
+        self.lock = threading.Lock()
+        self.wake_read, self.wake_write = os.pipe()
+        os.set_blocking(self.wake_read, False)
+        os.set_blocking(self.wake_write, False)
+        self.buffers = {side.player: bytearray() for side in sides}
+        self.closed = set()  # players whose stream ended or failed
+
+    def put(self, item):
+        with self.lock:
+            self.items.append(item)
+            self._wake()
+
+    def wake(self):
+        with self.lock:
+            self._wake()
+
+    def _wake(self):
+        # Under the lock: once close() has run the descriptors may belong to another file.
+        if self.wake_write is None:
+            return
+        try:
+            os.write(self.wake_write, b"x")
+        except (BlockingIOError, OSError):
+            pass  # the pipe is full: a wake-up is pending already
+
+    def _readable(self):
+        return [side for side in self.sides if side.connection is not None and side.player not in self.closed]
+
+    def _pump(self, side):
+        """Read what the seat's connection has without waiting, and queue its complete messages."""
+        buffer = self.buffers[side.player]
+        while True:
+            try:
+                chunk = side.connection.recv(1 << 16)
+            except (BlockingIOError, InterruptedError):
+                return
+            except (ConnectionResetError, BrokenPipeError):
+                chunk = b""  # an engine that exits with unread input resets the connection
+            except OSError as error:
+                self._end(side, ("error", side.player, f"{type(error).__name__}: {error}"))
+                return
+            if not chunk:
+                if buffer:
+                    self._end(side, ("error", side.player, "ValueError: Stream ended inside a message"))
+                else:
+                    self._end(side, ("eof", side.player, None))
+                return
+            start = len(buffer)
+            buffer += chunk
+            scanned, begin = start, 0
+            while (newline := buffer.find(b"\n", scanned)) >= 0:
+                try:
+                    message = loads(buffer[begin:newline])
+                except Exception as error:  # a reader reports every failure; it never dies silently
+                    self._end(side, ("error", side.player, f"{type(error).__name__}: {error}"))
+                    return
+                self.items.append(("message", side.player, message))
+                begin = scanned = newline + 1
+            if begin:
+                del buffer[:begin]
+            if len(buffer) > MAX_MESSAGE_BYTES:
+                self._end(side, ("error", side.player, "ValueError: Message exceeds 16 MiB"))
+                return
+            if len(chunk) < (1 << 16):
+                return  # most likely all there was; the next call reads the rest
+
+    def _end(self, side, item):
+        self.closed.add(side.player)
+        self.items.append(item)
+
+    def pump(self):
+        for side in self._readable():
+            self._pump(side)
+
+    def get_nowait(self):
+        # The oldest queued event is the one to hand out whether or not the connections are read first;
+        # they are read when nothing is queued.
+        if not self.items:
+            self.pump()
+        try:
+            with self.lock:
+                return self.items.popleft()
+        except IndexError:
+            raise queue.Empty from None
+
+    def get(self, timeout=None):
+        deadline = None if timeout is None else time.monotonic() + timeout
+        while True:
+            try:
+                return self.get_nowait()
+            except queue.Empty:
+                pass
+            remaining = None if deadline is None else deadline - time.monotonic()
+            if remaining is not None and remaining <= 0:
+                raise queue.Empty
+            waiting = [side.connection for side in self._readable()] + ([self.wake_read] if self.wake_read is not None else [])
+            try:
+                ready, _, _ = select.select(waiting, [], [], remaining)
+            except (OSError, ValueError):
+                ready = []  # a connection closed under the wait; the next round sees it
+            if self.wake_read is not None and self.wake_read in ready:
+                try:
+                    while os.read(self.wake_read, 4096):
+                        pass
+                except (BlockingIOError, OSError):
+                    pass
+            else:
+                # Only a connection that has something is read; the next round reads every one if nothing came.
+                for side in self._readable():
+                    if side.connection in ready:
+                        self._pump(side)
+
+    def read_to_end(self, deadline):
+        """Read every connection to its end, or until ``deadline``; the events stay queued in their order."""
+        while not self.ended():
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return
+            self.pump()
+            if self.ended():
+                return
+            try:
+                select.select([side.connection for side in self._readable()], [], [], min(remaining, 0.25))
+            except (OSError, ValueError):
+                pass
+
+    def ended(self):
+        """Whether every connection that was made has come to its end."""
+        return all(side.player in self.closed for side in self.sides if side.connection is not None)
+
+    def close(self):
+        with self.lock:
+            descriptors, self.wake_read, self.wake_write = (self.wake_read, self.wake_write), None, None
+        for descriptor in descriptors:
+            if descriptor is not None:
+                try:
+                    os.close(descriptor)
+                except OSError:
+                    pass
 
 
 @dataclass(frozen=True)
@@ -95,7 +265,6 @@ class Env:
         self.close()
         self.directory = Path(directory).expanduser().resolve()
         self.directory.mkdir(parents=True)
-        self.events = queue.Queue()
         self.stopping, self.exited = threading.Event(), threading.Event()
         self.request = self.result = self.failure = self.exit_code = self.limit = None
         sides = []
@@ -107,6 +276,7 @@ class Env:
                                 army_information=self.engine.army_information)
             sides.append(_Side(player, producer, listener))
         self.sides = tuple(sides)
+        self.events = _Events(self.sides)
         (self.directory / "logs").mkdir()
         self.log = (self.directory / "logs" / "process.log").open("w")
         try:
@@ -141,7 +311,7 @@ class Env:
         if (self.failure is None and self.exit_code is None and side.producer.history.decision is held
                 and not self._ending()):
             try:
-                side.connection.sendall((json.dumps(response, separators=(",", ":")) + "\n").encode())
+                _send(side.connection, (json.dumps(response, separators=(",", ":")) + "\n").encode())
             except OSError as error:
                 self._fail("action_delivery_failed", f"{COLORS[side.player]}: {type(error).__name__}: {error}")
             else:
@@ -222,6 +392,8 @@ class Env:
             side.connection = side.listener = None
             if side.reader is not None:
                 side.reader.join(timeout=3)
+        if self.sides and isinstance(getattr(self, "events", None), _Events):
+            self.events.close()
         if self.log is not None and not self.log.closed:
             self.log.close()
 
@@ -242,33 +414,11 @@ class Env:
                 except socket.timeout:
                     if over:
                         return
-            connection.settimeout(None)
+            connection.setblocking(False)  # read by the thread that asks for events (_Events); answers are sent whole
             # Answers are tiny single lines; never let Nagle's algorithm hold them.
             connection.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             side.connection = connection
-            if stopping.is_set():
-                return  # close() ran before the connection was published
-            buffer, scanned = bytearray(), 0
-            while True:
-                try:
-                    chunk = connection.recv(1 << 16)
-                except (ConnectionResetError, BrokenPipeError):
-                    chunk = b""  # an engine that exits with unread input resets the connection
-                if not chunk:
-                    if buffer:
-                        raise ValueError("Stream ended inside a message")
-                    events.put(("eof", side.player, None))
-                    return
-                buffer += chunk
-                start = 0
-                while (newline := buffer.find(b"\n", scanned)) >= 0:
-                    events.put(("message", side.player, loads(buffer[start:newline])))
-                    start = scanned = newline + 1
-                if start:
-                    del buffer[:start]
-                scanned = len(buffer)
-                if len(buffer) > MAX_MESSAGE_BYTES:
-                    raise ValueError("Message exceeds 16 MiB")
+            events.wake()
         except Exception as error:  # a reader reports every failure; it never dies silently
             if not stopping.is_set():
                 events.put(("error", side.player, f"{type(error).__name__}: {error}"))
@@ -376,11 +526,12 @@ class Env:
         self.exited.set()  # a seat that never connected stops waiting for the engine
         deadline = time.monotonic() + READER_DRAIN_SECONDS
         for side in self.sides:
-            side.reader.join(timeout=max(0, deadline - time.monotonic()))
+            side.reader.join(timeout=max(0, deadline - time.monotonic()))  # the accepting threads
         if not stopped:
             # The engine ended on its own: its last messages, the terminals among
-            # them, may still be queued behind the exit event.
-            if any(side.reader.is_alive() for side in self.sides):
+            # them, may still be unread behind the exit event.
+            self.events.read_to_end(deadline)
+            if not self.events.ended():
                 self._fail("protocol_error", "A reader did not reach the end of its stream")
             self._drain()
         self.process = None

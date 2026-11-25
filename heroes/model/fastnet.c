@@ -612,20 +612,90 @@ static PyObject *py_encode_root(PyObject *self, PyObject *const *arguments, Py_s
     return PyLong_FromLong(slot);
 }
 
+/* The calls of every frame and every choice, as functions of this interpreter instead of through ctypes: the
+ * same C functions with the same arguments (addresses and slot numbers as Python integers). */
+static int addresses(PyObject *const *arguments, Py_ssize_t count, void **out) {
+    for (Py_ssize_t i = 0; i < count; i++) {
+        out[i] = PyLong_AsVoidPtr(arguments[i]);
+        if (!out[i] && PyErr_Occurred()) return -1;
+    }
+    return 0;
+}
+
+static PyObject *py_used(PyObject *self, PyObject *argument) {
+    Net *net = PyLong_AsVoidPtr(argument);
+    if (!net) {
+        if (!PyErr_Occurred()) PyErr_SetString(PyExc_ValueError, "No network");
+        return NULL;
+    }
+    return PyLong_FromLong(fn_used(net));
+}
+
+/* step(net, state, out, tree, map, own) */
+static PyObject *py_step(PyObject *self, PyObject *const *arguments, Py_ssize_t count) {
+    void *at[3];
+    if (count != 6) { PyErr_SetString(PyExc_TypeError, "step(net, state, out, tree, map, own)"); return NULL; }
+    if (addresses(arguments, 3, at)) return NULL;
+    const long tree = PyLong_AsLong(arguments[3]), map = PyLong_AsLong(arguments[4]), own = PyLong_AsLong(arguments[5]);
+    if (PyErr_Occurred()) return NULL;
+    fn_step(at[0], at[1], at[2], tree, map, own);
+    Py_RETURN_NONE;
+}
+
+/* value(net, state) */
+static PyObject *py_value(PyObject *self, PyObject *const *arguments, Py_ssize_t count) {
+    void *at[2];
+    if (count != 2) { PyErr_SetString(PyExc_TypeError, "value(net, state)"); return NULL; }
+    if (addresses(arguments, 2, at)) return NULL;
+    return PyFloat_FromDouble((double)fn_value(at[0], at[1]));
+}
+
+/* query(net, state, query) */
+static PyObject *py_query(PyObject *self, PyObject *const *arguments, Py_ssize_t count) {
+    void *at[3];
+    if (count != 3) { PyErr_SetString(PyExc_TypeError, "query(net, state, query)"); return NULL; }
+    if (addresses(arguments, 3, at)) return NULL;
+    fn_query(at[0], at[1], at[2]);
+    Py_RETURN_NONE;
+}
+
+/* logits(net, query, candidates, count, out) */
+static PyObject *py_logits(PyObject *self, PyObject *const *arguments, Py_ssize_t count) {
+    void *at[3], *out;
+    if (count != 5) { PyErr_SetString(PyExc_TypeError, "logits(net, query, candidates, count, out)"); return NULL; }
+    if (addresses(arguments, 3, at)) return NULL;
+    const long number = PyLong_AsLong(arguments[3]);
+    if (PyErr_Occurred()) return NULL;
+    out = PyLong_AsVoidPtr(arguments[4]);
+    if (!out && PyErr_Occurred()) return NULL;
+    return PyLong_FromLong(fn_logits(at[0], at[1], at[2], number, out));
+}
+
 static PyMethodDef walks[] = {
     {"walk_exact", py_walk_exact, METH_O, "Whether equality is identity for every subtree of a semantic tree."},
     {"encode_root", (PyCFunction)(void (*)(void))py_encode_root, METH_FASTCALL,
      "The arena slot of an exact tree's encoding through the memos, or None for a tree that is not exact."},
+    {"used", py_used, METH_O, "fn_used"},
+    {"step", (PyCFunction)(void (*)(void))py_step, METH_FASTCALL, "fn_step"},
+    {"value", (PyCFunction)(void (*)(void))py_value, METH_FASTCALL, "fn_value"},
+    {"query", (PyCFunction)(void (*)(void))py_query, METH_FASTCALL, "fn_query"},
+    {"logits", (PyCFunction)(void (*)(void))py_logits, METH_FASTCALL, "fn_logits"},
     {NULL, NULL, 0, NULL}};
 
-/* Called once, with the interpreter lock held: policy._Kept and the memos' limits. Returns (walk_exact, encode_root). */
+/* Called once, with the interpreter lock held: policy._Kept and the memos' limits. Returns (walk_exact, encode_root,
+ * used, step, value, query, logits). */
 PyObject *fn_python(PyObject *kept, long leaves, long nodes, long kepts) {
     Py_XINCREF(kept);
     Py_XSETREF(kept_type, kept);
     if (!name_exact && !(name_exact = PyUnicode_InternFromString("exact"))) return NULL;
     leaf_limit = leaves; node_limit = nodes; kept_limit = kepts;
-    PyObject *first = PyCFunction_New(&walks[0], NULL), *second = PyCFunction_New(&walks[1], NULL);
-    if (!first || !second) { Py_XDECREF(first); Py_XDECREF(second); return NULL; }
-    return Py_BuildValue("(NN)", first, second);
+    PyObject *functions = PyTuple_New(7);
+    if (!functions) return NULL;
+    for (Py_ssize_t i = 0; i < 7; i++) {
+        PyObject *function = PyCFunction_New(&walks[i], NULL);
+        if (!function) { Py_DECREF(functions); return NULL; }
+        PyTuple_SET_ITEM(functions, i, function);
+    }
+    return functions;
 }
 #endif

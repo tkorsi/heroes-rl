@@ -5,7 +5,7 @@ game from the engine to a weight update and names the code at each step.
 
 ```text
 heroes/train.py          restore → [ collect 100 games → update → save ] …
-   └ Pool                14 actor processes (heroes/train.py: worker)
+   └ Pool                up to 24 actor processes (heroes/train.py: worker)
        └ actor.play      one game, both seats, one or two training trajectories
            ├ engine/     vcmiclient process, two sockets, typed frames
            ├ model/      frames → GRU state → action distribution, value
@@ -278,7 +278,7 @@ A build finds its library through the path of the build folder. To use it for
 training, copy it into a runtime folder that stands on its own:
 
 ```sh
-python3 tools/freeze_runtime.py ~/Projects/Heroes-artifacts/runtime/local-v8-equipment-controls-v1
+python3 tools/freeze_runtime.py ~/Projects/Heroes-artifacts/runtime/local-v8-games-fast-v1
 ```
 
 The runtime is put together beside its final place and renamed into it when
@@ -329,12 +329,12 @@ places are in `dependencies/vcmi.json`), confirm with `--check`, and build the
 target that owns it: `cmake --build vcmi/build --target vcmireplay`.
 
 The Python side expects the client at `HEROES_VCMI`, by default
-`~/Projects/Heroes-artifacts/runtime/local-v8-equipment-controls-v1/bin/vcmiclient`,
+`~/Projects/Heroes-artifacts/runtime/local-v8-games-fast-v1/bin/vcmiclient`,
 and the original game's `Data` folder under `~/Projects/Heroes-artifacts/game-data`.
 The launcher uses compact observations and disables the replay ledger for
 training. Use `--keep-game-files` to retain the ledger.
 Python dependencies are pinned in [dependencies/](../dependencies/):
-Torch 2.9.1, NumPy 2.3.5 and MLX 0.31.1 on CPython 3.13.
+Torch 2.9.1, NumPy 2.3.5, orjson 3.11.5 and MLX 0.31.1 on CPython 3.13.
 
 ## Earlier work
 

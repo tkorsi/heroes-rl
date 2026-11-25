@@ -66,6 +66,7 @@ def _build_folder():
 
 _LIBRARY = None
 _ROOT = None  # fastnet.c's walk over a semantic tree, where it was built against this interpreter
+_CALLS = None  # (used, step, value, query, logits): fastnet.c's per-frame calls as functions of this interpreter
 _PYTHON_WALK = _policy._walk_exact  # the walk the C one stands in for; tests compare the two
 
 
@@ -92,7 +93,7 @@ def _built(source, folder):
 
 def library():
     """The compiled ``fastnet.c``, built once per version of the source; None when it cannot be built here."""
-    global _LIBRARY, _ROOT
+    global _LIBRARY, _ROOT, _CALLS
     if _LIBRARY is not None:
         return _LIBRARY or None
     try:
@@ -128,19 +129,35 @@ def library():
         # also serves the model and the recorder, which ask it of the same trees (policy._exact_tree).
         lib.fn_python.restype = ctypes.py_object
         lib.fn_python.argtypes = (ctypes.py_object, ctypes.c_long, ctypes.c_long, ctypes.c_long)
-        walk, _ROOT = lib.fn_python(_Kept, _policy._LEAF_MEMO_LIMIT, _policy._NODE_MEMO_LIMIT, _policy._KEPT_LIMIT)
+        walk, _ROOT, *calls = lib.fn_python(_Kept, _policy._LEAF_MEMO_LIMIT, _policy._NODE_MEMO_LIMIT, _policy._KEPT_LIMIT)
+        _CALLS = tuple(calls)
         _policy._walk_exact = walk
     _LIBRARY = lib
     return lib
 
 
+_ROWS = 4096  # states cut from one block of zeros
+_BLOCK = [None, 0, 0]  # the block states are cut from now, its address, the next row
+
+
 class State:
-    """A recurrent state: 64 numbers of the caller's own, with their address for the C calls."""
+    """A recurrent state: 64 numbers of the caller's own, with their address for the C calls.
+
+    Every frame makes one. A state is a row of a block of zeros made once for 4,096 of them, its
+    address the block's plus the row's offset: no array and no ctypes object of its own for each
+    frame. A row is handed out once and the block stays alive while any of its rows does.
+    """
     __slots__ = ("values", "address")
 
     def __init__(self):
-        self.values = np.zeros(64, dtype=np.float32)
-        self.address = self.values.ctypes.data
+        block, base, row = _BLOCK
+        if row == _ROWS or block is None:
+            block = np.zeros((_ROWS, 64), dtype=np.float32)
+            base, row = block.ctypes.data, 0
+            _BLOCK[0], _BLOCK[1] = block, base
+        _BLOCK[2] = row + 1
+        self.values = block[row]
+        self.address = base + 256 * row
 
     def tensor(self):
         return torch.from_numpy(self.values.copy())
@@ -170,6 +187,9 @@ class FastPolicy:
         self.model, self.config, self.lib = model, model.config, lib
         self.quiet = _Quiet(model)
         self.root = _ROOT
+        # The calls of every frame and choice: fastnet.c's own functions, through ctypes where it was not built with Python.h.
+        self.used, self.step, self.value, self.query, self.c_logits = _CALLS or (
+            lib.fn_used, lib.fn_step, lib.fn_value, lib.fn_query, lib.fn_logits)
         self.net = lib.fn_create(ARENA_SLOTS)
         if not self.net:
             raise MemoryError("No memory for the arena of tree encodings")
@@ -183,6 +203,7 @@ class FastPolicy:
         self.children = (ctypes.c_int * 4096)()
         self.children_address = ctypes.addressof(self.children)
         self.logits = np.zeros(4096, dtype=np.float32)
+        self.logits_address = self.logits.ctypes.data  # kept with the array: a ctypes view is made once, not per choice
         self._begin()
 
     def __del__(self):
@@ -195,6 +216,7 @@ class FastPolicy:
         self.lib.fn_reset(self.net)
         self.text, self.number, self.node, self.exact, self.frame = {}, {}, {}, {}, {}
         self.map = self.observation = self.things = None
+        self.features = {}  # id of an observation -> (it, its features): slots of this arena, forgotten with it
 
     def initial_state(self):
         return State()
@@ -300,6 +322,10 @@ class FastPolicy:
         last = self.observation
         if last is not None and last[0] is observation:
             return last[1]
+        known = self.features.get(id(observation))
+        if known is not None and known[0] is observation:
+            self.observation = known
+            return known[1]
         key, known = map_key(observation), self.map
         if known is not None and known[0] == key:
             summary, cells = known[1]
@@ -308,14 +334,17 @@ class FastPolicy:
             self.map = (key, (summary, cells))
         found = (summary, self._encode_root(observation_semantics(observation)), cells)
         self.observation = (observation, found)
+        if len(self.features) >= 2048:
+            self.features.clear()  # bounded memory; a miss only encodes again
+        self.features[id(observation)] = self.observation  # holds the observation, so its id names nothing else
         return found
 
     # -- a frame ---------------------------------------------------------------------
     def forward_step(self, frame, state):
         if frame.semantics is None:
             return StepOutput(state, None)
-        lib, net = self.lib, self.net
-        if lib.fn_used(net) > ARENA_SLOTS - 65536:
+        net = self.net
+        if self.used(net) > ARENA_SLOTS - 65536:
             self._begin()  # nothing outside this object holds a slot number between two frames
         tree, cells = frame.semantics, None
         if frame.observation is None and type(tree) is _Kept:
@@ -335,12 +364,12 @@ class FastPolicy:
             summary, own, cells = self._observation_features(frame.observation)
             root = self._encode_root(tree)
         after = State()
-        lib.fn_step(net, state.address, after.address, root, summary, own)
+        self.step(net, state.address, after.address, root, summary, own)
         decision = None
         if frame.frame.kind == "decision":
             distribution = FastDistribution(self, after, frame.frame.observation, frame.frame.offers,
                                             cells, frame.guard, frame.window_memory)
-            decision = PolicyValue(lib.fn_value(net, after.address), distribution)
+            decision = PolicyValue(self.value(net, after.address), distribution)
         return StepOutput(after, decision)
 
 
@@ -350,6 +379,7 @@ class FastDistribution(ContextualDistribution):
     def __init__(self, policy, state, observation, offers, cells, guard=None, window_memory=frozenset()):
         super().__init__(policy.quiet, state, observation, offers, cells, {}, guard, window_memory)
         self.policy = policy
+        self.query_address = None  # of the query array, once the first categorical choice computed it
 
     def _features(self, semantic):
         result = self.policy._encode_root(semantic)
@@ -368,15 +398,17 @@ class FastDistribution(ContextualDistribution):
         candidates = [self._features(item) for item in semantics]
         if recording is not None:
             recording.pending = {"kind": "categorical", "roots": range(first, len(recording.trees))}
-        query = self.query
-        if query is None:
+        address = self.query_address
+        if address is None:
             query = self.query = np.empty(32, dtype=np.float32)
-            policy.lib.fn_query(policy.net, self.state.address, query.ctypes.data)
+            address = self.query_address = query.ctypes.data
+            policy.query(policy.net, self.state.address, address)
         count = len(candidates)
         if count > len(policy.logits):
             policy.logits = np.zeros(2 * count, dtype=np.float32)
+            policy.logits_address = policy.logits.ctypes.data
         children = (ctypes.c_int * count)(*candidates)
-        if policy.lib.fn_logits(policy.net, query.ctypes.data, ctypes.addressof(children), count, policy.logits.ctypes.data):
+        if policy.c_logits(policy.net, address, ctypes.addressof(children), count, policy.logits_address):
             raise MemoryError("No memory for the candidates of a choice")
         return self._tensor(count)
 
@@ -389,7 +421,7 @@ class FastDistribution(ContextualDistribution):
             self.recording.pending = {"kind": "quantity", "root": self.recording.feature[features],
                                       "numeric": numeric, "offsets": offsets}
         given = numeric.numpy()
-        policy.lib.fn_quantity(policy.net, self.state.address, features, given.ctypes.data, policy.logits.ctypes.data)
+        policy.lib.fn_quantity(policy.net, self.state.address, features, given.ctypes.data, policy.logits_address)
         return self._tensor(2) + offsets
 
     def _coordinate_logits(self, semantic, subject, width, height):
@@ -402,9 +434,10 @@ class FastDistribution(ContextualDistribution):
         count = width * height
         if count > len(policy.logits):
             policy.logits = np.zeros(2 * count, dtype=np.float32)
+            policy.logits_address = policy.logits.ctypes.data
         given = positions.numpy()
         if policy.lib.fn_coordinate(policy.net, self.state.address, target, self.cells.ctypes.data, given.ctypes.data,
-                                    count, policy.logits.ctypes.data):
+                                    count, policy.logits_address):
             raise MemoryError("No memory for the coordinate head")
         return self._tensor(count)
 

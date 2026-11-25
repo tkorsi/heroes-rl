@@ -17,7 +17,7 @@ mkdir -p "$HEROES_ARTIFACTS"
 Supply a compatible Heroes III installation so that its original `Data` folder is available at `$HEROES_ARTIFACTS/game-data/Data`. Follow the [VCMI build instructions](architecture.md#engine) through the CMake build. For the artifact directory chosen above, run the freeze step there:
 
 ```sh
-python3 tools/freeze_runtime.py "$HEROES_ARTIFACTS/runtime/local-v8-equipment-controls-v1"
+python3 tools/freeze_runtime.py "$HEROES_ARTIFACTS/runtime/local-v8-games-fast-v1"
 ```
 
 To use a different prepared runtime, set `HEROES_VCMI` to its patched `vcmiclient` executable. For the Torch reference backend, install [the base learner lock](../dependencies/learner.lock) and pass `--backend torch` to both the check and train commands.
@@ -56,7 +56,7 @@ To train a randomly initialized network in a separate empty state instead:
 | Option | Effect |
 | --- | --- |
 | `--games-per-update 5` | Update after each five usable games. |
-| `--workers N` | Cap concurrent games. The default is 14, limited to the batch size. |
+| `--workers N` | Cap concurrent games. The default is 24, limited to the batch size. |
 | `--keep-game-files` | Retain engine logs and replay ledgers for inspection. Full ledgers can grow by roughly 130 KB per decision. |
 | `--both-seats` | Also learn from the opponent in decisive games. Both seats already contribute on 365-day draws. |
 | `--stack-moves N`, `--windows N`, `--decisions N` | Change action budgets. Record these when comparing policies. |

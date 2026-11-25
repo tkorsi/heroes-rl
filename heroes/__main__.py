@@ -70,7 +70,7 @@ def main(argv=None):
             command.add_argument("--fresh", action="store_true",
                                  help="start from a random policy when the state folder is empty")
             command.add_argument("--games-per-update", type=int, help="games per PPO update (default: all requested games)")
-            command.add_argument("--workers", type=int, help="games in play at once (default 14)")
+            command.add_argument("--workers", type=int, help=f"games in play at once (default {Config.workers})")
             command.add_argument("--keep-game-files", action="store_true", help="keep every game's engine folder")
             command.add_argument("--both-seats", action="store_true",
                                  help="train on both seats of every game: two trajectories per game")

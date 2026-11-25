@@ -24,6 +24,7 @@ frames are equal either way.
 from __future__ import annotations
 
 import json
+import marshal
 
 from ..game import contract
 
@@ -43,11 +44,35 @@ RECORD_FIELDS = {
 }
 
 
+try:  # optional: decodes an engine message two to three times faster than json, to the same value
+    from orjson import JSONDecodeError as _OrjsonError, loads as _orjson_loads
+except ImportError:
+    _orjson_loads = None
+# orjson reads an integer beyond 64 bits as a float, where json keeps it an int: such a message goes to json.
+# A run of 19 digits is found as a run of 19 ones once every digit is a one and every other byte a zero: two
+# linear passes in C, where a regular expression for the run costs more than the decoding saves.
+_DIGIT_ONES = bytes(0x31 if 0x30 <= byte <= 0x39 else 0x30 for byte in range(256))
+_LONG_RUN = b"1" * 19
+
+
+def _invalid(value):
+    raise ValueError(f"Nonfinite JSON number: {value}")
+
+
 def loads(data):
-    """One engine message. The engine writes every object from a map, so no key repeats."""
-    def invalid(value):
-        raise ValueError(f"Nonfinite JSON number: {value}")
-    return json.loads(data, parse_constant=invalid)
+    """One engine message. The engine writes every object from a map, so no key repeats.
+
+    With orjson importable, a message it decodes is decoded by it: the same dicts (keys in the same order), lists,
+    strings, ints and floats (bit for bit) that json gives. Anything it refuses (NaN, infinities, numbers out of
+    range, a byte order mark, invalid text) and every message with a run of 19 digits is left to json, with its
+    result or its error.
+    """
+    if _orjson_loads is not None and type(data) in (bytes, bytearray) and _LONG_RUN not in data.translate(_DIGIT_ONES):
+        try:
+            return _orjson_loads(data)
+        except _OrjsonError:
+            pass
+    return json.loads(data, parse_constant=_invalid)
 
 
 def exact(raw, fields, name):
@@ -68,6 +93,41 @@ def declared_army_information(document, interface):
     if "army_information" in document and value is None:
         raise ValueError("Absent army information must omit its declaration")
     return validate_army_information(interface, value)
+
+
+_VIEWS = {}  # (marshal bytes of a raw observation, ids of the map it was read against) -> (observation, that map)
+
+
+def _decoded_view(raw, schema, unchanged_map):
+    """``contract.decode_observation`` of a view, as one shared object for a raw observation seen before.
+
+    Half of a seat's views repeat an earlier one exactly: the same window
+    opened again. Decoding is a function of the raw value, the schema and, for a
+    view that leaves out its map or lists only changed tiles, the map of the
+    view before; equal marshal bytes mean equal values of identical exact types,
+    and the entry holds the map it was read against, so its ids name nothing
+    else. Only a successful decoding is kept.
+    """
+    try:
+        data = marshal.dumps(raw)
+    except ValueError:
+        return contract.decode_observation(raw, schema=schema, unchanged_map=unchanged_map)
+    reads_map = type(raw) is dict and "tiles" not in raw
+    key = (data, schema, *(map(id, unchanged_map) if reads_map and unchanged_map is not None else ()))
+    known = _VIEWS.get(key)
+    if known is not None and (not reads_map or unchanged_map is None or all(
+            held is value for held, value in zip(known[1], unchanged_map))):
+        return known[0]
+    observation = contract.decode_observation(raw, schema=schema, unchanged_map=unchanged_map)
+    if len(_VIEWS) >= 2048:
+        _VIEWS.clear()  # bounded memory; a miss only decodes again
+    _VIEWS[key] = (observation, unchanged_map if reads_map else None)
+    return observation
+
+
+# Every field a record of each kind carries, "kind" and "day" included; True: a decision without its observation.
+_EXACT_FIELDS = {(kind, bare): frozenset({"kind", "day"} | (fields - {"observation"} if bare else fields))
+                 for kind, fields in RECORD_FIELDS.items() for bare in (False, True)}
 
 
 class Producer:
@@ -116,10 +176,8 @@ class Producer:
             if type(record) is not dict or record.get("kind") not in RECORD_FIELDS:
                 raise ValueError("Unsupported contextual record kind")
             record_kind = record["kind"]
-            fields = RECORD_FIELDS[record_kind]
-            if record_kind == "decision" and "observation" not in record:
-                fields = fields - {"observation"}  # it is the one of the latest view
-            exact(record, {"kind", "day"} | fields, record_kind)
+            # The decision without an observation has the one of the latest view.
+            exact(record, _EXACT_FIELDS[record_kind, record_kind == "decision" and "observation" not in record], record_kind)
             raw = dict(record)
             if "decision_id" in raw:
                 native_id = raw.pop("decision_id")
@@ -133,15 +191,14 @@ class Producer:
                 else:
                     raw["decision_seq"] = self.decision_ids[native_id]
             raw.update(schema=self.profile.history_schema, episode=self.episode, player=self.player, seq=self.history.frame_count)
-            observation = None
+            observation = offers = None
             if "observation" in raw:
                 if declared_army_information(raw["observation"], self.profile.environment) != self.army_information:
                     raise ValueError("Observation army information differs from the negotiated extension")
             if record_kind == "view":
                 # A view without its map has the map of the view before it.
-                observation = contract.decode_observation(
-                    raw["observation"], schema=self.profile.history_schema,
-                    unchanged_map=None if self.view is None else (self.view.tiles, self.view.objects))
+                observation = _decoded_view(raw["observation"], self.profile.history_schema,
+                                            None if self.view is None else (self.view.tiles, self.view.objects))
             elif record_kind == "decision":
                 if "observation" in raw:
                     observation = contract.decode_observation(raw["observation"], schema=self.profile.history_schema)
@@ -149,9 +206,14 @@ class Producer:
                     raise ValueError("A decision without an observation needs an earlier view")
                 else:
                     observation = self.view
-                raw["offers"] = contract.encode_offers(contract.Offers.from_observation(observation, schema=self.profile.action_schema))
+                # The offers are built from the observation and handed over as they are: encoding them to their
+                # wire form and decoding that again gave an equal value, built twice.
+                offers = contract.Offers.from_observation(observation, schema=self.profile.action_schema)
             # An observation is decoded once: here, or for a decision when its view arrived.
-            frame = contract.decode_frame(raw, observation=observation)
+            # decode_frame(raw, ...) without its copy of raw, a dict made above for this frame alone.
+            if not contract._field_set(contract.Frame).issuperset(raw):
+                raise ValueError("Unknown fields in Frame")
+            frame = contract._decode_frame_record(raw, observation, offers)
             self.history.append(frame)
             appended.append(frame)
             if record_kind == "view":
@@ -175,18 +237,22 @@ class Producer:
                     self.gold_mine_captures += 1
         return tuple(appended)
 
-    def response(self, action):
+    def _check_answer(self, action):
         decision = self.history.decision
         if (type(action) is not contract.Action or decision is None or self.history.action is not None
                 or self.current_id is None or not decision.offers.permits(action)):
             raise ValueError("Action does not match the current contextual request")
+        return decision
+
+    def response(self, action):
+        decision = self._check_answer(action)
         return {"protocol_version": self.profile.protocol, "type": "context_action", "episode": self.episode,
                 "player": self.player, "decision_id": self.current_id, "revision": decision.revision,
                 "action": contract.encode_action(action)}
 
     def submitted(self, action):
         """Record an answer after it was written to the socket."""
-        self.response(action)
+        self._check_answer(action)  # what response() checks; its message was built and sent already
         return self.history.emit("submitted", action=action, decision_seq=self.history.decision.seq)
 
 

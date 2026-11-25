@@ -2,3 +2,5 @@
 torch==2.9.1
 # Plans handed to the MLX update are NumPy arrays.
 numpy==2.3.5
+# Fast decoding of engine messages in CPU actors.
+orjson==3.11.5
