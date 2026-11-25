@@ -10417,3 +10417,22 @@ contain the denominators and per-game results.
 On the same live game (seed 1, 40 days, the machine busy with the other run) the processor time per decision went from 1,234 µs in the actor and 563 µs in the engine (main) to about 940 and 326 µs, 1,797 → about 1,266 µs together: 1.42 times less. Engines `claude-g10-e1` and `claude-g10-e2` are frozen in `Heroes-artifacts/runtime/`; the reference build of main's engine is `claude-g10-e0`, whose six seeded games equal those of the default runtime digest for digest.
 
 **Where it stands against the goal (an estimate, not a measurement).** A batch is bound by processor time on sixteen cores, and the busy machine inflates a decision's time by about 1.5. At 1.27 ms instead of 1.80 ms per decision, about 2,000 s become about 1,400 s. Under 600 s needs about 0.6 ms per decision in all. What is left in the actor is Python spread over decoding, tree building, the guard and the walk, each a few percent; in the engine a third is still the capture made after every applied pack.
+
+### 2026-11-25 — The baseline batch, on a free machine
+
+`claude-g10/states/base14-s1`, `logs/base14-s1.log` and `.cpu`: main at `2c1672b` as frozen in `src-2c1672b`, the default engine (`runtime/local-v8-equipment-controls-v1`), `./train.command 100 --seed 2026112501` from a copy of checkpoint 2036, fourteen actors, 01:24:47 to 02:09:10, nothing else running (the other agent's 250-game run had ended at 01:15).
+
+| | |
+| --- | --- |
+| Collection (start of collection to the 100th usable game) | **2,474.1 s** |
+| PPO | 186.9 s (10 optimizer steps, 8,229,641 samples; weights `bc8e07f3…` → `031cc85f…`) |
+| The command, launch to exit | 2,663.3 s |
+| Decisions, both seats | 16,227,566, 6,559 a second |
+| Usable games / failed and replaced / stopped at day 365 / at the decision limit | 100 / 0 / 0 / 0 |
+| Red wins, blue wins | 65, 35; mean game 143.9 days |
+| Games in by | 50th at 1,048 s, 90th at 2,094 s, last at 2,474 s |
+| Longest game | 842.6 s, 417,782 decisions |
+| Processor use over the batch | actors 942%, engines 386% of a core (14 of 16 cores) |
+| Peak memory footprint of the command | 57.7 GB |
+
+This seed list gives longer games than the batches before it (16.2 million decisions against 13.2 million in update 2036), so the baseline is 41 minutes. Ten minutes is a factor of 4.1. The last 380 s were the tail: ten games still in play after the 90th was in.
