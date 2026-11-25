@@ -120,3 +120,24 @@ def _schema(contract):
             fields.append((item.name, spec(str(item.type)), default))
         types.append((cls.__name__, cls, fields))
     return types, specs, missing
+
+
+def compact_of(arrays):
+    """``Compact`` from the arrays ``Seat.finish`` gives: name -> (dtype, shape, bytes), or a plain value."""
+    import numpy as np
+    from ..learner.compact import Compact
+    made = Compact()
+    for name, value in arrays.items():
+        if isinstance(value, tuple):
+            dtype, shape, data = value
+            value = np.frombuffer(data, dtype=dtype).reshape(shape)
+        setattr(made, name, value)
+    return made
+
+
+class SampleFrame:
+    """What ``actor.learner_samples`` reads of a frame."""
+    __slots__ = ("kind", "seq", "decision_seq", "reason")
+
+    def __init__(self, kind, seq, decision_seq, reason):
+        self.kind, self.seq, self.decision_seq, self.reason = kind, seq, decision_seq, reason

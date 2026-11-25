@@ -24,6 +24,9 @@
 #include <string>
 #include <string_view>
 #include <tuple>
+#include <memory>
+#include <array>
+#include <deque>
 #include <map>
 #include <set>
 #include <unordered_map>
@@ -634,8 +637,10 @@ const size_t NODE_LIMIT = 4000000;
 
 void clear_value_trees();  // the memos of trees made from values, which name nodes
 
+int live_recorders = 0;  // recorders hold node ids across frames: no reset while one is open
+
 void reset_if_large() {
-    if (nodes.size() < NODE_LIMIT) return;
+    if (nodes.size() < NODE_LIMIT || live_recorders > 0) return;
     clear_value_trees();
     for (Node &item : nodes) Py_XDECREF(item.python);
     nodes.clear();
@@ -2918,13 +2923,15 @@ bool same_view(const NFrame &left, const NFrame &right) {  // window_repeats._sa
            && same_window(field(left.observation, T.o_window), field(right.observation, T.o_window));
 }
 
-// window_repeats._navigation_step over frames[order[start]] .. ; ``order`` lists frame indices
-bool navigation_step(const std::vector<NFrame> &all, const std::vector<int32_t> &order, size_t start, size_t stop, Step &out) {
-    const NFrame &before = all[(size_t)order[start]];
+// window_repeats._navigation_step over the frames at positions [start, stop) of a sequence; ``at(i)`` is the frame
+// index at position i and ``size`` the sequence's length
+template <class At>
+bool navigation_step_of(const std::vector<NFrame> &all, At at, size_t size, size_t start, size_t stop, Step &out) {
+    const NFrame &before = all[(size_t)at(start)];
     int32_t action = -1, after = -1;
     int32_t context = observation_context(before.observation);
     for (size_t i = start + 1; i < stop; i++) {
-        const NFrame &frame = all[(size_t)order[i]];
+        const NFrame &frame = all[(size_t)at(i)];
         if (frame.kind == F_SUBMITTED) {
             if (frame.decision_seq != before.seq) return false;
             action = frame.action;
@@ -2933,7 +2940,7 @@ bool navigation_step(const std::vector<NFrame> &all, const std::vector<int32_t> 
         } else if (frame.kind == F_CONTEXT) {
             context = frame.context;
         } else if (frame.kind == F_VIEW) {
-            after = order[i];
+            after = at(i);
         } else if (frame.kind == F_RESULT) {
             if (action < 0 || frame.decision_seq != before.seq || !V(field(frame.result, G.result_accepted)).number) return false;
             const int32_t kind = field(action, G.action_kind), status = field(frame.result, G.result_status);
@@ -2947,20 +2954,24 @@ bool navigation_step(const std::vector<NFrame> &all, const std::vector<int32_t> 
             }
             if (after < 0 || observation_context(all[(size_t)after].observation) != context) {
                 after = -1;
-                const size_t limit = std::min(stop + 1, order.size());
+                const size_t limit = std::min(stop + 1, size);
                 for (size_t j = i + 1; j < limit; j++) {
-                    const FKind k = all[(size_t)order[j]].kind;
-                    if (k == F_VIEW || k == F_DECISION) { after = order[j]; break; }
+                    const FKind k = all[(size_t)at(j)].kind;
+                    if (k == F_VIEW || k == F_DECISION) { after = at(j); break; }
                 }
             }
             if (after >= 0 && observation_context(all[(size_t)after].observation) == context) {
-                out.before = order[start]; out.after = after; out.has_target = has_target; out.target = target;
+                out.before = at(start); out.after = after; out.has_target = has_target; out.target = target;
                 return true;
             }
             return false;
         }
     }
     return false;
+}
+
+bool navigation_step(const std::vector<NFrame> &all, const std::vector<int32_t> &order, size_t start, size_t stop, Step &out) {
+    return navigation_step_of(all, [&](size_t i) { return order[i]; }, order.size(), start, stop, out);
 }
 
 struct WindowMemory {
@@ -4219,6 +4230,7 @@ PyObject *py_exact(PyObject *, PyObject *args) {  // exact(what, float32 bytes[,
     return PyBytes_FromStringAndSize((const char *)out.data(), n * 4);
 }
 
+
 // == the seat: frames to fastnet, decisions to sampled actions (actor.Seat with FastPolicy) =======================
 
 typedef long (*UsedFn)(void *);
@@ -4312,6 +4324,479 @@ const Things &things_of(int32_t objects, int64_t width) {
     return known.emplace(key, std::move(made)).first->second;
 }
 
+// == the recorder: the recipe the learner reads, recorded while playing (recipes.Recorder, small maps) =============
+// The recipe's nodes are made in the order recipes._Arena makes them (a tree's parts, then its tag, then itself;
+// each distinct node once), and every tree here is exact: numbers are floats of integers, texts are strings.
+
+struct RStep {
+    int8_t head;  // 0 categorical, 1 quantity, 2 coordinate
+    int32_t selected, root = -1;
+    std::vector<int32_t> roots;
+    std::vector<uint8_t> flags;
+    float numeric[4], offsets[2];
+    std::vector<float> positions;
+    bool has_indices = false;
+    std::vector<int64_t> indices;
+};
+
+struct RFrame { int32_t root = -1, map = -1, own = -1; bool trained = false; std::vector<RStep> steps; };
+
+struct MapPart {  // one distinct map of the game, as the learner reads it
+    std::vector<int64_t> terrain, road;
+    std::vector<float> flags, attributes;
+    std::vector<int32_t> cells;
+};
+
+struct Pending { int32_t seq; FKind kind; int32_t payload, observation, decision_seq; };
+
+struct Recording { std::vector<int32_t> trees; std::vector<WalkStep> steps; };
+
+struct Recorder {
+    // nodes
+    std::vector<int8_t> kind;
+    std::vector<int32_t> tag;
+    std::vector<std::vector<int32_t>> parts;
+    std::vector<std::array<double, 2>> numbers;
+    std::vector<std::string> texts;
+    std::unordered_map<std::string, int32_t> shared;
+    std::unordered_map<int32_t, int32_t> known;  // DAG node -> recipe node
+    // maps
+    int64_t width = 0, height = 0;
+    std::unordered_map<std::string, int32_t> tokens;  // ground content -> its number
+    std::map<std::vector<int64_t>, int32_t> map_index;
+    std::vector<MapPart> maps;
+    std::unordered_map<int32_t, std::vector<int64_t>> described;  // objects value -> (position, kind, subtype, owner) per object
+    // frames
+    std::vector<RFrame> frames;
+    std::vector<Pending> waiting;
+    int32_t open = -1;
+    std::set<int32_t> results;
+    std::map<int32_t, Recording> recordings;
+    std::vector<int32_t> trained;
+    size_t fed = 0;
+    bool failed = false;
+
+    Recorder() { live_recorders++; }
+    ~Recorder() { live_recorders--; }
+
+    int32_t make(int8_t code, int32_t label, std::vector<int32_t> children, const std::string &key) {
+        auto found = shared.find(key);
+        if (found != shared.end()) return found->second;
+        const int32_t index = (int32_t)kind.size();
+        kind.push_back(code); tag.push_back(label); parts.push_back(std::move(children));
+        shared.emplace(key, index);
+        return index;
+    }
+
+    int32_t add(int32_t id) {  // _Arena.add of an exact tree
+        auto cached = known.find(id);
+        if (cached != known.end()) return cached->second;
+        const Node &item = nodes[(size_t)id];
+        int32_t index;
+        if (item.kind == TEXT) {
+            std::string key = "T" + item.text;
+            auto found = shared.find(key);
+            if (found != shared.end()) index = found->second;
+            else { index = make(1, (int32_t)texts.size(), {}, key); texts.push_back(item.text); }
+        } else if (item.kind == NUMBER) {
+            std::string key = "N";
+            key.append((const char *)&item.number, sizeof(double));
+            auto found = shared.find(key);
+            if (found != shared.end()) index = found->second;
+            else {
+                index = make(0, (int32_t)numbers.size(), {}, key);
+                numbers.push_back({std::copysign(std::log1p(std::fabs(item.number)), item.number), item.number == 0.0 ? 1.0 : 0.0});
+            }
+        } else {
+            const std::vector<int32_t> children_ids = item.children;
+            const int32_t tag_id = item.tag;
+            const Kind node_kind = item.kind;
+            std::vector<int32_t> children;
+            children.reserve(children_ids.size());
+            for (int32_t child : children_ids) children.push_back(add(child));
+            const int32_t label = add(tag_id);
+            std::string key(node_kind == ORDERED ? "O" : "P");
+            key.append((const char *)&label, 4);
+            key.append((const char *)children.data(), children.size() * 4);
+            index = make(node_kind == ORDERED ? 3 : 2, label, children, key);
+        }
+        known.emplace(id, index);
+        return index;
+    }
+
+    const std::vector<int64_t> &described_of(int32_t objects) {
+        auto found = described.find(objects);
+        if (found != described.end()) return found->second;
+        std::vector<int64_t> out;
+        for (int32_t item : items_of(objects)) {
+            out.push_back(F(item, "position")); out.push_back(num(F(item, "kind"))); out.push_back(num(F(item, "subtype")));
+            out.push_back(F(item, "owner"));
+        }
+        return described.emplace(objects, std::move(out)).first->second;
+    }
+
+    int32_t map_of(int32_t observation) {  // recipes._map_recipe: the distinct map this observation shows
+        const auto &size = items_of(field(observation, T.o_size));
+        const int64_t w = num(size[0]), h = num(size[1]);
+        const Ground &seen = ground_of(field(observation, T.o_tiles), w, h);
+        auto token = tokens.find(seen.content);
+        if (token == tokens.end()) token = tokens.emplace(seen.content, (int32_t)tokens.size()).first;
+        std::vector<int64_t> key = {field(observation, T.o_size), token->second, -1};
+        for (int32_t hero : items_of(field(observation, T.o_heroes))) key.push_back(field(hero, G.hero_position));
+        key.push_back(-2);
+        for (int32_t town : items_of(field(observation, T.o_towns))) key.push_back(F(town, "position"));
+        key.push_back(-3);
+        const auto &objects = described_of(field(observation, T.o_objects));
+        key.insert(key.end(), objects.begin(), objects.end());
+        auto found = map_index.find(key);
+        if (found != map_index.end()) return found->second;
+        if (maps.empty()) { width = w; height = h; }
+        else if (w != width || h != height) { PyErr_SetString(PyExc_ValueError, "The maps of one game must have one size"); throw Fail(); }
+        MapPart part;
+        part.terrain.assign(seen.terrain.begin(), seen.terrain.end());
+        part.road.assign(seen.road.begin(), seen.road.end());
+        part.flags = seen.rows;
+        for (int32_t hero : items_of(field(observation, T.o_heroes))) {
+            const auto &position = items_of(field(hero, G.hero_position));
+            part.flags[(size_t)(num(position[1]) * w + num(position[0])) * 5 + 3] += 1.f;
+        }
+        for (int32_t town : items_of(field(observation, T.o_towns))) {
+            const auto &position = items_of(F(town, "position"));
+            part.flags[(size_t)(num(position[1]) * w + num(position[0])) * 5 + 4] += 1.f;
+        }
+        const Things &things = things_of(field(observation, T.o_objects), w);
+        part.attributes = things.attributes;
+        part.cells.assign(things.indices.begin(), things.indices.end());
+        maps.push_back(std::move(part));
+        const int32_t index = (int32_t)maps.size() - 1;
+        map_index.emplace(key, index);
+        return index;
+    }
+
+    void frame(const Pending &item) {  // Recorder._frame
+        RFrame made;
+        if (item.payload >= 0) {
+            if (item.observation >= 0) { made.map = map_of(item.observation); made.own = add(vobservation_tree(item.observation)); }
+            made.root = add(item.payload);
+        }
+        frames.push_back(std::move(made));
+        if (item.payload >= 0 && item.kind == F_DECISION) open = (int32_t)frames.size() - 1;
+    }
+
+    void close(bool is_trained) {  // Recorder._close
+        const int32_t seq = open;
+        auto found = recordings.find(seq);
+        if (is_trained) {
+            if (found == recordings.end()) { PyErr_SetString(PyExc_ValueError, "A trained decision was not sampled by this policy"); throw Fail(); }
+            Recording &recording = found->second;
+            for (int32_t tree : recording.trees) add(tree);
+            RFrame &target = frames[(size_t)seq];
+            for (const WalkStep &step : recording.steps) {
+                RStep made;
+                made.head = (int8_t)step.kind;
+                made.selected = step.selected;
+                if (step.kind == 0) { for (int32_t root : step.roots) made.roots.push_back(add(root)); made.flags = step.flags; }
+                else if (step.kind == 1) { made.root = add(step.root); std::copy(step.numeric, step.numeric + 4, made.numeric); std::copy(step.offsets, step.offsets + 2, made.offsets); }
+                else {
+                    made.root = add(step.root);
+                    const int64_t count = step.width * step.height;
+                    made.positions.resize((size_t)count * 2);
+                    const double across = (double)std::max<int64_t>(step.width - 1, 1), down = (double)std::max<int64_t>(step.height - 1, 1);
+                    for (int64_t y = 0, k = 0; y < step.height; y++)
+                        for (int64_t x = 0; x < step.width; x++, k++) {
+                            made.positions[(size_t)k * 2] = (float)((double)(x - step.hx) / across);
+                            made.positions[(size_t)k * 2 + 1] = (float)((double)(y - step.hy) / down);
+                        }
+                    made.has_indices = step.has_indices;
+                    made.indices = step.indices;
+                }
+                target.steps.push_back(std::move(made));
+            }
+            target.trained = true;
+            trained.push_back(seq);
+        }
+        if (found != recordings.end()) recordings.erase(found);
+        open = -1;
+        std::vector<Pending> pending;
+        pending.swap(waiting);
+        results.clear();
+        for (size_t i = 0; i < pending.size(); i++) {
+            frame(pending[i]);
+            if (open >= 0) { waiting.assign(pending.begin() + (long)i + 1, pending.end()); break; }
+        }
+    }
+
+    void feed(const Pending &item) {  // Recorder.feed
+        fed++;
+        if (failed) return;
+        try {
+            if (open < 0) frame(item);
+            else if (item.kind == F_DECISION) { close(results.count(open) > 0); frame(item); }
+            else { if (item.kind == F_RESULT) results.insert(item.decision_seq); waiting.push_back(item); }
+        } catch (Fail &) {
+            PyErr_Clear();
+            failed = true;
+        }
+    }
+
+    bool finish(const std::vector<Pending> &rest, const std::vector<int32_t> &decisions) {  // Recorder.finish
+        if (failed) return false;
+        std::set<int32_t> wanted(decisions.begin(), decisions.end());
+        waiting.insert(waiting.end(), rest.begin(), rest.end());
+        fed += rest.size();
+        try {
+            while (open >= 0 || !waiting.empty()) {
+                if (open >= 0) close(wanted.count(open) > 0);
+                else {
+                    std::vector<Pending> pending;
+                    pending.swap(waiting);
+                    for (size_t i = 0; i < pending.size(); i++) {
+                        frame(pending[i]);
+                        if (open >= 0) { waiting.assign(pending.begin() + (long)i + 1, pending.end()); break; }
+                    }
+                }
+            }
+        } catch (Fail &) {
+            PyErr_Clear();
+            return false;
+        }
+        return trained == decisions && frames.size() == fed;
+    }
+};
+
+// -- the recipe as Compact's arrays --------------------------------------------------------------------------------
+
+struct Arrays {  // name -> (numpy dtype, shape, bytes); built here, made numpy arrays by native.py
+    PyObject *dict;
+    Arrays() : dict(PyDict_New()) { if (!dict) throw Fail(); }
+    template <class T> void put(const char *name, const char *dtype, std::vector<Py_ssize_t> shape, const std::vector<T> &values) {
+        Ref bytes(PyByteArray_FromStringAndSize((const char *)values.data(), (Py_ssize_t)(values.size() * sizeof(T))));
+        Ref dims(PyTuple_New((Py_ssize_t)shape.size()));
+        for (size_t i = 0; i < shape.size(); i++) PyTuple_SET_ITEM(dims.get(), (Py_ssize_t)i, PyLong_FromSsize_t(shape[i]));
+        Ref entry(Py_BuildValue("(sOO)", dtype, dims.get(), bytes.get()));
+        if (PyDict_SetItemString(dict, name, entry.get())) throw Fail();
+    }
+    void scalar(const char *name, PyObject *value) { Ref held(value); if (PyDict_SetItemString(dict, name, held.get())) throw Fail(); }
+};
+
+template <class T> bool fits_bytes(const std::vector<T> &values) {  // compact._small: whole numbers from 0 to 255
+    for (const T &value : values) if (!(value >= 0 && value <= 255 && (T)(uint8_t)value == value)) return false;
+    return true;
+}
+
+template <class T> void put_small(Arrays &out, const char *name, const char *wide, std::vector<Py_ssize_t> shape, const std::vector<T> &values) {
+    if (values.empty() || fits_bytes(values)) {
+        std::vector<uint8_t> narrow(values.size());
+        for (size_t i = 0; i < values.size(); i++) narrow[i] = (uint8_t)values[i];
+        out.put(name, "uint8", shape, narrow);
+    } else {
+        out.put(name, wide, shape, values);
+    }
+}
+
+PyObject *compact_arrays(const Recorder &r, const std::vector<int32_t> &decisions) {  // Compact.from_history
+    Arrays out;
+    const size_t count = r.kind.size();
+    std::vector<int32_t> depth(count), first(count + 1, 0);
+    std::vector<int64_t> offsets(count + 1, 0);
+    std::vector<int32_t> children;
+    for (size_t i = 0; i < count; i++) {
+        if (r.kind[i] < 2) depth[i] = 0;
+        else {
+            int32_t deepest = depth[(size_t)r.tag[i]];
+            for (int32_t part : r.parts[i]) deepest = std::max(deepest, depth[(size_t)part]);
+            depth[i] = 1 + deepest;
+            children.insert(children.end(), r.parts[i].begin(), r.parts[i].end());
+        }
+        offsets[i + 1] = offsets[i] + (int64_t)(r.kind[i] < 2 ? 0 : r.parts[i].size());
+    }
+    out.put("kind", "int8", {(Py_ssize_t)count}, r.kind);
+    out.put("tag", "int32", {(Py_ssize_t)count}, r.tag);
+    out.put("depth", "int32", {(Py_ssize_t)count}, depth);
+    out.put("first", "int64", {(Py_ssize_t)count + 1}, offsets);
+    out.put("children", "int32", {(Py_ssize_t)children.size()}, children);
+    std::vector<float> numbers;
+    for (auto &pair : r.numbers) { numbers.push_back((float)pair[0]); numbers.push_back((float)pair[1]); }
+    out.put("numbers", "float32", {(Py_ssize_t)r.numbers.size(), 2}, numbers);
+    size_t longest = 0;
+    for (auto &text : r.texts) longest = std::max(longest, text.size());
+    std::vector<int32_t> text_bytes(r.texts.size() * longest, 0), text_length;
+    for (size_t row = 0; row < r.texts.size(); row++) {
+        for (size_t k = 0; k < r.texts[row].size(); k++) text_bytes[row * longest + k] = (int32_t)(uint8_t)r.texts[row][k] + 1;
+        text_length.push_back((int32_t)r.texts[row].size());
+    }
+    out.put("text_bytes", "int32", {(Py_ssize_t)r.texts.size(), (Py_ssize_t)longest}, text_bytes);
+    out.put("text_length", "int32", {(Py_ssize_t)r.texts.size()}, text_length);
+    std::vector<int32_t> roots, frame_maps, owns;
+    for (const RFrame &frame : r.frames) { roots.push_back(frame.root); frame_maps.push_back(frame.map); owns.push_back(frame.own); }
+    const Py_ssize_t frames = (Py_ssize_t)r.frames.size();
+    out.put("root", "int32", {frames}, roots);
+    out.put("map", "int32", {frames}, frame_maps);
+    out.put("own", "int32", {frames}, owns);
+    out.scalar("width", PyLong_FromLongLong(r.maps.empty() ? 0 : r.width));
+    out.scalar("height", PyLong_FromLongLong(r.maps.empty() ? 0 : r.height));
+    const Py_ssize_t size = r.maps.empty() ? 0 : (Py_ssize_t)(r.width * r.height), distinct = (Py_ssize_t)r.maps.size();
+    std::vector<int64_t> terrain, road;
+    std::vector<float> flags, attributes;
+    std::vector<int64_t> object_first(1, 0);
+    std::vector<int32_t> object_cells;
+    for (const MapPart &part : r.maps) {
+        terrain.insert(terrain.end(), part.terrain.begin(), part.terrain.end());
+        road.insert(road.end(), part.road.begin(), part.road.end());
+        flags.insert(flags.end(), part.flags.begin(), part.flags.end());
+        attributes.insert(attributes.end(), part.attributes.begin(), part.attributes.end());
+        object_cells.insert(object_cells.end(), part.cells.begin(), part.cells.end());
+        object_first.push_back(object_first.back() + (int64_t)part.cells.size());
+    }
+    put_small(out, "terrain", "int64", {distinct, size}, terrain);
+    put_small(out, "road", "int64", {distinct, size}, road);
+    put_small(out, "flags", "float32", {distinct, size, 5}, flags);
+    out.put("object_first", "int64", {distinct + 1}, object_first);
+    out.put("object_cells", "int32", {(Py_ssize_t)object_cells.size()}, object_cells);
+    // _distinct_rows: the distinct 67-number rows in the order of their bytes, and each row's place among them
+    const size_t rows = attributes.size() / 67;
+    std::vector<size_t> order(rows);
+    for (size_t i = 0; i < rows; i++) order[i] = i;
+    auto row_bytes = [&](size_t i) { return (const unsigned char *)(attributes.data() + i * 67); };
+    std::stable_sort(order.begin(), order.end(), [&](size_t a, size_t b) { return std::memcmp(row_bytes(a), row_bytes(b), 67 * sizeof(float)) < 0; });
+    std::vector<float> descriptors;
+    std::vector<int32_t> object_rows(rows);
+    int32_t distinct_rows = -1;
+    for (size_t k = 0; k < rows; k++) {
+        if (k == 0 || std::memcmp(row_bytes(order[k]), row_bytes(order[k - 1]), 67 * sizeof(float)) != 0) {
+            distinct_rows++;
+            descriptors.insert(descriptors.end(), attributes.begin() + (long)(order[k] * 67), attributes.begin() + (long)(order[k] * 67 + 67));
+        }
+        object_rows[order[k]] = distinct_rows;
+    }
+    out.put("descriptors", "float32", {(Py_ssize_t)(descriptors.size() / 67), 67}, descriptors);
+    out.put("object_rows", "int32", {(Py_ssize_t)rows}, object_rows);
+    out.put("decisions", "int32", {(Py_ssize_t)decisions.size()}, decisions);
+    std::vector<int64_t> step_first(1, 0), step_extra, choice_first(1, 0), cell_first(1, 0);
+    std::vector<int8_t> step_head;
+    std::vector<int32_t> step_selected, step_root, choices, cells;
+    std::vector<uint8_t> window;
+    bool repeated = false;
+    std::vector<float> numeric, offsets_out, positions;
+    int64_t categorical = 0, quantities = 0, grids = 0;
+    for (int32_t decision : decisions) {
+        const RFrame &frame = r.frames.at((size_t)decision);
+        if (!frame.trained) { PyErr_SetString(PyExc_ValueError, "A trained decision has no compiled conditionals"); throw Fail(); }
+        for (const RStep &step : frame.steps) {
+            step_head.push_back(step.head);
+            step_selected.push_back(step.selected);
+            if (step.head == 0) {
+                step_root.push_back(-1);
+                step_extra.push_back(categorical++);
+                bool any = false;
+                for (uint8_t flag : step.flags) any = any || flag;
+                for (size_t i = 0; i < step.roots.size(); i++) {
+                    window.push_back(any && i < step.flags.size() ? step.flags[i] : 0);
+                    repeated = repeated || (any && i < step.flags.size() && step.flags[i]);
+                }
+                choices.insert(choices.end(), step.roots.begin(), step.roots.end());
+                choice_first.push_back((int64_t)choices.size());
+            } else if (step.head == 1) {
+                step_root.push_back(step.root);
+                step_extra.push_back(quantities++);
+                numeric.insert(numeric.end(), step.numeric, step.numeric + 4);
+                offsets_out.insert(offsets_out.end(), step.offsets, step.offsets + 2);
+            } else {
+                step_root.push_back(step.root);
+                step_extra.push_back(grids++);
+                positions.insert(positions.end(), step.positions.begin(), step.positions.end());
+                const size_t grid = step.positions.size() / 2;
+                if (step.has_indices) for (int64_t index : step.indices) cells.push_back((int32_t)index);
+                else for (size_t index = 0; index < grid; index++) cells.push_back((int32_t)index);
+                cell_first.push_back((int64_t)cells.size());
+            }
+        }
+        step_first.push_back((int64_t)step_head.size());
+    }
+    out.put("step_first", "int64", {(Py_ssize_t)step_first.size()}, step_first);
+    out.put("step_head", "int8", {(Py_ssize_t)step_head.size()}, step_head);
+    out.put("step_selected", "int32", {(Py_ssize_t)step_selected.size()}, step_selected);
+    out.put("step_root", "int32", {(Py_ssize_t)step_root.size()}, step_root);
+    out.put("step_extra", "int64", {(Py_ssize_t)step_extra.size()}, step_extra);
+    out.put("choice_first", "int64", {(Py_ssize_t)choice_first.size()}, choice_first);
+    out.put("choices", "int32", {(Py_ssize_t)choices.size()}, choices);
+    if (repeated) out.put("window_memory", "bool", {(Py_ssize_t)window.size()}, window);
+    else { Py_INCREF(Py_None); out.scalar("window_memory", Py_None); }
+    out.put("numeric", "float32", {(Py_ssize_t)(numeric.size() / 4), 4}, numeric);
+    out.put("offsets", "float32", {(Py_ssize_t)(offsets_out.size() / 2), 2}, offsets_out);
+    out.put("positions", "float32", {(Py_ssize_t)grids, size, 2}, positions);
+    out.put("cell_first", "int64", {(Py_ssize_t)cell_first.size()}, cell_first);
+    out.put("cells", "int32", {(Py_ssize_t)cells.size()}, cells);
+    return out.dict;
+}
+
+// -- window_repeats.repeated_empty_opens over the native frames ------------------------------------------------------
+
+std::vector<int32_t> repeated_empty_opens(const std::vector<NFrame> &all) {
+    std::vector<int32_t> decisions, repeats;
+    for (size_t i = 0; i < all.size(); i++) if (all[i].kind == F_DECISION) decisions.push_back((int32_t)i);
+    if (decisions.empty()) return repeats;
+    std::deque<Step> recent;
+    auto at = [](size_t i) { return (int32_t)i; };
+    size_t start = (size_t)decisions[0];
+    std::vector<size_t> stops;
+    for (size_t k = 1; k < decisions.size(); k++) stops.push_back((size_t)decisions[k]);
+    stops.push_back(all.size());
+    for (size_t stop : stops) {
+        Step step;
+        const bool found = navigation_step_of(all, at, all.size(), start, stop, step);
+        start = stop;
+        if (!found) { recent.clear(); continue; }
+        recent.push_back(step);
+        if (recent.size() > 4) recent.pop_front();
+        if (recent.size() == 4) {
+            const Step &a = recent[0], &b = recent[1], &c = recent[2], &d = recent[3];
+            if (a.has_target && c.has_target && a.target == c.target && !b.has_target && !d.has_target
+                && all[(size_t)a.before].day == all[(size_t)d.after].day
+                && same_view(all[(size_t)a.before], all[(size_t)b.after]) && same_view(all[(size_t)a.before], all[(size_t)c.before])
+                && same_view(all[(size_t)a.before], all[(size_t)d.after])
+                && same_view(all[(size_t)a.after], all[(size_t)b.before]) && same_view(all[(size_t)a.after], all[(size_t)c.after])
+                && same_view(all[(size_t)a.after], all[(size_t)d.before]))
+                repeats.push_back(all[(size_t)c.before].seq);
+        }
+    }
+    return repeats;
+}
+
+PyObject *py_repeated_empty_opens(PyObject *, PyObject *object) {  // repeated_empty_opens(producer)
+    if (Py_TYPE(object) != &ProducerType) { PyErr_SetString(PyExc_TypeError, "a Producer"); return nullptr; }
+    try {
+        prepare_guard();
+        const std::vector<int32_t> found = repeated_empty_opens(*((Producer *)object)->frames);
+        Ref out(PyTuple_New((Py_ssize_t)found.size()));
+        for (size_t i = 0; i < found.size(); i++) PyTuple_SET_ITEM(out.get(), (Py_ssize_t)i, PyLong_FromLong(found[i]));
+        Py_INCREF(out.get());
+        return out.get();
+    } catch (Fail &) {
+        return nullptr;
+    }
+}
+
+PyObject *py_sample_frames(PyObject *, PyObject *object) {  // sample_frames(producer): (kind, seq, decision_seq, reason) of the
+    // frames actor.learner_samples reads
+    if (Py_TYPE(object) != &ProducerType) { PyErr_SetString(PyExc_TypeError, "a Producer"); return nullptr; }
+    try {
+        Ref out(PyList_New(0));
+        for (const NFrame &frame : *((Producer *)object)->frames) {
+            if (frame.kind != F_DECISION && frame.kind != F_SUBMITTED && frame.kind != F_CONSUMED && frame.kind != F_SUPERSEDED
+                && frame.kind != F_RESULT && frame.kind != F_TERMINAL) continue;
+            PyObject *reason = frame.reason >= 0 ? string_object(frame.reason) : Py_None;
+            Ref item(Py_BuildValue("(siiO)", KIND_NAMES[frame.kind], frame.seq, frame.decision_seq, reason));
+            if (PyList_Append(out.get(), item.get())) throw Fail();
+        }
+        Py_INCREF(out.get());
+        return out.get();
+    } catch (Fail &) {
+        return nullptr;
+    }
+}
+
+
 struct MapFeatures { long summary; std::vector<float> cells; };
 
 struct Choice { int32_t action; double log_prob; };
@@ -4323,6 +4808,7 @@ struct Scorer : Chooser {  // scores each step with fastnet and samples it as Co
     float window_weight;
     MT19937 &generator;
     std::vector<float> trace;  // the selected log-probabilities
+    std::vector<WalkStep> steps;  // what each choice read, for the recorder
     float query[32];
     bool has_query = false;
     std::vector<int> children;
@@ -4390,6 +4876,7 @@ struct Scorer : Chooser {  // scores each step with fastnet and samples it as Co
         }
         trace.push_back(log_probs.at((size_t)selected));
         step.selected = selected;
+        steps.push_back(step);
         return selected;
     }
 };
@@ -4421,6 +4908,7 @@ struct SeatObject {
     // the map and observation features of this epoch
     std::map<std::vector<int32_t>, MapFeatures> *maps;
     std::unordered_map<int32_t, std::tuple<long, long, const std::vector<float> *>> *features;
+    Recorder *recorder;  // nullptr when the seat records nothing
 };
 
 void seat_epoch(SeatObject *self) {  // FastPolicy's arena: begin anew when nearly full; slots are valid for one epoch
@@ -4476,6 +4964,12 @@ std::tuple<long, long, const std::vector<float> *> observation_features(SeatObje
     return made;
 }
 
+void seat_track(SeatObject *self, const NFrame &frame) {  // the encoder's basis after a frame
+    if (frame.kind == F_DECISION) { self->held = true; self->decision_observation = frame.observation; }
+    else if (frame.kind == F_RESULT || frame.kind == F_SUPERSEDED) self->held = false;
+    if (frame.observation >= 0) self->observation = frame.observation;
+}
+
 void seat_frame(SeatObject *self, const std::vector<NFrame> &frames, size_t index) {  // one frame: ContextualEncoder.encode + forward_step
     const NFrame &frame = frames[index];
     const int32_t basis = self->held ? self->decision_observation : self->observation;
@@ -4485,10 +4979,11 @@ void seat_frame(SeatObject *self, const std::vector<NFrame> &frames, size_t inde
     if (self->guarded) decided = self->tracker->observe(frame, support);
     std::set<Key> keys;
     self->memory->observe(frames, (int32_t)index, keys);
-    if (frame.kind == F_DECISION) { self->held = true; self->decision_observation = frame.observation; }
-    else if (frame.kind == F_RESULT || frame.kind == F_SUPERSEDED) self->held = false;
-    if (frame.observation >= 0) self->observation = frame.observation;
-    if (payload < 0) return;  // bookkeeping: the model skips it
+    seat_track(self, frame);
+    if (payload < 0) {  // bookkeeping: the model skips it
+        if (self->recorder) self->recorder->feed(Pending{frame.seq, frame.kind, -1, frame.observation, frame.decision_seq});
+        return;
+    }
     seat_epoch(self);
     long summary = 0, own = 0;
     const std::vector<float> *cells = nullptr;
@@ -4509,6 +5004,7 @@ void seat_frame(SeatObject *self, const std::vector<NFrame> &frames, size_t inde
         self->pending_cells = cells;
         (void)decided;
     }
+    if (self->recorder) self->recorder->feed(Pending{frame.seq, frame.kind, payload, frame.observation, frame.decision_seq});
 }
 
 PyObject *Seat_new(PyTypeObject *type, PyObject *, PyObject *) {
@@ -4522,6 +5018,7 @@ PyObject *Seat_new(PyTypeObject *type, PyObject *, PyObject *) {
     self->features = new std::unordered_map<int32_t, std::tuple<long, long, const std::vector<float> *>>();
     self->observation = self->decision_observation = -1; self->held = false; self->observed = 0; self->epoch = -1;
     self->pending_seq = -1; self->pending_observation = self->pending_offers = -1; self->pending_cells = nullptr;
+    self->recorder = nullptr;
     return (PyObject *)self;
 }
 
@@ -4529,6 +5026,7 @@ void Seat_dealloc(SeatObject *self) {
     Py_XDECREF(self->producer); Py_XDECREF(self->policy);
     delete self->fast; delete self->generator; delete self->tracker; delete self->memory; delete self->state; delete self->pending_state;
     delete self->pending_support; delete self->pending_keys; delete self->values; delete self->choices; delete self->maps; delete self->features;
+    delete self->recorder;
     Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
@@ -4539,7 +5037,9 @@ int Seat_init(SeatObject *self, PyObject *args, PyObject *) {
     unsigned long long net, seed;
     double weight;
     long long side;
-    if (!PyArg_ParseTuple(args, "OOKOKOdL", &producer, &policy, &net, &addresses, &seed, &limits, &weight, &side)) return -1;
+    int record = 0;
+    if (!PyArg_ParseTuple(args, "OOKOKOdL|p", &producer, &policy, &net, &addresses, &seed, &limits, &weight, &side, &record)) return -1;
+    if (record && !self->recorder) self->recorder = new Recorder();
     if (Py_TYPE(producer) != &ProducerType) { PyErr_SetString(PyExc_TypeError, "a Producer"); return -1; }
     unsigned long long a[8];
     if (!PyArg_ParseTuple(addresses, "KKKKKKKK", &a[0], &a[1], &a[2], &a[3], &a[4], &a[5], &a[6], &a[7])) return -1;
@@ -4600,6 +5100,7 @@ PyObject *Seat_act(SeatObject *self, PyObject *) {  // the action sampled for th
         const int32_t action = walk.run(-1);
         const float total = exact_sum(scorer.trace.data(), (int64_t)scorer.trace.size());
         (*self->choices)[self->pending_seq] = Choice{action, (double)total};
+        if (self->recorder) self->recorder->recordings[self->pending_seq] = Recording{walk.trees, scorer.steps};
         return PyLong_FromLong(action);
     } catch (Fail &) {
         return nullptr;
@@ -4633,11 +5134,40 @@ PyObject *Seat_get(SeatObject *self, void *which) {
     Py_RETURN_NONE;
 }
 
+
+PyObject *Seat_finish(SeatObject *self, PyObject *arg) {  // finish(decisions): the recorded recipe as Compact's arrays, or None
+    // (Seat.recorded: the frames the policy never read are encoded and recorded first)
+    if (!self->recorder) Py_RETURN_NONE;
+    std::vector<int32_t> decisions;
+    Ref sequence(PySequence_Fast(arg, "decisions"));
+    for (Py_ssize_t i = 0; i < PySequence_Fast_GET_SIZE(sequence.get()); i++) decisions.push_back((int32_t)PyLong_AsLong(PySequence_Fast_ITEMS(sequence.get())[i]));
+    if (PyErr_Occurred()) return nullptr;
+    const std::vector<NFrame> &frames = *((Producer *)self->producer)->frames;
+    Recorder *recorder = self->recorder;
+    self->recorder = nullptr;
+    std::unique_ptr<Recorder> owned(recorder);
+    try {
+        std::vector<Pending> rest;
+        for (size_t i = self->observed; i < frames.size(); i++) {
+            const NFrame &frame = frames[i];
+            const int32_t basis = self->held ? self->decision_observation : self->observation;
+            const int32_t payload = vpayload(frame, basis, self->observation);
+            seat_track(self, frame);
+            rest.push_back(Pending{frame.seq, frame.kind, payload, frame.observation, frame.decision_seq});
+        }
+        if (!recorder->finish(rest, decisions)) Py_RETURN_NONE;
+        return compact_arrays(*recorder, decisions);
+    } catch (Fail &) {
+        return nullptr;
+    }
+}
+
 PyMethodDef seat_methods[] = {
     {"observe", (PyCFunction)Seat_observe, METH_VARARGS, "observe(stop=-1): read the seat's frames up to stop"},
     {"observe_ahead", (PyCFunction)Seat_observe_ahead, METH_NOARGS, "read the frames there are, up to the next decision"},
     {"act", (PyCFunction)Seat_act, METH_NOARGS, "the value id of the action sampled for the decision read last"},
     {"results", (PyCFunction)Seat_results, METH_NOARGS, "({seq: (action, log_prob)}, {seq: value})"},
+    {"finish", (PyCFunction)Seat_finish, METH_O, "finish(decisions): the recorded recipe as Compact's arrays, or None"},
     {nullptr, nullptr, 0, nullptr}};
 
 PyGetSetDef seat_getset[] = {
@@ -4780,6 +5310,8 @@ PyMethodDef methods[] = {
     {"window_memories", py_window_memories, METH_O, "window_memories(producer): WindowMemory keys at each decision (tests)"},
     {"configure_math", py_configure_math, METH_VARARGS, "configure_math(Sleef_expf4_u10, Sleef_logf4_u10)"},
     {"exact", py_exact, METH_VARARGS, "exact(what, float32 bytes[, seed, draws]): torch's arithmetic, emulated (tests)"},
+    {"repeated_empty_opens", py_repeated_empty_opens, METH_O, "window_repeats.repeated_empty_opens of a producer's frames"},
+    {"sample_frames", py_sample_frames, METH_O, "the frames actor.learner_samples reads, as (kind, seq, decision_seq, reason)"},
     {"walk_times", py_walk_times, METH_O, "walk_times(producer): seconds following frames and walking (tests)"},
     {"walks", py_walks, METH_VARARGS, "walks(producer, guarded): the walk of each answered decision (tests)"},
     {"guard_supports", py_guard_supports, METH_VARARGS, "guard_supports(producer, management, windows, decisions): GuardSupport fields (tests)"},
