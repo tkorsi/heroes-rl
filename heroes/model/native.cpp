@@ -20,6 +20,9 @@
 #include <cstring>
 #include <string>
 #include <string_view>
+#include <tuple>
+#include <map>
+#include <set>
 #include <unordered_map>
 #include <vector>
 
@@ -1694,6 +1697,13 @@ PyObject *Producer_get(Producer *self, void *which) {
     Py_RETURN_NONE;
 }
 
+PyObject *Producer_observation_ids(Producer *self, PyObject *) {  // tests: each frame's observation value, -1 without
+    PyObject *out = PyList_New((Py_ssize_t)self->frames->size());
+    if (!out) return nullptr;
+    for (size_t i = 0; i < self->frames->size(); i++) PyList_SET_ITEM(out, (Py_ssize_t)i, PyLong_FromLong((*self->frames)[i].observation));
+    return out;
+}
+
 PyGetSetDef Producer_getset[] = {
     {"frame_count", (getter)Producer_get, nullptr, nullptr, (void *)0},
     {"terminal", (getter)Producer_get, nullptr, nullptr, (void *)1},
@@ -1706,6 +1716,7 @@ PyMethodDef Producer_methods[] = {
     {"ingest", (PyCFunction)Producer_ingest, METH_O, "ingest(bytes): fold one engine message; the number of new frames"},
     {"python_frames", (PyCFunction)Producer_python_frames, METH_NOARGS, "the contract Frames so far"},
     {"submitted", (PyCFunction)Producer_submitted, METH_VARARGS, "submitted(action, day): the frame of an answer sent"},
+    {"observation_ids", (PyCFunction)Producer_observation_ids, METH_NOARGS, "each frame's observation value (tests)"},
     {nullptr, nullptr, 0, nullptr}};
 
 PyTypeObject ProducerType = {PyVarObject_HEAD_INIT(nullptr, 0)};
@@ -1715,6 +1726,1026 @@ PyObject *py_set_native_failure(PyObject *, PyObject *type) {
     native_failure = type;
     Py_INCREF(type);
     Py_RETURN_NONE;
+}
+
+// == semantic trees of values ======================================================================================
+// policy._semantic of the contract object a value stands for, memoized by value: a value's tree is built once.
+
+std::vector<int32_t> tree_of_value;  // value -> tree, -1 until built
+std::vector<int8_t> plan_ready;
+std::vector<Plan> value_plans;       // by type index
+struct SpecialTypes { int32_t recruitment = -1, tavern = -1, stack = -1, dialog = -1, dialog_choice = -1, notice = -1; bool ready = false; } ST;
+struct PanelFields {
+    int32_t offers, selected_offer_ref, selected_upgrade_ref, stock, unit_cost, slider_max, destination, selected_detail,
+        gold_cost, recruit_status, parent_context, source, total_cost, affordable, family, text, components, selection,
+        cancel, choices, display_mode, ref_recruit, ref_tavern, ref_upgrade;
+} PF;
+
+int32_t vsemantic(int32_t value);
+
+Plan &value_plan(int32_t type) {
+    if ((size_t)type >= value_plans.size()) { value_plans.resize(vtypes.size()); plan_ready.resize(vtypes.size(), 0); }
+    if (!plan_ready[(size_t)type]) {
+        Plan &plan = plan_of((PyTypeObject *)vtypes[(size_t)type].python);  // policy._field_plan of the dataclass
+        value_plans[(size_t)type] = plan;
+        // each field's index in the value
+        plan_ready[(size_t)type] = 1;
+    }
+    return value_plans[(size_t)type];
+}
+
+int32_t field_index(int32_t type, PyObject *name) {
+    Py_ssize_t size;
+    const char *chars = PyUnicode_AsUTF8AndSize(name, &size);
+    return vtypes[(size_t)type].by_name.at(std::string(chars, (size_t)size));
+}
+
+void prepare_special() {
+    if (ST.ready) return;
+    ST.recruitment = type_named("RecruitmentPanel"); ST.tavern = type_named("TavernPanel"); ST.stack = type_named("StackPanel");
+    ST.dialog = type_named("DialogPanel"); ST.dialog_choice = type_named("DialogChoice"); ST.notice = type_named("Notice");
+    ST.ready = true;
+}
+
+int32_t vtext(int32_t value) {  // _text of a str value
+    const std::string &text = strings[(size_t)V(value).string];
+    return text_node(text.data(), (Py_ssize_t)text.size());
+}
+
+int32_t vnumber(int32_t value) {  // _number of an int value: float(int)
+    return number_node((double)V(value).number);
+}
+
+int32_t vfield(int32_t value, int32_t type, const char *name) { return field(value, field_of(type, name)); }
+
+int32_t vcards(int32_t panel, int32_t type, const char *selected_name, const char *card_tag, const char *set_name) {
+    const int32_t selected = vfield(panel, type, selected_name);
+    const std::vector<int32_t> offers = V(vfield(panel, type, "offers")).items;
+    std::vector<int32_t> out;
+    const int32_t tag = text_node(card_tag);
+    for (int32_t card : offers) {
+        const int32_t card_type = V(card).type;
+        const int32_t ref = vfield(card, card_type, "ref");
+        out.push_back(node(tag, {vsemantic(card), truth(ref == selected)}));
+    }
+    return sorted_set(set_name, out);
+}
+
+int32_t vdialog_choice(int32_t panel, int32_t choice) {
+    const int32_t choice_type = V(choice).type;
+    const int32_t kind = vfield(choice, choice_type, "kind");
+    int32_t component;
+    if (str_is(kind, "select_component")) {
+        const int64_t index = V(vfield(choice, choice_type, "component_index")).number;
+        const std::vector<int32_t> &components = V(vfield(panel, ST.dialog, "components")).items;
+        if (index < 0 || (size_t)index >= components.size()) { PyErr_SetString(PyExc_IndexError, "tuple index out of range"); throw Fail(); }
+        component = vsemantic(components[(size_t)index]);
+    } else {
+        component = node("absent");
+    }
+    return node("dialog_choice", {vtext(kind), component});
+}
+
+int32_t vspecial(int32_t value) {
+    prepare_special();
+    const int32_t type = V(value).type;
+    if (type == ST.recruitment) {
+        const int32_t set = vcards(value, type, "selected_offer_ref", "card", "cards");
+        return node("recruitment", {set, node("stock", {vnumber(vfield(value, type, "stock"))}),
+                                    node("unit_cost", {vsemantic(vfield(value, type, "unit_cost"))}),
+                                    node("slider_max", {vnumber(vfield(value, type, "slider_max"))}),
+                                    vsemantic(vfield(value, type, "destination"))});
+    }
+    if (type == ST.tavern) {
+        const int32_t set = vcards(value, type, "selected_offer_ref", "card", "cards");
+        return node("tavern", {set, node("selected_detail", {vsemantic(vfield(value, type, "selected_detail"))}),
+                               node("gold_cost", {vnumber(vfield(value, type, "gold_cost"))}),
+                               node("recruit_status", {vtext(vfield(value, type, "recruit_status"))})});
+    }
+    if (type == ST.stack) {
+        const int32_t first = vsemantic(vfield(value, type, "parent_context")), second = vsemantic(vfield(value, type, "source"));
+        const int32_t set = vcards(value, type, "selected_upgrade_ref", "upgrade", "offers");
+        return node("stack_panel", {first, second, set, node("total_cost", {vsemantic(vfield(value, type, "total_cost"))}),
+                                    node("affordable", {vsemantic(vfield(value, type, "affordable"))})});
+    }
+    if (type == ST.dialog) {
+        const int32_t family = vtext(vfield(value, type, "family")), text = vsemantic(vfield(value, type, "text"));
+        std::vector<int32_t> components;
+        for (int32_t item : V(vfield(value, type, "components")).items) components.push_back(vsemantic(item));
+        const int32_t component_set = sorted_set("components", components);
+        const int32_t selection = node("selection", {vsemantic(vfield(value, type, "selection"))});
+        const int32_t cancel = node("cancel", {vsemantic(vfield(value, type, "cancel"))});
+        std::vector<int32_t> choices;
+        for (int32_t item : V(vfield(value, type, "choices")).items) choices.push_back(vdialog_choice(value, item));
+        return node("dialog_panel", {family, text, component_set, selection, cancel, sorted_set("choices", choices)});
+    }
+    if (type == ST.dialog_choice) { PyErr_SetString(PyExc_ValueError, "Dialog choice requires its displayed component binding"); throw Fail(); }
+    if (type == ST.notice) {
+        const int32_t mode = vtext(vfield(value, type, "display_mode"));
+        std::vector<int32_t> tokens, components;
+        for (int32_t item : V(vfield(value, type, "text")).items) tokens.push_back(vsemantic(item));
+        const int32_t ordered = interior_node(ORDERED, text_node("notice_text"), tokens);
+        for (int32_t item : V(vfield(value, type, "components")).items) components.push_back(vsemantic(item));
+        return node("notice", {mode, ordered, sorted_set("components", components)});
+    }
+    return -1;
+}
+
+int32_t category_of(int64_t number) {
+    const std::string text = "category:" + std::to_string(number);
+    return text_node(text.data(), (Py_ssize_t)text.size());
+}
+
+int32_t vsemantic(int32_t value) {
+    if ((size_t)value < tree_of_value.size() && tree_of_value[(size_t)value] >= 0) return tree_of_value[(size_t)value];
+    const Val &item = V(value);
+    int32_t tree;
+    switch (item.kind) {
+        case V_NONE: tree = node("absent"); break;
+        case V_BOOL: tree = truth(item.number != 0); break;
+        case V_INT: tree = vnumber(value); break;
+        case V_STR: tree = vtext(value); break;
+        case V_TUPLE: {
+            const std::vector<int32_t> items = item.items;
+            std::vector<int32_t> children;
+            for (int32_t entry : items) children.push_back(vsemantic(entry));
+            tree = interior_node(ORDERED, text_node("tuple"), children);
+            break;
+        }
+        default: {
+            tree = vspecial(value);
+            if (tree >= 0) break;
+            const int32_t type = V(value).type;
+            Plan &plan = value_plan(type);
+            std::vector<int32_t> children;
+            for (const Plan::Field &entry : plan.fields) {
+                const int32_t raw = field(value, field_index(type, entry.name));
+                const Val &raw_value = V(raw);
+                if (entry.absent_skipped && raw_value.kind == V_NONE) continue;
+                int32_t encoded;
+                if (entry.category && raw_value.kind == V_INT) {
+                    encoded = category_of(raw_value.number);
+                } else if (entry.amount && raw_value.kind == V_INT) {
+                    encoded = str_is(vfield(value, type, "kind"), "world_object") ? category_of(raw_value.number) : vsemantic(raw);
+                } else if (entry.as_set && raw_value.kind == V_TUPLE) {
+                    const std::vector<int32_t> items = raw_value.items;
+                    std::vector<int32_t> members;
+                    for (int32_t member : items) members.push_back(vsemantic(member));
+                    encoded = sorted_set(entry.tag, members);
+                } else {
+                    encoded = vsemantic(raw);
+                }
+                children.push_back(node(entry.tag, {encoded}));
+            }
+            tree = node(plan.type_tag, children);
+        }
+    }
+    if ((size_t)value >= tree_of_value.size()) tree_of_value.resize(vals.size() + 4096, -1);
+    tree_of_value[(size_t)value] = tree;
+    return tree;
+}
+
+// observation trees of values (policy._observation_semantics)
+std::unordered_map<int32_t, std::unordered_map<int32_t, int32_t>> handle_tables;  // observation -> handle string -> entry
+
+int32_t vsubject(int32_t observation, int32_t ref) {
+    if (observation < 0 || V(ref).kind == V_NONE) return node("unresolved_reference");
+    auto &table = handle_tables[observation];
+    if (table.empty()) {
+        for (int32_t group : {field(observation, T.o_heroes), field(observation, T.o_towns), field(observation, T.o_objects)})
+            for (int32_t entry : V(group).items)
+                table.emplace(V(vfield(entry, V(entry).type, "handle")).string, entry);
+        table.emplace(-1, -1);  // marks the table as built (no handle is string -1)
+    }
+    if (handle_tables.size() > 4096) { std::unordered_map<int32_t, int32_t> keep = table; handle_tables.clear(); handle_tables[observation] = keep; }
+    auto &built = handle_tables[observation];
+    auto found = built.find(V(ref).string);
+    if (found == built.end() || V(ref).kind != V_STR) return node("unresolved_reference");
+    return vsemantic(found->second);
+}
+
+std::unordered_map<int32_t, int32_t> observation_trees;
+
+int32_t vobservation_tree(int32_t observation) {
+    auto known = observation_trees.find(observation);
+    if (known != observation_trees.end()) return known->second;
+    const int32_t window = field(observation, T.o_window);
+    const bool windowed = V(window).kind == V_RECORD;
+    std::vector<int32_t> heroes, towns;
+    for (int32_t hero : V(field(observation, T.o_heroes)).items) heroes.push_back(vsemantic(hero));
+    for (int32_t town : V(field(observation, T.o_towns)).items) towns.push_back(vsemantic(town));
+    const int32_t size_node = node("size", {vsemantic(field(observation, T.o_size))});
+    const int32_t resource_node = node("resources", {vsemantic(vfield(observation, T.observation, "resources"))});
+    const int32_t hero_set = sorted_set("heroes", heroes), town_set = sorted_set("towns", towns);
+    int32_t window_node = vsemantic(window);
+    if (windowed) {
+        const int32_t panel = field(window, T.w_capability_panel);
+        if (V(panel).kind == V_RECORD) {
+            const int32_t panel_type = V(panel).type;
+            std::vector<int32_t> owned, bound;
+            const int32_t owned_tag = text_node("owned_item");
+            for (int32_t item : V(vfield(panel, panel_type, "items")).items)
+                owned.push_back(node(owned_tag, {vsemantic(item), vsubject(observation, vfield(item, V(item).type, "subject"))}));
+            for (int32_t choice : V(vfield(panel, panel_type, "choices")).items) {
+                const int32_t choice_type = V(choice).type;
+                const int32_t destination = vfield(choice, choice_type, "destination");
+                bound.push_back(node("capability_choice", {vsemantic(choice), node("actor", {vsubject(observation, vfield(choice, choice_type, "subject"))}),
+                                                           V(destination).kind != V_NONE ? node("recipient", {vsubject(observation, destination)}) : node("no_recipient")}));
+            }
+            window_node = node("capability_window", {window_node, sorted_set("bound_items", owned), sorted_set("bound_choices", bound),
+                                                     node("inspected_object", {vsubject(observation, vfield(panel, panel_type, "inspected_subject"))})});
+        }
+    }
+    const int32_t context = windowed ? field(window, T.w_context) : default_context();
+    const int32_t subject_node = node("current_window_subject", {vsubject(observation, vfield(context, T.context, "subject"))});
+    int32_t own = node("observation", {size_node, resource_node, hero_set, town_set, window_node, subject_node});
+    if (windowed && V(field(window, T.w_armies)).kind != V_NONE) {
+        std::vector<int32_t> bindings;
+        const int32_t tag = text_node("displayed_army");
+        for (int32_t army : V(field(window, T.w_armies)).items)
+            bindings.push_back(node(tag, {vsemantic(army), vsubject(observation, vfield(army, V(army).type, "subject"))}));
+        const int32_t stack = field(window, T.w_stack_panel);
+        if (V(stack).kind == V_RECORD) {
+            const int32_t parent = vfield(stack, V(stack).type, "parent_context");
+            const int32_t first = vsubject(observation, vfield(parent, T.context, "subject"));
+            const int32_t second = str_is(field(parent, T.c_kind), "exchange") ? vsubject(observation, vfield(parent, T.context, "selection")) : node("absent");
+            bindings.push_back(node("stack_parent", {first, second}));
+        }
+        if (str_is(field(context, T.c_kind), "exchange"))
+            bindings.push_back(node("exchange_partner", {vsubject(observation, vfield(context, T.context, "selection"))}));
+        own = node("management_observation", {own, sorted_set("army_bindings", bindings)});
+    }
+    const int32_t armies = field(observation, T.o_own_armies);
+    if (V(armies).kind != V_NONE) {
+        std::vector<int32_t> bindings;
+        const int32_t tag = text_node("own_army");
+        for (int32_t army : V(armies).items)
+            bindings.push_back(node(tag, {vsemantic(army), vsubject(observation, vfield(army, V(army).type, "subject"))}));
+        own = node("passive_army_observation", {own, sorted_set("own_army_bindings", bindings)});
+    }
+    if (observation_trees.size() > 65536) observation_trees.clear();
+    observation_trees[observation] = own;
+    return own;
+}
+
+PyObject *py_value_tree(PyObject *, PyObject *args) {  // value_tree(value id, observation?): tests
+    long value, observation_flag = 0;
+    if (!PyArg_ParseTuple(args, "l|l", &value, &observation_flag)) return nullptr;
+    try {
+        prepare_types();
+        PyObject *tree = python_tree(observation_flag ? vobservation_tree((int32_t)value) : vsemantic((int32_t)value));
+        Py_INCREF(tree);
+        return tree;
+    } catch (Fail &) {
+        return nullptr;
+    }
+}
+
+// == the seat's encoder: payload trees of frames (policy.ContextualEncoder.encode) ================================
+
+int32_t first_slot(int32_t armies, int32_t ref, int32_t *army_out) {  // contract.army_slot: the first army and slot
+    for (int32_t army : V(armies).items) {
+        const int32_t army_type = V(army).type;
+        for (int32_t slot : V(vfield(army, army_type, "slots")).items)
+            if (vfield(slot, V(slot).type, "ref") == ref) { *army_out = army; return slot; }
+    }
+    *army_out = -1;
+    return -1;
+}
+
+int32_t varmy_slot(int32_t observation, int32_t ref, bool receiving) {  // policy._describe_army_slot
+    const int32_t window = observation >= 0 ? field(observation, T.o_window) : v_none;
+    int32_t army = -1, slot = -1;
+    if (V(window).kind == V_RECORD && V(field(window, T.w_armies)).kind != V_NONE) {
+        slot = first_slot(field(window, T.w_armies), ref, &army);
+    } else {
+        const int32_t panel = V(window).kind == V_RECORD ? field(window, T.w_town_panel) : v_none;
+        const int32_t exchange = V(panel).kind == V_RECORD ? vfield(panel, V(panel).type, "armies") : v_none;
+        if (V(exchange).kind == V_RECORD) {
+            army = vfield(exchange, V(exchange).type, receiving ? "destination" : "source");
+            if (V(army).kind == V_RECORD)
+                for (int32_t item : V(vfield(army, V(army).type, "slots")).items)
+                    if (vfield(item, V(item).type, "ref") == ref) { slot = item; break; }
+        }
+    }
+    if (slot < 0) { PyErr_SetString(PyExc_ValueError, "Army slot has no current displayed semantic binding"); throw Fail(); }
+    const int32_t army_type = V(army).type;
+    return node("army_slot", {node("role", {vtext(vfield(army, army_type, "role"))}),
+                              node("owner_subject", {vsubject(observation, vfield(army, army_type, "subject"))}),
+                              node("requires_nonempty", {vsemantic(vfield(army, army_type, "requires_nonempty"))}), vsemantic(slot)});
+}
+
+int32_t vselection(int32_t observation, int32_t ref) {  // policy._selection
+    const int32_t unresolved = node("unresolved_selection");
+    if (observation < 0) return unresolved;
+    const int32_t window = field(observation, T.o_window);
+    if (V(window).kind != V_RECORD) return unresolved;
+    const int32_t capability = field(window, T.w_capability_panel);
+    if (V(capability).kind == V_RECORD) {
+        for (int32_t choice : V(vfield(capability, V(capability).type, "choices")).items) {
+            const int32_t choice_type = V(choice).type;
+            if (vfield(choice, choice_type, "ref") != ref) continue;
+            const int32_t destination = vfield(choice, choice_type, "destination");
+            return node("capability_choice", {vsemantic(choice), node("actor", {vsubject(observation, vfield(choice, choice_type, "subject"))}),
+                                              V(destination).kind != V_NONE ? node("recipient", {vsubject(observation, destination)}) : node("no_recipient")});
+        }
+        return unresolved;
+    }
+    const int32_t dialog = field(window, T.w_dialog_panel);
+    if (V(dialog).kind == V_RECORD) {
+        for (int32_t choice : V(vfield(dialog, V(dialog).type, "choices")).items)
+            if (vfield(choice, V(choice).type, "ref") == ref) return vdialog_choice(dialog, choice);
+        return unresolved;
+    }
+    const int32_t stack = field(window, T.w_stack_panel);
+    if (V(stack).kind == V_RECORD) {
+        for (int32_t offer : V(vfield(stack, V(stack).type, "offers")).items)
+            if (vfield(offer, V(offer).type, "ref") == ref) return vsemantic(offer);
+        return unresolved;
+    }
+    const int32_t panel = field(window, T.w_town_panel);
+    if (V(panel).kind != V_RECORD) return unresolved;
+    const int32_t panel_type = V(panel).type;
+    std::vector<int32_t> entries;
+    for (int32_t item : V(vfield(panel, panel_type, "controls")).items) entries.push_back(item);
+    for (int32_t item : V(vfield(panel, panel_type, "buildings")).items) entries.push_back(item);
+    const int32_t building = vfield(panel, panel_type, "building");
+    if (V(building).kind == V_RECORD) entries.push_back(building);
+    const int32_t recruitment = vfield(panel, panel_type, "recruitment");
+    if (V(recruitment).kind == V_RECORD) for (int32_t item : V(vfield(recruitment, V(recruitment).type, "offers")).items) entries.push_back(item);
+    const int32_t tavern = vfield(panel, panel_type, "tavern");
+    if (V(tavern).kind == V_RECORD) for (int32_t item : V(vfield(tavern, V(tavern).type, "offers")).items) entries.push_back(item);
+    for (int32_t entry : entries) if (vfield(entry, V(entry).type, "ref") == ref) return vsemantic(entry);
+    return unresolved;
+}
+
+bool kind_in(int32_t kind, std::initializer_list<const char *> names) {
+    for (const char *name : names) if (str_is(kind, name)) return true;
+    return false;
+}
+
+int32_t vaction(int32_t action, int32_t observation) {  // policy._action
+    const int32_t kind = field(action, field_of(T.action, "kind"));
+    std::vector<int32_t> children = {vtext(kind), node("decision_subject", {vsubject(observation, vfield(action, T.action, "subject"))})};
+    for (const char *key : {"x", "y", "count"}) children.push_back(node(key, {vsemantic(vfield(action, T.action, key))}));
+    children.push_back(node("panel", {vsemantic(vfield(action, T.action, "panel"))}));
+    const int32_t selection = vfield(action, T.action, "selection");
+    const bool slots = kind_in(kind, {"transfer_stack", "split_stack", "merge_stacks", "swap_stacks", "open_stack"});
+    children.push_back(node("decision_selection", {slots ? varmy_slot(observation, selection, false) : vselection(observation, selection)}));
+    const int32_t destination = vfield(action, T.action, "destination");
+    if (V(destination).kind != V_NONE) {
+        if (kind_in(kind, {"transfer_stack", "split_stack", "merge_stacks", "swap_stacks"})) {
+            children.push_back(node("destination", {varmy_slot(observation, destination, true)}));
+        } else {
+            const int32_t panel = field(field(observation, T.o_window), T.w_town_panel);
+            const int32_t recruitment = vfield(panel, V(panel).type, "recruitment");
+            const int32_t target = V(recruitment).kind == V_RECORD ? vfield(recruitment, V(recruitment).type, "destination") : -1;
+            if (target < 0 || vfield(target, V(target).type, "ref") != destination) {
+                PyErr_SetString(PyExc_ValueError, "Action destination has no displayed semantic binding");
+                throw Fail();
+            }
+            children.push_back(node("destination", {vsemantic(target)}));
+        }
+    }
+    return node("action", children);
+}
+
+// the payload of a frame, -1 for the bookkeeping kinds the model skips (policy._METADATA)
+int32_t vpayload(const NFrame &frame, int32_t basis, int32_t observation) {
+    if (frame.kind == F_ISSUED || frame.kind == F_SUPERSEDED) return -1;
+    std::vector<int32_t> children = {node("day", {number_node((double)frame.day)}), text_node(KIND_NAMES[frame.kind])};
+    if (frame.action >= 0) children.push_back(vaction(frame.action, basis));
+    if (frame.event >= 0) {
+        children.push_back(vsemantic(frame.event));
+        const int32_t subject = vfield(frame.event, T.event, "subject"), partner = vfield(frame.event, T.event, "partner");
+        if (V(subject).kind != V_NONE) children.push_back(node("prior_observation_subject", {vsubject(observation, subject)}));
+        if (V(partner).kind != V_NONE) children.push_back(node("prior_observation_partner", {vsubject(observation, partner)}));
+    }
+    if (frame.result >= 0) children.push_back(vsemantic(frame.result));
+    if (frame.context >= 0) {
+        children.push_back(vsemantic(frame.context));
+        children.push_back(node("prior_observation_subject", {vsubject(observation, vfield(frame.context, T.context, "subject"))}));
+        if (str_is(field(frame.context, T.c_kind), "exchange"))
+            children.push_back(node("prior_observation_partner", {vsubject(observation, vfield(frame.context, T.context, "selection"))}));
+    }
+    if (frame.accepted >= 0) children.push_back(node("accepted", {truth(frame.accepted == 1)}));
+    if (frame.outcome >= 0) children.push_back(node("observed_outcome", {text_node(strings[(size_t)frame.outcome].data(), (Py_ssize_t)strings[(size_t)frame.outcome].size())}));
+    return node("frame", children);
+}
+
+PyObject *py_payloads(PyObject *, PyObject *object) {  // payloads(producer): each frame's payload tree (tests)
+    if (Py_TYPE(object) != &ProducerType) { PyErr_SetString(PyExc_TypeError, "a Producer"); return nullptr; }
+    Producer *producer = (Producer *)object;
+    try {
+        prepare_types();
+        Ref out(PyList_New(0));
+        int32_t decision_observation = -1, observation = -1;
+        bool held = false;
+        for (const NFrame &frame : *producer->frames) {
+            const int32_t basis = held ? decision_observation : observation;
+            const int32_t payload = vpayload(frame, basis, observation);
+            if (frame.kind == F_DECISION) { held = true; decision_observation = frame.observation; }
+            else if (frame.kind == F_RESULT || frame.kind == F_SUPERSEDED) held = false;
+            if (frame.observation >= 0) observation = frame.observation;
+            if (PyList_Append(out.get(), payload >= 0 ? python_tree(payload) : Py_None)) throw Fail();
+        }
+        Py_INCREF(out.get());
+        return out.get();
+    } catch (Fail &) {
+        return nullptr;
+    }
+}
+
+// == the interaction guard (heroes.game.guard) =====================================================================
+// Keys of strings are joined with \x1f, below every character the engine sends, so joined keys compare as the
+// tuples do; a None element is \x01NONE\x01.
+
+typedef std::string Key;
+const char SEP = '\x1f';
+const std::string NONE_ELEMENT = "\x01NONE\x01";
+
+std::string text_or_none(int32_t value) {
+    const Val &item = V(value);
+    if (item.kind == V_NONE) return NONE_ELEMENT;
+    if (item.kind == V_STR) return strings[(size_t)item.string];
+    if (item.kind == V_INT) return std::to_string(item.number);
+    if (item.kind == V_BOOL) return item.number ? "True" : "False";
+    PyErr_SetString(PyExc_ValueError, "guard key of an unexpected value");
+    throw Fail();
+}
+
+std::string str_of(int32_t value) {  // "" if None else str(value) (guard._command_key)
+    const Val &item = V(value);
+    if (item.kind == V_NONE) return "";
+    return text_or_none(value);
+}
+
+Key join(const std::vector<std::string> &parts) {
+    Key out;
+    for (size_t i = 0; i < parts.size(); i++) { if (i) out.push_back(SEP); out += parts[i]; }
+    return out;
+}
+
+std::vector<std::string> split(const Key &key) {
+    std::vector<std::string> out;
+    size_t start = 0;
+    while (true) {
+        const size_t found = key.find(SEP, start);
+        out.push_back(key.substr(start, found == std::string::npos ? std::string::npos : found - start));
+        if (found == std::string::npos) break;
+        start = found + 1;
+    }
+    return out;
+}
+
+struct Coordinate { std::string subject; int64_t x, y; bool operator<(const Coordinate &o) const { return std::tie(subject, x, y) < std::tie(o.subject, o.x, o.y); }
+                    bool operator==(const Coordinate &o) const { return subject == o.subject && x == o.x && y == o.y; } };
+struct SwapKey { std::string left; int64_t a; std::string right; int64_t b;
+                 bool operator<(const SwapKey &o) const { return std::tie(left, a, right, b) < std::tie(o.left, o.a, o.right, o.b); }
+                 bool operator==(const SwapKey &o) const { return left == o.left && a == o.a && right == o.right && b == o.b; } };
+
+struct Support {
+    std::vector<Key> navigation;
+    std::vector<std::string> management, movable;
+    std::vector<Coordinate> blocked;
+    bool has_previous = false;
+    Key previous;
+    std::vector<SwapKey> swaps;
+    std::vector<std::string> windows;
+    bool exhausted = false;
+};
+
+struct GF {  // fields the guard reads
+    int32_t action_kind, action_subject, action_panel, action_selection, action_destination, action_x, action_y, action_count;
+    int32_t offers_context, offers_panel, offers_armies, offers_stack_panel, offers_capability_panel, offers_town_refs, offers_dialog_panel;
+    int32_t context_panel, context_subject, context_selection, army_subject, army_slots, army_role, army_requires_nonempty;
+    int32_t slot_ref, slot_slot, slot_creature, slot_count, hero_position, hero_movement, own_slot_slot, own_slot_creature, own_slot_count;
+    int32_t result_accepted, result_status, result_position, result_movement;
+    bool ready = false;
+} G;
+
+void prepare_guard() {
+    if (G.ready) return;
+    prepare_types();
+    G.action_kind = field_of(T.action, "kind"); G.action_subject = field_of(T.action, "subject"); G.action_panel = field_of(T.action, "panel");
+    G.action_selection = field_of(T.action, "selection"); G.action_destination = field_of(T.action, "destination");
+    G.action_x = field_of(T.action, "x"); G.action_y = field_of(T.action, "y"); G.action_count = field_of(T.action, "count");
+    G.offers_context = field_of(T.offers, "context"); G.offers_panel = field_of(T.offers, "panel"); G.offers_armies = field_of(T.offers, "armies");
+    G.offers_stack_panel = field_of(T.offers, "stack_panel"); G.offers_capability_panel = field_of(T.offers, "capability_panel");
+    G.offers_town_refs = field_of(T.offers, "town_refs"); G.offers_dialog_panel = field_of(T.offers, "dialog_panel");
+    G.context_panel = field_of(T.context, "panel"); G.context_subject = field_of(T.context, "subject"); G.context_selection = field_of(T.context, "selection");
+    const int32_t army = type_named("ArmyView"), slot = type_named("ArmySlot"), own = type_named("OwnArmyStack");
+    G.army_subject = field_of(army, "subject"); G.army_slots = field_of(army, "slots"); G.army_role = field_of(army, "role");
+    G.army_requires_nonempty = field_of(army, "requires_nonempty");
+    G.slot_ref = field_of(slot, "ref"); G.slot_slot = field_of(slot, "slot"); G.slot_creature = field_of(slot, "creature"); G.slot_count = field_of(slot, "count");
+    G.hero_position = field_of(T.hero, "position"); G.hero_movement = field_of(T.hero, "movement");
+    G.own_slot_slot = field_of(own, "slot"); G.own_slot_creature = field_of(own, "creature"); G.own_slot_count = field_of(own, "count");
+    G.result_accepted = field_of(T.result, "accepted"); G.result_status = field_of(T.result, "status");
+    G.result_position = field_of(T.result, "position"); G.result_movement = field_of(T.result, "movement");
+    G.ready = true;
+}
+
+inline int64_t num(int32_t value) { return V(value).number; }
+inline bool none(int32_t value) { return V(value).kind == V_NONE; }
+inline const std::string &str(int32_t value) { return strings[(size_t)V(value).string]; }
+
+bool mandatory(int32_t offers) {  // guard._mandatory
+    if (str_is(field(field(offers, G.offers_context), T.c_kind), "dialog")) return true;
+    const int32_t panel = field(offers, G.offers_capability_panel);
+    return !none(panel) && V(vfield(panel, V(panel).type, "mandatory")).number != 0;
+}
+
+const char *NAVIGATION_KINDS[] = {"open_hero", "open_town", "open_panel", "open_building", "open_stack", "open_capability",
+                                  "select_recruit", "select_hero", "select_upgrade", "inspect_object"};
+const char *MANAGEMENT_KINDS_LIST[] = {"split_stack", "merge_stacks", "swap_stacks", "transfer_stack", "swap_garrison",
+                                       "move_artifact", "assemble_artifact", "disassemble_artifact"};
+
+bool in_list(int32_t kind, const char *const *list, size_t count) {
+    for (size_t i = 0; i < count; i++) if (str_is(kind, list[i])) return true;
+    return false;
+}
+bool navigation_kind(int32_t kind) { return in_list(kind, NAVIGATION_KINDS, 10); }
+bool management_kind(int32_t kind) { return in_list(kind, MANAGEMENT_KINDS_LIST, 8); }
+
+int32_t find_by_ref(int32_t items, int32_t ref) {  // next(item for item in items if item.ref == ref)
+    for (int32_t item : V(items).items) if (vfield(item, V(item).type, "ref") == ref) return item;
+    PyErr_SetString(PyExc_StopIteration, "no item with that ref");
+    throw Fail();
+}
+
+bool nav_key(int32_t action, int32_t offers, Key &out) {  // guard.nav_key; false for None
+    const int32_t kind = field(action, G.action_kind);
+    if (!navigation_kind(kind) || mandatory(offers)) return false;
+    const std::string kind_text = str(kind);
+    const int32_t subject = field(action, G.action_subject);
+    std::vector<std::string> parts = {kind_text, none(subject) ? std::string() : str(subject)};
+    if (V(subject).kind == V_STR && str(subject).empty()) parts[1] = "";
+    if (kind_text == "open_hero" || kind_text == "open_town") { out = join(parts); return true; }
+    if (kind_text == "open_capability") { parts.push_back(text_or_none(field(action, G.action_panel))); out = join(parts); return true; }
+    const int32_t panel = field(offers, G.offers_panel);
+    const int32_t selection = field(action, G.action_selection);
+    if (kind_text == "open_panel") {
+        const int32_t which = field(action, G.action_panel);
+        parts.push_back(text_or_none(which));
+        if (!str_is(which, "recruitment")) { out = join(parts); return true; }
+        int index = 0;
+        bool found = false;
+        for (int32_t control : V(vfield(panel, V(panel).type, "controls")).items) {
+            if (!str_is(vfield(control, V(control).type, "panel"), "recruitment")) continue;
+            if (vfield(control, V(control).type, "ref") == selection) { found = true; break; }
+            index++;
+        }
+        if (!found) { PyErr_SetString(PyExc_StopIteration, "recruitment control"); throw Fail(); }
+        parts.push_back(std::to_string(index));
+        out = join(parts);
+        return true;
+    }
+    if (kind_text == "open_building") {
+        const int32_t item = find_by_ref(vfield(panel, V(panel).type, "buildings"), selection);
+        parts.push_back(text_or_none(vfield(item, V(item).type, "name_text_id")));
+    } else if (kind_text == "select_recruit") {
+        const int32_t recruitment = vfield(panel, V(panel).type, "recruitment");
+        const int32_t item = find_by_ref(vfield(recruitment, V(recruitment).type, "offers"), selection);
+        parts.push_back(text_or_none(vfield(item, V(item).type, "creature")));
+    } else if (kind_text == "select_hero") {
+        const int32_t tavern = vfield(panel, V(panel).type, "tavern");
+        const int32_t item = find_by_ref(vfield(tavern, V(tavern).type, "offers"), selection);
+        parts.push_back(text_or_none(vfield(item, V(item).type, "name_text_id")));
+        parts.push_back(text_or_none(vfield(item, V(item).type, "portrait")));
+    } else if (kind_text == "open_stack") {
+        int32_t army;
+        const int32_t slot = first_slot(field(offers, G.offers_armies), selection, &army);
+        if (slot < 0) { PyErr_SetString(PyExc_AttributeError, "open_stack slot"); throw Fail(); }
+        parts = {kind_text, str(field(army, G.army_subject)), std::to_string(num(field(slot, G.slot_slot)))};
+    } else if (kind_text == "select_upgrade") {
+        const int32_t stack = field(offers, G.offers_stack_panel);
+        const int32_t item = find_by_ref(vfield(stack, V(stack).type, "offers"), selection);
+        const int32_t source = vfield(stack, V(stack).type, "source");
+        parts.push_back(text_or_none(vfield(source, V(source).type, "slot")));
+        parts.push_back(text_or_none(vfield(item, V(item).type, "creature")));
+    } else {
+        const int32_t capability = field(offers, G.offers_capability_panel);
+        const int32_t item = find_by_ref(vfield(capability, V(capability).type, "choices"), selection);
+        parts.push_back(text_or_none(vfield(item, V(item).type, "destination")));
+    }
+    out = join(parts);
+    return true;
+}
+
+Key command_key(int32_t action, int32_t offers) {  // guard._command_key
+    const int32_t kind = field(action, G.action_kind);
+    const std::string kind_text = str(kind);
+    const int32_t context = field(offers, G.offers_context);
+    std::vector<std::string> parts = {kind_text, str_of(field(context, T.c_kind)), str_of(field(context, G.context_panel)),
+                                      str_of(field(context, G.context_subject)), str_of(field(action, G.action_subject))};
+    Key navigation;
+    const int32_t panel = field(offers, G.offers_panel);
+    const int32_t selection = field(action, G.action_selection);
+    if (nav_key(action, offers, navigation)) {
+        std::vector<std::string> nav = split(navigation);
+        for (size_t i = 2; i < nav.size(); i++) parts.push_back(nav[i] == NONE_ELEMENT ? std::string() : nav[i]);
+    } else if (kind_text == "move_to") {
+        parts.push_back(str_of(field(action, G.action_x)));
+        parts.push_back(str_of(field(action, G.action_y)));
+    } else if (kind_text == "recruit") {
+        const int32_t recruitment = vfield(panel, V(panel).type, "recruitment");
+        const int32_t card = find_by_ref(vfield(recruitment, V(recruitment).type, "offers"), selection);
+        const int32_t destination = vfield(recruitment, V(recruitment).type, "destination");
+        parts.push_back(str_of(vfield(card, V(card).type, "creature")));
+        parts.push_back(str_of(vfield(destination, V(destination).type, "role")));
+    } else if (kind_text == "construct") {
+        const int32_t building = vfield(panel, V(panel).type, "building");
+        parts.push_back(str_of(vfield(building, V(building).type, "name_text_id")));
+    } else if (kind_text == "hire_hero") {
+        const int32_t tavern = vfield(panel, V(panel).type, "tavern");
+        const int32_t card = find_by_ref(vfield(tavern, V(tavern).type, "offers"), selection);
+        parts.push_back(str_of(vfield(card, V(card).type, "name_text_id")));
+        parts.push_back(str_of(vfield(card, V(card).type, "portrait")));
+    } else if (kind_text == "trade_resource" || kind_text == "buy_artifact" || kind_text == "move_artifact" || kind_text == "assemble_artifact"
+               || kind_text == "disassemble_artifact" || kind_text == "cast_adventure_spell" || kind_text == "choose_level_up"
+               || kind_text == "choose_spell_target" || kind_text == "cancel_spell_target" || kind_text == "inspect_object") {  // CAPABILITY_ACTIONS
+        const int32_t capability = field(offers, G.offers_capability_panel);
+        const int32_t choice = find_by_ref(vfield(capability, V(capability).type, "choices"), selection);
+        const int32_t choice_type = V(choice).type;
+        for (const char *name : {"artifact", "slot", "destination", "destination_slot", "spell", "skill", "skill_level",
+                                 "resource_from", "resource_to", "x", "y"})
+            parts.push_back(str_of(vfield(choice, choice_type, name)));
+    } else {
+        parts.push_back(str_of(selection));
+        parts.push_back(str_of(field(action, G.action_destination)));
+    }
+    parts.push_back(str_of(field(action, G.action_count)));
+    return join(parts);
+}
+
+bool role_in(int32_t army, const char *a, const char *b) {
+    const int32_t role = field(army, G.army_role);
+    return str_is(role, a) || str_is(role, b);
+}
+bool allied_role(int32_t army) { return role_in(army, "allied_garrison", "allied_locked_garrison"); }
+bool locked_role(int32_t army) { return role_in(army, "locked_garrison", "allied_locked_garrison"); }
+int nonempty_slots(int32_t army) {
+    int count = 0;
+    for (int32_t slot : V(field(army, G.army_slots)).items) count += num(field(slot, G.slot_count)) != 0;
+    return count;
+}
+
+int64_t swap_maximum(int32_t source_army, int32_t source, int32_t destination_army, int32_t destination) {  // _operation_maximum("swap_stacks")
+    const bool crossing = field(source_army, G.army_subject) != field(destination_army, G.army_subject);
+    const int64_t source_count = num(field(source, G.slot_count)), destination_count = num(field(destination, G.slot_count));
+    if (source_count && (allied_role(source_army) || (crossing && locked_role(source_army)))) return 0;
+    if (destination_count && (allied_role(destination_army) || (crossing && locked_role(destination_army)))) return 0;
+    if (!source_count && !destination_count) return 0;
+    const bool nonempty_source = V(field(source_army, G.army_requires_nonempty)).number != 0;
+    const bool nonempty_destination = V(field(destination_army, G.army_requires_nonempty)).number != 0;
+    if (crossing && nonempty_source && source_count && !destination_count && nonempty_slots(source_army) == 1) return 0;
+    if (crossing && nonempty_destination && destination_count && !source_count && nonempty_slots(destination_army) == 1) return 0;
+    return 1;
+}
+
+struct SlotPlace { int32_t army, slot; };
+
+std::unordered_map<int32_t, SlotPlace> slot_places(int32_t armies) {  // army_slot's index: the first slot of each ref
+    std::unordered_map<int32_t, SlotPlace> found;
+    for (int32_t army : V(armies).items)
+        for (int32_t slot : V(field(army, G.army_slots)).items) found.emplace(field(slot, G.slot_ref), SlotPlace{army, slot});
+    return found;
+}
+
+SwapKey swap_key_of(const SlotPlace &left, const SlotPlace &right) {  // guard._swap_key
+    std::pair<std::string, int64_t> first(str(field(left.army, G.army_subject)), num(field(left.slot, G.slot_slot)));
+    std::pair<std::string, int64_t> second(str(field(right.army, G.army_subject)), num(field(right.slot, G.slot_slot)));
+    if (second < first) std::swap(first, second);
+    return SwapKey{first.first, first.second, second.first, second.second};
+}
+
+const std::vector<SwapKey> &swap_keys(int32_t armies) {  // guard._swap_keys: a function of the armies value
+    static std::unordered_map<int32_t, std::vector<SwapKey>> known;
+    auto found = known.find(armies);
+    if (found != known.end()) return found->second;
+    if (known.size() >= 4096) known.clear();
+    std::vector<SwapKey> keys;
+    std::set<SwapKey> seen;
+    const auto places = slot_places(armies);
+    for (int32_t first : V(armies).items)
+        for (int32_t source : V(field(first, G.army_slots)).items) {
+            const int32_t source_ref = field(source, G.slot_ref);
+            const SlotPlace &origin = places.at(source_ref);
+            const bool empty = num(field(origin.slot, G.slot_count)) == 0;
+            for (int32_t second : V(armies).items)
+                for (int32_t destination : V(field(second, G.army_slots)).items) {
+                    const int32_t destination_ref = field(destination, G.slot_ref);
+                    if (source_ref == destination_ref) continue;
+                    const SlotPlace &target = places.at(destination_ref);
+                    if (empty && num(field(target.slot, G.slot_count)) == 0) continue;
+                    if (swap_maximum(origin.army, origin.slot, target.army, target.slot) <= 0) continue;
+                    SwapKey key = swap_key_of(origin, target);
+                    if (seen.insert(key).second) keys.push_back(key);
+                }
+        }
+    return known.emplace(armies, std::move(keys)).first->second;
+}
+
+typedef std::vector<std::pair<int32_t, int64_t>> LayoutRow;  // (creature value, count) per slot
+typedef std::vector<std::pair<std::string, LayoutRow>> Layout;  // sorted by subject
+
+Layout army_layout(int32_t observation, int32_t armies) {  // guard._army_layout
+    std::map<std::string, LayoutRow> rows;
+    const int32_t own = field(observation, T.o_own_armies);
+    if (!none(own))
+        for (int32_t army : V(own).items) {
+            LayoutRow slots(7, std::make_pair(v_none, (int64_t)0));
+            const int32_t type = V(army).type;
+            for (int32_t slot : V(vfield(army, type, "slots")).items) {
+                const int64_t index = num(field(slot, G.own_slot_slot));
+                if (index < -7 || index >= 7) { PyErr_SetString(PyExc_IndexError, "own army slot"); throw Fail(); }
+                slots[(size_t)(index < 0 ? index + 7 : index)] = {field(slot, G.own_slot_creature), num(field(slot, G.own_slot_count))};
+            }
+            rows[str(vfield(army, type, "subject"))] = std::move(slots);
+        }
+    if (!none(armies))
+        for (int32_t army : V(armies).items) {
+            LayoutRow slots;
+            for (int32_t slot : V(field(army, G.army_slots)).items) slots.push_back({field(slot, G.slot_creature), num(field(slot, G.slot_count))});
+            rows[str(field(army, G.army_subject))] = std::move(slots);
+        }
+    return Layout(rows.begin(), rows.end());
+}
+
+std::vector<SwapKey> blocked_swaps(int32_t observation, int32_t offers, const std::set<Layout> &seen) {  // guard._blocked_swaps
+    const int32_t armies = field(offers, G.offers_armies);
+    std::vector<SwapKey> out;
+    if (none(armies) || V(armies).items.empty()) return out;
+    const Layout layout = army_layout(observation, armies);
+    std::unordered_map<std::string, size_t> places;
+    for (size_t i = 0; i < layout.size(); i++) places[layout[i].first] = i;
+    for (const SwapKey &key : swap_keys(armies)) {
+        const size_t i = places.at(key.left), j = places.at(key.right);
+        Layout rows = layout;
+        auto at = [](LayoutRow &row, int64_t index) -> std::pair<int32_t, int64_t> & {
+            const int64_t size = (int64_t)row.size();
+            if (index < -size || index >= size) { PyErr_SetString(PyExc_IndexError, "layout slot"); throw Fail(); }
+            return row[(size_t)(index < 0 ? index + size : index)];
+        };
+        const auto x = at(rows[i].second, key.a), y = at(rows[j].second, key.b);
+        at(rows[i].second, key.a) = y;
+        at(rows[j].second, key.b) = x;
+        if (seen.count(rows)) out.push_back(key);
+    }
+    std::sort(out.begin(), out.end());
+    out.erase(std::unique(out.begin(), out.end()), out.end());
+    return out;
+}
+
+std::vector<std::string> management_subjects(int32_t action, int32_t offers) {  // guard.management_subjects
+    const int32_t kind = field(action, G.action_kind);
+    std::vector<std::string> out;
+    if (!management_kind(kind)) return out;
+    std::set<std::string> subjects;
+    auto subject_text = [](int32_t value) { return none(value) ? NONE_ELEMENT : str(value); };
+    if (str_is(kind, "move_artifact") || str_is(kind, "assemble_artifact") || str_is(kind, "disassemble_artifact")) {
+        const int32_t capability = field(offers, G.offers_capability_panel);
+        const int32_t choice = find_by_ref(vfield(capability, V(capability).type, "choices"), field(action, G.action_selection));
+        subjects.insert(subject_text(vfield(choice, V(choice).type, "subject")));
+        const int32_t destination = vfield(choice, V(choice).type, "destination");
+        if (!none(destination)) subjects.insert(str(destination));
+    } else if (str_is(kind, "swap_garrison")) {
+        subjects.insert(subject_text(field(action, G.action_subject)));
+        const int32_t armies = field(offers, G.offers_armies);
+        if (!none(armies)) for (int32_t army : V(armies).items) subjects.insert(str(field(army, G.army_subject)));
+    } else {
+        int32_t armies = field(offers, G.offers_armies);
+        std::vector<int32_t> list;
+        if (!none(armies)) list = V(armies).items;
+        const int32_t panel = field(offers, G.offers_panel);
+        if (str_is(kind, "transfer_stack") && !none(panel)) {
+            const int32_t exchange = vfield(panel, V(panel).type, "armies");
+            if (!none(exchange)) {
+                list = {vfield(exchange, V(exchange).type, "source")};
+                const int32_t destination = vfield(exchange, V(exchange).type, "destination");
+                if (!none(destination)) list.push_back(destination);
+            }
+        }
+        for (int32_t ref : {field(action, G.action_selection), field(action, G.action_destination)})
+            for (int32_t army : list) {
+                bool found = false;
+                for (int32_t slot : V(field(army, G.army_slots)).items) if (field(slot, G.slot_ref) == ref) { found = true; break; }
+                if (found) { subjects.insert(str(field(army, G.army_subject))); break; }
+            }
+    }
+    if (subjects.empty()) subjects.insert(subject_text(field(action, G.action_subject)));
+    return std::vector<std::string>(subjects.begin(), subjects.end());
+}
+
+const std::vector<int32_t> &world_of(int32_t observation) {  // guard._world, as value ids (equal worlds, equal ids)
+    static std::unordered_map<int32_t, std::vector<int32_t>> known;
+    auto found = known.find(observation);
+    if (found != known.end()) return found->second;
+    if (known.size() >= 65536) known.clear();
+    std::vector<int32_t> world;
+    world.push_back(field(observation, T.o_size));
+    std::vector<int32_t> tiles = V(field(observation, T.o_tiles)).items;
+    auto position = [](int32_t tile) {
+        std::vector<int64_t> out;
+        for (int32_t item : V(field(tile, T.tile_position)).items) out.push_back(num(item));
+        return out;
+    };
+    std::stable_sort(tiles.begin(), tiles.end(), [&](int32_t a, int32_t b) { return position(a) < position(b); });
+    world.push_back(-1); world.insert(world.end(), tiles.begin(), tiles.end());
+    std::vector<int32_t> objects = V(field(observation, T.o_objects)).items;
+    std::stable_sort(objects.begin(), objects.end(), [](int32_t a, int32_t b) {
+        return str(vfield(a, V(a).type, "handle")) < str(vfield(b, V(b).type, "handle")); });
+    world.push_back(-2); world.insert(world.end(), objects.begin(), objects.end());
+    world.push_back(-3); world.push_back(vfield(observation, T.observation, "resources"));
+    std::vector<int32_t> heroes = V(field(observation, T.o_heroes)).items;
+    std::stable_sort(heroes.begin(), heroes.end(), [](int32_t a, int32_t b) {
+        return str(field(a, T.h_handle)) < str(field(b, T.h_handle)); });
+    world.push_back(-4);
+    for (int32_t hero : heroes) { world.push_back(field(hero, T.h_handle)); world.push_back(field(hero, G.hero_position)); world.push_back(field(hero, G.hero_movement)); }
+    std::vector<int32_t> towns = V(field(observation, T.o_towns)).items;
+    std::stable_sort(towns.begin(), towns.end(), [](int32_t a, int32_t b) {
+        return str(field(a, T.t_handle)) < str(field(b, T.t_handle)); });
+    world.push_back(-5); world.insert(world.end(), towns.begin(), towns.end());
+    return known.emplace(observation, std::move(world)).first->second;
+}
+
+struct Tracker {
+    int64_t management_limit = 32, window_limit = -1, decision_limit = -1;
+    std::map<std::string, int64_t> windows, management;
+    std::map<Key, int64_t> navigation;
+    int64_t decisions = 0;
+    bool has_day = false;
+    int32_t day = 0, last_seq = -1;
+    const std::vector<int32_t> *world = nullptr;
+    std::set<Coordinate> failed;
+    std::set<Layout> layouts;
+    bool town_reopen_blocked = false, has_previous = false, has_move = false, consumed = false;
+    Key previous;
+    Coordinate previous_move;
+    int32_t decision_observation = -1, decision_offers = -1, action = -1;
+    int64_t epoch = 0, action_epoch = -1;
+
+    void progress() { navigation.clear(); failed.clear(); layouts.clear(); epoch++; }
+
+    bool observe(const NFrame &frame, Support &out) {  // Tracker.observe; true at a decision, with its support
+        if (frame.seq <= last_seq) { PyErr_SetString(PyExc_ValueError, "Interaction guard requires one ordered player episode"); throw Fail(); }
+        last_seq = frame.seq;
+        if (!has_day || day != frame.day) {
+            if (has_day && frame.day < day) { PyErr_SetString(PyExc_ValueError, "Interaction guard day cannot move backwards"); throw Fail(); }
+            has_day = true; day = frame.day;
+            management.clear(); windows.clear(); decisions = 0;
+            progress();
+        }
+        if (frame.observation >= 0) {
+            const std::vector<int32_t> &now = world_of(frame.observation);
+            const bool managing = consumed && action >= 0 && management_kind(field(action, G.action_kind));
+            if (world != nullptr && *world != now && !managing) progress();
+            world = &now;
+        }
+        if (frame.kind == F_DECISION) {
+            decision_observation = frame.observation; decision_offers = frame.offers; action = -1; consumed = false;
+            const int32_t observation = frame.observation, offers = frame.offers;
+            out = Support();
+            std::set<Coordinate> blocked = failed;
+            for (int32_t hero : V(field(observation, T.o_heroes)).items) {
+                const std::string handle = str(field(hero, T.h_handle));
+                if (num(field(hero, G.hero_movement)) > 0 && !V(field(hero, T.h_in_garrison)).number) out.movable.push_back(handle);
+                const auto &position = V(field(hero, G.hero_position)).items;
+                blocked.insert(Coordinate{handle, num(position[0]), num(position[1])});
+            }
+            std::sort(out.movable.begin(), out.movable.end());
+            if (has_move) blocked.insert(previous_move);
+            out.blocked.assign(blocked.begin(), blocked.end());
+            std::set<Key> nav;
+            for (auto &entry : navigation) if (entry.second >= 2) nav.insert(entry.first);
+            if (town_reopen_blocked)
+                for (int32_t subject : V(field(offers, G.offers_town_refs)).items) nav.insert(join({"open_town", str(subject)}));
+            out.navigation.assign(nav.begin(), nav.end());
+            for (auto &entry : management) if (entry.second >= management_limit) out.management.push_back(entry.first);
+            out.has_previous = has_previous; out.previous = previous;
+            const int32_t armies = field(offers, G.offers_armies);
+            layouts.insert(army_layout(observation, armies));
+            out.swaps = blocked_swaps(observation, offers, layouts);
+            if (window_limit >= 0) for (auto &entry : windows) if (entry.second >= window_limit) out.windows.push_back(entry.first);
+            out.exhausted = decision_limit >= 0 && decisions >= decision_limit;
+            return true;
+        }
+        if (frame.kind == F_SUBMITTED) {
+            action = frame.action;
+        } else if (frame.kind == F_CONSUMED) {
+            if (decision_observation < 0 || action < 0 || consumed) {
+                PyErr_SetString(PyExc_ValueError, "Interaction guard requires one submitted action per consumption"); throw Fail();
+            }
+            consumed = true;
+            action_epoch = epoch;
+            has_previous = true;
+            previous = command_key(action, decision_offers);
+            has_move = str_is(field(action, G.action_kind), "move_to");
+            if (has_move) previous_move = Coordinate{str(field(action, G.action_subject)), num(field(action, G.action_x)), num(field(action, G.action_y))};
+            Key key;
+            if (nav_key(action, decision_offers, key)) {
+                navigation[key]++;
+                windows[split(key)[1]]++;
+            }
+            const bool forced = mandatory(decision_offers);
+            decisions += !forced;
+            if (!forced) for (const std::string &subject : management_subjects(action, decision_offers)) management[subject]++;
+        } else if (frame.kind == F_EVENT) {
+            const int32_t kind = field(frame.event, T.event_kind);
+            if (str_is(kind, "battle_start") || str_is(kind, "battle_complete") || str_is(kind, "hero_lost") || str_is(kind, "level_gained")) progress();
+        } else if (frame.kind == F_RESULT && action >= 0 && consumed) {
+            const int32_t result = frame.result;
+            const bool accepted = V(field(result, G.result_accepted)).number != 0;
+            const int32_t status = field(result, G.result_status);
+            const int32_t kind = field(action, G.action_kind);
+            if (accepted)
+                town_reopen_blocked = str_is(kind, "close") && str_is(status, "closed")
+                                      && str_is(field(field(decision_offers, G.offers_context), T.c_kind), "town");
+            if (accepted && (str_is(status, "built") || str_is(status, "recruited") || str_is(status, "hired") || str_is(status, "upgraded")
+                             || (str_is(status, "capability_applied") && (str_is(kind, "trade_resource") || str_is(kind, "buy_artifact")
+                                                                           || str_is(kind, "choose_level_up")))))
+                progress();
+            if (str_is(kind, "move_to") && (str_is(status, "no_route_known") || str_is(status, "movement_limit") || str_is(status, "hero_unavailable")
+                                            || str_is(status, "reached") || str_is(status, "rejected"))) {
+                const int32_t subject = field(action, G.action_subject);
+                int32_t hero = -1;
+                for (int32_t item : V(field(decision_observation, T.o_heroes)).items) if (field(item, T.h_handle) == subject) { hero = item; break; }
+                const int32_t position = field(result, G.result_position), movement = field(result, G.result_movement);
+                const bool unchanged = hero >= 0 && (none(position) || position == field(hero, G.hero_position))
+                                       && (none(movement) || movement == field(hero, G.hero_movement));
+                if (unchanged && action_epoch == epoch)
+                    failed.insert(Coordinate{str(subject), num(field(action, G.action_x)), num(field(action, G.action_y))});
+            }
+        }
+        return false;
+    }
+};
+
+PyObject *key_tuple(const Key &key) {
+    std::vector<std::string> parts = split(key);
+    Ref out(PyTuple_New((Py_ssize_t)parts.size()));
+    for (size_t i = 0; i < parts.size(); i++) {
+        PyObject *item = parts[i] == NONE_ELEMENT ? (Py_INCREF(Py_None), Py_None) : PyUnicode_FromStringAndSize(parts[i].data(), (Py_ssize_t)parts[i].size());
+        if (!item) throw Fail();
+        PyTuple_SET_ITEM(out.get(), (Py_ssize_t)i, item);
+    }
+    Py_INCREF(out.get());
+    return out.get();
+}
+
+PyObject *text_tuple(const std::vector<std::string> &items) {
+    Ref out(PyTuple_New((Py_ssize_t)items.size()));
+    for (size_t i = 0; i < items.size(); i++) {
+        PyObject *item = items[i] == NONE_ELEMENT ? (Py_INCREF(Py_None), Py_None) : PyUnicode_FromStringAndSize(items[i].data(), (Py_ssize_t)items[i].size());
+        if (!item) throw Fail();
+        PyTuple_SET_ITEM(out.get(), (Py_ssize_t)i, item);
+    }
+    Py_INCREF(out.get());
+    return out.get();
+}
+
+PyObject *support_tuple(const Support &support) {  // the GuardSupport fields, in order
+    Ref navigation(PyTuple_New((Py_ssize_t)support.navigation.size()));
+    for (size_t i = 0; i < support.navigation.size(); i++) PyTuple_SET_ITEM(navigation.get(), (Py_ssize_t)i, key_tuple(support.navigation[i]));
+    Ref blocked(PyTuple_New((Py_ssize_t)support.blocked.size()));
+    for (size_t i = 0; i < support.blocked.size(); i++) {
+        const Coordinate &item = support.blocked[i];
+        PyTuple_SET_ITEM(blocked.get(), (Py_ssize_t)i, Py_BuildValue("(s#LL)", item.subject.data(), (Py_ssize_t)item.subject.size(), (long long)item.x, (long long)item.y));
+    }
+    Ref swaps(PyTuple_New((Py_ssize_t)support.swaps.size()));
+    for (size_t i = 0; i < support.swaps.size(); i++) {
+        const SwapKey &item = support.swaps[i];
+        PyTuple_SET_ITEM(swaps.get(), (Py_ssize_t)i, Py_BuildValue("(s#Ls#L)", item.left.data(), (Py_ssize_t)item.left.size(), (long long)item.a,
+                                                                   item.right.data(), (Py_ssize_t)item.right.size(), (long long)item.b));
+    }
+    Ref management(text_tuple(support.management)), movable(text_tuple(support.movable)), windows(text_tuple(support.windows));
+    Ref previous(support.has_previous ? key_tuple(support.previous) : (Py_INCREF(Py_None), Py_None));
+    return Py_BuildValue("(OOOOOOOO)", navigation.get(), management.get(), movable.get(), blocked.get(), previous.get(), swaps.get(),
+                         windows.get(), support.exhausted ? Py_True : Py_False);
+}
+
+PyObject *py_guard_supports(PyObject *, PyObject *args) {  // guard_supports(producer, management, windows, decisions) (tests)
+    PyObject *object;
+    long long management_limit, window_limit, decision_limit;
+    if (!PyArg_ParseTuple(args, "OLLL", &object, &management_limit, &window_limit, &decision_limit)) return nullptr;
+    if (Py_TYPE(object) != &ProducerType) { PyErr_SetString(PyExc_TypeError, "a Producer"); return nullptr; }
+    Producer *producer = (Producer *)object;
+    try {
+        prepare_guard();
+        Tracker tracker;
+        tracker.management_limit = management_limit; tracker.window_limit = window_limit; tracker.decision_limit = decision_limit;
+        Ref out(PyList_New(0));
+        Support support;
+        for (const NFrame &frame : *producer->frames) {
+            if (!tracker.observe(frame, support)) continue;
+            Ref item(support_tuple(support));
+            if (!item.get() || PyList_Append(out.get(), item.get())) throw Fail();
+        }
+        Py_INCREF(out.get());
+        return out.get();
+    } catch (Fail &) {
+        return nullptr;
+    }
 }
 PyMethodDef methods[] = {
     {"configure", py_configure, METH_VARARGS, "configure(policy, contract, fn_text, fn_number, fn_node)"},
@@ -1727,6 +2758,9 @@ PyMethodDef methods[] = {
     {"decode", py_decode, METH_VARARGS, "decode(bytes, type name): the value id of one JSON document"},
     {"python_value", py_python_value, METH_O, "python_value(id): the contract object a value stands for"},
     {"set_native_failure", py_set_native_failure, METH_O, "the exception an engine error message raises"},
+    {"value_tree", py_value_tree, METH_VARARGS, "value_tree(value, observation=0): the semantic tree of a value"},
+    {"payloads", py_payloads, METH_O, "payloads(producer): each frame's payload tree (tests)"},
+    {"guard_supports", py_guard_supports, METH_VARARGS, "guard_supports(producer, management, windows, decisions): GuardSupport fields (tests)"},
     {nullptr, nullptr, 0, nullptr}};
 
 PyModuleDef module = {PyModuleDef_HEAD_INIT, "heroes_native", nullptr, -1, methods};
