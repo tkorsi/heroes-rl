@@ -625,6 +625,37 @@ def _operation_maxima(armies, kind):
                            _operation_maximum(kind, *origin, *found[destination_ref]))
 
 
+def _positive_operations(armies, kind):
+    """``tuple(item for item in _operation_maxima(armies, kind) if item[2] > 0)``, in the same order, without asking
+    ``_operation_maximum`` about pairs it answers 0 whatever else holds: a split or merge from an empty slot, a swap of
+    two empty slots."""
+    found = {}  # what army_slot returns for a reference: the first slot that carries it
+    for army in armies:
+        for slot in army.slots:
+            found.setdefault(slot.ref, (army, slot))
+    swap = kind == "swap_stacks"
+    moves = kind in ("split_stack", "merge_stacks")
+    result = []
+    for first in armies:
+        for source in first.slots:
+            source_ref, origin = source.ref, found[source.ref]  # the slot _operation_maximum is asked about
+            empty = not origin[1].count
+            if moves and empty:
+                continue
+            for second in armies:
+                for destination in second.slots:
+                    destination_ref = destination.ref
+                    if source_ref == destination_ref:
+                        continue
+                    target = found[destination_ref]
+                    if swap and empty and not target[1].count:
+                        continue
+                    maximum = _operation_maximum(kind, *origin, *target)
+                    if maximum > 0:
+                        result.append((source_ref, destination_ref, maximum))
+    return tuple(result)
+
+
 _LAST_CHOICES = {}  # kind -> (the armies asked about last, their choices)
 
 
@@ -645,7 +676,7 @@ def army_operation_choices(armies, kind):
     key = (kind, *map(id, armies))
     known = _CHOICES_BY_ARMIES.get(key)
     if known is None or any(held is not army for held, army in zip(known[0], armies)):
-        known = (armies, tuple(item for item in _operation_maxima(armies, kind) if item[2] > 0))
+        known = (armies, _positive_operations(armies, kind))
         if len(_CHOICES_BY_ARMIES) >= 64:
             _CHOICES_BY_ARMIES.clear()  # bounded memory; a miss only computes again
         _CHOICES_BY_ARMIES[key] = known
