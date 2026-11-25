@@ -10515,3 +10515,21 @@ The MLX update is not bit-repeatable from one run to the next even on identical 
 | Each dataclass's field treatment decided once per type | `policy._field_plan` |
 | Kept trees looked up before the type tests; the last observation's handle index and the last army tuple's slot index remembered; a swap's key computed once per check; move targets' row-major order kept | `policy`, `guard`, `contract` |
 | Frames and model inputs built directly in field order, then checked by the same `__post_init__` | `contract._new_frame`, `policy.encode` |
+
+### 2026-11-25 — The candidate of 04:25 on both seed lists
+
+`src-wip31` (everything above), engine `claude-g10-e2`, 24 actors (the throughput windows at 20, 24 and 28 actors gave 10,530, 10,605 and 10,746 decisions a second; `results/windows.jsonl`), checkpoint 2036, `states/cand24-s1` and `cand24-s2`, `logs/cand24-s1.log`, `logs/cand24-s2.log`. Both ran with single-core work of mine beside them (replays, the test suite, and on the second list a profiled live game for nine minutes), so their times are, if anything, a little long.
+
+| | Seed list 1: main | wip31 | Seed list 2: main | wip31 |
+| --- | --- | --- | --- | --- |
+| Collection | 2,474.1 s | **1,740.5 s** (1.42x) | 2,057.2 s | **1,483.6 s** (1.39x) |
+| PPO | 186.9 s | 199.3 s | 163.3 s | 179.4 s |
+| Decisions | 16,227,566 | 16,227,556 | 14,176,906 | 14,176,893 |
+| Decisions per second | 6,559 | 9,324 | 6,891 | 9,556 |
+| Usable / failed / day 365 / decision limit | 100 / 0 / 0 / 0 | 100 / 0 / 0 / 0 | 100 / 0 / 1 / 0 | 100 / 0 / 1 / 0 |
+| Samples, optimizer steps | 8,229,641, 10 | 8,229,641, 10 | 7,213,383, 11 | 7,213,383, 11 |
+| Games in by: 50th, 90th, last | 1,048, 2,094, 2,474 | 811, 1,568, 1,741 | 1,070, 1,810, 2,058 | 731, 1,316, 1,483 |
+| Longest game | 842.6 s | 1,005.2 s | 775.1 s | 702.4 s |
+| Actors, engines (processor) | 942%, 386% | 941%, 304% | 914%, 365% | 945%, 308% |
+
+The same seeds gave the same games: same day, outcome and samples in all 200; 18 and 19 games differ by one decision in the losing seat's count (the terminal race described above). PPO's time is not part of the change (the update is main's); its spread here (163–199 s) is that of the GPU update with other work beside it.
