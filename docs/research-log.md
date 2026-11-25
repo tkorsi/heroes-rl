@@ -10482,3 +10482,36 @@ From fourteen actors on, the sixteen cores are saturated: two to six more actors
 The MLX update is not bit-repeatable from one run to the next even on identical input (v2), by the same amount as between main and the candidate (v1). A weight hash therefore shows that an update happened (it changed in every run) but cannot show sameness; the trajectories and PPO's input can, and they are identical. The main runs of v1 and v2 also gave identical digests for their shared games.
 
 **Where the time goes now.** Over the batch the candidate answered about 9,600 decisions a second while twenty games were in play, against 7,200 for the baseline. The last 300 s were the tail: job 92 of the seed list (390,000 decisions) could only start at 1,272 s, when a worker became free, and ended the batch at 1,863 s. A simulation of the batch with the measured game lengths and throughput (`min(10,100, 1,250 × games in play)` decisions a second) gives nearly the same end for 14 to 100 actors (1,655–1,702 s): with game lengths unknown in advance and the job order fixed by the seed list, the number of actors does not shorten the tail. What remains is processor time per decision. The command's processes used 26,084 processor-seconds, 1.6 ms per decision, where one game alone costs about 0.43 ms in the actor and 0.25–0.33 ms in the engine: with every core busy (four of the sixteen are efficiency cores, the performance cores run at a lower clock and share their caches) each decision costs about twice as much.
+
+### 2026-11-25 — The baseline of the second seed list, and the actor since the first candidate
+
+`claude-g10/states/base14-s2`, `logs/base14-s2.log` and `.cpu`: main (`src-2c1672b`), the default engine, fourteen actors, `--seed 2026112502`, checkpoint 2036, 03:54 to 04:31, the machine free apart from single-core replays of mine (nice, at most two at a time).
+
+| | |
+| --- | --- |
+| Collection | **2,057.2 s** |
+| PPO | 163.3 s (11 optimizer steps, 7,213,383 samples; weights `bc8e07f3…` → `3f1d4d89…`) |
+| The command | 2,222.6 s |
+| Decisions | 14,176,906, 6,891 a second |
+| Usable / failed and replaced / day 365 / decision limit | 100 / 0 / 1 / 0 |
+| Red, blue wins; mean day | 80, 19 (one cut off); 128.3 |
+| Games in by: 50th, 90th, last | 1,070, 1,810, 2,058 s |
+| Longest game | 775.1 s, 406,407 decisions |
+| Processor use: actors, engines | 914%, 365% |
+
+**The actor since the first candidate** (`src-wip15`/`wip16` at 01:45, `src-wip31` at 04:25; replays of the two recorded games, alternating, the machine free, `logs/queue-5.log`): 40-day game 450 → 405 µs per decision, 120-day game 474 → 414 µs; every answer and the trajectory digest equal. The replay tool now runs torch on one thread, as a training actor does (`torch.set_num_threads(1)` in `heroes.train.worker`); before that its times were 10–25% higher than an actor's. The changes, each checked on both replays (and the test suite, 84 passed, 3 skipped):
+
+| Change | Where |
+| --- | --- |
+| The sampled index drawn as `torch.multinomial(p, 1)` draws it (an exponential draw from the same generator, the same float32 division and argmax) without its checks of `p`; 200,000 random distributions gave the same index and the same generator state | `policy._choose` |
+| Recurrent states cut from blocks of 4,096 instead of an array and a ctypes object per frame | `fast.State` |
+| A window that is exactly an earlier one decoded once, and its tree kept | `contract._decode_window`, `policy._KEPT_TYPES` |
+| A record's field set and the frame's type table made once | `protocol`, `contract.Frame` |
+| The layouts after each swap kept per layout, the swap keys per tuple of armies, the swapped layout built without sorting again | `guard._swapped_layouts`, `_swap_keys` |
+| Split, merge and swap skipped when every displayed army's subject is past its budget (the guard refuses each pair) | `policy._kinds` |
+| A subject found through an index of handles instead of a scan of heroes, towns and objects; object trees kept | `policy._handles` |
+| fastnet's calls of every frame and choice (`used`, `step`, `value`, `query`, `logits`) as CPython functions instead of ctypes; the same C functions | `fastnet.c`, `fast.py` |
+| Buffer addresses kept with their arrays | `fast.py` |
+| Each dataclass's field treatment decided once per type | `policy._field_plan` |
+| Kept trees looked up before the type tests; the last observation's handle index and the last army tuple's slot index remembered; a swap's key computed once per check; move targets' row-major order kept | `policy`, `guard`, `contract` |
+| Frames and model inputs built directly in field order, then checked by the same `__post_init__` | `contract._new_frame`, `policy.encode` |
