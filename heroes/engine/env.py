@@ -24,8 +24,10 @@ from pathlib import Path
 import queue
 import re
 import select
+import shutil
 import socket
 import subprocess
+import tempfile
 import threading
 import time
 
@@ -69,8 +71,9 @@ class _Events:
     ``queue.Queue``; ``put`` may be called from any thread.
     """
 
-    def __init__(self, sides):
+    def __init__(self, sides, raw=False):
         self.sides = sides
+        self.raw = raw  # queue each message as its line of bytes, for a producer that reads it itself
         self.items = deque()
         self.lock = threading.Lock()
         self.wake_read, self.wake_write = os.pipe()
@@ -124,7 +127,7 @@ class _Events:
             scanned, begin = start, 0
             while (newline := buffer.find(b"\n", scanned)) >= 0:
                 try:
-                    message = loads(buffer[begin:newline])
+                    message = bytes(buffer[begin:newline]) if self.raw else loads(buffer[begin:newline])
                 except Exception as error:  # a reader reports every failure; it never dies silently
                     self._end(side, ("error", side.player, f"{type(error).__name__}: {error}"))
                     return
@@ -225,6 +228,7 @@ class Request:
     player: int
     frames: tuple  # the seat's frames since its previous request, ending with the decision
     limit: str | None = None  # set when the decision is past a limit: call ``stop`` instead of ``step``
+    decision: int | None = None  # the decision's frame (NativeEnv, whose requests carry no frames)
     done = False
 
 
@@ -237,9 +241,24 @@ class End:
     done = True
 
 
+def _local_folder():
+    """A new folder for the seats' local sockets, short enough for a socket path, or None where there is none."""
+    if not hasattr(socket, "AF_UNIX") or os.environ.get("HEROES_LOCAL_SOCKETS", "1") == "0":
+        return None
+    try:
+        folder = tempfile.mkdtemp(prefix="hrl-", dir="/tmp" if os.path.isdir("/tmp") else None)
+    except OSError:
+        return None
+    if len(os.path.join(folder, "p0").encode()) >= 100:  # sockaddr_un's path holds 104 bytes on macOS
+        shutil.rmtree(folder, ignore_errors=True)
+        return None
+    return folder
+
+
 class _Side:
-    def __init__(self, player, producer, listener):
+    def __init__(self, player, producer, listener, local=None):
         self.player, self.producer, self.listener = player, producer, listener
+        self.local = local  # a listener on a local (Unix) socket too, or None: an engine that knows it connects there
         self.connection = None
         self.reader = None
         self.eof = False
@@ -249,12 +268,18 @@ class _Side:
 
 
 class Env:
+    raw = False  # whether the producers read the engine's lines themselves (NativeEnv)
+
     def __init__(self, engine, limits=Limits()):
         self.engine, self.limits = engine, limits
         self.process = None
         self.sides = ()
         self.log = None
+        self.local_folder = None  # the folder of the seats' local sockets while a game runs
         self.idle = None  # called with no argument whenever the environment is about to wait for the engine
+
+    def _producer(self, episode, player):
+        return Producer(str(episode), player, interface=self.engine.interface, army_information=self.engine.army_information)
 
     # -- the caller's interface ------------------------------------------------
     def reset(self, directory, episode, seed, game_map=None):
@@ -272,19 +297,31 @@ class Env:
             listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             listener.bind(("127.0.0.1", 0))
             listener.listen(1)
-            producer = Producer(str(episode), player, interface=self.engine.interface,
-                                army_information=self.engine.army_information)
-            sides.append(_Side(player, producer, listener))
+            sides.append(_Side(player, self._producer(episode, player), listener))
+        self.local_folder = _local_folder()
+        if self.local_folder is not None:
+            try:
+                for side in sides:
+                    side.local = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                    side.local.bind(os.path.join(self.local_folder, f"p{side.player}"))
+                    side.local.listen(1)
+            except OSError:  # no local sockets here: the port alone
+                for side in sides:
+                    if side.local is not None:
+                        side.local.close()
+                        side.local = None
+                shutil.rmtree(self.local_folder, ignore_errors=True)
+                self.local_folder = None
         self.sides = tuple(sides)
-        self.events = _Events(self.sides)
+        self.events = _Events(self.sides, raw=self.raw)
         (self.directory / "logs").mkdir()
         self.log = (self.directory / "logs" / "process.log").open("w")
         try:
             ports = [side.listener.getsockname()[1] for side in self.sides]
-            if game_map is None:
-                self.process = self.engine.launch(self.directory, episode, seed, ports, self.log)
-            else:
-                self.process = self.engine.launch(self.directory, episode, seed, ports, self.log, game_map=game_map)
+            extra = {} if game_map is None else {"game_map": game_map}
+            if self.local_folder is not None:
+                extra["sockets"] = [side.local.getsockname() for side in self.sides]
+            self.process = self.engine.launch(self.directory, episode, seed, ports, self.log, **extra)
         except BaseException:
             self.close()
             raise
@@ -382,16 +419,19 @@ class Env:
         if self.sides:
             self.stopping.set()
         for side in self.sides:
-            for sock in (side.connection, side.listener):
+            for sock in (side.connection, side.listener, side.local):
                 if sock is not None:
                     try:
                         sock.shutdown(socket.SHUT_RDWR)
                     except OSError:
                         pass
                     sock.close()
-            side.connection = side.listener = None
+            side.connection = side.listener = side.local = None
             if side.reader is not None:
                 side.reader.join(timeout=3)
+        if getattr(self, "local_folder", None) is not None:
+            shutil.rmtree(self.local_folder, ignore_errors=True)
+            self.local_folder = None
         if self.sides and isinstance(getattr(self, "events", None), _Events):
             self.events.close()
         if self.log is not None and not self.log.closed:
@@ -402,21 +442,22 @@ class Env:
     def _read(side, events, stopping, exited):
         """Reader thread: accept the seat's connection and queue its messages."""
         try:
-            # Poll while waiting, so an engine that dies at startup cannot block this thread.
-            listener = side.listener
-            listener.settimeout(0.25)
+            # Poll while waiting, so an engine that dies at startup cannot block this thread. An engine told the
+            # local socket's path connects there; an engine that does not know it connects to the port.
+            listeners = [listener for listener in (side.listener, side.local) if listener is not None]
             while True:
                 # Read before the attempt: a connection made before the engine exited is still accepted.
                 over = stopping.is_set() or exited.is_set()
-                try:
-                    connection, _ = listener.accept()
+                ready, _, _ = select.select(listeners, [], [], 0.25)
+                if ready:
+                    connection, _ = ready[0].accept()
                     break
-                except socket.timeout:
-                    if over:
-                        return
+                if over:
+                    return
             connection.setblocking(False)  # read by the thread that asks for events (_Events); answers are sent whole
-            # Answers are tiny single lines; never let Nagle's algorithm hold them.
-            connection.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            if connection.family == socket.AF_INET:
+                # Answers are tiny single lines; never let Nagle's algorithm hold them.
+                connection.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             side.connection = connection
             events.wake()
         except Exception as error:  # a reader reports every failure; it never dies silently
@@ -568,3 +609,174 @@ class Env:
         if set(outcomes) != {"win", "loss"}:
             return End("failed", "unverified_terminal", detail="Both seats report the same outcome")
         return End("completed", "natural_terminal", tuple(outcomes))
+
+
+_LOOP_REQUEST, _LOOP_PENDING, _LOOP_ENDING, _LOOP_EVENTS, _LOOP_EOF, _LOOP_ERROR, _LOOP_SILENT, _LOOP_INGEST = range(8)
+
+
+class NativeEnv(Env):
+    """``Env`` whose seats' frames are kept by ``heroes.model.native``'s producer.
+
+    The engine's lines go to the producer as they were read, and an answer is
+    an action's value id, written by the producer: no message is decoded into
+    Python objects. The game, its frames and its end are those ``Env`` gives;
+    a request names its decision's frame (``decision``) and carries no frames.
+    """
+    raw = True
+
+    @staticmethod
+    def usable(engine):
+        """Whether native seats can play this engine's games here (``HEROES_NATIVE_SEAT=0`` keeps the Python ones)."""
+        from ..game import contract
+        from ..model import native
+        return (os.environ.get("HEROES_NATIVE_SEAT", "1") != "0" and native.module() is not None
+                and engine.interface == contract.EXPANDED_ENVIRONMENT
+                and engine.army_information == contract.OWN_ARMY_INFORMATION)
+
+    def _producer(self, episode, player):
+        from ..game import contract
+        from ..model import native
+        profile = contract.profile_for(self.engine.interface)
+        return native.module().Producer(str(episode), player, profile.protocol, profile.environment, profile.history_schema,
+                                        profile.action_schema, self.engine.army_information)
+
+    def producer(self, player):
+        return self.sides[player].producer
+
+    def reset(self, directory, episode, seed, game_map=None):
+        # The values and trees of the games before are dropped once nothing of theirs is alive: a worker plays
+        # game after game, and every game interns its own observations.
+        self.close()
+        self.sides = ()
+        from ..model import native
+        native.module().reset_values()
+        return super().reset(directory, episode, seed, game_map=game_map)
+
+    def step(self, action):
+        """Answer the current request with the action of value id ``action`` and wait for the next one."""
+        if self.request is None:
+            raise ValueError("There is no request to answer")
+        side = self.sides[self.request.player]
+        line = side.producer.answer(action)  # refuses an action the decision does not offer
+        held = self.request.decision
+        self.request = None
+        self._drain()
+        decision, answered, _ = side.producer.open()
+        if self.failure is None and self.exit_code is None and decision == held and not answered and not self._ending():
+            try:
+                _send(side.connection, line)
+            except OSError as error:
+                self._fail("action_delivery_failed", f"{COLORS[side.player]}: {type(error).__name__}: {error}")
+            else:
+                side.producer.submit(action)
+                side.actions += 1
+        return self._advance()
+
+    # -- the game loop in heroes.model.native ------------------------------------
+    def play(self, seats, request):
+        """Answer ``request`` and the requests after it with native ``seats`` until something is Python's.
+
+        The loop (``native.cpp``, ``py_loop``) does what ``step`` and ``_advance`` do for engine lines and
+        answers; it returns at a request past a limit, every second (for progress), and for anything else (the
+        game ending, an event of the environment's threads, the end of a stream, an error, silence), which is
+        then folded here as ``_advance`` folds it. Returns the next state, or None when the loop cannot take
+        this request (an event other than an engine line is queued, or a seat is not connected): answer it with
+        ``step`` then.
+        """
+        from ..model import native
+        events = self.events
+        if any(side.connection is None for side in self.sides) or self.failure is not None or self.exit_code is not None:
+            return None
+        with events.lock:
+            if any(item[0] != "message" for item in events.items):
+                return None
+            queued = [bytearray(), bytearray()]
+            for _, player, line in events.items:
+                queued[player] += line + b"\n"
+            events.items.clear()
+        buffers = tuple(bytes(queued[side.player] + events.buffers[side.player]) for side in self.sides)
+        for side in self.sides:
+            events.buffers[side.player] = bytearray()
+        self.request = None
+        result = native.module().loop(
+            tuple(side.producer for side in self.sides), tuple(seats), tuple(side.connection.fileno() for side in self.sides),
+            events.wake_read, buffers, tuple(side.issued for side in self.sides), tuple(side.actions for side in self.sides),
+            self.limits.max_days, self.limits.max_actions, self.limits.idle_seconds or 0.0, request.player, request.decision)
+        code, player, decision, value, rest, issued, actions, text, error, pending = result
+        for side in self.sides:
+            side.issued, side.actions = issued[side.player], actions[side.player]
+            # complete lines go back as the reader queued them; a partial line stays in its buffer
+            data = rest[side.player]
+            end = data.rfind(b"\n") + 1
+            with events.lock:
+                for line in data[:end].split(b"\n")[:-1]:
+                    events.items.append(("message", side.player, line))
+            events.buffers[side.player] = bytearray(data[end:])
+        if code == _LOOP_REQUEST:
+            limit = "game_day_limit" if value == 1 else "agent_action_limit" if value == 2 else None
+            self.request = Request(player, (), limit, decision)
+            return self.request
+        side = self.sides[value] if code in (_LOOP_EOF, _LOOP_ERROR, _LOOP_INGEST) else None
+        if code == _LOOP_EOF:
+            if events.buffers[side.player]:
+                events._end(side, ("error", side.player, "ValueError: Stream ended inside a message"))
+            else:
+                events._end(side, ("eof", side.player, None))
+        elif code == _LOOP_ERROR:
+            events._end(side, ("error", side.player, text if text.startswith("ValueError") else f"OSError: {text}"))
+        elif code == _LOOP_INGEST:
+            if isinstance(error, NativeFailure):
+                self._fail("engine_error", f"{COLORS[side.player]}: {error}")
+            elif isinstance(error, (KeyError, TypeError, ValueError, AttributeError, IndexError)):
+                self._fail("protocol_error", f"{COLORS[side.player]}: {type(error).__name__}: {error}")
+            else:
+                raise error
+        elif code == _LOOP_SILENT:
+            self._fail("engine_silent", f"No engine event for {self.limits.idle_seconds} s")
+        if pending is not None:  # the rest of step: fold what is there, then send or drop the answer
+            held, line, action = pending
+            asker = self.sides[player]
+            self._drain()
+            decision, answered, _ = asker.producer.open()
+            if self.failure is None and self.exit_code is None and decision == held and not answered and not self._ending():
+                try:
+                    _send(asker.connection, line)
+                except OSError as failure:
+                    self._fail("action_delivery_failed", f"{COLORS[asker.player]}: {type(failure).__name__}: {failure}")
+                else:
+                    asker.producer.submit(action)
+                    asker.actions += 1
+        return self._advance()
+
+    def _settle(self):
+        deadline = time.monotonic() + SETTLE_SECONDS
+        while (self.failure is None and self.exit_code is None and not self._ending()
+               and any(side.producer.open()[1] for side in self.sides)):
+            try:
+                self._fold(self.events.get(timeout=max(0.0, deadline - time.monotonic())))
+            except queue.Empty:
+                break
+
+    def frames(self, player):
+        raise ValueError("A native producer keeps its frames; see heroes.model.native")
+
+    received = frames
+
+    def forget(self, player, before):
+        pass  # a native frame holds value ids, not objects
+
+    @property
+    def day(self):
+        return max((side.producer.day for side in self.sides), default=1)
+
+    def _next_request(self):
+        for side in self.sides:
+            decision, answered, day = side.producer.open()
+            if decision < 0 or answered or side.issued == decision:
+                continue
+            side.issued = decision
+            limit = ("game_day_limit" if day > self.limits.max_days else
+                     "agent_action_limit" if side.actions >= self.limits.max_actions else None)
+            self.request = Request(side.player, (), limit, decision)
+            return self.request
+        return None

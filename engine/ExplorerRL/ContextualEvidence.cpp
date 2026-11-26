@@ -87,6 +87,12 @@ ContextualEvidence * ContextualEvidence::current()
 	return dynamic_cast<ContextualEvidence *>(experimentEvidenceHooks().get());
 }
 
+bool ContextualEvidence::recordsMessages()
+{
+	const auto * value = current();
+	return value && !value->silent;
+}
+
 bool ContextualEvidence::replaying()
 {
 	const auto * value = current();
@@ -377,6 +383,19 @@ void ContextualEvidence::eventLeaving(const std::string & actor, const std::stri
 	std::lock_guard lock(mutex);
 	try
 	{
+		if(silent && !replay)
+		{
+			// append of a silent ledger only numbers the record (skip): nothing is built
+			skip();
+			if(pendingClose)
+			{
+				skip();
+				pendingClose.reset();
+				sealed = true;
+			}
+			transactionActor.clear();
+			return;
+		}
 		JsonNode record;
 		record["kind"].String() = "leave";
 		record["actor"].String() = actor;

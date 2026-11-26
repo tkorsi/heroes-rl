@@ -40,7 +40,7 @@ def _artifacts():
 
 
 def _vcmi():
-    return Path(os.environ.get("HEROES_VCMI", _artifacts() / "runtime/local-v8-games-fast-v1/bin/vcmiclient")).expanduser()
+    return Path(os.environ.get("HEROES_VCMI", _artifacts() / "runtime/local-v8-native-selfplay-v1/bin/vcmiclient")).expanduser()
 
 
 def _training_state():

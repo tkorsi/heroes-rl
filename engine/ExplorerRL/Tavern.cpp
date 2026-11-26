@@ -1,4 +1,5 @@
 #include "StdInc.h"
+#include <unordered_set>
 #include "ExplorerRL.h"
 
 #include "../../lib/callback/CCallback.h"
@@ -71,7 +72,9 @@ JsonNode ExplorerRL::tavernPanel(const CGTownInstance & town)
 	for(const auto * hero : offers)
 	{
 		const auto nameID = hero->getNameTextID();
-		if(!std::regex_match(nameID, name) || hero->getIconIndex() < 0)
+		thread_local std::unordered_set<std::string> validNames;  // whether a name matches is a function of the name
+		const bool valid = validNames.count(nameID) || (std::regex_match(nameID, name) && validNames.insert(nameID).second);
+		if(!valid || hero->getIconIndex() < 0)
 			throw std::runtime_error("Unsupported scenario interaction: unsupported_interaction: tavern hero identity");
 		auto [handle, inserted] = contextState.tavernHandles.try_emplace(hero->getHeroTypeID().getNum());
 		if(inserted) handle->second = "hero-offer-" + std::to_string(contextState.tavernHandles.size() - 1);
@@ -136,14 +139,14 @@ bool ExplorerRL::executeTavernAction(const JsonNode & action, int64_t decision)
 		if(opening)
 		{
 			if(contextState.panel != "overview") throw std::runtime_error("Tavern entry requires town overview");
-			const auto & controls = contextState.lastObservation["window"]["town_panel"]["controls"].Vector();
+			const auto & controls = touchObservation(contextState)["window"]["town_panel"]["controls"].Vector();
 			if(std::none_of(controls.begin(), controls.end(), [](const auto & control) { return control["panel"].String() == "tavern"; }))
 				throw std::runtime_error("Tavern control was not displayed");
 			return;
 		}
 		if(contextState.panel != "tavern") throw std::runtime_error("Hero selection requires the opened tavern");
 		if(kind == "back") return;
-		const auto & panel = contextState.lastObservation["window"]["town_panel"]["tavern"];
+		const auto & panel = touchObservation(contextState)["window"]["town_panel"]["tavern"];
 		const auto & offers = panel["offers"].Vector();
 		if(std::none_of(offers.begin(), offers.end(), [&](const auto & offer) { return offer["ref"].String() == selection; }))
 			throw std::runtime_error("Hero offer was not displayed");
@@ -189,7 +192,7 @@ bool ExplorerRL::executeTavernAction(const JsonNode & action, int64_t decision)
 			else if(kind == "back") changePanel("overview");
 			else
 			{
-				const auto & offers = contextState.lastObservation["window"]["town_panel"]["tavern"]["offers"].Vector();
+				const auto & offers = touchObservation(contextState)["window"]["town_panel"]["tavern"]["offers"].Vector();
 				const auto found = std::find_if(offers.begin(), offers.end(), [&](const auto & offer) { return offer["ref"].String() == selection; });
 				contextState.selectedTavernIndex = static_cast<size_t>(std::distance(offers.begin(), found));
 				changePanel("tavern");

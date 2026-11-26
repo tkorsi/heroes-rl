@@ -38,6 +38,7 @@ import tempfile
 import numpy as np
 import torch
 
+from . import native as _native
 from . import policy as _policy
 from .policy import (ContextualDistribution, PolicyValue, StepOutput, _exact_tree, _Kept, map_key,
                      observation_semantics)
@@ -217,6 +218,7 @@ class FastPolicy:
         self.text, self.number, self.node, self.exact, self.frame = {}, {}, {}, {}, {}
         self.map = self.observation = self.things = None
         self.features = {}  # id of an observation -> (it, its features): slots of this arena, forgotten with it
+        self.epoch = getattr(self, "epoch", 0) + 1  # native slots name this arena's contents until the next reset
 
     def initial_state(self):
         return State()
@@ -332,7 +334,10 @@ class FastPolicy:
         else:
             summary, cells = self._encode_map(observation)
             self.map = (key, (summary, cells))
-        found = (summary, self._encode_root(observation_semantics(observation)), cells)
+        trees = _native.module()
+        root = (trees.observation_slot(self.net, self.epoch, observation) if trees is not None
+                else self._encode_root(observation_semantics(observation)))
+        found = (summary, root, cells)
         self.observation = (observation, found)
         if len(self.features) >= 2048:
             self.features.clear()  # bounded memory; a miss only encodes again

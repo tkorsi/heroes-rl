@@ -1,0 +1,121 @@
+--- a/server/ExperimentReplay.h
++++ b/server/ExperimentReplay.h
+@@ -74,6 +74,7 @@
+ class Recorder
+ {
+ 	std::ofstream output;
++	bool writing = true; ///< false: only the counts the terminal barrier reads, no log
+ 	Outgoing outgoing;
+ 	uint64_t sequence = 0;
+ 	int clientConnection = -1;
+@@ -83,8 +84,12 @@
+ 
+ public:
+ 	explicit Recorder(const std::string & path);
++	/// A recorder that keeps only the client connection and the count of packs sent to it (the terminal barrier's
++	/// inputs) and writes no log.
++	Recorder();
+ 	~Recorder();
+-	/// VCMI_EXPERIMENT_REPLAY=1 writes VCMI_EXPERIMENT_DIR/replay.jsonl; otherwise null.
++	/// VCMI_EXPERIMENT_REPLAY=1 writes VCMI_EXPERIMENT_DIR/replay.jsonl, or with VCMI_EXPERIMENT_REPLAY_LOG=0 only
++	/// counts (training removes a game's files when it ends and never reads the log); otherwise null.
+ 	static std::unique_ptr<Recorder> fromEnvironment();
+ 
+ 	void beforeInit(const StartInfo & startInfo);
+--- a/server/ExperimentReplay.cpp
++++ b/server/ExperimentReplay.cpp
+@@ -372,11 +372,17 @@
+ {
+ 	if(!output)
+ 		throw std::runtime_error("Cannot create the replay log " + path);
++}
++
++Recorder::Recorder()
++	: writing(false)
++{
+ }
+ 
+ Recorder::~Recorder()
+ {
+-	output.flush();
++	if(writing)
++		output.flush();
+ }
+ 
+ std::unique_ptr<Recorder> Recorder::fromEnvironment()
+@@ -387,6 +393,8 @@
+ 	const char * directory = std::getenv("VCMI_EXPERIMENT_DIR");
+ 	if(!directory || !*directory)
+ 		throw std::runtime_error("VCMI_EXPERIMENT_REPLAY requires VCMI_EXPERIMENT_DIR");
++	if(const char * log = std::getenv("VCMI_EXPERIMENT_REPLAY_LOG"); log && std::string(log) == "0")
++		return std::make_unique<Recorder>();
+ 	return std::make_unique<Recorder>(std::string(directory) + "/replay.jsonl");
+ }
+ 
+@@ -401,7 +409,8 @@
+ 
+ void Recorder::beforeInit(const StartInfo & original)
+ {
+-	startInfo = encodeStartInfo(original);
++	if(writing)
++		startInfo = encodeStartInfo(original);
+ }
+ 
+ void Recorder::afterInit(CGameHandler & gameHandler, int seed, const char * noCheats)
+@@ -419,6 +428,8 @@
+ 			clientConnection = connection;
+ 		connections += (connections.size() > 1 ? "," : "") + std::string("{\"id\":") + std::to_string(connection) + ",\"players\":[" + players + "]}";
+ 	}
++	if(!writing)
++		return;
+ 	connections += "]";
+ 	std::string hosts;
+ 	for(const int player : PLAYER_IDS)
+@@ -443,6 +454,11 @@
+ 
+ void Recorder::afterStart(CGameHandler & gameHandler, IGameServer &)
+ {
++	if(!writing)
++	{
++		outgoing.clearFlags();
++		return;
++	}
+ 	line("{\"kind\":\"start\",\"out\":" + std::to_string(outgoing.count) + ",\"client_out\":" + std::to_string(outgoing.clientCount)
+ 		+ ",\"chain\":\"" + digestHex(outgoing.chain) + "\",\"digest\":\"" + digestHex(stateDigest(gameHandler)) + "\""
+ 		+ ",\"parts\":" + partsJson(gameHandler) + ",\"sent\":" + sentJson(outgoing) + "}");
+@@ -452,6 +468,8 @@
+ void Recorder::input(GameConnectionID connection, const CPackForServer & pack)
+ {
+ 	outgoing.clearFlags();
++	if(!writing)
++		return;
+ 	line("{\"kind\":\"input\",\"seq\":" + std::to_string(sequence) + ",\"connection\":" + std::to_string(static_cast<int>(connection))
+ 		+ ",\"player\":" + std::to_string(pack.player.getNum()) + ",\"request\":" + std::to_string(pack.requestID)
+ 		+ ",\"type\":" + std::to_string(CTypeList::getInstance().getTypeID(&pack)) + ",\"out\":" + std::to_string(outgoing.count)
+@@ -460,6 +478,11 @@
+ 
+ void Recorder::applied(CGameHandler & gameHandler, const CPackForServer & pack, bool blocked, bool result)
+ {
++	if(!writing)
++	{
++		++sequence;
++		return;
++	}
+ 	const char * boundary = boundaryAfter(pack, result, outgoing);
+ 	std::string terminals = "[";
+ 	for(const auto & [player, victory] : outgoing.terminals)
+@@ -477,6 +500,14 @@
+ 
+ void Recorder::sent(const CPackForClient & pack, int target)
+ {
++	if(!writing)
++	{
++		// The barrier reads the count of packs that reached the client connection; the digests are for the log.
++		++outgoing.count;
++		if(target == -1 || target == clientConnection)
++			++outgoing.clientCount;
++		return;
++	}
+ 	outgoing.note(pack, target, clientConnection);
+ }
+ }

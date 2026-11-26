@@ -1,5 +1,6 @@
 #include "StdInc.h"
 #include "ExplorerRL.h"
+#include "SocketPolicyTransport.h"
 #include "ContextualEvidence.h"
 #include "KnowledgePlanner.h"
 #include "Notice.h"
@@ -14,6 +15,7 @@
 #include "../../lib/mapObjects/army/CStackInstance.h"
 #include "../../lib/mapping/TerrainTile.h"
 #include "../../lib/CPlayerState.h"
+#include "../../lib/callback/ExperimentHooks.h"
 #include "../../lib/networkPacks/ArtifactLocation.h"
 
 #include <algorithm>
@@ -259,19 +261,35 @@ bool writeMapChange(JsonNode & observation, const explorer_rl::VisibleMap & prev
 void ExplorerRL::readVisibleMap(explorer_rl::VisibleMap & map)
 {
 	const auto size = callback->getMapSize();
-	std::set<int> seen;
+	map.tiles.reserve((size_t)size.x * (size_t)size.y);
+	// per object id: whether it was met on a visitable tile, and what playerVisibleObject answered (by id, flat)
+	std::vector<char> seen;
 	// A capture runs after every pack and reads every tile. Whether the player sees a tile is its team's fog
 	// (CGameState::isVisibleFor, which getTile and isVisible ask), read here once for the capture; whether it
 	// sees an object is asked once per object (playerVisibleObject), not again for every tile the object is on.
 	// The answers are those of the calls they replace, which a spectator or a neutral player still makes.
 	const TeamState * team = playerID.isValidPlayer() && !playerID.isSpectator() ? callback->getPlayerTeam(playerID) : nullptr;
-	std::unordered_map<int, const CGObjectInstance *> asked;
+	std::vector<const CGObjectInstance *> answers;
+	std::vector<char> asked;
+	std::map<int, const CGObjectInstance *> negativeAnswers;  // ids below zero, which no tile should list
+	std::set<int> negativeSeen;
 	const auto visibleObject = [&](ObjectInstanceID id)
 	{
-		const auto [entry, fresh] = asked.try_emplace(id.getNum(), nullptr);
-		if(fresh)
-			entry->second = explorer_rl::playerVisibleObject(*callback, id);
-		return entry->second;
+		if(id.getNum() < 0)
+		{
+			const auto [entry, fresh] = negativeAnswers.try_emplace(id.getNum(), nullptr);
+			if(fresh)
+				entry->second = explorer_rl::playerVisibleObject(*callback, id);
+			return entry->second;
+		}
+		const size_t index = (size_t)id.getNum();
+		if(index >= asked.size()) { asked.resize(index + 64, 0); answers.resize(index + 64, nullptr); }
+		if(!asked[index])
+		{
+			asked[index] = 1;
+			answers[index] = explorer_rl::playerVisibleObject(*callback, id);
+		}
+		return answers[index];
 	};
 	const auto anyVisible = [&](const std::vector<ObjectInstanceID> & objects)
 	{
@@ -296,8 +314,21 @@ void ExplorerRL::readVisibleMap(explorer_rl::VisibleMap & map)
 			for(const auto id : tile->visitableObjects)
 			{
 				const auto * object = visibleObject(id);
-				if(!object || !seen.insert(id.getNum()).second)
+				if(!object)
 					continue;
+				if(id.getNum() < 0)
+				{
+					if(!negativeSeen.insert(id.getNum()).second)
+						continue;
+				}
+				else
+				{
+					const size_t index = (size_t)id.getNum();
+					if(index >= seen.size()) seen.resize(index + 64, 0);
+					if(seen[index])
+						continue;
+					seen[index] = 1;
+				}
 				// Handles are numbered in the order objects are first met, so
 				// each one is taken here, not when the JSON is written.
 				contextState.handle(id.getNum());
@@ -307,6 +338,28 @@ void ExplorerRL::readVisibleMap(explorer_rl::VisibleMap & map)
 					owner == playerID ? 0 : owner.isValidPlayer() ? 1 : 2});
 			}
 		}
+}
+
+int ExplorerRL::movementLimit(const CGHeroInstance & hero)
+{
+	// TurnInfo(hero, 0) reads the hero's bonuses through caches keyed by its tree version, which changes with any
+	// bonus of the hero, its army or a parent node; the limit is the land or the water one by inBoat().
+	const int32_t version = hero.getTreeVersion();
+	const bool onLand = !hero.inBoat();
+	if(contextState.movementLimits.size() > 256)
+		contextState.movementLimits.clear();
+	auto & known = contextState.movementLimits[&hero];
+	if(known.heroID == hero.id.getNum() && known.version == version && known.onLand == onLand)
+	{
+		if(captureCheck && known.value != hero.movementPointsLimit())
+			throw std::runtime_error("Capture check: a remembered movement limit differs");
+		return known.value;
+	}
+	known.value = hero.movementPointsLimit();
+	known.version = version;
+	known.onLand = onLand;
+	known.heroID = hero.id.getNum();
+	return known.value;
 }
 
 std::optional<explorer_rl::ViewPrint> ExplorerRL::mapViewPrint(explorer_rl::VisibleMap & map)
@@ -346,7 +399,7 @@ std::optional<explorer_rl::ViewPrint> ExplorerRL::mapViewPrint(explorer_rl::Visi
 		contextState.handle(hero->id.getNum());
 		const auto position = hero->visitablePos();
 		for(const int64_t value : {int64_t(hero->id.getNum()), int64_t(position.x), int64_t(position.y), int64_t(position.z),
-			int64_t(hero->movementPointsRemaining()), int64_t(hero->movementPointsLimit()), int64_t(hero->isGarrisoned())})
+			int64_t(hero->movementPointsRemaining()), int64_t(movementLimit(*hero)), int64_t(hero->isGarrisoned())})
 			print.numbers.push_back(value);
 		stacks(*hero);
 	}
@@ -401,7 +454,7 @@ JsonNode ExplorerRL::contextualObservation(explorer_rl::VisibleMap & map, bool m
 		item["handle"].String() = handle;
 		item["position"] = coordinates(hero->visitablePos());
 		item["movement"].Integer() = hero->movementPointsRemaining();
-		item["movement_max"].Integer() = hero->movementPointsLimit();
+		item["movement_max"].Integer() = movementLimit(*hero);
 		if(armyManagement) item["in_garrison"].Bool() = hero->isGarrisoned();
 		observation["heroes"].Vector().push_back(std::move(item));
 		if(ownArmyInformation)
@@ -520,11 +573,187 @@ void ExplorerRL::captureContextual()
 	captureContextualLocked();
 }
 
+explorer_rl::CaptureSignature ExplorerRL::captureSignature(int day) const
+{
+	// A pack applied but not yet notified makes the signature unique: it counts as a change until its
+	// notification says otherwise (see packApplied).
+	const auto position = experimentPackPosition();
+	explorer_rl::CaptureSignature signature;
+	signature.generation = stateGeneration * 2 + (position.index != notifiedPacks ? 1 : 0);
+	if(position.index != notifiedPacks)
+		signature.sizes.push_back(position.index);
+	signature.day = day;
+	const auto & state = contextState;
+	signature.context = state.context;
+	signature.subject = state.subject;
+	signature.panel = state.panel;
+	signature.selection = state.selection;
+	signature.selectedUpgradeRef = state.selectedUpgradeRef;
+	signature.capabilityRef = state.capabilityRef;
+	for(const size_t size : {state.handles.size(), state.subjects.size(), state.armyHandles.size(), state.armySlotHandles.size(),
+		state.economy.buildingHandles.size(), state.economy.buildings.size(), state.economy.dwellingHandles.size(),
+		state.economy.dwellings.size(), state.economy.recruitHandles.size(), state.economy.destinationHandles.size()})
+		signature.sizes.push_back(size);
+	signature.selectedTavernIndex = state.selectedTavernIndex;
+	signature.selectedRecruitIndex = state.economy.selectedRecruitIndex;
+	signature.tavernHandles = state.tavernHandles;
+	signature.upgradeHandles = state.upgradeHandles;
+	signature.stackParentContext = state.stackParentContext;
+	signature.capabilityParentContext = state.capabilityParentContext;
+	signature.capabilityInspected = state.capabilityInspected;
+	if(state.ownHeroExchange)
+	{
+		const auto & exchange = *state.ownHeroExchange;
+		signature.exchange = {exchange.first, exchange.second, exchange.query, exchange.installed, exchange.joiningNeutral,
+			exchange.objectGarrison, exchange.removableUnits, exchange.allied};
+	}
+	signature.dialogs = {state.adventureDialog.has_value(), state.capabilityDialog.has_value()};
+	if(state.adventureDialog)
+	{
+		signature.dialogs.insert(signature.dialogs.end(), {state.adventureDialog->hero, state.adventureDialog->query,
+			state.adventureDialog->installed});
+		signature.adventurePanel = state.adventureDialog->panel;
+		signature.adventureReplies = state.adventureDialog->replies;
+	}
+	if(state.capabilityDialog)
+	{
+		signature.dialogs.insert(signature.dialogs.end(), {state.capabilityDialog->hero, state.capabilityDialog->query,
+			state.capabilityDialog->installed});
+		signature.capabilityPanel = state.capabilityDialog->panel;
+		signature.capabilityReplies = state.capabilityDialog->replies;
+	}
+	return signature;
+}
+
+namespace
+{
+uint64_t shapeOf(const JsonNode & node, uint64_t hash = 1469598103934665603ULL)
+{
+	const auto mix = [&hash](uint64_t value) { hash = (hash ^ value) * 1099511628211ULL; };
+	const auto type = node.getType();
+	mix(static_cast<uint64_t>(type));
+	if(type == JsonNode::JsonType::DATA_STRUCT)
+	{
+		mix(node.Struct().size());
+		for(const auto & entry : node.Struct())
+			hash = shapeOf(entry.second, hash);
+	}
+	else if(type == JsonNode::JsonType::DATA_VECTOR)
+	{
+		mix(node.Vector().size());
+		for(const auto & entry : node.Vector())
+			hash = shapeOf(entry, hash);
+	}
+	return hash;
+}
+}
+
+bool ExplorerRL::signatureMatches(const explorer_rl::CaptureSignature & last, int day) const
+{
+	// captureSignature(day) == last, field by field in its order, without building it: most captures are
+	// skipped, and building copies strings, maps and JSON.
+	const auto position = experimentPackPosition();
+	const bool unnotified = position.index != notifiedPacks;
+	if(last.generation != stateGeneration * 2 + (unnotified ? 1 : 0) || last.day != day)
+		return false;
+	const auto & state = contextState;
+	if(last.context != state.context || last.subject != state.subject || last.panel != state.panel || last.selection != state.selection
+		|| last.selectedUpgradeRef != state.selectedUpgradeRef || last.capabilityRef != state.capabilityRef)
+		return false;
+	const size_t sizes[] = {state.handles.size(), state.subjects.size(), state.armyHandles.size(), state.armySlotHandles.size(),
+		state.economy.buildingHandles.size(), state.economy.buildings.size(), state.economy.dwellingHandles.size(),
+		state.economy.dwellings.size(), state.economy.recruitHandles.size(), state.economy.destinationHandles.size()};
+	const size_t first = unnotified ? 1 : 0;
+	if(last.sizes.size() != first + std::size(sizes) || (unnotified && last.sizes[0] != position.index))
+		return false;
+	for(size_t i = 0; i < std::size(sizes); ++i)
+		if(last.sizes[first + i] != sizes[i])
+			return false;
+	if(last.selectedTavernIndex != state.selectedTavernIndex || last.selectedRecruitIndex != state.economy.selectedRecruitIndex
+		|| last.tavernHandles != state.tavernHandles || last.upgradeHandles != state.upgradeHandles
+		|| last.stackParentContext != state.stackParentContext || last.capabilityParentContext != state.capabilityParentContext
+		|| last.capabilityInspected != state.capabilityInspected)
+		return false;
+	if(state.ownHeroExchange)
+	{
+		const auto & exchange = *state.ownHeroExchange;
+		const int64_t fields[] = {exchange.first, exchange.second, exchange.query, exchange.installed, exchange.joiningNeutral,
+			exchange.objectGarrison, exchange.removableUnits, exchange.allied};
+		if(last.exchange.size() != std::size(fields) || !std::equal(last.exchange.begin(), last.exchange.end(), fields))
+			return false;
+	}
+	else if(!last.exchange.empty())
+		return false;
+	std::vector<int64_t>::const_iterator dialog = last.dialogs.begin();
+	const auto next = [&](int64_t value) { return dialog != last.dialogs.end() && *dialog++ == value; };
+	if(!next(state.adventureDialog.has_value()) || !next(state.capabilityDialog.has_value()))
+		return false;
+	static const JsonNode nothing;
+	static const std::map<std::string, int> none;
+	if(state.adventureDialog)
+	{
+		if(!next(state.adventureDialog->hero) || !next(state.adventureDialog->query) || !next(state.adventureDialog->installed)
+			|| last.adventurePanel != state.adventureDialog->panel || last.adventureReplies != state.adventureDialog->replies)
+			return false;
+	}
+	else if(last.adventurePanel != nothing || last.adventureReplies != none)
+		return false;
+	if(state.capabilityDialog)
+	{
+		if(!next(state.capabilityDialog->hero) || !next(state.capabilityDialog->query) || !next(state.capabilityDialog->installed)
+			|| last.capabilityPanel != state.capabilityDialog->panel || last.capabilityReplies != state.capabilityDialog->replies)
+			return false;
+	}
+	else if(last.capabilityPanel != nothing || last.capabilityReplies != none)
+		return false;
+	return dialog == last.dialogs.end();
+}
+
+void ExplorerRL::checkSkippedCapture(int day)
+{
+	const auto records = contextState.records.size();
+	explorer_rl::VisibleMap map;
+	const bool mapRead = contextState.context == "map";
+	if(mapRead)
+		mapViewPrint(map);
+	const auto observation = contextualObservation(map, mapRead);
+	if(contextState.records.size() != records || contextState.lastObservation.isNull() || !(map == contextState.lastMap)
+		|| observation != contextState.lastObservation || day != contextState.lastDay)
+		throw std::runtime_error("A skipped capture would have found a changed view");
+}
+
+JsonNode & explorer_rl::touchObservation(explorer_rl::ContextualState & state)
+{
+	if(!state.observationTouched)
+	{
+		state.lastShape = shapeOf(state.lastObservation);
+		state.observationTouched = true;
+	}
+	return state.lastObservation;
+}
+
 void ExplorerRL::captureContextualLocked()
 {
 	const int day = callback->getDate(Date::DAY);
 	if(day < 1)
 		return;
+	// The same signature as the capture before it: nothing the observation is built from has changed since,
+	// and that capture left lastObservation, lastMap and lastDay as this one would.
+	// Untouched since a capture knew it, lastObservation has the shape that capture left; touched, its shape is
+	// compared with the one recorded before the first read.
+	if(contextState.lastSignature && signatureMatches(*contextState.lastSignature, day)
+		&& (!contextState.observationTouched
+			|| (contextState.lastShape && shapeOf(contextState.lastObservation) == *contextState.lastShape)))
+	{
+		if(captureCheck)
+		{
+			if(!(*contextState.lastSignature == captureSignature(day)))
+				throw std::runtime_error("A skipped capture's signature differs from the one it was compared with");
+			checkSkippedCapture(day);
+		}
+		return;
+	}
+	auto signature = captureSignature(day);
 	explorer_rl::VisibleMap map;
 	// A view is captured after every pack, and most packs change nothing this player sees. In the map
 	// context the view is a function of its print and its map (see ViewPrint): finding both as the
@@ -536,20 +765,28 @@ void ExplorerRL::captureContextualLocked()
 		print = mapViewPrint(map);
 		if(print && contextState.lastPrint && *print == *contextState.lastPrint && !contextState.lastObservation.isNull()
 			&& map == contextState.lastMap && day == contextState.lastDay)
+		{
+			// lastPrint is kept only while no action has run since the full comparison that set it: unmarked.
+			contextState.observationTouched = false;
+			contextState.lastSignature = std::move(signature);
 			return;
+		}
 	}
 	auto observation = contextualObservation(map, mapRead);
 	// No view was sent yet while lastObservation is null: the first one always carries its map.
 	const bool sameMap = !contextState.lastObservation.isNull() && map == contextState.lastMap;
 	if(sameMap && observation == contextState.lastObservation && day == contextState.lastDay)
 	{
+		// Equal to a view built just now: whatever reads left in it changed nothing.
+		contextState.observationTouched = false;
+		contextState.lastSignature = std::move(signature);
 		contextState.lastPrint = std::move(print); // of an observation equal to lastObservation; empty outside the map context
 		return;
 	}
 	if(!contextState.executing)
 		contextState.supersede(day, "visible_state_changed");
 	if(!contextState.lastObservation.isNull())
-		for(const auto & previous : contextState.lastObservation["heroes"].Vector())
+		for(const auto & previous : std::as_const(contextState.lastObservation)["heroes"].Vector())
 		{
 			const auto & heroes = observation["heroes"].Vector();
 			if(std::none_of(heroes.begin(), heroes.end(), [&](const auto & hero) { return hero["handle"] == previous["handle"]; }))
@@ -561,20 +798,35 @@ void ExplorerRL::captureContextualLocked()
 			}
 		}
 	auto record = contextState.record("view", day);
-	record["observation"] = observation;
 	// Told EXPLORER_RL_REPEATED_MAP=0, a view whose tiles and objects are those
 	// of this player's previous view leaves both out; the reader keeps them.
 	// Told EXPLORER_RL_TILE_CHANGES=1 as well, a view that changed the map
 	// without revealing or hiding a tile carries only the tiles that changed.
+	JsonNode mapFields; // "tiles", "objects", "tile_changes": keys the observation itself never has
 	if(repeatedMap || contextState.lastObservation.isNull())
-		writeVisibleMap(record["observation"], map, contextState);
-	else if(!sameMap && !(tileChanges && writeMapChange(record["observation"], contextState.lastMap, map, contextState)))
-		writeVisibleMap(record["observation"], map, contextState);
+		writeVisibleMap(mapFields, map, contextState);
+	else if(!sameMap && !(tileChanges && writeMapChange(mapFields, contextState.lastMap, map, contextState)))
+		writeVisibleMap(mapFields, map, contextState);
+	// The record carries the observation as the JSON its message will hold, written now, so the observation
+	// itself is kept as lastObservation without a copy; a recorder that keeps messages gets the JSON values.
+	std::string written(explorer_rl_json::RAW_JSON_MARK);
+	if(!explorer_rl::ContextualEvidence::recordsMessages() && explorer_rl_json::appendMerged(written, observation, mapFields))
+		record["observation"].String() = std::move(written);
+	else
+	{
+		record["observation"] = observation;
+		if(mapFields.getType() == JsonNode::JsonType::DATA_STRUCT)
+			for(auto & [key, value] : mapFields.Struct())
+				record["observation"][key] = std::move(value);
+	}
 	contextState.records.push_back(std::move(record));
 	contextState.lastObservation = std::move(observation);
 	contextState.lastMap = std::move(map);
 	contextState.lastDay = day;
 	contextState.lastPrint = std::move(print);
+	contextState.lastSignature = std::move(signature);
+	contextState.lastShape.reset();
+	contextState.observationTouched = false;
 }
 
 JsonNode ExplorerRL::takeContextualRecords()
@@ -772,7 +1024,7 @@ bool ExplorerRL::executeTownAction(const JsonNode & action, int64_t decision)
 		{
 			if(contextState.panel != "hall")
 				throw std::runtime_error("Building selection requires hall");
-			const auto & choices = contextState.lastObservation["window"]["town_panel"]["buildings"].Vector();
+			const auto & choices = touchObservation(contextState)["window"]["town_panel"]["buildings"].Vector();
 			if(std::none_of(choices.begin(), choices.end(), [&](const auto & entry) { return entry["ref"].String() == selection; }))
 				throw std::runtime_error("Building was not displayed in this hall");
 			contextState.economy.resolveBuilding(town, selection);
@@ -985,7 +1237,7 @@ bool ExplorerRL::executeContextualAction(const JsonNode & action, int64_t decisi
 			throw std::runtime_error("Town overlay requires back before close");
 		if(needsSubject)
 		{
-			const auto & own = contextState.lastObservation[kind == "open_town" ? "towns" : "heroes"].Vector();
+			const auto & own = touchObservation(contextState)[kind == "open_town" ? "towns" : "heroes"].Vector();
 			if(std::none_of(own.begin(), own.end(), [&](const auto & item) { return item["handle"] == action["subject"]; }))
 				throw std::runtime_error("Contextual subject was not offered");
 			subject = ObjectInstanceID(contextState.subjects.at(action["subject"].String()));

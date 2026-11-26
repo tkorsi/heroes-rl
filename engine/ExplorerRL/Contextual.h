@@ -50,6 +50,16 @@ struct OwnStackDetail
 	JsonNode item; ///< null until built
 };
 using OwnStackDetails = std::unordered_map<const void *, OwnStackDetail>; ///< by the stack's address
+/// A hero's movement limit with what VCMI computes it from: its bonus tree version (TurnInfo's own caches,
+/// the lowest creature speed among them, are keyed by it) and whether it stands in a boat.
+struct MovementLimit
+{
+	int32_t version = 0;
+	bool onLand = true;
+	int heroID = -1;
+	int value = 0;
+};
+using MovementLimits = std::unordered_map<const void *, MovementLimit>; ///< by the hero's address
 
 /// What a view in the map context is written from besides its tiles and
 /// objects: the player's heroes and towns with their places, movement and
@@ -64,6 +74,26 @@ struct ViewPrint
 	bool operator==(const ViewPrint &) const = default;
 };
 
+/// Everything a capture's observation can depend on besides the game state, with the game state's
+/// generation: a capture whose signature equals the one of the capture before it would build the
+/// same observation (see ExplorerRL::captureSignature).
+struct CaptureSignature
+{
+	uint64_t generation = 0; ///< packs applied that can change the game state
+	int day = 0;
+	std::string context, subject, panel, selection, selectedUpgradeRef, capabilityRef;
+	std::vector<size_t> sizes; ///< of the routing tables, which only grow
+	size_t selectedTavernIndex = 0, selectedRecruitIndex = 0;
+	std::map<int, std::string> tavernHandles, upgradeHandles;
+	JsonNode stackParentContext, capabilityParentContext;
+	std::optional<int> capabilityInspected;
+	std::vector<int64_t> exchange; ///< ownHeroExchange's fields, empty without one
+	std::vector<int64_t> dialogs; ///< adventure and capability dialogs' heroes, queries, installed flags
+	JsonNode adventurePanel, capabilityPanel;
+	std::map<std::string, int> adventureReplies, capabilityReplies;
+	bool operator==(const CaptureSignature &) const = default;
+};
+
 /// Per-player adapter bookkeeping. All access is protected by ExplorerRL's
 /// state mutex; engine identifiers never leave these routing tables.
 struct ContextualState
@@ -74,10 +104,21 @@ struct ContextualState
 	JsonNode lastObservation; ///< of the latest view, without its tiles and objects
 	VisibleMap lastMap; ///< the tiles and objects of the latest view
 	OwnStackDetails ownStackDetails; ///< entries of the "own_armies" stacks seen last; a miss only builds one again
+	MovementLimits movementLimits; ///< heroes' movement limits as last computed (movementLimit)
 	/// The print of lastObservation while that was captured in the map context
 	/// and no action has run since (an action reads the latest view and may
 	/// leave a mark in it); otherwise empty, and the next capture compares in full.
 	std::optional<ViewPrint> lastPrint;
+	/// The signature of the latest capture, while nothing that the signature leaves out can have
+	/// changed lastObservation since (reset where lastPrint is reset); otherwise empty.
+	std::optional<CaptureSignature> lastSignature;
+	/// The shape (node types and sizes) of lastObservation when it was last known to be as a capture left it.
+	/// Reading it through JsonNode's non-const accessors can only insert members or change a node's type,
+	/// both of which change the shape; an action reads it so (see executeContextualAction).
+	std::optional<uint64_t> lastShape;
+	/// Whether lastObservation was read through touchObservation since a capture last knew it as built; lastShape
+	/// is then its shape before that read. A capture needs to compare shapes only after such a read.
+	bool observationTouched = false;
 	int lastDay = 0;
 	std::string context = "map";
 	std::string subject;
@@ -143,4 +184,8 @@ struct ContextualState
 	JsonNode record(const char * kind, int day) const;
 	void supersede(int day, const char * reason);
 };
+
+/// lastObservation for an action's reads through JsonNode's non-const accessors, which can insert members or change
+/// a node's type: the first such read since a capture knew the observation records its shape first.
+JsonNode & touchObservation(ContextualState & state);
 }

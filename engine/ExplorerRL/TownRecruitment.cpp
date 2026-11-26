@@ -78,7 +78,7 @@ bool ExplorerRL::executeRecruitmentAction(const JsonNode & action, int64_t decis
 		if(opening)
 		{
 			if(contextState.panel != "overview") throw std::runtime_error("Recruitment entry requires town overview");
-			const auto & controls = contextState.lastObservation["window"]["town_panel"]["controls"].Vector();
+			const auto & controls = touchObservation(contextState)["window"]["town_panel"]["controls"].Vector();
 			if(std::none_of(controls.begin(), controls.end(), [&](const auto & control)
 				{ return control["panel"].String() == "recruitment" && control["ref"].String() == selection; }))
 				throw std::runtime_error("Recruitment control was not displayed");
@@ -87,7 +87,7 @@ bool ExplorerRL::executeRecruitmentAction(const JsonNode & action, int64_t decis
 		}
 		if(contextState.panel != "recruitment") throw std::runtime_error("Recruitment requires its open popup");
 		if(kind == "back") return;
-		const auto & panel = contextState.lastObservation["window"]["town_panel"]["recruitment"];
+		const auto & panel = touchObservation(contextState)["window"]["town_panel"]["recruitment"];
 		const auto & offers = panel["offers"].Vector();
 		if(std::none_of(offers.begin(), offers.end(), [&](const auto & offer) { return offer["ref"].String() == selection; }))
 			throw std::runtime_error("Recruitment card was not displayed");
@@ -134,7 +134,7 @@ bool ExplorerRL::executeRecruitmentAction(const JsonNode & action, int64_t decis
 			else if(kind == "back") changePanel("overview", "");
 			else
 			{
-				const auto & offers = contextState.lastObservation["window"]["town_panel"]["recruitment"]["offers"].Vector();
+				const auto & offers = touchObservation(contextState)["window"]["town_panel"]["recruitment"]["offers"].Vector();
 				const auto found = std::find_if(offers.begin(), offers.end(), [&](const auto & offer) { return offer["ref"].String() == selection; });
 				contextState.economy.selectedRecruitIndex = static_cast<size_t>(std::distance(offers.begin(), found));
 				changePanel("recruitment", contextState.selection);

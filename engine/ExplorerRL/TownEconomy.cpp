@@ -1,4 +1,5 @@
 #include "StdInc.h"
+#include <unordered_set>
 #include "TownEconomy.h"
 
 #include "../../lib/CCreatureHandler.h"
@@ -25,8 +26,14 @@ std::string buildingText(const CBuilding & building, bool description = false)
 	const auto id = description ? building.getDescriptionTextID() : building.getNameTextID();
 	static const std::regex name("building\\.core\\.[A-Za-z][A-Za-z0-9_]{0,63}\\.[A-Za-z][A-Za-z0-9_]{0,63}\\.name");
 	static const std::regex detail("building\\.core\\.[A-Za-z][A-Za-z0-9_]{0,63}\\.[A-Za-z][A-Za-z0-9_]{0,63}\\.description");
+	// Whether an id matches is a function of the id: each thread remembers the ids it found valid.
+	thread_local std::unordered_set<std::string> validNames, validDetails;
+	auto & valid = description ? validDetails : validNames;
+	if(valid.count(id))
+		return id;
 	if(!std::regex_match(id, description ? detail : name))
 		unsupported();
+	valid.insert(id);
 	return id;
 }
 

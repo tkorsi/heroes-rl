@@ -67,6 +67,15 @@ public:
 	/// never forwarded: a move can name a hidden endpoint and some removals
 	/// are hidden.
 	void packApplied() override;
+	/// Packs whose application changes no game state (no GameStatePackVisitor case): PackageApplied,
+	/// PackageReceived and PlayerBlocked. Their notifications run the same capture as any pack.
+	std::array<uint16_t, 3> neutralPackTypes{};
+	uint64_t notifiedPacks = 0; ///< the pack index at the latest packApplied (stateMutex)
+	uint64_t stateGeneration = 0; ///< notified packs that may have changed the game state (stateMutex)
+	bool captureCheck = false; ///< HEROES_CAPTURE_CHECK=1: every skipped capture is built anyway and compared
+	explorer_rl::CaptureSignature captureSignature(int day) const;
+	bool signatureMatches(const explorer_rl::CaptureSignature & last, int day) const; ///< captureSignature(day) == last, built for nothing
+	void checkSkippedCapture(int day);
 
 private:
 	std::shared_ptr<CCallback> callback;
@@ -198,6 +207,8 @@ private:
 	/// Stable game state and stateMutex held, map context. Fills ``map``; empty when a stack is not one
 	/// contextualObservation accepts, which is then left to refuse it.
 	std::optional<explorer_rl::ViewPrint> mapViewPrint(explorer_rl::VisibleMap & map);
+	/// hero->movementPointsLimit(), computed again only when its bonus tree or boat changed (state lock held)
+	int movementLimit(const CGHeroInstance & hero);
 	JsonNode takeContextualRecords(); ///< acquires stateMutex
 	void contextualEvent(JsonNode event); ///< stable game state; acquires stateMutex
 	void contextualTerminal(const char * outcome); ///< network thread, under sendMutex

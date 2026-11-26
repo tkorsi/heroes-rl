@@ -28,6 +28,7 @@ public:
 	static ContextualEvidence & live(const std::string & episode, bool town, bool armies = false, bool heroes = false, bool management = false, bool dialogs = false, bool expanded = false, bool ownArmies = false);
 	static ContextualEvidence * current();
 	static bool replaying();
+	static bool recordsMessages(); ///< a recorder is on and writes its ledger: it keeps every message as JSON
 	static bool cancelled();
 
 	explicit ContextualEvidence(const std::vector<JsonNode> & tape, bool prefix);

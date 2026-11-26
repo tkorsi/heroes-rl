@@ -37,7 +37,7 @@ import torch
 
 from . import checkpoint
 from .actor import Game, Job, compact_recipe, compile_recipe, play
-from .engine.env import COLORS, Env
+from .engine.env import COLORS, Env, NativeEnv
 from .learner.ppo import WINDOW_REPEAT_PENALTY
 from .model.policy import weights_sha256
 
@@ -104,6 +104,8 @@ def _play_job(env, model, job, config, report):
             if config.backend == "mlx":
                 compiling = time.monotonic()
                 for trajectory in game.trajectories:
+                    if trajectory.compact is not None:  # recorded as arrays by native seats
+                        continue
                     if trajectory.recipe is None:  # not recorded while playing
                         compile_recipe(model, trajectory)
                     if config.ppo.games_per_minibatch is not None:
@@ -147,7 +149,10 @@ def worker(config, pipe, trainer):
     signal.signal(signal.SIGINT, signal.SIG_IGN)  # the trainer handles Ctrl-C and stops its actors
     signal.signal(signal.SIGTERM, _stop_actor)
     threading.Thread(target=_end_with_trainer, args=(trainer,), daemon=True).start()
-    env = Env(config.engine(), config.limits)
+    engine = config.engine()
+    # Native seats play exactly as the Python ones do; they record only the arrays of the update by whole games.
+    native_seats = (config.backend == "mlx" and config.ppo.games_per_minibatch is not None and NativeEnv.usable(engine))
+    env = (NativeEnv if native_seats else Env)(engine, config.limits)
     model = loaded = weights = None
 
     def send(kind, payload):

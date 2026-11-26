@@ -123,7 +123,7 @@ bool ExplorerRL::executeTransferAction(const JsonNode & action, int64_t decision
 		if(contextState.decision != decision) return false;
 		const auto * town = activeTown();
 		const auto [source, destination] = ownedRows(*town);
-		const auto & armies = contextState.lastObservation["window"]["town_panel"]["armies"];
+		const auto & armies = touchObservation(contextState)["window"]["town_panel"]["armies"];
 		const auto resolve = [](const JsonNode & row, const JsonNode & selected)
 		{
 			for(const auto & slot : row["slots"].Vector())

@@ -17,8 +17,10 @@ mkdir -p "$HEROES_ARTIFACTS"
 Supply a compatible Heroes III installation so that its original `Data` folder is available at `$HEROES_ARTIFACTS/game-data/Data`. Follow the [VCMI build instructions](architecture.md#engine) through the CMake build. For the artifact directory chosen above, run the freeze step there:
 
 ```sh
-python3 tools/freeze_runtime.py "$HEROES_ARTIFACTS/runtime/local-v8-games-fast-v1"
+python3 tools/freeze_runtime.py "$HEROES_ARTIFACTS/runtime/local-v8-native-selfplay-v1"
 ```
+
+The default MLX update by whole games uses a native C++ actor on Apple silicon. The learner builds its extension on first use with the installed C++ compiler. Set `HEROES_NATIVE_SEAT=0` to select the Python actor for comparison.
 
 To use a different prepared runtime, set `HEROES_VCMI` to its patched `vcmiclient` executable. For the Torch reference backend, install [the base learner lock](../dependencies/learner.lock) and pass `--backend torch` to both the check and train commands.
 

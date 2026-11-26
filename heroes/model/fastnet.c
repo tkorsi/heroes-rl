@@ -51,6 +51,11 @@ typedef struct {
     long used, capacity;
     float *work;            /* scratch for the map, sequences and the heads */
     long work_size;
+    /* the map's layers as last computed for each of two callers (fn_map_use): each layer's sums before tanh and
+     * after it, so a group of four sums equal to the last ones takes the last tanh instead of computing it */
+    float *map_cache[2];
+    long map_cache_cells[2];
+    int map_which;
 } Net;
 
 /* torch's exp and tanh of four numbers (Sleef_expf4_u10 and Sleef_tanhf4_u10 of the libtorch_cpu in this process). */
@@ -76,8 +81,12 @@ Net *fn_create(long capacity) {
 void fn_destroy(Net *net) {
     if (!net) return;
     for (int i = 0; i < P_COUNT; i++) free(net->p[i]);
+    free(net->map_cache[0]); free(net->map_cache[1]);
     free(net->arena); free(net->work); free(net);
 }
+
+/* The map cache the next fn_map uses: 0 or 1 (a seat each); the cache never changes a result. */
+void fn_map_use(Net *net, int which) { net->map_which = which & 1; }
 
 int fn_set(Net *net, int which, const float *data, long count) {
     if (which < 0 || which >= P_COUNT) return -1;
@@ -122,6 +131,23 @@ static inline void tanh_all(float *values, long count) {
         memcpy(rest, values + i, (size_t)(count - i) * sizeof(float));
         vst1q_f32(rest, tanh4(vld1q_f32(rest)));
         memcpy(values + i, rest, (size_t)(count - i) * sizeof(float));
+    }
+}
+
+/* tanh_all over a multiple of four numbers, given the numbers ``before`` the last call had and the tanh ``after``
+ * it gave for them: a group of four equal bit for bit to the last one takes its tanh (tanh4 computes each group
+ * from its four numbers alone), any other group is computed and remembered. ``known`` 0: nothing remembered. */
+static inline void tanh_remembered(float *values, long count, float *before, float *after, int known) {
+    for (long i = 0; i < count; i += 4) {
+        const float32x4_t value = vld1q_f32(values + i);
+        if (known) {
+            const uint32x4_t same = vceqq_u32(vreinterpretq_u32_f32(value), vld1q_u32((const uint32_t *)(before + i)));
+            if (vminvq_u32(same) == 0xFFFFFFFFu) { vst1q_f32(values + i, vld1q_f32(after + i)); continue; }
+        }
+        const float32x4_t result = tanh4(value);
+        vst1q_f32(before + i, value);
+        vst1q_f32(after + i, result);
+        vst1q_f32(values + i, result);
     }
 }
 
@@ -326,27 +352,42 @@ int fn_coordinate(Net *net, const float *state, long target, const float *cells,
  * (channel, ky, kx) rows of one value per cell, and one product with the weights onto the bias.
  * ``input`` and ``out`` are channel after channel, each ``height`` rows of ``width``. */
 static void convolve(const float *input, long channels, long width, long height, const float *weight, const float *bias,
-                     float *unfolded, float *out) {
+                     float *unfolded, float *out, float *before, float *after, int known) {
     const long cells = width * height, taps = 9 * channels;
-    for (long c = 0; c < channels; c++)
+    /* unfolded row (c, ky, kx), cell (y, x) = input[c][y + ky - 1][x + kx - 1], 0 outside the map: whole rows
+     * of the input copied at once, the padding written as zeros */
+    for (long c = 0; c < channels; c++) {
+        const float *plane = input + c * cells;
         for (long ky = 0; ky < 3; ky++)
             for (long kx = 0; kx < 3; kx++) {
                 float *row = unfolded + ((c * 3 + ky) * 3 + kx) * cells;
                 for (long y = 0; y < height; y++) {
                     const long yy = y + ky - 1;
-                    for (long x = 0; x < width; x++) {
-                        const long xx = x + kx - 1;
-                        row[y * width + x] = (yy < 0 || yy >= height || xx < 0 || xx >= width)
-                            ? 0.0f : input[(c * height + yy) * width + xx];
+                    float *out_row = row + y * width;
+                    if (yy < 0 || yy >= height) {
+                        memset(out_row, 0, (size_t)width * sizeof(float));
+                        continue;
+                    }
+                    const float *in_row = plane + yy * width;
+                    if (kx == 1) {
+                        memcpy(out_row, in_row, (size_t)width * sizeof(float));
+                    } else if (kx == 0) {
+                        out_row[0] = 0.0f;
+                        memcpy(out_row + 1, in_row, (size_t)(width - 1) * sizeof(float));
+                    } else {
+                        memcpy(out_row, in_row + 1, (size_t)(width - 1) * sizeof(float));
+                        out_row[width - 1] = 0.0f;
                     }
                 }
             }
+    }
     for (long o = 0; o < 16; o++)
         for (long i = 0; i < cells; i++) out[o * cells + i] = bias[o];
     /* torch: gemm in Fortran order, out (cells x 16) = unfolded (cells x taps) . weight (taps x 16) + out */
     cblas_sgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, (int)cells, 16, (int)taps, 1.0f, unfolded, (int)cells,
                 weight, (int)taps, 1.0f, out, (int)cells);
-    tanh_all(out, cells * 16);
+    if (before) tanh_remembered(out, cells * 16, before, after, known);
+    else tanh_all(out, cells * 16);
 }
 
 /* The map: per cell a terrain and a road number (each already raised by one, 0 for a cell not seen) and five
@@ -373,8 +414,20 @@ long fn_map(Net *net, const int *terrain, const int *road, const float *flags, c
         for (long k = 0; k < objects; k++)
             for (long j = 0; j < 16; j++) grid[(12 + j) * count + object_cells[k]] += encoded[k * 16 + j];
     }
-    convolve(grid, 33, width, height, net->p[P_CONV1_W], net->p[P_CONV1_B], unfolded, first);
-    convolve(first, 16, width, height, net->p[P_CONV2_W], net->p[P_CONV2_B], unfolded, second);
+    /* each layer's sums and tanh as this caller's last map had them (count * 16 numbers each, four arrays) */
+    const int which = net->map_which;
+    int known = net->map_cache[which] != NULL && net->map_cache_cells[which] == count;
+    if (!known) {  /* another size, or nothing yet: every group is computed and remembered */
+        free(net->map_cache[which]);
+        net->map_cache[which] = malloc((size_t)(count * 16 * 4) * sizeof(float));
+        net->map_cache_cells[which] = 0;
+    }
+    float *cache = net->map_cache[which];
+    convolve(grid, 33, width, height, net->p[P_CONV1_W], net->p[P_CONV1_B], unfolded, first,
+             cache, cache ? cache + count * 16 : NULL, known);
+    convolve(first, 16, width, height, net->p[P_CONV2_W], net->p[P_CONV2_B], unfolded, second,
+             cache ? cache + count * 32 : NULL, cache ? cache + count * 48 : NULL, known);
+    if (cache) net->map_cache_cells[which] = count;
     for (long i = 0; i < count; i++)
         for (long c = 0; c < 16; c++) cells[i * 16 + c] = second[c * count + i];
     /* the summary: every channel averaged over a 4 x 4 grid of regions, then one layer */

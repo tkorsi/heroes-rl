@@ -278,7 +278,7 @@ A build finds its library through the path of the build folder. To use it for
 training, copy it into a runtime folder that stands on its own:
 
 ```sh
-python3 tools/freeze_runtime.py ~/Projects/Heroes-artifacts/runtime/local-v8-games-fast-v1
+python3 tools/freeze_runtime.py ~/Projects/Heroes-artifacts/runtime/local-v8-native-selfplay-v1
 ```
 
 The runtime is put together beside its final place and renamed into it when
@@ -329,7 +329,7 @@ places are in `dependencies/vcmi.json`), confirm with `--check`, and build the
 target that owns it: `cmake --build vcmi/build --target vcmireplay`.
 
 The Python side expects the client at `HEROES_VCMI`, by default
-`~/Projects/Heroes-artifacts/runtime/local-v8-games-fast-v1/bin/vcmiclient`,
+`~/Projects/Heroes-artifacts/runtime/local-v8-native-selfplay-v1/bin/vcmiclient`,
 and the original game's `Data` folder under `~/Projects/Heroes-artifacts/game-data`.
 The launcher uses compact observations and disables the replay ledger for
 training. Use `--keep-game-files` to retain the ledger.

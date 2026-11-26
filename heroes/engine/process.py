@@ -54,10 +54,11 @@ class Engine:
             "logging": {"loggers": [{"domain": "global", "level": "info"}, {"domain": "rng", "level": "info"}]},
         }
 
-    def launch(self, directory, episode, seed, ports, log, game_map=None):
+    def launch(self, directory, episode, seed, ports, log, game_map=None, sockets=None):
         """Start the game in ``directory``; ``ports`` are the two policy listeners.
 
-        ``game_map`` is another map file for this game alone, in place of the engine's own.
+        ``game_map`` is another map file for this game alone, in place of the engine's own. ``sockets`` are the
+        paths of two local (Unix) sockets the policy listens on as well; an engine that knows them connects there.
         """
         directory = Path(directory).resolve()  # the engine runs in its own folder, not ours
         profile, logs, engine = directory / "profile", directory / "logs", directory / "engine"
@@ -98,8 +99,13 @@ class Engine:
             "EXPLORER_RL_TILE_CHANGES": "1",
             "EXPLORER_RL_PORT_0": str(ports[0]), "EXPLORER_RL_PORT_1": str(ports[1]),
         })
+        if sockets is not None:
+            environment["EXPLORER_RL_SOCKET_0"], environment["EXPLORER_RL_SOCKET_1"] = (str(path) for path in sockets)
         if not self.replay_ledger:
             environment["VCMI_EXPERIMENT_LEDGER"] = "0"
+            # Nor the server's replay log: the recorder then keeps only the counts its shutdown reads. A game's
+            # files are removed when it ends unless they are kept, and the log is only read from kept games.
+            environment["VCMI_EXPERIMENT_REPLAY_LOG"] = "0"
         if self.army_information is not None:
             environment["EXPLORER_RL_ARMY_INFORMATION"] = self.army_information
         inherited = {key: value for key, value in os.environ.items() if not key.startswith(_OWNED_VARIABLES)}

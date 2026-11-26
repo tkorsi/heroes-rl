@@ -341,7 +341,7 @@ bool ExplorerRL::executeArmyAction(const JsonNode & action, int64_t decision)
 		captureContextualLocked();
 		if(contextState.decision != decision) return false;
 		const auto current = rows();
-		const auto & wire = contextState.lastObservation["window"]["armies"];
+		const auto & wire = touchObservation(contextState)["window"]["armies"];
 		const auto [source, from] = selectedSlot(contextState, current, wire, action["selection"].String());
 		const auto [destination, to] = selectedSlot(contextState, current, wire, action["destination"].String());
 		sourceID = source->id.getNum(); destinationID = destination->id.getNum();
@@ -433,7 +433,7 @@ bool ExplorerRL::executeStackAction(const JsonNode & action, int64_t decision)
 		if(opening) return;
 		openedStack(*callback, contextState, exchange);
 		if(kind == "back") return;
-		const auto & panel = contextState.lastObservation["window"]["stack_panel"];
+		const auto & panel = touchObservation(contextState)["window"]["stack_panel"];
 		if(selecting && contextState.panel != "overview")
 			throw std::runtime_error("Upgrade selection requires the opened stack overview");
 		const auto & offers = panel["offers"].Vector();
@@ -458,7 +458,7 @@ bool ExplorerRL::executeStackAction(const JsonNode & action, int64_t decision)
 			{
 				parent = contextState.contextJson();
 				const auto rows = displayedRows(*callback, contextState, parent, exchange);
-				const auto [army, slot] = selectedSlot(contextState, rows, contextState.lastObservation["window"]["armies"], selection);
+				const auto [army, slot] = selectedSlot(contextState, rows, touchObservation(contextState)["window"]["armies"], selection);
 				if(!army->hasStackAtSlot(SlotID(slot))) throw std::runtime_error("Cannot open an empty stack slot");
 				contextState.stackParentContext = parent;
 				contextState.selectedUpgradeRef.clear();
@@ -517,7 +517,7 @@ bool ExplorerRL::executeStackAction(const JsonNode & action, int64_t decision)
 		validate();
 		const auto [army, currentSlot] = openedStack(*callback, contextState, exchange);
 		armyID = army->id.getNum(); slot = currentSlot;
-		const auto & panel = contextState.lastObservation["window"]["stack_panel"];
+		const auto & panel = touchObservation(contextState)["window"]["stack_panel"];
 		for(const auto & choice : panel["offers"].Vector())
 			if(choice["ref"].String() == selection) upgrade = CreatureID(choice["creature"].Integer());
 		const auto info = upgrades(*callback, *army, slot);
